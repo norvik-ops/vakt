@@ -403,6 +403,12 @@ func (h *TotpHandler) LoginVerify(c echo.Context) error {
 				"code":  "TOTP_REPLAY_CHECK_UNAVAILABLE",
 			})
 		}
+		if errors.Is(err, ErrBackupCodeNotConsumed) {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "Der Backup-Code konnte nicht entwertet werden. Bitte in Kürze erneut versuchen.",
+				"code":  "TOTP_BACKUP_CODE_NOT_CONSUMED",
+			})
+		}
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
 			"error": "invalid code", "code": "TOTP_INVALID_CODE",
 		})
@@ -452,7 +458,15 @@ func (h *TotpHandler) validateSecondFactor(ctx context.Context, userID, code, ba
 		}
 		newCodes := removeIndex(backupCodes, idx)
 		if uerr := h.updateBackupCodes(ctx, userID, newCodes); uerr != nil {
+			// R1-W7A-N3 (class sweep): this used to log and `return nil`, i.e. the
+			// login passed while the code stayed in totp_secrets.backup_codes —
+			// a SINGLE-USE second factor silently turned into a permanent one.
+			// The TOTP path immediately below already had this right: it preserves
+			// the error class so the caller can answer 503 for an outage instead
+			// of pretending. Same rule here — a factor that could not be consumed
+			// has not been spent, so it has not been accepted.
 			log.Error().Err(uerr).Msg("login-verify: failed to consume backup code")
+			return fmt.Errorf("%w: %v", ErrBackupCodeNotConsumed, uerr)
 		}
 		return nil
 	}
@@ -533,7 +547,14 @@ func (h *TotpHandler) Verify(c echo.Context) error {
 		// Remove the used backup code (replace with empty string sentinel or shrink slice).
 		newCodes := removeIndex(backupCodes, idx)
 		if err := h.updateBackupCodes(ctx, userID, newCodes); err != nil {
+			// Twin of the site in validateSecondFactor — see the note there. A
+			// backup code that could not be struck off the list is still on it,
+			// so answering "verified" hands out an unlimited second factor.
 			log.Error().Err(err).Msg("totp verify: failed to consume backup code")
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "Der Backup-Code konnte nicht entwertet werden. Bitte in Kürze erneut versuchen.",
+				"code":  "TOTP_BACKUP_CODE_NOT_CONSUMED",
+			})
 		}
 		return c.JSON(http.StatusOK, map[string]string{"status": "verified"})
 	}
@@ -584,6 +605,12 @@ func (h *TotpHandler) Verify(c echo.Context) error {
 // in the logs. Callers map this to 503 + a retry hint, mirroring the lockout
 // path (ADR-0044, ErrLockoutCheckUnavailable).
 var ErrTOTPReplayCheckUnavailable = errors.New("auth: totp replay check unavailable (redis outage)")
+
+// ErrBackupCodeNotConsumed signals that a backup code matched but could not be
+// struck off the user's list. The code is therefore still spendable, so the
+// second factor must NOT count as passed — the caller answers 503, not 422:
+// nothing about the code was wrong, the store was.
+var ErrBackupCodeNotConsumed = errors.New("auth: backup code could not be consumed")
 
 // ErrTOTPCodeReplayed signals that this code was already spent inside its window.
 var ErrTOTPCodeReplayed = errors.New("auth: TOTP code already used")

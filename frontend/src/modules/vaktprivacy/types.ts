@@ -216,11 +216,27 @@ export interface UpdateDSRInput {
   notes?: string
 }
 
+/**
+ * How a DSR is closed. Deliberately NOT DSRStatus: the API accepts 'fulfilled'
+ * and stores it as status 'completed'. While this was typed as DSRStatus the
+ * dialog sent 'completed', which the backend validator (oneof=fulfilled rejected
+ * extended) rejected with 422 — so "close as fulfilled" never worked from the UI.
+ */
+export type DSRResolutionType = 'fulfilled' | 'rejected' | 'extended'
+
 export interface ResolveDSRInput {
-  resolution_type: DSRStatus
+  resolution_type: DSRResolutionType
   resolution_notes?: string
   extension_reason?: string
 }
+
+/**
+ * Header the Art. 17 erasure transaction writes into a DSR's notes — the
+ * server's proof that the deletion committed. The page reads it only to explain
+ * the situation before the user submits. Enforcement is server-side
+ * (409 PO_ERASURE_NOT_EXECUTED); this constant is a courtesy, never a control.
+ */
+export const ERASURE_EVIDENCE_MARKER = '--- Erasure executed ---'
 
 // ── S69-6: Transfer Impact Assessment ────────────────────────────────────────
 

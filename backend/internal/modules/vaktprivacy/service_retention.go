@@ -133,15 +133,31 @@ func (s *Service) CheckDeletionReminders(ctx context.Context) error {
 		if err := rows.Scan(&orgID); err != nil {
 			continue
 		}
-		notify.Send(ctx, s.db, orgID,
+		// R1-W4A-N1: Die Marke reminder_sent_at wird NUR nach einem
+		// bestaetigten Versand gesetzt. Die Auswahlabfrage oben filtert auf
+		// `reminder_sent_at IS NULL` — wer die Marke setzt, ohne dass die
+		// Meldung geschrieben wurde, unterdrueckt die Loesch-Erinnerung nach
+		// Art. 17 DSGVO nicht einmal, sondern dauerhaft. Vorher stand hier
+		// ein Send ohne Rueckgabewert, ein `_, _ =` auf dem UPDATE und
+		// danach ein bedingungsloses „notification sent" im Log.
+		if err := notify.Send(ctx, s.db, orgID,
 			"Lösch-Erinnerung fällig",
 			"Eine oder mehrere geplante Datenlöschungen sind in weniger als 14 Tagen fällig. Bitte prüfen.",
-			"deletion_reminder_due", "vaktprivacy")
-		// Mark reminder_sent_at
-		_, _ = s.db.Exec(ctx, `
+			"deletion_reminder_due", "vaktprivacy"); err != nil {
+			log.Error().Err(err).Str("org_id", orgID).
+				Msg("deletion reminder NICHT zugestellt — reminder_sent_at bleibt ungesetzt, der naechste Lauf versucht es erneut")
+			continue
+		}
+		if _, err := s.db.Exec(ctx, `
 			UPDATE po_deletion_reminders SET reminder_sent_at = NOW()
 			WHERE org_id = $1 AND completed_at IS NULL AND reminder_sent_at IS NULL
-			  AND deletion_due_date <= CURRENT_DATE + INTERVAL '14 days'`, orgID)
+			  AND deletion_due_date <= CURRENT_DATE + INTERVAL '14 days'`, orgID); err != nil {
+			// Zugestellt, aber nicht markiert: der naechste Lauf meldet
+			// dieselbe Frist erneut. Laestig, aber die sichere Richtung.
+			log.Error().Err(err).Str("org_id", orgID).
+				Msg("deletion reminder zugestellt, aber reminder_sent_at konnte nicht gesetzt werden — die Meldung wiederholt sich")
+			continue
+		}
 		log.Info().Str("org_id", orgID).Msg("deletion reminder notification sent")
 	}
 	return nil

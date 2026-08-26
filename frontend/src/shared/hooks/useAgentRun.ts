@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { readCsrfToken } from '../../api/client'
 
 // Sprint 18 / S22-8: Hook zur Konsumierung des Agent-Run-SSE-Endpoints
 // POST /api/v1/vaktcomply/ai/agent/run. Backend streamt strukturierte
@@ -39,10 +40,9 @@ export interface ApprovalRequired {
   arguments: unknown
 }
 
-function readCsrfToken(): string | null {
-  const m = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
-  return m ? decodeURIComponent(m[1]) : null
-}
+// readCsrfToken comes from api/client — the private copy that used to live
+// here read only document.cookie and silently lost the in-memory fallback,
+// which is what keeps CSRF working behind a proxy that rewrites Set-Cookie.
 
 export function useAgentRun() {
   const [events, setEvents] = useState<AgentEvent[]>([])

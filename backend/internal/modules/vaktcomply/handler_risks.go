@@ -1,10 +1,12 @@
 package vaktcomply
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/rs/zerolog/log"
@@ -212,7 +214,13 @@ func (h *Handler) AcceptRisk(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
 	if err := h.service.Risk.AcceptRisk(c.Request().Context(), orgID(c), id, userID(c), in); err != nil {
-		if err.Error() == "risk must have treatment_status=accepted before formal acceptance" {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "risk not found", "CK_RISK_NOT_FOUND")
+		}
+		// Sentinel instead of a string comparison: the message carries the current
+		// status now, so an equality check against a fixed literal would silently
+		// fall through to 500 (R1-14c-12).
+		if errors.Is(err, risk.ErrRiskNotMarkedAccepted) {
 			return errResp(c, http.StatusConflict, err.Error(), "CK_RISK_NOT_ACCEPTED_TREATMENT")
 		}
 		log.Error().Err(err).Msg("accept risk")

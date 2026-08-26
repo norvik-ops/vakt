@@ -58,6 +58,53 @@ func (r *Repository) ListFrameworks(ctx context.Context, orgID string) ([]Framew
 	return out, nil
 }
 
+// ReadinessScoresByFramework rechnet den Bereitschaftsgrad je Framework der
+// Organisation aus — in EINER Abfrage ueber alle Controls, nicht einer je
+// Framework.
+//
+// R1-18-D3: Framework.ReadinessScore traegt `omitempty` und wurde von
+// ListFrameworks nie gefuellt. Der Wert blieb 0 und fiel damit ganz aus der
+// JSON-Antwort; das Auditor-Portal zeigte "Bereitschaft %" ohne Zahl. Der
+// Kommentar an frameworkFromCkFrameworks behauptete, der Score werde "computed
+// per-call in service layer" — an dieser Stelle geschah das nicht.
+//
+// Gerechnet wird mit ResolveStatus und ReadinessScore, also mit denselben
+// Funktionen wie ComputeReadinessReport. Nicht-anwendbare Controls bleiben
+// aussen vor, genau wie dort.
+func (r *Repository) ReadinessScoresByFramework(ctx context.Context, orgID string) (map[string]float64, error) {
+	rows, err := r.q.ListCKFrameworkReadinessRows(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("framework readiness rows: %w", err)
+	}
+	type tally struct{ covered, partial, total int }
+	byFW := map[string]*tally{}
+	for _, row := range rows {
+		t, ok := byFW[row.FrameworkID]
+		if !ok {
+			t = &tally{}
+			byFW[row.FrameworkID] = t
+		}
+		switch ResolveStatus(Control{
+			NotApplicable: row.NotApplicable,
+			ManualStatus:  row.ManualStatus,
+			EvidenceCount: int(row.EvidenceCount),
+		}) {
+		case "not_applicable":
+			continue
+		case "covered", "implemented":
+			t.covered++
+		case "partial", "in_progress":
+			t.partial++
+		}
+		t.total++
+	}
+	out := make(map[string]float64, len(byFW))
+	for fwID, t := range byFW {
+		out[fwID] = ReadinessScore(t.covered, t.partial, t.total)
+	}
+	return out, nil
+}
+
 // DeleteFramework removes a framework and all its controls/evidence (cascade).
 func (r *Repository) DeleteFramework(ctx context.Context, orgID, frameworkID string) error {
 	n, err := r.q.DeleteCKFramework(ctx, db.DeleteCKFrameworkParams{ID: frameworkID, OrgID: orgID})

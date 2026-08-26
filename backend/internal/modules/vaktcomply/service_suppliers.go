@@ -19,6 +19,7 @@ import (
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"github.com/matharnica/vakt/internal/shared/apperr"
+	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/veriniceimport"
 	"github.com/rs/zerolog/log"
@@ -315,7 +316,7 @@ func GenerateSupplierCSV(suppliers []Supplier) ([]byte, error) {
 			s.AssessmentStatus,
 			lastAssessmentAt,
 		}
-		if err := w.Write(row); err != nil {
+		if err := w.Write(csvsafe.Row(row)); err != nil {
 			return nil, fmt.Errorf("csv write row: %w", err)
 		}
 	}
@@ -488,7 +489,12 @@ func (s *Service) SubmitAssessment(ctx context.Context, rawToken, clientIP, user
 
 	internalBody := strings.ReplaceAll(EmailComplianceNotifyBodyDE, "{{.AssessmentID}}", a.ID)
 	internalBody = strings.ReplaceAll(internalBody, "{{.SupplierID}}", a.SupplierID)
-	notify.Send(ctx, s.db, a.OrgID, EmailComplianceNotifySubjectDE, internalBody, "supplier_assessment_submitted", "vaktcomply")
+	// Regel 2: Die Beurteilung ist gespeichert, der Versand begleitet sie nur
+	// — ein Fehler bricht den Vorgang nicht ab, wird aber sichtbar geloggt.
+	if err := notify.Send(ctx, s.db, a.OrgID, EmailComplianceNotifySubjectDE, internalBody, "supplier_assessment_submitted", "vaktcomply"); err != nil {
+		log.Warn().Err(err).Str("assessment_id", a.ID).Str("org_id", a.OrgID).
+			Msg("supplier assessment: interne In-App-Meldung NICHT geschrieben")
+	}
 
 	return nil
 }
@@ -641,7 +647,7 @@ func (s *Service) ReviewAnswer(ctx context.Context, orgID, assessmentID, answerI
 	if in.ReviewStatus != "accepted" && in.ReviewStatus != "needs_rework" {
 		return nil, fmt.Errorf("review_status must be accepted or needs_rework")
 	}
-	if err := s.repo.UpdateAnswerReview(ctx, orgID, assessmentID, answerID, in.ReviewStatus, in.ReworkNote); err != nil {
+	if err := s.repo.UpdateAnswerReview(ctx, orgID, assessmentID, answerID, in.ReviewStatus, in.ReworkNote, in.CertExpiryDate); err != nil {
 		return nil, err
 	}
 	if in.ReviewStatus != "accepted" {

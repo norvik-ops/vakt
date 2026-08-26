@@ -57,19 +57,11 @@ export function useAddEvidence(controlId: string) {
 export function useUploadEvidence(controlId: string) {
   const queryClient = useQueryClient()
   return useMutation<Evidence, Error, FormData>({
-    mutationFn: (formData) => {
-      return fetch(`/api/v1/vaktcomply/controls/${controlId}/evidence/upload`, {
+    mutationFn: (formData) =>
+      apiFetch<Evidence>(`/vaktcomply/controls/${controlId}/evidence/upload`, {
         method: 'POST',
-        credentials: 'include',
         body: formData,
-      }).then(async (res) => {
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: res.statusText }))
-          throw new Error((err as { error?: string }).error ?? res.statusText)
-        }
-        return res.json() as Promise<Evidence>
-      })
-    },
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ['vaktcomply', 'controls', controlId, 'evidence'],

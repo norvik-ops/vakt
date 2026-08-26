@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	auditmod "github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/reporting"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/matharnica/vakt/internal/shared/pagination"
@@ -115,14 +116,17 @@ func (h *Handler) ApproveISMSScope(c echo.Context) error {
 	if body.ID == "" {
 		return errResp(c, http.StatusBadRequest, "id is required", "CK_BAD_REQUEST")
 	}
-	userRole, _ := c.Get("role").(string)
-	scope, err := h.service.ApproveISMSScope(c.Request().Context(), orgID(c), body.ID, userID(c), userRole)
+	// Keine Rollenpruefung hier: die Route traegt sie (auth.RequireRole("Admin")).
+	scope, err := h.service.ApproveISMSScope(c.Request().Context(), orgID(c), body.ID, userID(c))
 	if err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "ISMS scope not found", "CK_ISMS_SCOPE_NOT_FOUND")
 		}
+		// Vorher lief JEDER Fehler hier als 403 hinaus — der pauschale
+		// Forbidden-Zweig war der Traeger der ungueltigen Rollenpruefung und
+		// haette einen DB-Fehler als Berechtigungsproblem ausgegeben.
 		log.Error().Err(err).Msg("approve isms scope")
-		return errResp(c, http.StatusForbidden, err.Error(), "CK_ISMS_SCOPE_APPROVE_FORBIDDEN")
+		return errResp(c, http.StatusInternalServerError, "failed to approve ISMS scope", "CK_ISMS_SCOPE_APPROVE_FAILED")
 	}
 	return c.JSON(http.StatusOK, scope)
 }
@@ -1009,21 +1013,24 @@ func (h *Handler) NIS2ReportingEnabled(c echo.Context) error {
 
 // NIS2AssessReportability handles POST /api/v1/vaktcomply/incidents/:id/nis2/assess.
 // Stores the NIS2 meldepflicht assessment and sets deadline timers.
+//
+// The body is {"check": {…}} — nested, matching the frontend and the OpenAPI
+// spec. This used to embed NIS2ReportabilityCheck without a json tag, which
+// promotes the three criteria to the TOP level of the JSON object. Nothing ever
+// bound them, so all three stayed false, is_reportable was permanently false and
+// the "Meldepflichtig" badge could not appear at all.
+//
+// There is deliberately no detected_at in the body any more: the deadline anchor
+// is the incident's own discovered_at, resolved in the service. See
+// reporting.MarkIncidentReportable. A body-supplied anchor is what produced the
+// second defect — the frontend sent new Date(), so every deadline started now.
 func (h *Handler) NIS2AssessReportability(c echo.Context) error {
 	id := c.Param("id")
 	var in struct {
-		NIS2ReportabilityCheck
-		DetectedAt *string `json:"detected_at"`
+		Check NIS2ReportabilityCheck `json:"check"`
 	}
 	if err := c.Bind(&in); err != nil {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
-	}
-
-	detectedAt := time.Now().UTC()
-	if in.DetectedAt != nil {
-		if t, err := time.Parse(time.RFC3339, *in.DetectedAt); err == nil {
-			detectedAt = t
-		}
 	}
 
 	incidentID, err := uuid.Parse(id)
@@ -1031,16 +1038,22 @@ func (h *Handler) NIS2AssessReportability(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid incident id", "CK_BAD_REQUEST")
 	}
 
-	if err := h.service.MarkIncidentReportable(c.Request().Context(), orgID(c), incidentID, detectedAt, in.NIS2ReportabilityCheck); err != nil {
+	res, err := h.service.MarkIncidentReportable(c.Request().Context(), orgID(c), incidentID, in.Check)
+	if err != nil {
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "incident not found", "CK_INCIDENT_NOT_FOUND")
+		}
+		// No usable discovered_at: the caller must supply one. We refuse rather
+		// than anchor the legal deadline to an invented moment.
+		if errors.Is(err, reporting.ErrNoDiscoveryTime) {
+			return errResp(c, http.StatusUnprocessableEntity,
+				"incident has no discovery time — set discovered_at before assessing the NIS2 reporting obligation",
+				"CK_NIS2_NO_DISCOVERY_TIME")
 		}
 		log.Error().Err(err).Str("incident_id", id).Msg("nis2 assess reportability")
 		return errResp(c, http.StatusInternalServerError, "failed to assess reportability", "CK_ASSESS_FAILED")
 	}
-	return c.JSON(http.StatusOK, map[string]any{
-		"is_reportable": in.IsReportable(),
-	})
+	return c.JSON(http.StatusOK, res)
 }
 
 // NIS2Status handles GET /api/v1/vaktcomply/incidents/:id/nis2-status.

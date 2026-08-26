@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -95,7 +95,7 @@ func GenerateReportPDF(ctx context.Context, db *pgxpool.Pool, orgID, title strin
 		return nil, err
 	}
 
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 

@@ -47,7 +47,7 @@ func TestRotateKey_EndToEnd(t *testing.T) {
 	defer cancel()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		imagePostgres,
 		postgres.WithDatabase("vakt_test"),
 		postgres.WithUsername("vakt"),
 		postgres.WithPassword("vakt"),
@@ -101,13 +101,20 @@ func TestRotateKey_EndToEnd(t *testing.T) {
 	// 1. so_secrets — two-stage HKDF (master → vault → project).
 	oldVault, _ := sharedcrypto.DeriveServiceKey(oldMaster, "vakt-vault-v1")
 	oldProjectKey, _ := sharedcrypto.DeriveProjectKey(oldVault, projectID)
+	// Seeded in the LEGACY (marker-less) format on purpose: this test covers the
+	// whole CLI across all columns, and rotate-key upgrades legacy vault rows to
+	// the context-bound enc:v2: format on the way through (ADR-0059). The
+	// dedicated coverage for the enc:v2: input format — the one every secret
+	// written by SetSecret actually has — lives in
+	// cmd/rotate-key/vault_rotation_real_test.go.
 	vaultPlain := []byte("the very secret password")
 	vaultCT, _ := sharedcrypto.Encrypt(oldProjectKey, vaultPlain)
-	_, err = pool.Exec(ctx, `
+	var vaultSecretID string
+	require.NoError(t, pool.QueryRow(ctx, `
 		INSERT INTO so_secrets (environment_id, org_id, key, encrypted_value, created_by)
-		VALUES ($1::uuid, $2::uuid, 'API_KEY', $3, $4::uuid)`,
-		envID, orgID, vaultCT, userID)
-	require.NoError(t, err)
+		VALUES ($1::uuid, $2::uuid, 'API_KEY', $3, $4::uuid)
+		RETURNING id::text`,
+		envID, orgID, vaultCT, userID).Scan(&vaultSecretID))
 
 	// 2. totp_secrets — single-stage HKDF. The column is TEXT (not BYTEA);
 	// production code stores hex.EncodeToString(ciphertext) (see
@@ -198,13 +205,18 @@ func TestRotateKey_EndToEnd(t *testing.T) {
 	var rotatedVaultCT []byte
 	// orgid-lint: global — integration test: reads back a specific secret by key after key rotation, single-tenant test DB
 	require.NoError(t, pool.QueryRow(ctx, `SELECT encrypted_value FROM so_secrets WHERE key='API_KEY'`).Scan(&rotatedVaultCT))
-	got, err := sharedcrypto.Decrypt(newProjectKey, rotatedVaultCT)
+	// The rotated row is context-bound (ADR-0059), so it must be read with the
+	// same AAD the application uses: "<org_id>:<secret_id>".
+	vaultAAD := []byte(orgID + ":" + vaultSecretID)
+	got, err := sharedcrypto.DecryptWithAAD(newProjectKey, rotatedVaultCT, vaultAAD)
 	require.NoError(t, err, "rotated so_secrets must decrypt under new project key")
 	assert.Equal(t, vaultPlain, got)
 
-	// And must NOT decrypt under the old project key any more.
-	_, err = sharedcrypto.Decrypt(oldProjectKey, rotatedVaultCT)
+	// And must NOT decrypt under the old project key any more — on either path.
+	_, err = sharedcrypto.DecryptWithAAD(oldProjectKey, rotatedVaultCT, vaultAAD)
 	assert.Error(t, err, "old project key must no longer decrypt rotated vault row")
+	_, err = sharedcrypto.Decrypt(oldProjectKey, rotatedVaultCT)
+	assert.Error(t, err, "old project key must not decrypt it via the legacy path either")
 
 	// 2. totp — secret is TEXT storing hex(ciphertext), so hex-decode before
 	// decrypting (matches auth/totp_handler.go and the github column below).

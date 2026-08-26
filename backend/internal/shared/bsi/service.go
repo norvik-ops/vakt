@@ -96,7 +96,10 @@ func (s *BSIService) SyncFeed(ctx context.Context) error {
 
 	for orgID, count := range newFindingsByOrg {
 		msg := fmt.Sprintf("%d neue BSI-Warnmeldungen wurden importiert und als Findings erstellt.", count)
-		notify.Send(ctx, s.db, orgID, "BSI CERT-Bund Update", msg, "warning", "vaktscan")
+		if err := notify.Send(ctx, s.db, orgID, "BSI CERT-Bund Update", msg, "warning", "vaktscan"); err != nil {
+			log.Error().Err(err).Str("org_id", orgID).Int("findings", count).
+				Msg("bsi: Findings importiert, aber die Meldung darüber wurde NICHT geschrieben")
+		}
 	}
 
 	return nil

@@ -14,16 +14,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/modules/vakthr"
+	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/modules/vaktvault"
 )
 
 // handleContractorExpiryCheck handles hr:contractor_expiry_check jobs (S70-4).
 // Marks contractors expiring within 14 days as expiring_soon and those past
 // contract_end as offboarding.
-func handleContractorExpiryCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleContractorExpiryCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		svc := vakthr.NewServiceFromPool(pool)
+		svc := newHRService(cfg, pool)
 		if err := svc.CheckContractorExpiry(ctx); err != nil {
 			log.Error().Err(err).Msg("contractor expiry check failed")
 			return err

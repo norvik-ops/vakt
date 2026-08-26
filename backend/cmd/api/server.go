@@ -182,11 +182,15 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) (*echo.Echo, *e
 		log.Warn().Msg("VAKT_TRUSTED_PROXIES not set — running in direct IP mode. If this instance is behind a reverse proxy, IP-based rate limits and admin allowlists will see the proxy IP instead of the client IP. Set VAKT_TRUSTED_PROXIES to the proxy CIDR to fix.")
 	}
 
-	lic := license.Load(cfg.LicenseKey, cfg.DemoSeed)
+	// The instance licence is a holder, not a value: POST /license/activate and
+	// the auto-renewal must be able to replace it while the process runs. A
+	// captured *License meant an activated key never reached the routes outside
+	// `protected` (R1-17-L04/L05).
+	licInst := license.NewInstance(license.Load(cfg.LicenseKey, cfg.DemoSeed))
 
 	// Apply the global middleware chain (request-id, OTel, security headers,
 	// logging, CORS, body limit, timeout, demo guard, license context).
-	applyMiddleware(e, cfg, log, lic)
+	applyMiddleware(e, cfg, log, licInst)
 
 	// Liveness — always responds while the process is up.
 	// Enthält flags die das Frontend braucht (siehe useDemoMode, Login.tsx):
@@ -229,7 +233,7 @@ func setupEcho(lifecycleCtx context.Context, cfg *config.Config) (*echo.Echo, *e
 	// early-and-silently inside registerRoutes if the DB/Redis/secret-key
 	// prerequisites are not met; the partially configured Echo instance is
 	// still returned so /health stays reachable.
-	registerRoutes(lifecycleCtx, e, internal, cfg, log, lic)
+	registerRoutes(lifecycleCtx, e, internal, cfg, log, licInst)
 
 	return e, internal
 }

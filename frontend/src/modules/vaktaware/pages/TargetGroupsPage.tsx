@@ -44,7 +44,12 @@ function TargetGroupRow({ group, onDelete }: { group: TargetGroup; onDelete: () 
       >
         <Users className="w-4 h-4 text-secondary shrink-0" />
         <span className="font-medium text-sm flex-1">{group.name}</span>
-        <span className="text-xs text-secondary">{group.target_count ?? 0} targets</span>
+        {/* K5-14: only shown once the /targets list for this group has actually
+            been loaded. The former `{group.target_count ?? 0} targets` turned a
+            field the backend never sends into a plausible "0". */}
+        {expanded && targets && (
+          <span className="text-xs text-secondary">{targets.length} targets</span>
+        )}
         <span className="text-xs text-secondary">{group.source}</span>
         <Button
           variant="ghost"

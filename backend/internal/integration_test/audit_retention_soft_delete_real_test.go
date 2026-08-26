@@ -66,9 +66,9 @@ func TestAuditRetention_SoftDeletePreservesChain(t *testing.T) {
 	})
 
 	// Verify chain is clean before we do anything.
-	bad, err := audit.VerifyOrgChain(ctx, pool, orgID)
+	res, err := audit.VerifyOrgChain(ctx, pool, orgID)
 	require.NoError(t, err)
-	require.Empty(t, bad, "pre-condition: freshly-written chain must be clean")
+	require.Equal(t, audit.ChainIntact, res.Status, "pre-condition: freshly-written chain must be clean")
 
 	// ── 3. Run retention with a 1-day window ─────────────────────────────────
 	_, err = pool.Exec(ctx, `
@@ -98,9 +98,9 @@ func TestAuditRetention_SoftDeletePreservesChain(t *testing.T) {
 
 	// ── 6. Invariant C: chain must still verify clean after soft-delete ───────
 	// The verifier must walk ALL rows (incl. soft-deleted) to check the chain.
-	bad, err = audit.VerifyOrgChain(ctx, pool, orgID)
+	res, err = audit.VerifyOrgChain(ctx, pool, orgID)
 	require.NoError(t, err)
-	assert.Empty(t, bad,
+	assert.Equal(t, audit.ChainIntact, res.Status,
 		"chain must remain verifiable after soft-delete — soft-deleted rows stay in the chain")
 }
 

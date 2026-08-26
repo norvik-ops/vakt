@@ -24,11 +24,28 @@ import (
 // campaign flow a test cannot otherwise observe.
 type fakeMailer struct {
 	sent []vaktaware.OutboundMail
+	// reject decides per recipient address whether the mail server refuses the
+	// message, and whether it does so permanently (5xx) or temporarily.
+	reject func(to string) (err error, permanent bool)
 }
 
-func (f *fakeMailer) Send(_ context.Context, msgs []vaktaware.OutboundMail) (int, error) {
-	f.sent = append(f.sent, msgs...)
-	return len(msgs), nil
+func (f *fakeMailer) Send(_ context.Context, msgs []vaktaware.OutboundMail) ([]vaktaware.DeliveryResult, error) {
+	results := make([]vaktaware.DeliveryResult, len(msgs))
+	var firstErr error
+	for i, m := range msgs {
+		if f.reject != nil {
+			if err, permanent := f.reject(m.To); err != nil {
+				results[i] = vaktaware.DeliveryResult{Err: err, Permanent: permanent}
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+		}
+		f.sent = append(f.sent, m)
+		results[i] = vaktaware.DeliveryResult{Delivered: true}
+	}
+	return results, firstErr
 }
 
 // clickTokenRe pulls the tracking token back out of the rendered mail body, the

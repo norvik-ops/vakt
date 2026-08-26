@@ -90,12 +90,18 @@ func (r *Repository) CompleteEffectivenessCheck(ctx context.Context, orgID, id, 
 // has passed and whose effectiveness has not yet been confirmed.
 // Used by the daily alert worker job.
 func (r *Repository) ListOverdueEffectivenessChecks(ctx context.Context) ([]OverdueEffectivenessCheck, error) {
+	// L3-04: der Status fehlte in dieser Bedingung. Eine geschlossene Major-NC
+	// mit nie gesetztem effectiveness_confirmed loeste damit taeglich weiter
+	// Alarm aus — gemessen an einer seit 400 Tagen geschlossenen NC. Geschlossen
+	// und verifiziert sind Endzustaende; wer dort noch eine Wirksamkeitspruefung
+	// anmahnt, mahnt eine Arbeit an, die niemand mehr tun wird.
 	rows, err := r.db.Query(ctx, `
 		SELECT org_id, id
 		FROM   ck_capas
 		WHERE  effectiveness_check_date < CURRENT_DATE
 		  AND  effectiveness_confirmed IS NULL
 		  AND  nc_classification = 'major_nc'
+		  AND  status NOT IN ('closed', 'verified')
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("list overdue effectiveness checks: %w", err)

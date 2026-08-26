@@ -250,9 +250,22 @@ func (s *Service) writeEvidence(ctx context.Context, orgID, owner, repo string, 
 			continue
 		}
 
+		// Gleiche Senke wie AddCKCollectorEvidence, gleicher natuerlicher
+		// Schluessel: derselbe GitHub-Check am selben Control ist eine Evidenz
+		// mit frischerem Inhalt, keine zweite. Ohne den Upsert wuerde der
+		// Teilindex ck_evidence_collector_uniq (Migration 257) beim zweiten
+		// Sync-Lauf eine Unique-Verletzung werfen, die hier nur geloggt wird —
+		// die Evidenz bliebe dann auf dem Stand des ersten Laufs stehen.
 		_, err := s.db.Exec(ctx, `
 			INSERT INTO ck_evidence (control_id, org_id, title, description, source, collector_data, status)
-			VALUES ($1::uuid, $2::uuid, $3, $4, 'github_integration', $5::jsonb, 'pending')`,
+			VALUES ($1::uuid, $2::uuid, $3, $4, 'github_integration', $5::jsonb, 'pending')
+			ON CONFLICT (org_id, control_id, source, title)
+			  WHERE control_id IS NOT NULL
+			    AND source <> 'manual'
+			    AND auto_source_type IS NULL
+			DO UPDATE SET description    = EXCLUDED.description,
+			              collector_data = EXCLUDED.collector_data,
+			              updated_at     = NOW()`,
 			controlID, orgID, title, description, detailsJSON,
 		)
 		if err != nil {

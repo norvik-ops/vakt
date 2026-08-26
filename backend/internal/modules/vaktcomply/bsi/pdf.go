@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-pdf/fpdf"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 )
 
 // BSIReportRenderer generates BSI 200-2 Anhang A reference PDFs.
@@ -282,7 +283,7 @@ func (r *BSIReportRenderer) RenderFull(ctx context.Context) ([]byte, error) {
 // ── PDF helpers ───────────────────────────────────────────────────────────────
 
 func newBSIPDF(title, orgID string) *fpdf.Fpdf {
-	pdf := fpdf.New("L", "mm", "A4", "")
+	pdf := pdfutil.New("L")
 	pdf.SetMargins(12, 12, 12)
 	pdf.SetAutoPageBreak(true, 15)
 	pdf.AliasNbPages("{nb}")

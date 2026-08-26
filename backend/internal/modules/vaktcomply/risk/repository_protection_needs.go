@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	db "github.com/matharnica/vakt/internal/db"
 	"github.com/matharnica/vakt/internal/shared/apperr"
@@ -105,7 +106,24 @@ func protectionNeedFromRow(row db.CkProtectionNeedAssessments) ProtectionNeedAss
 		FinalizedAt:     ckTsToTimePtr(row.FinalizedAt),
 		CreatedAt:       ckTsToTime(row.CreatedAt),
 		UpdatedAt:       ckTsToTime(row.UpdatedAt),
+		// N75-2: die Spalte wurde selektiert und hier weggeworfen. PATCH
+		// .../asset-link setzte vb_asset_id in der Datenbank (live 200, Spalte
+		// gesetzt), das anschliessende GET lieferte den Soft-Link trotzdem nie
+		// mit. In PR und ADR stand das als offener Rest ("die eine fehlende
+		// Zeile") — hier ist sie.
+		VBAssetID: ckUUIDToStrPtr(row.VbAssetID),
 	}
+}
+
+// ckUUIDToStrPtr gibt eine gesetzte pgtype.UUID als *string zurueck, sonst nil.
+// Der Soft-Link auf vb_assets hat bewusst keinen FK (Modul-Isolation,
+// ADR-0079) und kommt deshalb als pgtype.UUID statt ueber den string-Override.
+func ckUUIDToStrPtr(u pgtype.UUID) *string {
+	if !u.Valid {
+		return nil
+	}
+	s := u.String()
+	return &s
 }
 
 // LinkAssetToPNA sets or clears the vb_asset_id soft-link on a PNA record.

@@ -9,7 +9,9 @@ import type { Framework, ReadinessReport, GapAnalysis } from '../types'
 
 const DORA_FRAMEWORK: Framework = {
   id: 'fw-dora',
+  org_id: 'org-1',
   name: 'DORA',
+  is_builtin: true,
   version: '2022',
   created_at: new Date().toISOString(),
 }

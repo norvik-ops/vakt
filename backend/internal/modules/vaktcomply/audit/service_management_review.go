@@ -5,7 +5,6 @@ package audit
 
 import (
 	"context"
-	"fmt"
 	"time"
 )
 
@@ -37,11 +36,15 @@ func (s *Service) UpdateManagementReviewOutputs(ctx context.Context, orgID, id s
 	return s.repo.UpdateManagementReviewOutputs(ctx, orgID, id, in)
 }
 
-// ApproveManagementReview approves a management review. Only admin users may approve.
-func (s *Service) ApproveManagementReview(ctx context.Context, orgID, id, approverID, userRole string) (ManagementReview, error) {
-	if userRole != "admin" {
-		return ManagementReview{}, fmt.Errorf("only admin can approve")
-	}
+// ApproveManagementReview approves a management review.
+//
+// Wer freigeben darf, entscheidet ausschliesslich die Route:
+// `auth.RequireRole("InternalAuditor")` in routes.go, so wie es ADR-0055
+// festgelegt hat (Rollenmatrix dort: Management-Review freigeben — Admin ❌,
+// SecurityAnalyst ❌, InternalAuditor ✅). Die frueher hier stehende Pruefung
+// `userRole != "admin"` sagte das Gegenteil und war ausserdem unerreichbar:
+// sie las `c.Get("role")`, einen Schluessel, den niemand setzt.
+func (s *Service) ApproveManagementReview(ctx context.Context, orgID, id, approverID string) (ManagementReview, error) {
 	return s.repo.ApproveManagementReview(ctx, orgID, id, approverID)
 }
 

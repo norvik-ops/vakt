@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/artifact"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/matharnica/vakt/internal/shared/xlsxexport"
@@ -733,13 +734,16 @@ func (h *Handler) ExportFindings(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "export failed", "code": "VB_EXPORT_ERROR"})
 	}
 
+	contentType, filename := "application/json", ""
 	if format == "csv" {
-		c.Response().Header().Set("Content-Type", "text/csv")
-		c.Response().Header().Set("Content-Disposition", `attachment; filename="findings.csv"`)
-	} else {
-		c.Response().Header().Set("Content-Type", "application/json")
+		contentType, filename = "text/csv", "findings.csv"
 	}
-	c.Response().WriteHeader(http.StatusOK)
-	io.Copy(c.Response().Writer, reader) //nolint:errcheck
+	if err := artifact.Stream(c, contentType, filename, func(w io.Writer) error {
+		_, cErr := io.Copy(w, reader)
+		return cErr
+	}); err != nil {
+		log.Error().Err(err).Msg("export findings: write failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "export failed", "code": "VB_EXPORT_ERROR"})
+	}
 	return nil
 }

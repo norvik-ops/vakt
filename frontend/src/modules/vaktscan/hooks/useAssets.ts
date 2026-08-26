@@ -3,10 +3,11 @@ import { apiFetch } from '../../../api/client'
 import type { Asset, SLAEntry, ClassificationSummary, SLAPolicy, SLASummaryFE } from '../types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
+// Mirrors vaktscan.CreateAssetInput. `external_url`, not `target` (K5-16).
 export interface CreateAssetInput {
   name: string
   type: Asset['type']
-  target: string
+  external_url: string
   criticality: Asset['criticality']
   tags: string[]
   classification?: Asset['classification']
@@ -56,22 +57,22 @@ export interface ImportAssetsResult {
   errors: string[]
 }
 
+/**
+ * R23-02: AssetsPage no longer calls this — the page's only import path is
+ * CSVImportDialog, which posts through apiFetch itself and picks the Community
+ * or Pro endpoint by licence. The hook stays because it is the subject of the
+ * CSRF regression test for POST /vaktscan/assets/import
+ * (api/csrf-write-paths.test.tsx case 6, R1-18-D4); removing it would quietly
+ * remove that endpoint's coverage along with it.
+ */
 export function useImportAssets() {
   const queryClient = useQueryClient()
   return useMutation<ImportAssetsResult, Error, FormData>({
-    mutationFn: (formData) => {
-      return fetch('/api/v1/vaktscan/assets/import', {
+    mutationFn: (formData) =>
+      apiFetch<ImportAssetsResult>('/vaktscan/assets/import', {
         method: 'POST',
-        credentials: 'include',
         body: formData,
-      }).then(async (res) => {
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string }
-          throw new Error(err.error ?? res.statusText)
-        }
-        return res.json() as Promise<ImportAssetsResult>
-      })
-    },
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vaktscan', 'assets'] })
     },
@@ -105,11 +106,41 @@ export function useDeleteAsset() {
   })
 }
 
+/** The scanners CreateScanInput accepts — `oneof=trivy nuclei openvas`. */
+export type ScannerName = 'trivy' | 'nuclei' | 'openvas'
+
+export interface TriggerScanInput {
+  scanner: ScannerName
+  /**
+   * Optional target. Left out, the worker falls back to the ASSET NAME
+   * (vaktscan/scanner.go:189-191, :277-282, :499-503) and then rejects any
+   * target containing a slash — so an asset called "My Web App" gets scanned
+   * as the literal string "My Web App". Passing the asset's external_url is
+   * what makes the scan hit the thing the user meant.
+   */
+  target_url?: string
+}
+
+/**
+ * R1-19-W07 — "Scan starten" could never work.
+ *
+ * The mutation posted no body at all. CreateScanInput.Scanner carries
+ * `validate:"required,oneof=trivy nuclei openvas"` (vaktscan/models.go:133), so
+ * every click came back 422 VALIDATION_ERROR. There was no way to fix it from
+ * the UI either: the frontend had no scanner selection anywhere, so no user
+ * action could have produced a valid request.
+ *
+ * check_routes.py cannot see this by construction — it compares method and
+ * path, and both were correct.
+ */
 export function useTriggerScan(assetId: string) {
   const queryClient = useQueryClient()
-  return useMutation<undefined>({
-    mutationFn: () =>
-      apiFetch<undefined>(`/vaktscan/assets/${assetId}/scans`, { method: 'POST' }),
+  return useMutation<undefined, Error, TriggerScanInput>({
+    mutationFn: (input) =>
+      apiFetch<undefined>(`/vaktscan/assets/${assetId}/scans`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vaktscan', 'assets', assetId] })
       void queryClient.invalidateQueries({ queryKey: ['vaktscan', 'findings'] })

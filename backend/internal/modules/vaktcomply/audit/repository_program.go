@@ -23,7 +23,9 @@ func (r *Repository) ListAuditPlans(ctx context.Context, orgID string) ([]AuditP
 	}
 	defer rows.Close()
 
-	var plans []AuditPlan
+	// make([]T,0) not nil: bare-array GET handler serialises this straight to
+	// c.JSON with no nil-guard, so a nil slice would emit `null` (R1-F3-01 class).
+	plans := make([]AuditPlan, 0)
 	for rows.Next() {
 		var p AuditPlan
 		var responsible pgtype.Text
@@ -266,7 +268,10 @@ func (r *Repository) ListAuditFindings(ctx context.Context, orgID, auditID strin
 	}
 	defer rows.Close()
 
-	var findings []AuditFinding
+	// make([]T,0) not nil: a nil slice serialises to `null`, and the frontend's
+	// `const { data = [] }` default only fires on undefined — `null` reaches
+	// .map()/.length and crashes the page (R1-F3-01, same class as R1-18-D1).
+	findings := make([]AuditFinding, 0)
 	for rows.Next() {
 		var f AuditFinding
 		var controlID, capaID pgtype.Text

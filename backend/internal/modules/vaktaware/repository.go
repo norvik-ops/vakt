@@ -69,24 +69,46 @@ func uuidPtrFromUUID(u pgtype.UUID) *string {
 	return &s
 }
 
+// ErrInvalidID marks a caller-supplied id that is not an id at all. Handlers
+// answer 400 for it — the request named something that cannot exist.
+var ErrInvalidID = errors.New("invalid id")
+
 // optUUIDFromPtr converts an optional UUID-string pointer into a pgtype.UUID.
-func optUUIDFromPtr(s *string) pgtype.UUID {
+//
+// The parse error is returned, not discarded (R1-14-D05). It used to be
+// `_ = u.Scan(*s)`, which turns a typo into a NULL: a phishing campaign created
+// with a mistyped group_id came back 201 CREATED — without a target group. The
+// user saw success and the campaign was empty. That is worse than a rejection,
+// because nothing about the answer says anything went wrong.
+//
+// OFFEN, NICHT VON DIESER SPUR ABGEDECKT: dieselbe Kopie steht in sechs weiteren
+// Helfern ausserhalb dieses Moduls, und dort verschluckt sie denselben Fehler:
+//
+//	internal/modules/vaktprivacy/repository.go:optUUID
+//	internal/modules/vaktscan/repository.go:spOptUUID
+//	internal/modules/vaktcomply/repository.go:ckOptUUIDFromStr, ckOptUUIDFromPtr
+//	internal/modules/vaktcomply/policy/repository.go:ckOptUUIDFromStr
+//	internal/modules/vaktcomply/audit/repository.go:ckOptUUIDFromStr
+//
+// Sie liegen ausserhalb der Dateihoheit dieser Spur (vaktcomply ist ausdruecklich
+// ausgenommen) und sind gemeldet, nicht gepatcht.
+func optUUIDFromPtr(s *string) (pgtype.UUID, error) {
 	if s == nil || *s == "" {
-		return pgtype.UUID{}
+		return pgtype.UUID{}, nil
 	}
-	var u pgtype.UUID
-	_ = u.Scan(*s)
-	return u
+	return optUUIDFromString(*s)
 }
 
 // optUUIDFromString converts a UUID string into a pgtype.UUID (NULL on "").
-func optUUIDFromString(s string) pgtype.UUID {
+func optUUIDFromString(s string) (pgtype.UUID, error) {
 	if s == "" {
-		return pgtype.UUID{}
+		return pgtype.UUID{}, nil
 	}
 	var u pgtype.UUID
-	_ = u.Scan(s)
-	return u
+	if err := u.Scan(s); err != nil {
+		return pgtype.UUID{}, fmt.Errorf("%q: %w", s, ErrInvalidID)
+	}
+	return u, nil
 }
 
 // optTimestamptz wraps an optional time pointer.
@@ -333,6 +355,10 @@ func phishReportFromRow(r db.SrPhishReports) PhishReport {
 // ── Templates ─────────────────────────────────────────────────────────────
 
 func (r *Repository) CreateTemplate(ctx context.Context, orgID, userID string, input CreateTemplateInput) (*Template, error) {
+	createdBy, err := optUUIDFromString(userID)
+	if err != nil {
+		return nil, fmt.Errorf("created_by: %w", err)
+	}
 	row, err := r.q.CreateSRTemplate(ctx, db.CreateSRTemplateParams{
 		OrgID:      orgID,
 		Name:       input.Name,
@@ -341,7 +367,7 @@ func (r *Repository) CreateTemplate(ctx context.Context, orgID, userID string, i
 		FromEmail:  input.FromEmail,
 		HtmlBody:   input.HTMLBody,
 		AttackType: input.AttackType,
-		CreatedBy:  optUUIDFromString(userID),
+		CreatedBy:  createdBy,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create template: %w", err)
@@ -503,6 +529,22 @@ func (r *Repository) CreateCampaign(ctx context.Context, orgID, userID string, i
 	if input.Recurrence != "" {
 		recurrence = pgtype.Text{String: input.Recurrence, Valid: true}
 	}
+	templateID, err := optUUIDFromPtr(input.TemplateID)
+	if err != nil {
+		return nil, fmt.Errorf("template_id: %w", err)
+	}
+	groupID, err := optUUIDFromPtr(input.GroupID)
+	if err != nil {
+		return nil, fmt.Errorf("group_id: %w", err)
+	}
+	landingPageID, err := optUUIDFromPtr(input.LandingPageID)
+	if err != nil {
+		return nil, fmt.Errorf("landing_page_id: %w", err)
+	}
+	createdBy, err := optUUIDFromString(userID)
+	if err != nil {
+		return nil, fmt.Errorf("created_by: %w", err)
+	}
 	row, err := r.q.CreateSRCampaign(ctx, db.CreateSRCampaignParams{
 		OrgID:           orgID,
 		Name:            input.Name,
@@ -511,12 +553,12 @@ func (r *Repository) CreateCampaign(ctx context.Context, orgID, userID string, i
 		Subject:         input.Subject,
 		TrackOpens:      input.TrackOpens,
 		BetriebsratMode: input.BetriebsratMode,
-		TemplateID:      optUUIDFromPtr(input.TemplateID),
-		GroupID:         optUUIDFromPtr(input.GroupID),
-		LandingPageID:   optUUIDFromPtr(input.LandingPageID),
+		TemplateID:      templateID,
+		GroupID:         groupID,
+		LandingPageID:   landingPageID,
 		ScheduledAt:     optTimestamptz(input.ScheduledAt),
 		Recurrence:      recurrence,
-		CreatedBy:       optUUIDFromString(userID),
+		CreatedBy:       createdBy,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create campaign: %w", err)
@@ -547,6 +589,123 @@ func (r *Repository) ListCampaigns(ctx context.Context, orgID string) ([]Campaig
 		out = append(out, campaignFromListRow(row))
 	}
 	return out, nil
+}
+
+// ── Delivery ledger (L3-05, L2-01) ────────────────────────────────────────
+
+// ClaimDelivery reserves one recipient of one campaign for this run and reports
+// whether the reservation was granted. A second run — a redelivered Asynq task, a
+// second worker, a second click on „Starten" — must skip a person it already
+// mailed instead of mailing them again.
+//
+// The three prior states are deliberately treated differently:
+//
+//	(keine Zeile) → beansprucht. Diese Person war noch nie dran.
+//	'failed'      → beansprucht. Wir WISSEN, dass keine Mail rausging (der
+//	                Mailserver hat abgelehnt oder war nicht erreichbar), und ein
+//	                Wiederholungslauf ist genau dafuer da. Ohne diesen Zweig
+//	                waere ein voruebergehender SMTP-Ausfall endgueltig: der
+//	                Wiederanlauf faende alles beansprucht, verschickte nichts und
+//	                meldete die Kampagne als abgeschlossen — mit null Mails.
+//	'pending'     → NICHT beansprucht. Ein frueherer Lauf ist zwischen Anspruch
+//	                und Rueckmeldung gestorben; ob die Mail draussen ist, weiss
+//	                niemand. Unklar ist besser als doppelt, und der Zustand steht
+//	                sichtbar in der Tabelle statt geraten zu werden.
+//	'delivered'   → NICHT beansprucht. Fertig.
+//
+// orgid-lint: insert-ok — org_id is written from the caller's scope; the primary
+// key (campaign_id, target_id) is what makes the claim exclusive.
+func (r *Repository) ClaimDelivery(ctx context.Context, orgID, campaignID, targetID string) (bool, error) {
+	tag, err := r.db.Exec(ctx, `
+		INSERT INTO sr_campaign_deliveries (org_id, campaign_id, target_id, status)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, 'pending')
+		ON CONFLICT (campaign_id, target_id) DO UPDATE
+		   SET status = 'pending', last_error = NULL, updated_at = NOW()
+		 WHERE sr_campaign_deliveries.status = 'failed'`,
+		orgID, campaignID, targetID)
+	if err != nil {
+		return false, fmt.Errorf("claim delivery: %w", err)
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// MarkDelivery records the outcome for one claimed recipient.
+func (r *Repository) MarkDelivery(ctx context.Context, orgID, campaignID, targetID, status, lastError string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE sr_campaign_deliveries
+		   SET status = $4, last_error = NULLIF($5, ''), updated_at = NOW()
+		 WHERE org_id = $1::uuid AND campaign_id = $2::uuid AND target_id = $3::uuid`,
+		orgID, campaignID, targetID, status, lastError)
+	// Null Zeilen heisst hier: das Zustellergebnis ist verloren. Der Empfaenger
+	// wurde unmittelbar davor beansprucht, die Zeile MUSS existieren.
+	return shareddb.MustAffect(tag, err)
+}
+
+// CountDeliveries returns how many recipients of this campaign are in the given
+// state.
+func (r *Repository) CountDeliveries(ctx context.Context, orgID, campaignID, status string) (int, error) {
+	var n int
+	err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM sr_campaign_deliveries
+		 WHERE org_id = $1::uuid AND campaign_id = $2::uuid AND status = $3`,
+		orgID, campaignID, status).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count deliveries: %w", err)
+	}
+	return n, nil
+}
+
+// DeleteTrackingEventByToken withdraws the „sent" event of a mail that never
+// left. The token it carries is unreachable — no message in the world contains
+// it — so the row can only ever inflate emails_sent.
+func (r *Repository) DeleteTrackingEventByToken(ctx context.Context, orgID, token string) error {
+	// Der Rueckzug eines „sent"-Ereignisses, das gar nicht geschrieben wurde,
+	// laesst die Invariante („kein sent-Ereignis fuer eine nie gesendete Mail")
+	// genauso erfuellt zurueck. MustAffect wuerde hier einen harmlosen Pfad
+	// dauerhaft rot loggen.
+	//idempotent: null Zeilen ist der erwartete Normalfall, kein Fehler
+	_, err := r.db.Exec(ctx, `
+		DELETE FROM sr_events
+		 WHERE org_id = $1::uuid AND tracking_token = $2 AND type = 'sent'`,
+		orgID, token)
+	if err != nil {
+		return fmt.Errorf("withdraw sent event: %w", err)
+	}
+	return nil
+}
+
+// MarkTargetBounced flags an address the mail server rejected permanently.
+func (r *Repository) MarkTargetBounced(ctx context.Context, orgID, targetID string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE sr_targets SET is_bounced = TRUE
+		 WHERE org_id = $1::uuid AND id = $2::uuid`,
+		orgID, targetID)
+	// Null Zeilen heisst: das Ziel gibt es nicht (mehr) oder es gehoert einer
+	// anderen Organisation — beides ist eine Anomalie, kein Normalfall.
+	return shareddb.MustAffect(tag, err)
+}
+
+// SetCampaignStarted stamps the start of the send, once. COALESCE keeps the
+// first run's timestamp when a redelivered task runs the send again.
+func (r *Repository) SetCampaignStarted(ctx context.Context, orgID, campaignID string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE sr_campaigns SET started_at = COALESCE(started_at, NOW()), updated_at = NOW()
+		 WHERE org_id = $1::uuid AND id = $2::uuid`,
+		orgID, campaignID)
+	// COALESCE laesst den ersten Zeitstempel stehen, das UPDATE trifft aber
+	// immer genau die eine Kampagnenzeile. Null Zeilen heisst: es gibt sie nicht.
+	return shareddb.MustAffect(tag, err)
+}
+
+// GetOrgName resolves the organisation's display name — the value behind the
+// {{company}} placeholder in the phishing templates.
+func (r *Repository) GetOrgName(ctx context.Context, orgID string) (string, error) {
+	var name string
+	if err := r.db.QueryRow(ctx,
+		`SELECT name FROM organizations WHERE id = $1::uuid`, orgID).Scan(&name); err != nil {
+		return "", fmt.Errorf("get org name: %w", err)
+	}
+	return name, nil
 }
 
 func (r *Repository) UpdateCampaignStatus(ctx context.Context, orgID, campaignID, status string) error {
@@ -650,12 +809,16 @@ func (r *Repository) GetCampaignByTrackingToken(ctx context.Context, token strin
 }
 
 func (r *Repository) CreateTrackingEvent(ctx context.Context, orgID, campaignID string, targetID *string, department, token, eventType, ip, ua string) error {
+	target, err := optUUIDFromPtr(targetID)
+	if err != nil {
+		return fmt.Errorf("target_id: %w", err)
+	}
 	return r.q.CreateSRTrackingEvent(ctx, db.CreateSRTrackingEventParams{
 		OrgID:         orgID,
 		CampaignID:    campaignID,
 		Type:          eventType,
 		TrackingToken: token,
-		TargetID:      optUUIDFromPtr(targetID),
+		TargetID:      target,
 		Department:    optText(department),
 		IpAddress:     optText(ip),
 		UserAgent:     optText(ua),
@@ -682,6 +845,10 @@ func (r *Repository) CreateModule(ctx context.Context, orgID, userID string, inp
 	if passingScore == 0 {
 		passingScore = 80
 	}
+	moduleCreatedBy, err := optUUIDFromString(userID)
+	if err != nil {
+		return nil, fmt.Errorf("created_by: %w", err)
+	}
 	row, err := r.q.CreateSRTrainingModule(ctx, db.CreateSRTrainingModuleParams{
 		OrgID:           orgID,
 		Title:           input.Title,
@@ -691,7 +858,7 @@ func (r *Repository) CreateModule(ctx context.Context, orgID, userID string, inp
 		DurationSeconds: int32(input.DurationSeconds),
 		PassingScore:    int32(passingScore),
 		Questions:       questionsJSON,
-		CreatedBy:       optUUIDFromString(userID),
+		CreatedBy:       moduleCreatedBy,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create training module: %w", err)
@@ -750,12 +917,16 @@ func (r *Repository) GetModuleByID(ctx context.Context, orgID, moduleID string) 
 // never have deduplicated those either.
 func (r *Repository) UpsertAssignment(ctx context.Context, orgID, moduleID string, targetID *string, department string, dueDate time.Time) (*Assignment, error) {
 	pgDueDate := pgtype.Timestamptz{Time: dueDate, Valid: true}
+	target, err := optUUIDFromPtr(targetID)
+	if err != nil {
+		return nil, fmt.Errorf("target_id: %w", err)
+	}
 
 	if targetID != nil && *targetID != "" {
 		existing, err := r.q.FindSRAssignmentByTarget(ctx, db.FindSRAssignmentByTargetParams{
 			OrgID:    orgID,
 			ModuleID: moduleID,
-			TargetID: optUUIDFromPtr(targetID),
+			TargetID: target,
 		})
 		switch {
 		case err == nil:
@@ -777,7 +948,7 @@ func (r *Repository) UpsertAssignment(ctx context.Context, orgID, moduleID strin
 		OrgID:      orgID,
 		ModuleID:   moduleID,
 		DueDate:    pgDueDate,
-		TargetID:   optUUIDFromPtr(targetID),
+		TargetID:   target,
 		Department: optText(department),
 	})
 	if err != nil {
@@ -955,9 +1126,13 @@ func (r *Repository) findActiveCampaignForReporter(ctx context.Context, orgID, r
 
 // CreatePhishReport inserts a new phishing report and returns the created record.
 func (r *Repository) CreatePhishReport(ctx context.Context, orgID string, campaignID *string, in PhishReportWebhookInput, isSimulation bool) (*PhishReport, error) {
+	campaign, err := optUUIDFromPtr(campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("campaign_id: %w", err)
+	}
 	row, err := r.q.CreateSRPhishReport(ctx, db.CreateSRPhishReportParams{
 		OrgID:         orgID,
-		CampaignID:    optUUIDFromPtr(campaignID),
+		CampaignID:    campaign,
 		ReporterEmail: in.ReporterEmail,
 		Subject:       optText(in.Subject),
 		Sender:        optText(in.Sender),
@@ -1052,11 +1227,15 @@ func (r *Repository) CreateEnrollmentRule(ctx context.Context, orgID string, inp
 	var campaignID pgtype.UUID
 	var isActive bool
 	var createdAt, updatedAt pgtype.Timestamptz
-	err := r.db.QueryRow(ctx, `
+	targetCampaign, err := optUUIDFromPtr(input.TargetCampaignID)
+	if err != nil {
+		return nil, fmt.Errorf("target_campaign_id: %w", err)
+	}
+	err = r.db.QueryRow(ctx, `
 		INSERT INTO sr_enrollment_rules (org_id, name, trigger_type, target_campaign_id)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, org_id, name, trigger_type, target_campaign_id, is_active, created_at, updated_at`,
-		orgID, input.Name, input.TriggerType, optUUIDFromPtr(input.TargetCampaignID),
+		orgID, input.Name, input.TriggerType, targetCampaign,
 	).Scan(&id, &orgID, &name, &triggerType, &campaignID, &isActive, &createdAt, &updatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("create enrollment rule: %w", err)
@@ -1176,6 +1355,23 @@ func (r *Repository) HasActiveNewEmployeeRule(ctx context.Context, orgID string)
 		SELECT EXISTS(SELECT 1 FROM sr_enrollment_rules WHERE org_id=$1 AND trigger_type='new_employee' AND is_active=true)`,
 		orgID).Scan(&exists)
 	return exists, err
+}
+
+// CountNewEmployeeEnrollmentsInPeriod counts the enrolments an active
+// new_employee rule actually produced within the period.
+//
+// R1-35-01/R1-SA25-01: this is the difference between a rule EXISTING and a
+// rule having WORKED. Both defects together meant the rule could never write a
+// single row, while ORP.3.A3 reported "fulfilled" off the mere existence of the
+// rule — an audit record asserting an induction that never took place.
+// Counting the rows is the only statement that survives both bugs.
+func (r *Repository) CountNewEmployeeEnrollmentsInPeriod(ctx context.Context, orgID string, from, to time.Time) (int, error) {
+	var n int
+	err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM sr_campaign_enrollments
+		WHERE org_id=$1 AND source='auto_new_employee' AND created_at >= $2 AND created_at <= $3`,
+		orgID, from, to).Scan(&n)
+	return n, err
 }
 
 // ── Campaign enrollments table (sr_campaign_enrollments) ─────────────────

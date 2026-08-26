@@ -37,7 +37,7 @@ func TestPwVersion_PGFallbackOnRedisOutage(t *testing.T) {
 	defer cancel()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		imagePostgres,
 		postgres.WithDatabase("vakt_test"),
 		postgres.WithUsername("vakt"),
 		postgres.WithPassword("vakt"),

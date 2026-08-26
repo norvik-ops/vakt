@@ -28,14 +28,42 @@ import (
 // Mounted on a group WITHOUT AuthMiddleware on purpose. A customer's browser and
 // Lexware's servers have no Vakt session — the "commented as public, mounted on
 // protected" mistake (S127) is exactly what this comment exists to prevent.
-func Register(g *echo.Group, h *Handler) {
+//
+// corsOrigins gibt die Ursprünge frei, die das Bestellformular aus einem Browser
+// aufrufen dürfen. Leer heißt: keine Freigabe. Siehe cors.go.
+func Register(g *echo.Group, h *Handler, corsOrigins []string) {
 	quoteLimiter := middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
 		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
 			middleware.RateLimiterMemoryStoreConfig{Rate: 0.05, Burst: 3, ExpiresIn: 1 * time.Hour},
 		),
 	})
 
-	g.POST("/billing/quote-request", h.RequestQuote, quoteLimiter)
+	// CORS haengt an GENAU DIESEM Endpunkt, nicht an der Gruppe.
+	//
+	// Von den neun Routen dieses Listeners wird nur diese eine aus dem Browser
+	// einer anderen Domain aufgerufen (Bestellformular auf vakt.norvikops.de →
+	// api.norvikops.de). Alles andere braucht es nicht und bekommt es deshalb
+	// nicht: Der Freigabe-Link ist eine normale Seitennavigation aus einer Mail
+	// (Navigationen kennen kein CORS), der Lexware-Webhook und die
+	// Lizenzerneuerung sind Server-zu-Server ohne Browser, und das Kundenportal
+	// liefert sein HTML und nimmt sein Formular unter demselben Host entgegen
+	// (lizenz.norvikops.de) — also gleicher Ursprung.
+	//
+	// Die eigene OPTIONS-Route ist notwendig, nicht Zierde: Echos Router
+	// beantwortet ein nicht registriertes OPTIONS mit einem selbst erzeugten
+	// Handler (router.go, optionsMethodHandler) — 204 plus Allow-Header, und
+	// Route-Middleware der POST-Route laeuft dabei NICHT. Genau das war der
+	// Defekt: eine Antwort ohne ein einziges Access-Control-Feld.
+	//
+	// Reihenfolge: CORS VOR dem Rate-Limit. Sonst traegt eine 429 keinen
+	// Access-Control-Allow-Origin, der Browser verwirft sie, und aus einem
+	// "zu viele Anfragen, bitte gleich nochmal" wird wieder das nichtssagende
+	// "Das hat nicht geklappt.".
+	cors := SalesCORS(corsOrigins)
+	g.POST("/billing/quote-request", h.RequestQuote, cors, quoteLimiter)
+	g.OPTIONS("/billing/quote-request", func(c echo.Context) error {
+		return c.NoContent(http.StatusNoContent)
+	}, cors)
 	g.GET("/billing/quote-request/:id/approve", h.Approve)
 	g.POST("/billing/lexware/webhook", h.Webhook)
 
@@ -61,7 +89,8 @@ func Register(g *echo.Group, h *Handler) {
 		return c.NoContent(http.StatusOK)
 	})
 
-	log.Info().Msg("billing: direct-sale routes registered (quote-request, approve, lexware webhook, license refresh)")
+	log.Info().Strs("cors_origins", corsOrigins).
+		Msg("billing: direct-sale routes registered (quote-request, approve, lexware webhook, license refresh)")
 }
 
 // EnsureWebhook registers the payment.changed subscription with Lexware at boot.

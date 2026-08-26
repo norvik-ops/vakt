@@ -40,8 +40,8 @@ describe('EmergencyContactsPage', () => {
   it('renders contact names', () => {
     mockUseEmergencyContacts.mockReturnValue({
       data: [
-        { id: '1', org_id: 'o', name: 'Max Mustermann', role: 'CISO', phone: '+49 123', email: 'max@example.com', escalation_level: 1 as const, available_247: true, notes: '', created_at: '', updated_at: '' },
-        { id: '2', org_id: 'o', name: 'Erika Muster', role: 'ISB', phone: '', email: 'erika@example.com', escalation_level: 2 as const, available_247: false, notes: '', created_at: '', updated_at: '' },
+        { id: '1', org_id: 'o', name: 'Max Mustermann', role: 'CISO', phone: '+49 123', email: 'max@example.com', escalation_level: 1 as const, available_24_7: true, notes: '', created_at: '', updated_at: '' },
+        { id: '2', org_id: 'o', name: 'Erika Muster', role: 'ISB', phone: '', email: 'erika@example.com', escalation_level: 2 as const, available_24_7: false, notes: '', created_at: '', updated_at: '' },
       ],
       isLoading: false,
       isError: false,
@@ -54,7 +54,7 @@ describe('EmergencyContactsPage', () => {
   it('renders level section labels', () => {
     mockUseEmergencyContacts.mockReturnValue({
       data: [
-        { id: '1', org_id: 'o', name: 'Max', role: '', phone: '', email: '', escalation_level: 1 as const, available_247: false, notes: '', created_at: '', updated_at: '' },
+        { id: '1', org_id: 'o', name: 'Max', role: '', phone: '', email: '', escalation_level: 1 as const, available_24_7: false, notes: '', created_at: '', updated_at: '' },
       ],
       isLoading: false,
       isError: false,
@@ -67,7 +67,7 @@ describe('EmergencyContactsPage', () => {
   it('renders phone link for contacts with phone number', () => {
     mockUseEmergencyContacts.mockReturnValue({
       data: [
-        { id: '1', org_id: 'o', name: 'Max', role: '', phone: '+49 228 999', email: '', escalation_level: 1 as const, available_247: false, notes: '', created_at: '', updated_at: '' },
+        { id: '1', org_id: 'o', name: 'Max', role: '', phone: '+49 228 999', email: '', escalation_level: 1 as const, available_24_7: false, notes: '', created_at: '', updated_at: '' },
       ],
       isLoading: false,
       isError: false,

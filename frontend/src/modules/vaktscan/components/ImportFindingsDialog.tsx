@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '../../../components/ui/select'
 import { useAssets } from '../hooks/useAssets'
+import { apiFetch } from '../../../api/client'
 
 interface ImportFindingsDialogProps {
   open: boolean
@@ -25,6 +26,33 @@ interface ImportFindingsDialogProps {
 }
 
 type ImportFormat = 'sarif' | 'cyclonedx' | 'csv'
+
+/**
+ * Uploads a scanner export for one asset and returns how many findings the
+ * server accepted.
+ *
+ * Extracted from the component so the network contract is reachable from a
+ * test: the asset picker above it is a Radix Select, which cannot be opened in
+ * jsdom, so driving the dialog end-to-end would leave this request — and with
+ * it the CSRF header (R1-18-D4) — untested.
+ */
+export async function importFindings(
+  assetId: string,
+  format: ImportFormat,
+  file: File,
+): Promise<number> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const url = `/vaktscan/findings/import?asset_id=${encodeURIComponent(assetId)}&format=${format}`
+
+  const body = await apiFetch<{ imported?: number }>(url, {
+    method: 'POST',
+    body: formData,
+  })
+
+  return body.imported ?? 0
+}
 
 export function ImportFindingsDialog({
   open,
@@ -64,28 +92,8 @@ export function ImportFindingsDialog({
     setError(null)
     setSuccess(null)
 
-    const formData = new FormData()
-    formData.append('file', file)
-
-    const url = `/api/v1/vaktscan/findings/import?asset_id=${encodeURIComponent(assetId)}&format=${format}`
-
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      })
-
-      const body = (await res.json().catch(() => ({}))) as {
-        imported?: number
-        error?: string
-      }
-
-      if (!res.ok) {
-        throw new Error(body.error ?? `HTTP ${String(res.status)}`)
-      }
-
-      const imported = body.imported ?? 0
+      const imported = await importFindings(assetId, format, file)
       setSuccess(`Successfully imported ${String(imported)} finding${imported !== 1 ? 's' : ''}.`)
       setFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''

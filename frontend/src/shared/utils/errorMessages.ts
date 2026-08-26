@@ -18,8 +18,37 @@ const ERROR_MAP: Record<string, string> = {
   'HTTP 503': 'Der Dienst ist vorübergehend nicht verfügbar.',
 }
 
+// Matches the 403 body that auth.RequireRole and usermgmt.requireAdmin produce:
+// `forbidden: requires role InternalAuditor` / `... Admin or SecurityAnalyst`.
+// The backend names the role there on purpose — a bare "forbidden" left the
+// operator with no idea which role was missing, and the obvious self-help was an
+// UPDATE against the database (ESK-13).
+const MISSING_ROLE_RE = /^forbidden: requires role (.+)$/
+
+/**
+ * describeMissingRole turns the backend's insufficient-role 403 into a sentence
+ * that says which role is missing and where to grant it. Returns null for every
+ * other message, so callers can fall back to their normal handling.
+ */
+export function describeMissingRole(message: string): string | null {
+  const m = MISSING_ROLE_RE.exec(message.trim())
+  if (!m) return null
+  const roles = m[1].split(' or ').map(r => r.trim()).filter(Boolean)
+  if (roles.length === 0) return null
+  const list = roles.length === 1 ? `„${roles[0]}"` : roles.map(r => `„${r}"`).join(' oder ')
+  return (
+    `Für diese Aktion fehlt dir die Rolle ${list}. ` +
+    'Ein Administrator vergibt sie unter Einstellungen → Team.'
+  )
+}
+
 export function humanizeError(error: unknown): string {
   const msg = error instanceof Error ? error.message : String(error)
+
+  // Role-specific 403 before the generic map: the generic entries would swallow
+  // the role name that makes this message useful.
+  const missingRole = describeMissingRole(msg)
+  if (missingRole) return missingRole
 
   // Exact match first
   if (ERROR_MAP[msg]) return ERROR_MAP[msg]

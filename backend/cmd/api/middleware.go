@@ -27,7 +27,7 @@ import (
 // It runs before any routes are registered and covers request-id, OTel spans,
 // security headers, structured logging, CORS, body limits, request timeouts,
 // the demo guard, and per-request license context injection.
-func applyMiddleware(e *echo.Echo, cfg *config.Config, log zerolog.Logger, lic *license.License) {
+func applyMiddleware(e *echo.Echo, cfg *config.Config, log zerolog.Logger, licInst *license.Instance) {
 	// X-Request-ID — applied first so every subsequent log entry can reference it.
 	e.Use(sharedmw.RequestID())
 
@@ -74,21 +74,7 @@ func applyMiddleware(e *echo.Echo, cfg *config.Config, log zerolog.Logger, lic *
 			return next(c)
 		}
 	})
-	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
-		LogMethod:  true,
-		LogURI:     true,
-		LogStatus:  true,
-		LogLatency: true,
-		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			log.Info().
-				Str("method", v.Method).
-				Str("uri", redactQuery(v.URI)).
-				Int("status", v.Status).
-				Dur("latency", v.Latency).
-				Msg("request")
-			return nil
-		},
-	}))
+	e.Use(requestLogger(log))
 	e.Use(middleware.Recover())
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 		Level: 5,
@@ -135,12 +121,10 @@ func applyMiddleware(e *echo.Echo, cfg *config.Config, log zerolog.Logger, lic *
 	}))
 	e.Use(demo.Guard(cfg.DemoSeed))
 
-	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.Set("license", lic)
-			return next(c)
-		}
-	})
+	// Instance.Middleware reads the holder on every request. The previous closure
+	// captured the startup licence by value, so a key activated at runtime was
+	// invisible to every route that is not behind license.DBMiddleware.
+	e.Use(licInst.Middleware())
 }
 
 // insecureWildcardCORS reports whether the CORS configuration is a wildcard
@@ -153,6 +137,31 @@ func insecureWildcardCORS(origins []string, demoMode bool) bool {
 		return false
 	}
 	return len(origins) == 1 && origins[0] == "*"
+}
+
+// requestLogger is the structured access log. It is a named function rather than
+// an inline closure so the redaction below can be tested through the real
+// middleware, not through a rebuilt copy of it — a test that reassembles the
+// chain by hand tests a configuration that does not exist.
+func requestLogger(log zerolog.Logger) echo.MiddlewareFunc {
+	return middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogMethod:  true,
+		LogURI:     true,
+		LogStatus:  true,
+		LogLatency: true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			// c.Path() is the matched route template ("/supplier/:token/save"),
+			// not the concrete URI. Echo's ServeHTTP runs the router before the
+			// e.Use chain, so it is already populated here.
+			log.Info().
+				Str("method", v.Method).
+				Str("uri", redactURI(c.Path(), v.URI)).
+				Int("status", v.Status).
+				Dur("latency", v.Latency).
+				Msg("request")
+			return nil
+		},
+	})
 }
 
 // sensitiveQueryKeys are query parameters whose values must never reach a log.
@@ -176,15 +185,88 @@ var sensitiveQueryKeys = map[string]bool{
 	"state":        true,
 }
 
-// redactQuery replaces the values of sensitive query parameters with "***",
-// keeping the rest of the URI intact so the logs stay useful for debugging.
-func redactQuery(uri string) string {
-	i := strings.IndexByte(uri, '?')
-	if i < 0 {
-		return uri
-	}
-	path, query := uri[:i], uri[i+1:]
+// sensitivePathParamParts are substrings that mark a *path* parameter as
+// carrying a secret rather than an identifier.
+//
+// Matching on a substring of the parameter NAME — not on a list of concrete
+// paths — is deliberate. An enumeration of paths is stale the moment somebody
+// adds a route, which is exactly the subset trap this project has walked into
+// repeatedly. The route template is the truth, and it is available for free at
+// log time, so a future /reset/:reset_token or /invite/:share_token is covered
+// on the day it is written, with nobody having to remember this file.
+//
+// Measured against the actual route surface (16 routes carry :token; the full
+// parameter inventory is :id, :project_id, :env_id, :slug, :key, :code, … ),
+// three query keys are deliberately NOT listed here even though they stay
+// sensitive as query parameters:
+//   - "key"   — /…/secrets/:key is the secret's NAME (DATABASE_URL), not its value
+//   - "code"  — /physical-templates/:code is an ISO 27001 A.7.x template code
+//   - "state" — no path parameter uses it; as a path segment it would be an ID
+//
+// Masking those would cost real debuggability and protect nothing. Over-masking
+// is not the safe direction: logs nobody can read stop being used.
+var sensitivePathParamParts = []string{"token", "secret", "password", "apikey"}
 
+// sensitivePathParam reports whether a route parameter name denotes a secret.
+func sensitivePathParam(name string) bool {
+	n := strings.ToLower(name)
+	n = strings.ReplaceAll(n, "_", "")
+	n = strings.ReplaceAll(n, "-", "")
+	for _, part := range sensitivePathParamParts {
+		if strings.Contains(n, part) {
+			return true
+		}
+	}
+	return false
+}
+
+// redactPathParams masks the path segments that the matched route declares as
+// secret-bearing parameters. routePath is Echo's route template; path is the
+// concrete request path (no query string).
+//
+// Known, bounded gap: when no route matched, the template is the catch-all
+// ("/api/v1/*") and no parameter names are known, so the path is left intact.
+// Masking every segment of an unmatched path instead would destroy the live-404
+// signal this project uses to find unwired handlers — and a token sent to a URL
+// that does not exist was never accepted by any handler.
+func redactPathParams(routePath, path string) string {
+	if routePath == "" || !strings.ContainsRune(routePath, ':') {
+		return path
+	}
+	// RequestURI is normally origin-form ("/a/b"). Anything else (absolute-form
+	// from a proxy) would not align with the template segment by segment.
+	if !strings.HasPrefix(path, "/") {
+		return path
+	}
+
+	tmpl := strings.Split(strings.TrimPrefix(routePath, "/"), "/")
+	segs := strings.Split(strings.TrimPrefix(path, "/"), "/")
+
+	changed := false
+	for i, t := range tmpl {
+		if i >= len(segs) {
+			break
+		}
+		if strings.HasPrefix(t, "*") {
+			break // catch-all swallows the rest; nothing is named beyond here
+		}
+		if strings.HasPrefix(t, ":") && sensitivePathParam(t[1:]) {
+			segs[i] = "***"
+			changed = true
+		}
+	}
+	if !changed {
+		return path
+	}
+	return "/" + strings.Join(segs, "/")
+}
+
+// redactQueryString masks the values of sensitive query parameters, keeping the
+// harmless ones readable so the logs stay useful for debugging.
+func redactQueryString(query string) string {
+	if query == "" {
+		return query
+	}
 	parts := strings.Split(query, "&")
 	for j, p := range parts {
 		k, _, found := strings.Cut(p, "=")
@@ -192,5 +274,29 @@ func redactQuery(uri string) string {
 			parts[j] = k + "=***"
 		}
 	}
-	return path + "?" + strings.Join(parts, "&")
+	return strings.Join(parts, "&")
+}
+
+// redactURI masks secrets in both halves of the logged URI: the query string
+// and the path.
+//
+// The path half was the hole. redactQuery only ever touched the query string and
+// returned early when the URI had no "?", so the 16 public routes that carry the
+// raw token in a path segment (auditor, supplier, share, policy-accept,
+// DSR portal, phishing tracking, billing portal) logged it verbatim. Those tokens
+// are stored as SHA-256 hashes precisely so a log or backup leak is worthless —
+// and the logs ship to Loki on another host, so anyone who could read Loki could
+// replay an auditor, supplier or DSR link inside its validity window.
+func redactURI(routePath, uri string) string {
+	path, sep, query := uri, "", ""
+	if i := strings.IndexByte(uri, '?'); i >= 0 {
+		path, sep, query = uri[:i], "?", uri[i+1:]
+	}
+	return redactPathParams(routePath, path) + sep + redactQueryString(query)
+}
+
+// redactQuery masks sensitive query parameters only. Retained as the
+// query-string half of redactURI.
+func redactQuery(uri string) string {
+	return redactURI("", uri)
 }

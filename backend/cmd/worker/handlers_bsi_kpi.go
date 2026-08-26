@@ -11,19 +11,19 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/config"
 )
 
 // handleBSIKPISnapshot updates bsi_check_pct in ck_isms_kpi_snapshots for all orgs.
 // Runs daily at 06:15 UTC (S74-2).
-func handleBSIKPISnapshot(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleBSIKPISnapshot(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
 			return err
 		}
 
-		svc := vaktcomply.NewService(pool)
+		svc := newComplyService(cfg, pool)
 
 		g, gCtx := errgroup.WithContext(ctx)
 		sem := make(chan struct{}, 5)

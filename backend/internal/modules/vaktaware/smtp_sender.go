@@ -6,9 +6,12 @@ package vaktaware
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/smtp"
+	"net/textproto"
+	"regexp"
 )
 
 // OutboundMail is one fully rendered message, ready for the wire. Everything
@@ -36,15 +39,35 @@ type OutboundMail struct {
 // House pattern (internal/services/scim/service.go): a narrow interface, a
 // hand-written fake, no mock library, and the constructor still takes the
 // concrete config.
+// DeliveryResult is the outcome for ONE message, in the order the messages were
+// handed over.
+//
+// The interface used to return only a count. A count cannot say WHICH recipient
+// was rejected, so the caller had no way to take back the „sent" event it had
+// already written for that person — the campaign reported „3 versendet" while
+// the mail server had accepted one (L2-01). Per-message results are what makes
+// that reconciliation possible at all.
+type DeliveryResult struct {
+	// Delivered is true when the mail server accepted the message.
+	Delivered bool
+	// Err is the rejection, nil when Delivered.
+	Err error
+	// Permanent marks a 5xx rejection: the address is wrong, not the moment.
+	// A retry cannot help, and the address should not be mailed again (L1-06).
+	Permanent bool
+}
+
+// MailSender puts rendered messages on the wire.
 type MailSender interface {
-	// Send delivers every message and reports how many got through, plus the
-	// first failure encountered (nil when all went out).
+	// Send delivers every message and reports the outcome per message, plus the
+	// first failure encountered (nil when all went out). The returned slice has
+	// one entry per input message, in the same order.
 	//
 	// One bad recipient must not abort the rest: a phishing simulation with one
 	// stale address still has to reach the other two hundred people, and a
 	// campaign that silently delivered to nobody would report a 0% click rate
 	// that looks exactly like a well-trained workforce.
-	Send(ctx context.Context, msgs []OutboundMail) (sent int, err error)
+	Send(ctx context.Context, msgs []OutboundMail) (results []DeliveryResult, err error)
 }
 
 // smtpSender is the production MailSender: one connection, all messages.
@@ -52,30 +75,57 @@ type smtpSender struct {
 	cfg SMTPConfig
 }
 
-func (s *smtpSender) Send(_ context.Context, msgs []OutboundMail) (int, error) {
+func (s *smtpSender) Send(_ context.Context, msgs []OutboundMail) ([]DeliveryResult, error) {
 	if len(msgs) == 0 {
-		return 0, nil
+		return nil, nil
 	}
+
+	results := make([]DeliveryResult, len(msgs))
 
 	client, closeClient, err := s.open(msgs[0].From)
 	if err != nil {
-		return 0, fmt.Errorf("smtp open: %w", err)
+		// The connection never came up, so NOTHING was delivered. Saying so per
+		// message is what lets the caller take back every „sent" event instead of
+		// reporting a campaign that nobody received as complete.
+		openErr := fmt.Errorf("smtp open: %w", err)
+		for i := range results {
+			results[i] = DeliveryResult{Err: openErr}
+		}
+		return results, openErr
 	}
 	defer closeClient()
 
-	sent := 0
 	var firstErr error
-	for _, m := range msgs {
-		if sendErr := sendViaClient(client, m.From, m.To, m.Body); sendErr != nil {
+	for i, m := range msgs {
+		sendErr := sendViaClient(client, m.From, m.To, m.Body)
+		if sendErr != nil {
+			results[i] = DeliveryResult{Err: sendErr, Permanent: isPermanentSMTPError(sendErr)}
 			if firstErr == nil {
 				firstErr = sendErr
 			}
 			continue
 		}
-		sent++
+		results[i] = DeliveryResult{Delivered: true}
 	}
-	return sent, firstErr
+	return results, firstErr
 }
+
+// isPermanentSMTPError reports whether the server answered with a 5xx code —
+// „this address is wrong", as opposed to 4xx „not right now".
+//
+// net/smtp surfaces the reply as *textproto.Error with the numeric code intact,
+// which is the reliable path. The string fallback exists because a few of the
+// client's own wrappers lose the type; matching on a leading 5 of a three-digit
+// code is narrow enough not to misread a dial error as a rejection.
+func isPermanentSMTPError(err error) bool {
+	var protoErr *textproto.Error
+	if errors.As(err, &protoErr) {
+		return protoErr.Code >= 500 && protoErr.Code < 600
+	}
+	return permanentCodeRe.MatchString(err.Error())
+}
+
+var permanentCodeRe = regexp.MustCompile(`\b5\d\d\b`)
 
 // open dials an authenticated SMTP connection and returns the client plus a
 // close function.

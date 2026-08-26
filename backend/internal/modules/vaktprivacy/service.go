@@ -401,10 +401,16 @@ func (s *Service) CreateBreach(ctx context.Context, orgID string, in CreateBreac
 	}
 	// Enqueue incident creation in SecVitals (FR-PO05). Fire-and-forget: breach is saved regardless.
 	s.publishBreachCreated(ctx, breach)
-	notify.Send(ctx, s.db, orgID,
+	// Regel 2: Die Datenpanne ist gespeichert — ein fehlgeschlagener
+	// Hinweis darf sie nicht zuruecknehmen, aber er muss sichtbar sein.
+	// Die 72-Stunden-Frist nach Art. 33 laeuft unabhaengig davon weiter.
+	if err := notify.Send(ctx, s.db, orgID,
 		"Neue Datenpanne erfasst",
 		"Eine Datenpanne wurde dokumentiert. Bitte Art.-33-Meldepflicht prüfen (72-Stunden-Frist).",
-		"error", "vaktprivacy")
+		"error", "vaktprivacy"); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Str("breach_id", breach.ID).
+			Msg("Datenpanne gespeichert, aber der Art.-33-Hinweis wurde NICHT geschrieben")
+	}
 	return breach, nil
 }
 
@@ -451,10 +457,13 @@ func (s *Service) CreateDSR(ctx context.Context, orgID string, in CreateDSRInput
 	if err != nil {
 		return nil, err
 	}
-	notify.Send(ctx, s.db, orgID,
+	if err := notify.Send(ctx, s.db, orgID,
 		"Neue Betroffenenanfrage (DSR) eingegangen",
 		"Typ: "+string(in.Type)+". Bitte innerhalb von 30 Tagen bearbeiten.",
-		"warning", "vaktprivacy")
+		"warning", "vaktprivacy"); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Str("dsr_id", dsr.ID).
+			Msg("DSR gespeichert, aber der Hinweis an den DSB wurde NICHT geschrieben")
+	}
 	return dsr, nil
 }
 
@@ -936,10 +945,17 @@ func (s *Service) SubmitPortalDSR(ctx context.Context, slug string, in PortalDSR
 	if _, err = s.repo.CreatePortalDSR(ctx, orgID, in, statusHash, verifyHash, ip); err != nil {
 		return "", err
 	}
-	notify.Send(ctx, s.db, orgID,
+	// Der Antragsteller bekommt sein Status-Token in jedem Fall — die Anfrage
+	// IST eingegangen. Bleibt der interne Hinweis aus, ist das ein
+	// Betriebsproblem, kein Grund, dem Betroffenen die Bestaetigung zu
+	// verweigern.
+	if err := notify.Send(ctx, s.db, orgID,
 		"Neue DSR-Anfrage über Self-Service-Portal",
 		"Typ: "+in.Type+". Antragsteller: "+in.FirstName+" "+in.LastName+" ("+in.Email+"). DPO: "+dpoEmail,
-		"warning", "vaktprivacy")
+		"warning", "vaktprivacy"); err != nil {
+		log.Error().Err(err).Str("org_id", orgID).
+			Msg("Portal-DSR gespeichert, aber der Hinweis an den DSB wurde NICHT geschrieben")
+	}
 	return rawStatus, nil
 }
 

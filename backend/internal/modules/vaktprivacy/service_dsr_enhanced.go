@@ -12,9 +12,10 @@ import (
 	"strings"
 	"time"
 
-	fpdf "github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
@@ -47,10 +48,15 @@ func (s *Service) CheckOverdueRequests(ctx context.Context) error {
 		if err := rows.Scan(&orgID); err != nil {
 			continue
 		}
-		notify.Send(ctx, s.db, orgID,
+		// Keine Marke — dieser Lauf meldet dieselbe Frist bewusst taeglich,
+		// bis sie bearbeitet ist. Ein Fehlschlag unterdrueckt also nichts
+		// dauerhaft, darf aber nicht unsichtbar bleiben.
+		if err := notify.Send(ctx, s.db, orgID,
 			"DSR-Frist läuft bald ab",
 			"Eine oder mehrere Betroffenenanfragen haben in weniger als 3 Tagen Frist. Bitte umgehend bearbeiten.",
-			"dsr_due_soon", "vaktprivacy")
+			"dsr_due_soon", "vaktprivacy"); err != nil {
+			log.Error().Err(err).Str("org_id", orgID).Msg("dsr_due_soon: In-App-Meldung NICHT geschrieben")
+		}
 	}
 
 	// Notify orgs about Art. 21 objections received today
@@ -69,10 +75,12 @@ func (s *Service) CheckOverdueRequests(ctx context.Context) error {
 		if err := objRows.Scan(&orgID); err != nil {
 			continue
 		}
-		notify.Send(ctx, s.db, orgID,
+		if err := notify.Send(ctx, s.db, orgID,
 			"Widerspruch nach Art. 21 eingegangen",
 			"Ein Widerspruch (Art. 21 DSGVO) muss unverzüglich bearbeitet werden.",
-			"dsr_objection_received", "vaktprivacy")
+			"dsr_objection_received", "vaktprivacy"); err != nil {
+			log.Error().Err(err).Str("org_id", orgID).Msg("dsr_objection_received: In-App-Meldung NICHT geschrieben")
+		}
 	}
 
 	return nil
@@ -88,6 +96,27 @@ func (s *Service) ResolveDSR(ctx context.Context, orgID, id, resolvedByUserID st
 	newStatus := in.ResolutionType // 'fulfilled' | 'rejected' | 'extended'
 	if newStatus == "fulfilled" {
 		newStatus = "completed"
+	}
+
+	// Art. 17 DSGVO: this endpoint is a second write path into 'completed' and
+	// must honour the same rule as PATCH /dsr/:id — an erasure request may only
+	// be closed as fulfilled once the erasure transaction has committed. The
+	// stored row decides, not the caller's payload and not the rendered button.
+	existing, err := s.repo.GetDSR(ctx, orgID, id)
+	if err != nil {
+		return nil, fmt.Errorf("resolve dsr: fetch for type check: %w", err)
+	}
+	if err := guardErasureCompletion(existing, newStatus); err != nil {
+		return nil, err
+	}
+
+	// The UPDATE below replaces notes outright whenever resolution_notes is
+	// non-empty, which would wipe the Art. 17 evidence block of an executed
+	// erasure. An empty value keeps the stored notes untouched (COALESCE/NULLIF
+	// below), so it needs no carrying over.
+	resolutionNotes := in.ResolutionNotes
+	if resolutionNotes != "" {
+		resolutionNotes = preserveErasureEvidence(existing, resolutionNotes)
 	}
 
 	var extDueAt *time.Time
@@ -113,7 +142,7 @@ func (s *Service) ResolveDSR(ctx context.Context, orgID, id, resolvedByUserID st
 		ResolvedBy      *string
 		ExtensionReason string
 	}
-	err := s.db.QueryRow(ctx, `
+	err = s.db.QueryRow(ctx, `
 		UPDATE po_dsr SET
 			status           = $1,
 			notes            = COALESCE(NULLIF($2, ''), notes),
@@ -128,7 +157,7 @@ func (s *Service) ResolveDSR(ctx context.Context, orgID, id, resolvedByUserID st
 		          to_char(due_date, 'YYYY-MM-DD'), received_at, completed_at,
 		          extension_due_at, created_at, updated_at,
 		          resolved_by::text, COALESCE(extension_reason, '')`,
-		newStatus, in.ResolutionNotes, in.ExtensionReason, extDueAt, resolvedByUserID, orgID, id,
+		newStatus, resolutionNotes, in.ExtensionReason, extDueAt, resolvedByUserID, orgID, id,
 	).Scan(
 		&row.ID, &row.OrgID, &row.RequesterName, &row.RequesterEmail, &row.Type, &row.Status, &row.Notes,
 		&row.DueDate, &row.ReceivedAt, &row.CompletedAt, &row.ExtensionDueAt, &row.CreatedAt, &row.UpdatedAt,
@@ -261,10 +290,10 @@ func (s *Service) ExportDSRLogCSV(ctx context.Context, orgID string, periodDays 
 		if slabel == "" {
 			slabel = r.Status
 		}
-		_ = w.Write([]string{
+		_ = w.Write(csvsafe.Row([]string{
 			r.ReceivedAt.Format("2006-01-02"), label, r.Channel, slabel,
 			r.ReferenceID, r.DueDate, r.CompletedAt,
-		})
+		}))
 	}
 	w.Flush()
 	if err := w.Error(); err != nil {
@@ -283,7 +312,7 @@ func (s *Service) ExportDSRLogPDF(ctx context.Context, orgID string, periodDays 
 		return nil, err
 	}
 
-	pdf := fpdf.New("L", "mm", "A4", "")
+	pdf := pdfutil.New("L")
 	pdf.SetMargins(10, 12, 10)
 	pdf.SetAutoPageBreak(true, 12)
 	exportedAt := time.Now().UTC()

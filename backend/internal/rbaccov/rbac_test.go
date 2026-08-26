@@ -19,6 +19,7 @@ import (
 	"github.com/matharnica/vakt/internal/services/evidence_auto"
 	"github.com/matharnica/vakt/internal/shared/comments"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
+	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/onboarding"
 	"github.com/matharnica/vakt/internal/shared/platform/ldap"
 	"github.com/matharnica/vakt/internal/shared/platform/trustcenter"
@@ -112,6 +113,16 @@ func buildSharedRouter(t *testing.T) *echo.Echo {
 	// exempt via viewerWriteAllow below only if truly self-service.
 	comments.Register(e.Group("", paseto), nil)
 	onboarding.RegisterRoutes(e.Group("/onboarding", paseto), nil)
+	// R1-W5A-N1: der NIS2-Assistent hing als einziges shared-Paket mit
+	// Schreibrouten gar nicht in diesem Nachbau — deshalb hat die
+	// Deny-by-default-Prüfung unten seine fünf ungegateten Schreibrouten nie
+	// gesehen. Mount wie in cmd/api/routes.go: eine /vaktcomply-Gruppe hinter
+	// Auth. Die Lizenz-Middleware bleibt bewusst weg (siehe ai_rbac_test.go):
+	// ohne sie antwortet features.Require 402, und 402 ist nicht 403 — eine
+	// Route, deren einziger Schutz das Lizenz-Gate wäre, kann sich hier also
+	// nicht als rollengeschützt ausgeben.
+	nis2wizard.RegisterAuthenticated(e.Group("/vaktcomply", paseto),
+		nis2wizard.NewHandler(nis2wizard.NewService(nil), testHexKey))
 	return e
 }
 
@@ -180,16 +191,33 @@ var writeMethods = map[string]bool{
 }
 
 // viewerWriteAllow is the explicit, justified allowlist of write routes a Viewer
-// MAY reach on the shared/integration surface. It is intentionally empty: every
-// shared platform write is Admin-only. Any new entry needs a one-line reason.
-// The deny-by-default test below fails the moment a new ungated shared write
-// route appears that is not listed here — so a future R1–R7 / MA-01 cannot ship
-// silently just because nobody remembered to add it to sharedWriteRoutes.
+// MAY reach on the shared surface. Any entry needs a reason, and the reason has
+// to be checkable against the handler body — not a plausible sentence.
+//
+// R1-W5A-N2: hier standen die beiden Notification-Routen mit der Begründung
+// „per-user self-service … the handler scopes by user_id". Sie stimmte nicht,
+// und zwar nie: `user_notifications` hat keine Spalte `user_id` (Migration 021
+// legt die Tabelle an, 225 ergänzt nur einen Index). Beide Handler schreiben
+// org-weit — MarkAllRead setzt `read=true` für JEDE ungelesene Zeile der Org.
+// Ein Viewer konnte damit den Ungelesen-Status für alle Nutzer löschen.
+//
+// Das ist die gefährlichere Sorte Fehler: eine falsche Begründung beendet das
+// erneute Hinsehen. Wer die Liste prüft, liest „ist geprüft, ist in Ordnung"
+// und geht weiter — genau das ist zwischen S123-G1 und heute passiert.
+// Konsequenz: Gate ergänzt (dashboard/routes.go), Ausnahme gestrichen. Die
+// beiden Routen laufen jetzt durch die Deny-by-default-Prüfung wie jede andere
+// Schreibroute.
+//
+// Der verbleibende Eintrag ist am Rumpf nachgeprüft: ExportPDF
+// (nis2wizard/handler.go) lädt einen Run über LoadRun und rendert ihn mit
+// RenderAssessmentPDF. Es gibt keinen Schreibpfad — kein Exec, kein INSERT,
+// kein UPDATE, weder im Handler noch in LoadRun/RenderAssessmentPDF. Die Route
+// ist POST-förmig, weil sie ein Token im Body/Query erwartet, nicht weil sie
+// etwas ändert. Lesen darf jede Rolle. Fängt der Endpoint je an, etwas zu
+// persistieren (z. B. ein Export-Protokoll), gehört er hinter das Rollen-Gate
+// und dieser Eintrag muss weg.
 var viewerWriteAllow = map[string]bool{
-	// Per-user self-service: any authenticated user (incl. Viewer) manages their
-	// OWN in-app notifications. Not an org-write; the handler scopes by user_id.
-	"POST /dashboard/notifications/read-all": true,
-	"POST /dashboard/notifications/:id/read": true,
+	"POST /vaktcomply/nis2-assessment/pdf": true,
 }
 
 // TestSharedSurfaceDenyByDefault is the S123-G1 deny-by-default gate. Instead of

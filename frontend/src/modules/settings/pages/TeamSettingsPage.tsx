@@ -23,6 +23,7 @@ import {
   useCreateUser,
   type TeamMember,
   type TeamInvitation,
+  type PlatformRole,
 } from '../../../hooks/useTeam'
 import { UserPermissionsEditor } from '../../../components/UserPermissionsEditor'
 import { toast } from '../../../shared/hooks/useToast'
@@ -35,14 +36,66 @@ import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 type Role = 'admin' | 'editor' | 'viewer'
 
-function roleBadge(role: Role, t: (key: string) => string) {
+// The roles a member can be changed to, in the order the select shows them.
+// These are the platform role names (roles.name) — the same strings the backend
+// puts into an insufficient-role 403 ("requires role InternalAuditor"), so an
+// operator who reads that message finds the identical word in this dropdown.
+//
+// InternalAuditor is here because ADR-0055 makes it mandatory from migration 202
+// and expects an admin to assign it explicitly, while the platform offered no way
+// to do so: org_members.role_id had nine INSERT sites in non-test code (seven
+// outside the two seeders) and no UPDATE site, and this select only ever offered
+// admin/editor/viewer, which are not the roles the guards check. A single-admin
+// org therefore could not complete an audit (ISO 27001 9.2) without an UPDATE in
+// the database (ESK-13).
+//
+// The two audit roles carry a descriptionKey. Admin/SecurityAnalyst/Viewer are
+// the vocabulary this product has always used and an operator knows them; nobody
+// can be expected to know from the name alone that InternalAuditor is the role
+// that completes audits and that ADR-0055 forbids the same person from doing both
+// (REV-ESK13 §2.3 — these strings existed in all four locales but were rendered
+// nowhere).
+const ASSIGNABLE_ROLES: { value: PlatformRole; labelKey: string; descriptionKey?: string }[] = [
+  { value: 'Admin', labelKey: 'settings.team.roleAdmin' },
+  { value: 'SecurityAnalyst', labelKey: 'settings.team.roleEditor' },
+  { value: 'Viewer', labelKey: 'settings.team.roleViewer' },
+  {
+    value: 'AuditorReadOnly',
+    labelKey: 'settings.team.roleAuditorReadOnly',
+    descriptionKey: 'teamSettingsPage.roleAuditorReadOnly',
+  },
+  {
+    value: 'InternalAuditor',
+    labelKey: 'settings.team.roleInternalAuditor',
+    descriptionKey: 'teamSettingsPage.roleInternalAuditor',
+  },
+]
+
+function roleBadge(role: PlatformRole, t: (key: string) => string) {
+  switch (role) {
+    case 'Admin':
+      return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-0">{t('settings.team.roleAdmin')}</Badge>
+    case 'SecurityAnalyst':
+      return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-0">{t('settings.team.roleEditor')}</Badge>
+    case 'AuditorReadOnly':
+      return <Badge variant="secondary">{t('settings.team.roleAuditorReadOnly')}</Badge>
+    case 'InternalAuditor':
+      return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-0">{t('settings.team.roleInternalAuditor')}</Badge>
+    case 'Viewer':
+      return <Badge variant="secondary">{t('settings.team.roleViewer')}</Badge>
+  }
+}
+
+// inviteRoleBadge renders the invitation vocabulary, which is a separate,
+// narrower set (POST /admin/invitations still takes admin/editor/viewer only).
+function inviteRoleBadge(role: Role, t: (key: string) => string) {
   switch (role) {
     case 'admin':
-      return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-0">{t('settings.team.roleAdmin')}</Badge>
+      return roleBadge('Admin', t)
     case 'editor':
-      return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-0">{t('settings.team.roleEditor')}</Badge>
+      return roleBadge('SecurityAnalyst', t)
     case 'viewer':
-      return <Badge variant="secondary">{t('settings.team.roleViewer')}</Badge>
+      return roleBadge('Viewer', t)
   }
 }
 
@@ -277,9 +330,10 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null)
   const [permTarget, setPermTarget] = useState<TeamMember | null>(null)
 
-  const adminCount = members.filter((m) => m.role === 'admin').length
+  // Counted over platform_role, the role the backend's last-admin guard counts.
+  const adminCount = members.filter((m) => m.platform_role === 'Admin').length
 
-  function handleRoleChange(member: TeamMember, newRole: Role) {
+  function handleRoleChange(member: TeamMember, newRole: PlatformRole) {
     updateRole.mutate({ id: member.id, role: newRole }, {
       onSuccess: () => toast(t('teamSettingsPage.roleSaved'), 'success'),
       onError: (err) => toast(`${t('common.error')}: ${err.message}`, 'error'),
@@ -322,7 +376,7 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
           )}
           {members.map((member) => {
             const isSelf = member.id === currentUserID
-            const isLastAdmin = member.role === 'admin' && adminCount <= 1
+            const isLastAdmin = member.platform_role === 'Admin' && adminCount <= 1
 
             return (
               <TableRow key={member.id}>
@@ -340,20 +394,20 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
                 <TableCell className="text-secondary text-sm">{member.email}</TableCell>
                 <TableCell>
                   {isSelf || isLastAdmin ? (
-                    roleBadge(member.role, t)
+                    roleBadge(member.platform_role, t)
                   ) : (
                     <Select
-                      value={member.role}
-                      onValueChange={(v) => { handleRoleChange(member, v as Role); }}
+                      value={member.platform_role}
+                      onValueChange={(v) => { handleRoleChange(member, v as PlatformRole); }}
                       disabled={updateRole.isPending}
                     >
-                      <SelectTrigger className="h-7 w-28 text-xs">
+                      <SelectTrigger className="h-7 w-40 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">{t('settings.team.roleAdmin')}</SelectItem>
-                        <SelectItem value="editor">{t('settings.team.roleEditor')}</SelectItem>
-                        <SelectItem value="viewer">{t('settings.team.roleViewer')}</SelectItem>
+                        {ASSIGNABLE_ROLES.map((r) => (
+                          <SelectItem key={r.value} value={r.value}>{t(r.labelKey)}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}
@@ -387,6 +441,23 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
           })}
         </TableBody>
       </Table>
+
+      {/* What the two audit roles mean. The select can only show their names —
+          Radix mirrors an item's content into the trigger, so a second line there
+          would end up truncated in a 10rem-wide control. An operator picking
+          between "Viewer", "AuditorReadOnly" and "InternalAuditor" cannot tell
+          from the names which one completes audits, and that is the choice
+          ADR-0055's segregation of duties turns on. Driven off ASSIGNABLE_ROLES,
+          so a role that gains a description is documented here by adding it
+          there. */}
+      <dl className="border-t border-border px-4 py-3 space-y-1">
+        {ASSIGNABLE_ROLES.filter((r) => r.descriptionKey).map((r) => (
+          <div key={r.value} className="text-xs text-secondary">
+            <dt className="sr-only">{t(r.labelKey)}</dt>
+            <dd>{t(r.descriptionKey as string)}</dd>
+          </div>
+        ))}
+      </dl>
 
       <PermissionsDialog member={permTarget} onClose={() => { setPermTarget(null); }} />
 
@@ -455,7 +526,7 @@ function InvitationsTable({ invitations }: { invitations: TeamInvitation[] }) {
             {pending.map((inv) => (
               <TableRow key={inv.id}>
                 <TableCell className="font-medium text-sm">{inv.email}</TableCell>
-                <TableCell>{roleBadge(inv.role, t)}</TableCell>
+                <TableCell>{inviteRoleBadge(inv.role, t)}</TableCell>
                 <TableCell className="text-secondary text-sm">{inv.invited_by || '—'}</TableCell>
                 <TableCell className="text-secondary text-sm">
                   {daysUntil(inv.expires_at)} {t('teamSettingsPage.days')}

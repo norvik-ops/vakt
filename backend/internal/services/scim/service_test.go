@@ -32,9 +32,14 @@ var _ SessionRevoker = (*mockRevoker)(nil)
 // mockTx implements pgx.Tx for DeactivateUser tests.
 // Only Begin/Commit/Rollback/Exec are exercised; all others panic if called.
 type mockTx struct {
-	execErr    error
-	commitErr  error
-	execCalled int
+	execErr     error
+	commitErr   error
+	execCalled  int
+	queryRowErr error
+	// Answers for the last-admin guard's two reads.
+	remainingAdmins int
+	isAdmin         bool
+	queryRowCalled  int
 }
 
 func (m *mockTx) Begin(ctx context.Context) (pgx.Tx, error) { return m, nil }
@@ -47,8 +52,43 @@ func (m *mockTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.Comm
 func (m *mockTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	panic("mockTx.Query not expected in this test")
 }
+
+// QueryRow serves the two reads DeactivateUser makes before it writes: the
+// count of OTHER admins in the org, and whether this user is an admin
+// (R1-14cA-12's last-admin guard). The zero value answers "0 other admins, this
+// user is not an admin" — the ordinary offboarding, which is what the existing
+// revocation tests are about. queryRowErr lets a test drive the read failure.
 func (m *mockTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
-	panic("mockTx.QueryRow not expected in this test")
+	m.queryRowCalled++
+	return &mockRow{remainingAdmins: m.remainingAdmins, isAdmin: m.isAdmin, err: m.queryRowErr}
+}
+
+// mockRow scans by destination type: *int gets the admin count, *bool gets the
+// membership flag. Keyed on the type rather than on the SQL text so a reworded
+// query does not silently start answering the wrong question.
+type mockRow struct {
+	remainingAdmins int
+	isAdmin         bool
+	err             error
+}
+
+func (r *mockRow) Scan(dest ...any) error {
+	if r.err != nil {
+		return r.err
+	}
+	for _, d := range dest {
+		switch v := d.(type) {
+		case *int:
+			*v = r.remainingAdmins
+		case *bool:
+			*v = r.isAdmin
+		case *string:
+			*v = ""
+		default:
+			return errors.New("mockRow: unexpected scan destination")
+		}
+	}
+	return nil
 }
 func (m *mockTx) CopyFrom(_ context.Context, _ pgx.Identifier, _ []string, _ pgx.CopyFromSource) (int64, error) {
 	panic("mockTx.CopyFrom not expected")

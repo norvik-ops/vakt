@@ -56,6 +56,13 @@ func TestOIDC_JIT_ProvisionsViewerRole(t *testing.T) {
 	pool, cleanup := startRoleTestPostgres(ctx, t)
 	defer cleanup()
 
+	// The instance's organisation, as first-run setup creates it. Since
+	// R1-W2FIX-SSO-01 the JIT path joins it instead of founding a personal one, so it
+	// has to exist before the login.
+	_, err := pool.Exec(ctx,
+		`INSERT INTO organizations (name, slug) VALUES ('JitCorp', 'jitcorp')`)
+	require.NoError(t, err)
+
 	// A subject/email that exists nowhere yet — forces the JIT create path.
 	casdoor := newMockCasdoor(t, casdoorProfileResponse{
 		Sub:           "jit-new-subject-4242",
@@ -188,7 +195,7 @@ func startRoleTestPostgres(ctx context.Context, t *testing.T) (*pgxpool.Pool, fu
 	t.Helper()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		imagePostgres,
 		postgres.WithDatabase("vakt_test"),
 		postgres.WithUsername("vakt"),
 		postgres.WithPassword("vakt"),

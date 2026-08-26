@@ -99,7 +99,7 @@ func (h *Handler) ImportWazuh(c echo.Context) error {
 			SLADueAt:    slaDueAt,
 		}
 
-		if _, upsertErr := h.service.repo.UpsertFindingByRawID(ctx, orgID, f); upsertErr != nil {
+		if _, upsertErr := h.service.repo.UpsertImportedFinding(ctx, orgID, f); upsertErr != nil {
 			log.Error().Err(upsertErr).
 				Str("org_id", orgID).
 				Str("raw_id", rawID).

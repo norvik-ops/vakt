@@ -7,7 +7,6 @@ import (
 
 	"github.com/matharnica/vakt/internal/auth"
 	siemSvc "github.com/matharnica/vakt/internal/services/siem"
-	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
@@ -17,7 +16,12 @@ import (
 // require_mfa_sensitive_calls (S131-R-H24). It skips safe methods, so admin GETs
 // are unaffected; pass a no-op if step-up is not wired.
 func Register(g *echo.Group, h *Handler, health *HealthHandler, db *pgxpool.Pool, rdb *redis.Client, mfaSensitive echo.MiddlewareFunc) {
-	admin := g.Group("/admin", auth.RequireRole("Admin"), sharedmw.IPAllowlist(), mfaSensitive)
+	// No IP allowlist here: sharedmw.AdminIPAllowlist() hangs once on the whole
+	// protected tree (cmd/api/routes.go) and covers every /admin route, including
+	// the ones registered outside this package. Re-mounting it per sub-group is
+	// what let its coverage drift to 48 of 59 routes in the first place — a
+	// repetition looks like coverage and is really a second place to keep in sync.
+	admin := g.Group("/admin", auth.RequireRole("Admin"), mfaSensitive)
 	admin.GET("/health", health.HandleHealth)
 	admin.GET("/audit-logs", h.ListAuditLogs)
 

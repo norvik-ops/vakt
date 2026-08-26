@@ -835,15 +835,33 @@ func (r *Repository) CreateDSR(ctx context.Context, orgID string, in CreateDSRIn
 // When status is "completed" or "rejected" the method stamps completed_at with
 // the current UTC time, recording how long the response took relative to due_date.
 func (r *Repository) UpdateDSR(ctx context.Context, orgID, id string, in UpdateDSRInput) (*DSR, error) {
+	// Art. 17 DSGVO, defence in depth. Service.UpdateDSR already diverts
+	// erasure-type completions to ExecuteErasure, so this branch is unreachable
+	// on the normal path. It is enforced here anyway because the invariant that
+	// makes "executed" readable — ExecutePPDSRErasure is the ONLY producer of a
+	// completed erasure row — has to hold at the layer that owns the write, not
+	// at the layer that happens to route around it today.
+	existing, err := r.GetDSR(ctx, orgID, id)
+	if err != nil {
+		return nil, fmt.Errorf("update dsr %s: fetch for type check: %w", id, err)
+	}
+	if err := guardErasureCompletion(existing, in.Status); err != nil {
+		return nil, err
+	}
+
 	var completedAt pgtype.Timestamptz
 	if in.Status == "completed" || in.Status == "rejected" {
 		completedAt = pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true}
 	}
+
+	// UpdatePPDSR overwrites notes wholesale; keep the Art. 17 evidence block.
+	notes := preserveErasureEvidence(existing, in.Notes)
+
 	if _, err := r.q.UpdatePPDSR(ctx, db.UpdatePPDSRParams{
 		ID:          id,
 		OrgID:       orgID,
 		Status:      in.Status,
-		Notes:       optText(in.Notes),
+		Notes:       optText(notes),
 		CompletedAt: completedAt,
 	}); err != nil {
 		return nil, fmt.Errorf("update dsr %s: %w", id, err)

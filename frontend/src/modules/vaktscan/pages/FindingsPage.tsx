@@ -27,7 +27,7 @@ import { apiFetch } from '../../../api/client'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Finding } from '../types'
 import { cn } from '../../../lib/utils'
-import { findingSeverityClass, findingSeverityOrder } from '../../../lib/statusMapping'
+import { findingSeverityClass, findingSeverityWeight } from '../../../lib/statusMapping'
 import { ImportFindingsDialog } from '../components/ImportFindingsDialog'
 import { CSVImportDialog } from '../../../shared/components/CSVImportDialog'
 import { MobileCard } from '../../../shared/components/MobileCard'
@@ -160,6 +160,9 @@ function InlineSeverityCell({ finding }: { finding: Finding }) {
           <SelectItem value="medium">{t('vaktscan.severity.medium')}</SelectItem>
           <SelectItem value="low">{t('vaktscan.severity.low')}</SelectItem>
           <SelectItem value="info">{t('vaktscan.severity.info')}</SelectItem>
+          {/* Ohne diesen Eintrag zeigt das Feld bei einem unbewerteten Fund
+              nichts an — `value` traefe dann auf keine Option. */}
+          <SelectItem value="unknown">{t('vaktscan.severity.unknown')}</SelectItem>
         </SelectContent>
       </Select>
     )
@@ -177,7 +180,6 @@ function InlineSeverityCell({ finding }: { finding: Finding }) {
 }
 
 const severityClass = findingSeverityClass
-const SEVERITY_ORDER = findingSeverityOrder
 
 // Augment Finding with a numeric severity_order field for sorting
 type SortableFinding = Finding & { severity_order: number }
@@ -233,7 +235,12 @@ export default function FindingsPage() {
   // Augment with numeric severity order for sorting
   const findingsWithOrder: SortableFinding[] = rawFindings.map((f) => ({
     ...f,
-    severity_order: SEVERITY_ORDER[f.severity] || 0,
+    // Fällt ein Grad aus der Tabelle, gilt das Gewicht von `unknown` — NICHT 0.
+    // `|| 0` schob jeden unbekannten Wert unter `info` ans Listenende, wo ihn
+    // niemand sieht; genau die Verwechslung „unbewertet = harmlos", die das
+    // Backend seit Migration 265 vermeidet. Ein Grad, den wir nicht kennen, IST
+    // ein unbewerteter Fund und wird auch so einsortiert.
+    severity_order: findingSeverityWeight(f.severity),
   }))
   const {
     sorted: sortedFindings,
@@ -326,7 +333,7 @@ export default function FindingsPage() {
       <CSVImportDialog
         open={csvImportOpen}
         onClose={() => { setCsvImportOpen(false); }}
-        endpoint="/api/v1/vaktscan/findings/import/csv"
+        endpoint="/vaktscan/findings/import/csv"
         entityLabel="Findings"
         columns={['title', 'severity', 'description', 'asset', 'status']}
         onSuccess={() => void refetch()}
@@ -444,6 +451,9 @@ export default function FindingsPage() {
               <SelectItem value="medium">{t('vaktscan.severity.medium')}</SelectItem>
               <SelectItem value="low">{t('vaktscan.severity.low')}</SelectItem>
               <SelectItem value="info">{t('vaktscan.severity.info')}</SelectItem>
+              {/* Ohne diesen Eintrag liesse sich nach unbewerteten Funden nicht
+                  filtern — also ausgerechnet nach denen, die Triage brauchen. */}
+              <SelectItem value="unknown">{t('vaktscan.severity.unknown')}</SelectItem>
             </SelectContent>
           </Select>
 

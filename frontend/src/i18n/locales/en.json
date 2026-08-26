@@ -238,7 +238,8 @@
       "high": "High",
       "medium": "Medium",
       "low": "Low",
-      "info": "Info"
+      "info": "Info",
+      "unknown": "Unrated"
     },
     "status": {
       "open": "Open",
@@ -252,6 +253,10 @@
       "notFound": "Asset not found",
       "startScan": "Start scan",
       "scanStarted": "Scan started.",
+      "scanFailed": "Could not start the scan: {{msg}}",
+      "scannerLabel": "Scanner",
+      "scannerPlaceholder": "Choose scanner",
+      "noScanners": "No scanner is installed on this instance.",
       "assetDetails": "Asset details",
       "criticality": "Criticality",
       "target": "Target",
@@ -534,7 +539,9 @@
       "disableConfirm": "Do you really want to remove {{name}}? All associated controls and evidence will be permanently deleted.",
       "disabling": "Removing…",
       "confirmDisable": "Yes, disable",
-      "frameworkStatusDraft": "Draft — expected end of 2026"
+      "frameworkStatusDraft": "Draft — expected end of 2026",
+      "frameworkStatusNotOffered": "Not offered",
+      "frameworkStatusNotOfferedHint": "This framework is currently not offered and cannot be enabled."
     },
     "controlDetailPage": {
       "addEvidence": "Add Evidence",
@@ -1127,7 +1134,15 @@
       "labelSeverity": "Severity",
       "labelFindingDesc": "Description",
       "placeholderFindingDesc": "Details about the finding …",
-      "findingSubmitBtn": "Add Finding"
+      "findingSubmitBtn": "Add Finding",
+      "typeComplianceCheck": "Compliance check",
+      "typeProcessAudit": "Process audit",
+      "summaryPlannedThisYear": "Planned (year)",
+      "summaryOverdueCapas": "Overdue CAPAs",
+      "labelScope": "Audit scope *",
+      "placeholderScope": "Which areas, sites and processes does this audit cover?",
+      "labelAuditReport": "Audit report *",
+      "placeholderAuditReport": "Results, findings and conclusions of the audit (at least 10 characters) …"
     },
     "soaPage": {
       "subtitle": "Annex A — Applicability of all 93 controls (Clause 6.1.3)",
@@ -1156,6 +1171,7 @@
       "groupA7": "A.7 Physical Controls",
       "groupA8": "A.8 Technological Controls",
       "implNotStarted": "Not started",
+      "implPlanned": "Planned",
       "implInProgress": "In progress",
       "implImplemented": "Implemented",
       "implNotApplicable": "Not applicable",
@@ -1238,7 +1254,17 @@
       "freqMonthly": "Monthly",
       "freqQuarterly": "Quarterly",
       "freqAnnually": "Annually",
-      "freqAsNeeded": "As needed"
+      "freqAsNeeded": "As needed",
+      "categoryEmployee": "Employees",
+      "categoryShareholder": "Shareholders",
+      "categoryInsurer": "Insurers",
+      "categoryItProvider": "IT providers",
+      "colReviewDate": "Next review",
+      "badgeOverdue": "overdue",
+      "badgeSystemDefault": "Default entry",
+      "labelReviewDate": "Next review",
+      "labelConcerns": "Concerns and expectations",
+      "placeholderConcerns": "What does this party expect from the ISMS?"
     },
     "incidentDetail": {
       "notFound": "Incident not found.",
@@ -2053,6 +2079,7 @@
       "resolveCompleted": "Completed",
       "resolveRejected": "Rejected",
       "resolveExtended": "Extended",
+      "resolveErasureNotExecuted": "An erasure request can only be closed as \"Completed\" once the erasure under Art. 17 GDPR has actually been carried out. Use the \"Erasure\" button on the request first; it can be closed afterwards.",
       "resolveLabelExtensionReason": "Extension reason",
       "resolveLabelNotes": "Closing notes",
       "resolveBtn": "Close",
@@ -2381,11 +2408,11 @@
     "moduleVaktprivacyDesc": "GDPR documentation (RoPA, DPIA, DPA, breaches)",
     "licenseAutoRenewal": "Auto-renewal active",
     "licenseValidUntil": "Valid until {{date}}",
-    "licenseProComingSoon": "Vakt Pro — coming soon",
-    "licenseProFeature1": "Roles: Admin, Analyst, Viewer, Auditor",
+    "licenseProComingSoon": "Order Vakt Pro",
+    "licenseProFeature1": "BSI IT-Grundschutz — modelling, Grundschutz check, cockpit",
     "licenseProFeature2": "Granular module permissions per user",
-    "licenseProFeature3": "TISAX, DORA, EU AI Act, CRA",
-    "licenseProFeature4": "AI advisor, Audit PDF export, SSO, API access",
+    "licenseProFeature3": "EU AI Act, CRA, GDPR TOM, CIS, KRITIS, BSI C5",
+    "licenseProFeature4": "Audit PDF export, SSO, SCIM, SIEM, API access",
     "siemTitle": "SIEM Integration",
     "siemProTitle": "Pro Feature",
     "siemProDesc": "Automatically forward audit log entries to Splunk, Elasticsearch or a generic webhook. Available with Vakt Pro.",
@@ -2527,7 +2554,9 @@
     "creating": "Creating...",
     "createUser": "Create user",
     "userCreated": "User created successfully",
-    "deleted": "Deleted"
+    "deleted": "Deleted",
+    "roleAuditorReadOnly": "AuditorReadOnly — Read only, for external auditors",
+    "roleInternalAuditor": "InternalAuditor — Complete audits and approve management reviews (segregation of duties)"
   },
   "accountSettingsPage": {
     "title": "Account Settings",
@@ -2713,8 +2742,9 @@
     "passwordStrengthWeak": "Weak",
     "passwordStrengthMedium": "Medium",
     "passwordStrengthStrong": "Strong",
-    "mfaPrompt": "Enter the 6-digit code from your authenticator app to finish signing in.",
+    "mfaPrompt": "Enter the code from your authenticator app to finish signing in.",
     "mfaCodeLabel": "Authentication code",
+    "mfaBackupHint": "No access to the app? Enter one of your backup codes instead (format ABCD-1234).",
     "mfaVerify": "Verify",
     "mfaBack": "Back to sign in",
     "mfaInvalidCode": "Invalid or expired code"
@@ -2943,7 +2973,9 @@
     "team": {
       "roleAdmin": "Admin",
       "roleEditor": "Editor",
-      "roleViewer": "Viewer"
+      "roleViewer": "Viewer",
+      "roleAuditorReadOnly": "AuditorReadOnly",
+      "roleInternalAuditor": "InternalAuditor"
     }
   },
   "admin": {
@@ -3039,9 +3071,9 @@
     },
     "pro": {
       "title": "Vakt Pro",
-      "description": "This feature is not included in the Community Edition. Vakt Pro includes TISAX, DORA, EU AI Act, NIS2 notification assistant, audit PDF export, SSO, API keys, granular module permissions, and more.",
+      "description": "This feature is not included in the Community Edition. Vakt Pro includes BSI IT-Grundschutz, EU AI Act, CRA, GDPR TOM, CIS, NIS2 notification assistant, audit PDF export, SSO, API keys, granular module permissions, and more.",
       "cta": "Upgrade now →",
-      "featureList": "TISAX · DORA · EU AI Act · NIS2 assistant · Audit PDF · SSO · API keys",
+      "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · NIS2 assistant · Audit PDF · SSO · API keys",
       "demoHint": "Pro"
     }
   },
@@ -3277,6 +3309,9 @@
     "version": "Version",
     "owner": "Owner",
     "ownerPlaceholder": "e.g. IT Manager",
+    "notSet": "not set",
+    "lastTested": "Last tested",
+    "statusLabel": "Status",
     "deleteConfirm": "Delete this plan?",
     "loadError": "Error loading BCP plans.",
     "emptyTitle": "No BCP plans yet",
@@ -3503,6 +3538,10 @@
     "csvHeaderAction": "Action",
     "csvHeaderResource": "Resource Type",
     "csvHeaderDetails": "Details",
+    "csvHeaderIp": "IP address",
+    "exporting": "Exporting …",
+    "exportTruncated": "Export limited to {{exported}} of {{total}} entries.",
+    "exportFailed": "Export failed",
     "csvHeaders": {
       "timestamp": "Timestamp",
       "user": "User",
@@ -4163,6 +4202,7 @@
       "biaProcesses": "BIA Processes",
       "highCritical": "high/critical",
       "avgRto": "Avg. RTO",
+      "shortestRto": "Shortest RTO",
       "recoveryPlans": "Recovery Plans",
       "tested": "tested",
       "emergencyContacts": "Emergency Contacts",

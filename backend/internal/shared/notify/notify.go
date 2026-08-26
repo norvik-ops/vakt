@@ -6,10 +6,37 @@
 // channels and is retry-safe: if enqueue fails the DB record survives and can
 // be swept by a background job.
 //
-// The package-level Send function is a thin, fire-and-forget helper that
-// writes directly to user_notifications for in-app display. It never returns
-// an error — failures are logged and swallowed so callers can remain
-// non-fatal.
+// The package-level Send function writes directly to user_notifications for
+// in-app display and returns whether that write succeeded.
+//
+// # Wie Aufrufer mit dem Fehler umgehen (R1-W4A-N1)
+//
+// Send gab frueher nichts zurueck: jeder Datenbankfehler wurde geloggt und
+// verworfen, und kein Aufrufer konnte wissen, ob er gerade etwas zugestellt
+// hat. Fuenfzehn Dateien haben danach einen Erfolg protokolliert, den sie
+// nicht kennen konnten — und zwei haben zusaetzlich eine Marke gesetzt, die
+// jeden weiteren Versuch ausschliesst. Ein Fehler, der niemanden erreicht,
+// ist kein Fehler, sondern eine Luege.
+//
+// Der Rueckgabewert bricht bewusst NICHT den Geschaeftsvorgang ab. Ein
+// Kommentar, ein Risiko, eine Datenpanne sind bereits gespeichert, wenn Send
+// laeuft; eine fehlgeschlagene Benachrichtigung darf sie nicht zuruecknehmen.
+// Es gelten drei Regeln, je nachdem, wofuer der Versand da ist:
+//
+//  1. Der Versand IST der Zweck und danach wird eine Marke gesetzt, die
+//     kuenftige Versuche ausschliesst (reminder_sent_at, expiry_notified_at,
+//     notified_warn_*): Bei einem Fehler wird die Marke NICHT gesetzt, damit
+//     der naechste Lauf es erneut versucht. Sonst macht ein einmaliger
+//     Ausfall aus einer verpassten Meldung eine dauerhaft unterdrueckte.
+//  2. Der Versand begleitet einen bereits gespeicherten Geschaeftsvorgang:
+//     Der Fehler bricht nichts ab, wird aber am Aufrufort mit dem
+//     Geschaeftskontext geloggt — und es darf danach kein Erfolg
+//     protokolliert werden.
+//  3. Innerhalb von safego.Run: den Fehler zurueckgeben, safego loggt ihn.
+//
+// Send loggt einen Schreibfehler zusaetzlich selbst. Das ist Absicht: ein
+// Aufrufer, der den Fehler bewusst mit `_ =` verwirft, soll die Meldung
+// trotzdem in den Betriebslogs hinterlassen.
 package notify
 
 import (
@@ -25,6 +52,7 @@ import (
 
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/shared/queuemetrics"
+	"github.com/matharnica/vakt/internal/shared/redisopt"
 )
 
 // Channel identifies the external delivery channel for a notification.
@@ -59,6 +87,16 @@ type Message struct {
 	Target  string  `json:"target"` // webhook URL, email address, Slack channel, etc.
 }
 
+// deliveryEnvelope is the Asynq task payload for a notification delivery job. It
+// carries the notifications-row id alongside the Message so the worker handler
+// can (a) deliver over the channel and (b) advance the exact DB row's status
+// from 'pending' to 'sent'/'failed'. The row id must travel in the task because
+// the notifications table stores no Asynq task id to correlate against.
+type deliveryEnvelope struct {
+	NotificationID string  `json:"notification_id"`
+	Message        Message `json:"message"`
+}
+
 // Sender is the interface that delivery adapters must satisfy. Each Channel
 // constant has a corresponding Sender registered in the worker process.
 type Sender interface {
@@ -78,20 +116,15 @@ type Service struct {
 // Redis address specified in cfg. The caller owns the db pool lifecycle;
 // the Service does not close it.
 func NewService(db *pgxpool.Pool, cfg *config.Config) *Service {
-	// Parse the full Redis URL (redis://:password@host:port) — asynq expects "host:port".
-	redisOpt := asynq.RedisClientOpt{Addr: "localhost:6379"}
-	if cfg != nil && cfg.RedisUrl != "" {
-		if parsed, err := redis.ParseURL(cfg.RedisUrl); err == nil {
-			redisOpt = asynq.RedisClientOpt{
-				Addr:     parsed.Addr,
-				Password: parsed.Password,
-				DB:       parsed.DB,
-			}
-		} else {
-			log.Warn().Err(err).Str("url", cfg.RedisUrl).Msg("notify: invalid Redis URL, falling back to localhost:6379")
-		}
+	// R1-14b-01: die Ableitung aus VAKT_REDIS_URL liegt in redisopt, nicht hier.
+	// Sie stand frueher an sechs Stellen als Handarbeit, an vier davon ohne die
+	// Datenbanknummer — und eine Struktur, die man sechsmal von Hand baut, baut
+	// man beim siebten Mal wieder falsch.
+	var redisURL string
+	if cfg != nil {
+		redisURL = cfg.RedisUrl
 	}
-	client := asynq.NewClient(redisOpt)
+	client := asynq.NewClient(redisopt.AsynqFromURL(redisURL))
 	return &Service{
 		db:    db,
 		cfg:   cfg,
@@ -104,13 +137,16 @@ func NewService(db *pgxpool.Pool, cfg *config.Config) *Service {
 // the persisted record can be retried by a background sweep job. A persist
 // failure is returned as a wrapped error.
 func (s *Service) Notify(ctx context.Context, msg Message) error {
-	// Persist to notifications table.
-	if err := s.persist(ctx, msg); err != nil {
+	// Persist to notifications table and capture the row id so the delivery
+	// task can advance this exact row's status.
+	id, err := s.persist(ctx, msg)
+	if err != nil {
 		return fmt.Errorf("notify persist: %w", err)
 	}
 
-	// Enqueue delivery task.
-	payload, err := json.Marshal(msg)
+	// Enqueue delivery task. The payload is an envelope carrying the row id so
+	// the worker handler can flip status='sent'/'failed' on the right row.
+	payload, err := json.Marshal(deliveryEnvelope{NotificationID: id, Message: msg})
 	if err != nil {
 		return fmt.Errorf("notify marshal payload: %w", err)
 	}
@@ -135,17 +171,67 @@ var pubClient *redis.Client
 // Call once during API/worker startup. Safe to leave unset (push becomes no-op).
 func SetPublisher(rdb *redis.Client) { pubClient = rdb }
 
-// Send inserts a single row into user_notifications for in-app display.
-// It is intentionally non-fatal: any database error is logged via zerolog and
-// silently discarded so that callers (scanner workers, training completions,
-// breach events, etc.) are never blocked by a notification failure.
+// SendOnce verhaelt sich wie Send, legt die Benachrichtigung aber nur an, wenn
+// zu demselben dedupeKey noch keine existiert.
 //
-// S124-6 (E2E-03): Send detaches from the caller's context. It is best-effort
-// and frequently fired at the tail of a request handler; if it ran on the
-// request context, a client that already received its response (context
-// canceled) would spuriously fail the notification write with "context
-// canceled". The write is bounded by its own 5s timeout instead.
-func Send(ctx context.Context, db *pgxpool.Pool, orgID, title, body, notifType, module string) {
+// L3-01: der DORA-Ampel-Cron laeuft alle fuenf Minuten und rief Send fuer jede
+// ueberschrittene Frist erneut auf — 288 Laeufe am Tag mal drei Fristen sind 864
+// identische Meldungen pro Tag und Vorfall. Eine Meldung, die 864-mal am Tag
+// kommt, wird nicht gelesen; sie verdeckt die, die gelesen werden muss.
+//
+// Der Schluessel liegt in user_notifications.module. Dieselbe Doppelnutzung
+// benutzt bereits der Framework-Meilenstein (CountCKFrameworkMilestoneNotifs
+// mit "<frameworkID>:<threshold>"); die Spalte traegt sonst den Modulnamen und
+// wird von keiner Abfrage als Fremdschluessel gelesen.
+//
+// Einfuegen und Pruefen stecken in EINER Anweisung. Zwei Cron-Laeufe, die sich
+// ueberholen, koennen so hoechstens dann doppelt schreiben, wenn beide
+// Anweisungen exakt gleichzeitig laufen — ohne Unique-Index bleibt das offen,
+// und ein Unique-Index ueber (org_id, type, module) wuerde alle uebrigen
+// Send-Aufrufer brechen, die sich module teilen.
+// SendOnce gibt nil zurueck, wenn die Meldung geschrieben wurde ODER bereits
+// vorlag — beides heisst „der Nutzer sieht sie". Nur ein Schreibfehler ist ein
+// Fehler. Die Regeln aus dem Paketkommentar gelten unveraendert.
+func SendOnce(ctx context.Context, db *pgxpool.Pool, orgID, title, body, notifType, dedupeKey string) error {
+	sendCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	tag, err := db.Exec(sendCtx,
+		`INSERT INTO user_notifications (org_id, title, body, type, module)
+		 SELECT $1::uuid, $2, $3, $4, $5
+		  WHERE NOT EXISTS (
+		      SELECT 1 FROM user_notifications
+		       WHERE org_id = $1::uuid AND type = $4 AND module = $5
+		  )`,
+		orgID, title, body, notifType, dedupeKey)
+	if err != nil {
+		log.Error().Err(err).Str("dedupe_key", dedupeKey).Msg("notify.SendOnce failed")
+		return fmt.Errorf("notify.SendOnce: insert user notification: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		// Schon gemeldet — kein Fehler, aber auch kein SSE-Weckruf.
+		return nil
+	}
+	if pubClient != nil {
+		if perr := pubClient.Publish(sendCtx, "notify:"+orgID, "1").Err(); perr != nil {
+			log.Warn().Err(perr).Str("org_id", orgID).Msg("notify.SendOnce: SSE publish failed")
+		}
+	}
+	return nil
+}
+
+// Send inserts a single row into user_notifications for in-app display and
+// returns nil exactly when that row was written. Siehe den Paketkommentar,
+// wie Aufrufer mit dem Fehler umzugehen haben — kurz: er bricht den
+// Geschaeftsvorgang nicht ab, aber er darf auch nicht als Erfolg
+// protokolliert werden, und er verhindert jede Marke, die kuenftige Versuche
+// ausschliesst.
+//
+// S124-6 (E2E-03): Send detaches from the caller's context. It is frequently
+// fired at the tail of a request handler; if it ran on the request context, a
+// client that already received its response (context canceled) would
+// spuriously fail the notification write with "context canceled". The write is
+// bounded by its own 5s timeout instead.
+func Send(ctx context.Context, db *pgxpool.Pool, orgID, title, body, notifType, module string) error {
 	sendCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 	_, err := db.Exec(sendCtx,
@@ -154,31 +240,40 @@ func Send(ctx context.Context, db *pgxpool.Pool, orgID, title, body, notifType, 
 		orgID, title, body, notifType, module)
 	if err != nil {
 		log.Error().Err(err).Str("module", module).Msg("notify.Send failed")
-		return
+		return fmt.Errorf("notify.Send: insert user notification: %w", err)
 	}
 	// S98-5: push a wakeup to open SSE streams. Channel key MUST match
-	// dashboard.notifyChannel ("notify:<org_id>"). Best-effort.
+	// dashboard.notifyChannel ("notify:<org_id>"). Best-effort — und bewusst
+	// NICHT im Rueckgabewert: die Benachrichtigung steht bereits in der
+	// Datenbank, die SSE-Sicherheitsabfrage holt sie binnen 30 s nach. Wer
+	// den Publish-Fehler zurueckgaebe, liesse den Aufrufer eine zugestellte
+	// Benachrichtigung als fehlgeschlagen behandeln — und im Fall 1 oben die
+	// Marke nie setzen, also dieselbe Meldung endlos wiederholen.
 	if pubClient != nil {
 		if perr := pubClient.Publish(sendCtx, "notify:"+orgID, "1").Err(); perr != nil {
 			log.Warn().Err(perr).Str("org_id", orgID).Msg("notify.Send: SSE publish failed")
 		}
 	}
+	return nil
 }
 
-// persist inserts a pending notification row.
-func (s *Service) persist(ctx context.Context, msg Message) error {
+// persist inserts a pending notification row and returns its generated id so the
+// caller can reference the exact row in the enqueued delivery task.
+func (s *Service) persist(ctx context.Context, msg Message) (string, error) {
 	payload, err := json.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("marshal notification payload: %w", err)
+		return "", fmt.Errorf("marshal notification payload: %w", err)
 	}
 
-	_, err = s.db.Exec(ctx, `
+	var id string
+	err = s.db.QueryRow(ctx, `
 		INSERT INTO notifications (org_id, type, channel, payload, status)
-		VALUES ($1::uuid, $2, $3, $4::jsonb, 'pending')`,
+		VALUES ($1::uuid, $2, $3, $4::jsonb, 'pending')
+		RETURNING id::text`,
 		msg.OrgID, NotificationJobType, string(msg.Channel), string(payload),
-	)
+	).Scan(&id)
 	if err != nil {
-		return fmt.Errorf("insert notification: %w", err)
+		return "", fmt.Errorf("insert notification: %w", err)
 	}
-	return nil
+	return id, nil
 }

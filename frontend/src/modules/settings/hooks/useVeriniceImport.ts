@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { apiFetch } from '../../../api/client'
 
 export interface VeriniceImportPreview {
   total_objects: number
@@ -18,25 +19,15 @@ export interface VeriniceImportResult {
   framework_id?: string
 }
 
-function csrfToken(): string {
-  const m = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
-  return m ? decodeURIComponent(m[1]) : ''
-}
-
+// R1-18-D4: this is the eighth FormData upload, and it used to hand-roll both
+// the request and its own csrfToken() reader — a copy that saw only
+// document.cookie and so lost the in-memory fallback for proxies that rewrite
+// Set-Cookie. apiFetch now omits Content-Type for FormData, so the multipart
+// boundary survives and the central path handles CSRF, session and MFA.
 async function uploadVNA<T>(path: string, file: File): Promise<T> {
   const fd = new FormData()
   fd.append('file', file)
-  const res = await fetch(`/api/v1${path}`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'X-CSRF-Token': csrfToken() },
-    body: fd,
-  })
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string }
-    throw new Error(err.error ?? res.statusText)
-  }
-  return res.json() as Promise<T>
+  return apiFetch<T>(path, { method: 'POST', body: fd })
 }
 
 export function useVeriniceImportPreview() {

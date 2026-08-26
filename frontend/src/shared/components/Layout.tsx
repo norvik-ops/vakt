@@ -42,6 +42,9 @@ interface NavChild {
   label: string
   icon: React.ElementType
   pro?: boolean
+  /** 'pro' = mit Pro-Lizenz nutzbar. 'unsold' = gatet auf ein Merkmal, das in keinem
+   *  Tarif verkauft wird (features.UnsoldFeatures) — kein Kauf schaltet es frei. */
+  tier?: 'pro' | 'unsold'
 }
 
 interface NavGroup {
@@ -68,8 +71,8 @@ const MODULES_NAV: NavItem[] = [
       { path: '/vaktscan/assets',       label: 'nav.scan.assets',       icon: Server },
       { path: '/vaktscan/findings',     label: 'nav.scan.findings',     icon: ScanSearch },
       { path: '/vaktscan/sla',          label: 'nav.scan.sla',          icon: Clock },
-      { path: '/vaktscan/reports',      label: 'nav.scan.reports',      icon: BarChart2 },
-      { path: '/vaktscan/eol',          label: 'nav.scan.eol',          icon: PackageX },
+      { path: '/vaktscan/reports',      label: 'nav.scan.reports',      icon: BarChart2, pro: true },
+      { path: '/vaktscan/eol',          label: 'nav.scan.eol',          icon: PackageX, pro: true },
       { path: '/vaktscan/certificates', label: 'nav.scan.certificates', icon: ShieldCheck },
     ],
   },
@@ -89,8 +92,8 @@ const MODULES_NAV: NavItem[] = [
           { path: '/vaktcomply/bsi/cockpit',         label: 'nav.comply.bsiCockpit',    icon: LayoutGrid, pro: true },
           { path: '/vaktcomply/bsi/reports',         label: 'nav.comply.bsiReports',    icon: FileBarChart, pro: true },
           { path: '/vaktcomply/cis-controls',        label: 'nav.comply.cisv8',         icon: ListChecks },
-          { path: '/vaktcomply/ccm',                 label: 'nav.comply.ccm',           icon: Cloud, pro: true },
-          { path: '/vaktcomply/dora/dashboard',      label: 'nav.comply.dora',          icon: Banknote, pro: true },
+          { path: '/vaktcomply/ccm',                 label: 'nav.comply.ccm',           icon: Cloud },
+          { path: '/vaktcomply/dora/dashboard',      label: 'nav.comply.dora',          icon: Banknote, pro: true, tier: 'unsold' },
           { path: '/vaktcomply/eu-ai-act/dashboard', label: 'nav.comply.euAiAct',       icon: Bot, pro: true },
         ],
       },
@@ -118,9 +121,9 @@ const MODULES_NAV: NavItem[] = [
       {
         label: 'nav.comply.group.thirdParty',
         items: [
-          { path: '/vaktcomply/suppliers',        label: 'nav.comply.suppliers',  icon: Building2 },
-          { path: '/vaktcomply/ai-systems',       label: 'nav.comply.aiSystems',  icon: Cpu },
-          { path: '/vaktcomply/resilience-tests', label: 'nav.comply.resilience', icon: FlaskConical },
+          { path: '/vaktcomply/suppliers',        label: 'nav.comply.suppliers',  icon: Building2, pro: true },
+          { path: '/vaktcomply/ai-systems',       label: 'nav.comply.aiSystems',  icon: Cpu, pro: true },
+          { path: '/vaktcomply/resilience-tests', label: 'nav.comply.resilience', icon: FlaskConical, pro: true, tier: 'unsold' },
         ],
       },
       {
@@ -151,9 +154,9 @@ const MODULES_NAV: NavItem[] = [
     label: 'nav.aware.root',
     icon: Fish,
     children: [
-      { path: '/vaktaware/campaigns',     label: 'nav.aware.campaigns',    icon: Mail },
-      { path: '/vaktaware/templates',     label: 'nav.aware.templates',    icon: LayoutTemplate },
-      { path: '/vaktaware/target-groups', label: 'nav.aware.targetGroups', icon: Target },
+      { path: '/vaktaware/campaigns',     label: 'nav.aware.campaigns',    icon: Mail, pro: true },
+      { path: '/vaktaware/templates',     label: 'nav.aware.templates',    icon: LayoutTemplate, pro: true },
+      { path: '/vaktaware/target-groups', label: 'nav.aware.targetGroups', icon: Target, pro: true },
       { path: '/vaktaware/training',      label: 'nav.aware.training',     icon: GraduationCap },
       { path: '/vaktaware/phish-reports', label: 'nav.aware.phishReports', icon: Flag },
     ],
@@ -165,7 +168,7 @@ const MODULES_NAV: NavItem[] = [
     children: [
       { path: '/vaktprivacy/vvt',               label: 'nav.privacy.vvt',            icon: FileText },
       { path: '/vaktprivacy/dpia',              label: 'nav.privacy.dpia',           icon: FileSearch, pro: true },
-      { path: '/vaktprivacy/avv',               label: 'nav.privacy.avv',            icon: Handshake, pro: true },
+      { path: '/vaktprivacy/avv',               label: 'nav.privacy.avv',            icon: Handshake },
       { path: '/vaktprivacy/breach',            label: 'nav.privacy.breach',         icon: AlertTriangle },
       { path: '/vaktprivacy/dsr',               label: 'nav.privacy.dsr',            icon: Users },
       { path: '/vaktprivacy/transfers',         label: 'nav.privacy.tia',            icon: Globe, pro: true },
@@ -345,7 +348,7 @@ export default function Layout() {
             {pendingApprovalCount}
           </span>
         )}
-        {c.pro && !isUserPro && !isOverduePath && !isAutoEvidencePath && !isApprovalsPath && <ProBadge />}
+        {c.pro && !isUserPro && !isOverduePath && !isAutoEvidencePath && !isApprovalsPath && <ProBadge tier={c.tier} />}
       </Link>
     )
   }
@@ -675,7 +678,7 @@ export default function Layout() {
                     >
                       <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                       <span className="flex-1 truncate">{t(c.label)}</span>
-                      {c.pro && !isUserPro && <ProBadge />}
+                      {c.pro && !isUserPro && <ProBadge tier={c.tier} />}
                     </Link>
                   )
                 })}
@@ -698,7 +701,7 @@ export default function Layout() {
                 >
                   <CIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span className="flex-1 truncate">{t(c.label)}</span>
-                  {c.pro && !isUserPro && <ProBadge />}
+                  {c.pro && !isUserPro && <ProBadge tier={c.tier} />}
                 </Link>
               )
             })}

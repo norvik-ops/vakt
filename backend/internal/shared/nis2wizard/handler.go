@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
@@ -53,20 +54,56 @@ func Register(g *echo.Group, h *Handler) {
 // sowie die Re-Assessment-, History- und Multi-Framework-Endpoints.
 // Sprint 22 S22-4/5/6 + Sprint 28 S28-2 + Sprint 28 S28-3 + Sprint 28 S28-4.
 // Aufrufer übergibt eine authentifizierte Echo-Gruppe.
+//
+// R1-W5A-N1: die fünf zustandsändernden Routen dieser Gruppe trugen keine
+// Rollenprüfung — nur Auth, Modulzugriff und teilweise ein Lizenz-Gate. Eine
+// Nur-Lese-Rolle (Viewer, AuditorReadOnly, InternalAuditor) kam damit überall
+// durch. Die Sprengweite ist ungleich verteilt, die Lücke war dieselbe:
+//
+//   - migrate-from-anonymous → AutoMapToControls fährt ein
+//     `UPDATE ck_controls SET manual_status … WHERE org_id = $2` ohne jede
+//     weitere Einschränkung: ein Viewer überschreibt den Umsetzungsstand der
+//     GANZEN Organisation, und zwar mit Werten aus einem anonymen Wizard-Run,
+//     dessen Token er selbst über den öffentlichen Endpoint erzeugt hat.
+//   - reassess → legt einen Org-Run an und verbrennt die 90-Tage-Sperre
+//     (reassessmentCooldown): danach kann die Org 90 Tage lang kein echtes
+//     Re-Assessment mehr starten.
+//   - reassess/:id/answer → schreibt Antworten und Score des Org-Runs.
+//   - multi/start + multi/:id/answer → schreiben in nis2_anonymous_runs und
+//     verbrauchen dabei das Pro-Entitlement der Org.
+//
+// Gewählte Rolle: Admin + SecurityAnalyst, dieselbe Schreibrolle, die
+// vaktcomply für `PATCH /controls/:id` verwendet (`rw` in vaktcomply/routes.go).
+// Der Auto-Mapping-Pfad schreibt genau diese Spalte — eine schwächere Rolle
+// hier wäre ein Seitenweg um das dortige Gate.
+//
+// Reihenfolge: die Rollenprüfung steht bewusst VOR features.Require. Eine
+// Rolle, die den Endpoint gar nicht nutzen darf, soll nicht erst an der Lizenz
+// scheitern (402) — dasselbe Muster wie aiWrite in services/ai/routes.go. Das
+// macht die Ablehnung außerdem unabhängig von der Edition: auf der kostenlosen
+// Edition hatten `reassess/:id/answer` und `multi/:id/answer` überhaupt kein
+// Gate, weil nur der Start lizenzgeprüft ist.
+//
+// NICHT gegated: `POST /nis2-assessment/pdf`. Der Endpoint ist POST-förmig,
+// aber ein Read — ExportPDF lädt einen Run und rendert ihn, es gibt keinen
+// Schreibpfad (nachgeprüft am Handler-Rumpf). Lesen darf jede Rolle; der
+// Eintrag steht mit genau dieser Begründung in rbaccov.viewerWriteAllow.
 func RegisterAuthenticated(g *echo.Group, h *Handler) {
-	g.POST("/nis2-assessment/migrate-from-anonymous", h.MigrateFromAnonymous)
+	write := auth.RequireRole("Admin", "SecurityAnalyst")
+
+	g.POST("/nis2-assessment/migrate-from-anonymous", h.MigrateFromAnonymous, write)
 	g.POST("/nis2-assessment/pdf", h.ExportPDF)
 
 	// Sprint 28 / S28-3: Re-Assessment + History (ProGate: FeatureNIS2Reporting).
-	g.POST("/reassess", h.StartReassessment, features.Require(features.FeatureNIS2Reporting))
-	g.POST("/reassess/:id/answer", h.AnswerReassessment)
+	g.POST("/reassess", h.StartReassessment, write, features.Require(features.FeatureNIS2Reporting))
+	g.POST("/reassess/:id/answer", h.AnswerReassessment, write)
 	g.GET("/reassess/:id/result", h.GetReassessmentResult)
 	g.GET("/history", h.GetHistory, features.Require(features.FeatureNIS2Reporting))
 
 	// Sprint 28 / S28-4: Multi-Framework-Assessment (NIS2 + ISO27001 + DSGVO-TOM).
 	// ProGate: FeatureNIS2Reporting für Start; Answer + Result sind nach Start frei.
-	g.POST("/nis2-assessment/multi/start", h.StartMultiFramework, features.Require(features.FeatureNIS2Reporting))
-	g.POST("/nis2-assessment/multi/:id/answer", h.AnswerMultiFramework)
+	g.POST("/nis2-assessment/multi/start", h.StartMultiFramework, write, features.Require(features.FeatureNIS2Reporting))
+	g.POST("/nis2-assessment/multi/:id/answer", h.AnswerMultiFramework, write)
 	g.GET("/nis2-assessment/multi/:id/result", h.GetMultiFrameworkResult)
 }
 

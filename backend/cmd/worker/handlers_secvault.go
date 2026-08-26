@@ -17,7 +17,6 @@ import (
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/modules/vaktvault"
-	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
 	ghintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/github"
 )
 
@@ -153,7 +152,7 @@ func handleCloudSync(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 			log.Warn().Msg("cloud_sync: master key not configured, skipping")
 			return nil
 		}
-		svc := cloudintegration.NewService(pool, workerKey(cfg, "vakt-cloud-v1"), cloudintegration.NoopEvidenceWriter())
+		svc := newCloudService(cfg, pool)
 		if err := svc.SyncAllEnabled(ctx); err != nil {
 			log.Error().Err(err).Msg("cloud_sync: failed")
 			return err

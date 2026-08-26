@@ -1,0 +1,27 @@
+{{- if .Values.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "vakt.fullname" . }}-api
+  labels:
+    {{- include "vakt.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "vakt.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "vakt.fullname" . }}-worker
+  labels:
+    {{- include "vakt.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pdb.workerMinAvailable }}
+  selector:
+    matchLabels:
+      {{- include "vakt.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+{{- end }}

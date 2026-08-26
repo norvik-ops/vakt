@@ -71,14 +71,10 @@ func handleAVVExpiryCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerF
 			sem <- struct{}{}
 			g.Go(func() error {
 				defer func() { <-sem }()
-				alertSvc.Fire(gCtx, orgID, alerting.EventAVVExpired, map[string]any{
+				// Sperre nur nach bestätigter Zustellung — siehe ADR-0083.
+				alertSvc.FireAndMark(gCtx, orgID, alerting.EventAVVExpired, map[string]any{
 					"message": "One or more AVVs have expired and must be renewed.",
 				})
-				_, _ = pool.Exec(gCtx, `
-					INSERT INTO notification_alert_state (org_id, event_type, last_fired_at)
-					VALUES ($1::uuid, $2, NOW())
-					ON CONFLICT (org_id, event_type) DO UPDATE SET last_fired_at = NOW()
-				`, orgID, alerting.EventAVVExpired)
 				return nil
 			})
 		}
@@ -166,14 +162,10 @@ func handleDSROverdueCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.Handler
 			sem <- struct{}{}
 			g.Go(func() error {
 				defer func() { <-sem }()
-				alertSvc.Fire(gCtx, orgID, alerting.EventDSROverdue, map[string]any{
+				// Sperre nur nach bestätigter Zustellung — siehe ADR-0083.
+				alertSvc.FireAndMark(gCtx, orgID, alerting.EventDSROverdue, map[string]any{
 					"message": "One or more DSR requests have exceeded their due date.",
 				})
-				_, _ = pool.Exec(gCtx, `
-					INSERT INTO notification_alert_state (org_id, event_type, last_fired_at)
-					VALUES ($1::uuid, $2, NOW())
-					ON CONFLICT (org_id, event_type) DO UPDATE SET last_fired_at = NOW()
-				`, orgID, alerting.EventDSROverdue)
 				return nil
 			})
 		}

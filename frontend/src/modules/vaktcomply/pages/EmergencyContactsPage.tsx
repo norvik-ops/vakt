@@ -46,7 +46,7 @@ function emptyForm(): CreateEmergencyContactInput {
     phone: '',
     email: '',
     escalation_level: 2,
-    available_247: false,
+    available_24_7: false,
     notes: '',
   }
 }
@@ -58,7 +58,7 @@ function contactToForm(c: EmergencyContact): CreateEmergencyContactInput {
     phone: c.phone,
     email: c.email,
     escalation_level: c.escalation_level,
-    available_247: c.available_247,
+    available_24_7: c.available_24_7,
     notes: c.notes,
   }
 }
@@ -86,7 +86,7 @@ function ContactCard({
               {contact.role && (
                 <span className="text-xs text-muted-foreground">{contact.role}</span>
               )}
-              {contact.available_247 && (
+              {contact.available_24_7 && (
                 <span className="flex items-center gap-0.5 text-xs text-green-400">
                   <CheckCircle2 className="w-3 h-3" />
                   24/7
@@ -302,8 +302,8 @@ export default function EmergencyContactsPage() {
             <div className="flex items-center gap-3">
               <Switch
                 id="available247"
-                checked={form.available_247 ?? false}
-                onCheckedChange={(v) => { setForm((f) => ({ ...f, available_247: v })) }}
+                checked={form.available_24_7 ?? false}
+                onCheckedChange={(v) => { setForm((f) => ({ ...f, available_24_7: v })) }}
               />
               <Label htmlFor="available247">{t('bcm.emergencyContacts.available247')}</Label>
             </div>

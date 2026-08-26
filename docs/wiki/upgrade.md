@@ -8,19 +8,24 @@ Patch releases (0.5.2 → 0.5.3) follow the same procedure but rarely require mi
 ## General Upgrade Procedure
 
 ```bash
-# 1. Pull the new image
+# 1. Update the deployment files (docker-compose.yml, Caddyfile, scripts/).
+#    They belong to the installation, not to the images — see docs/UPGRADE.md.
+#    ./scripts/update.sh does this step and everything below in one go.
+git pull --ff-only
+
+# 2. Pull the new image
 docker compose pull
 
-# 2. Stop the stack (a few seconds of downtime)
+# 3. Stop the stack (a few seconds of downtime)
 docker compose down
 
-# 3. Run database migrations
+# 4. Run database migrations
 docker compose run --rm migrate
 
-# 4. Start the new stack
+# 5. Start the new stack
 docker compose up -d
 
-# 5. Verify health
+# 6. Verify health
 curl -s http://localhost/health
 # → {"status":"ok"}
 ```
@@ -147,25 +152,32 @@ migration ran — the current version is still running. Fix the backup issue fir
 
 ## Helm / Kubernetes Upgrade
 
+The chart lives in the repository under `helm/vakt/`. There is **no published
+chart repository**, so `helm repo add`/`helm repo update` have nothing to fetch —
+pull the new revision and install from the working tree.
+
 ```bash
-# Pull updated chart values
-helm repo update
+# Pull the updated chart
+git pull
+helm dependency update ./helm/vakt
 
 # Dry-run to preview changes
-helm upgrade vakt norvik/vakt --dry-run --diff -f values.yaml
+helm upgrade vakt ./helm/vakt --dry-run -f values.yaml
 
 # Apply
-helm upgrade vakt norvik/vakt -f values.yaml --wait --timeout 5m
+helm upgrade vakt ./helm/vakt -f values.yaml --wait --timeout 5m
 ```
 
 Rolling updates: the Deployment uses `RollingUpdate` strategy.
-Ensure `VAKT_DB_URL` points to a database that has already been migrated
-(run the migrate job before triggering the rollout):
+
+The schema migration needs no extra flag. `templates/migrate-job.yaml` is a
+`pre-install,pre-upgrade` Helm hook with `hook-weight: "-5"`, so it runs to
+completion **before** any API or worker pod is replaced. It is on by default and
+switched off — not on — via `migrateJob.enabled=false`, for the case where the
+schema is migrated out of band:
 
 ```bash
-helm upgrade vakt norvik/vakt -f values.yaml \
-  --set migrate.runOnUpgrade=true \
-  --wait
+helm upgrade vakt ./helm/vakt -f values.yaml --set migrateJob.enabled=false --wait
 ```
 
 ---
@@ -198,4 +210,4 @@ create the partition before the Vakt release closest to 2028-12-01.
 
 - Issues: GitHub Issues tracker
 - Community: GitHub Discussions
-- DACH enterprise support contracts: see `docs/setup.md`
+- Vakt Pro: direct e-mail support, best effort, no contractual SLA

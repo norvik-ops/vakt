@@ -1,0 +1,8 @@
+# CI/test override values — used by checkov and helm lint to pass the
+# honeypot checks. NOT for production use.
+postgresql:
+  auth:
+    password: "ci-test-only-not-real-xK9mP2qL8nR5vT3w"
+
+secrets:
+  secretKey: "0000000000000000000000000000000000000000000000000000000000000000"

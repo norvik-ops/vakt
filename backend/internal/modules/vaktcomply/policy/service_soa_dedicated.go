@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -191,7 +192,7 @@ func (s *Service) ExportDedicatedSoACSV(ctx context.Context, orgID string) ([][]
 
 // buildSoAPDF renders a PDF with all SoA entries.
 func buildSoAPDF(entries []SoADedicatedEntry, summary *SoASummary, version int) ([]byte, error) {
-	pdf := fpdf.NewCustom(&fpdf.InitType{
+	pdf := pdfutil.NewCustom(&fpdf.InitType{
 		OrientationStr: "L",
 		UnitStr:        "mm",
 		SizeStr:        "A4",

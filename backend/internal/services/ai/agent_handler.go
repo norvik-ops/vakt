@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
 )
 
@@ -35,6 +37,56 @@ import (
 // Permissions kommen aus dem User-Context (org_id + user_id + perms). Tools
 // werden nur ausgeführt, wenn der User die zugehörigen Scopes hat (ADR-0020).
 
+// WriterRoles ist die Menge der Rollen, die zustandsändernde AI-Routen nutzen
+// dürfen. Bewusst EINE Liste für beide Durchsetzungsstellen — die
+// Route-Middleware in routes.go und requireWriterRole hier unten. Zwei getrennte
+// Aufzählungen wären genau die Drift, die den Fix nach dem nächsten Refactor
+// wieder aufmacht.
+//
+// Exakter String-Vergleich ohne Hierarchie, wie auth.RequireRole: "Viewer" ist
+// nicht enthalten und erbt nichts.
+var WriterRoles = []string{"Admin", "SecurityAnalyst"}
+
+// requireWriterRole ist die Durchsetzung INNERHALB des Handlers (R1-SA13-01).
+//
+// Warum zusätzlich zur Route-Middleware, obwohl gemessen genau ein Mount je
+// Handler existiert und die Bypass-Bedingung aus v0.42.24 (generische
+// :param-Route + literale Sibling-Routen mit abweichender Middleware-Kette)
+// hier NICHT zutrifft: Register/RegisterWithOptions sind exportiert, die
+// Middleware-Kette steht an einer anderen Stelle als der Handler, und die
+// Historie dieses Pakets zeigt den Fehlermodus — die Agent-Routen kamen in
+// Sprint 18 ohne Gate herein, die Narrative-/Insight-Routen bekamen ihres erst
+// in S124-8 nachgereicht. Ein Handler, der seine eigene Vorbedingung prüft,
+// bleibt korrekt, wenn ihn jemand woanders montiert; ein Kommentar an der Route
+// ist keine Durchsetzung.
+//
+// Die Antwort teilt sich Shape und Code mit auth.RequireRole, damit ein Aufrufer
+// (und der Regressionstest) nicht unterscheiden muss, welche Schicht abgelehnt
+// hat.
+//
+// Rückgabe ist bewusst (allowed bool, err error) und nicht nur error: c.JSON
+// liefert bei Erfolg nil zurück, ein `if err := requireWriterRole(c); err != nil`
+// wäre also für den Ablehnungsfall IMMER falsch — die 403 stünde im Recorder und
+// der Handler liefe trotzdem weiter. Genau dieser Fehler steckte in der ersten
+// Fassung dieses Fixes und blieb im Ende-zu-Ende-Test unsichtbar, weil dort die
+// Route-Middleware den Viewer schon abfängt. Mit dem bool kann der Aufrufer den
+// Ablehnungsfall nicht mehr übersehen.
+func requireWriterRole(c echo.Context) (bool, error) {
+	roles, _ := c.Get("roles").([]string)
+	for _, r := range roles {
+		for _, allowed := range WriterRoles {
+			if r == allowed {
+				return true, nil
+			}
+		}
+	}
+	return false, c.JSON(http.StatusForbidden, auth.InsufficientRoleResponse{
+		Error:         "forbidden: requires role " + strings.Join(WriterRoles, " or "),
+		Code:          "AUTH_INSUFFICIENT_ROLE",
+		RequiredRoles: WriterRoles,
+	})
+}
+
 // AgentHandler bündelt die Dependencies für Agent-Runs.
 type AgentHandler struct {
 	runner *AgentRunner
@@ -50,6 +102,11 @@ func NewAgentHandler(client *AIClient, model string, runner *AgentRunner, runMgr
 
 // AgentRun ist der SSE-Endpoint-Handler.
 func (h *AgentHandler) AgentRun(c echo.Context) error {
+	// Vor allem anderen — insbesondere vor dem WriteHeader(200) weiter unten.
+	// Sobald der SSE-Stream eröffnet ist, lässt sich kein Status mehr senden.
+	if ok, err := requireWriterRole(c); !ok {
+		return err
+	}
 	orgID, _ := c.Get("org_id").(string)
 	userID, _ := c.Get("user_id").(string)
 	if orgID == "" {
@@ -132,6 +189,12 @@ func (h *AgentHandler) RejectRun(c echo.Context) error {
 // Beide Endpoints haben dieselbe Auth-Logik — der einzige Unterschied ist
 // der Approved-Bool.
 func (h *AgentHandler) decideRun(c echo.Context, approve bool) error {
+	// Zuerst die Rolle, dann alles andere: ein Viewer soll 403 sehen und nicht
+	// 503/404 — sonst hinge die Antwort am Zustand des Approval-Managers statt
+	// am Recht des Aufrufers.
+	if ok, err := requireWriterRole(c); !ok {
+		return err
+	}
 	if h.runMgr == nil {
 		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "approval manager not available"})
 	}

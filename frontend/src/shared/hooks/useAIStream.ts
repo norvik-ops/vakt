@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { readCsrfToken } from '../../api/client'
 
 /**
  * useAIStream — konsumiert die SSE-Streaming-Antwort vom Backend-Endpoint
@@ -32,10 +33,9 @@ export interface AIStreamRequest {
   maxTokens?: number
 }
 
-function readCsrfToken(): string | null {
-  const m = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
-  return m ? decodeURIComponent(m[1]) : null
-}
+// readCsrfToken comes from api/client — the private copy that used to live
+// here read only document.cookie and silently lost the in-memory fallback,
+// which is what keeps CSRF working behind a proxy that rewrites Set-Cookie.
 
 export function useAIStream() {
   const [text, setText] = useState<string>('')

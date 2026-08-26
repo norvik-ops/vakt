@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/rs/zerolog/log"
 )
@@ -20,6 +22,30 @@ type OIDCCallbackInput struct {
 	Code     string `json:"code"     validate:"required"`
 	State    string `json:"state"    validate:"required"`
 	Provider string `json:"provider" validate:"required,oneof=google github keycloak"`
+}
+
+// OIDCProviders is the set of providers an OIDC login can be completed with.
+//
+// R1-07-B07-3: /auth/oidc/initiate took ANY provider value while the callback
+// only knows these three. A user was redirected to the identity provider, signed
+// in there successfully, and only THEN hit 422 — the failure landed at the
+// latest possible moment, after authenticating at a foreign system, where
+// nothing they can do fixes it.
+//
+// The value must stay in step with the oneof list in the Provider tag above.
+// A struct tag cannot reference a variable, so the two are pinned together by
+// oidc_provider_parity_test.go rather than by a comment.
+var OIDCProviders = []string{"google", "github", "keycloak"}
+
+// isSupportedOIDCProvider reports whether an OIDC login can be completed with
+// this provider.
+func isSupportedOIDCProvider(provider string) bool {
+	for _, p := range OIDCProviders {
+		if p == provider {
+			return true
+		}
+	}
+	return false
 }
 
 // SAMLCallbackInput carries the SAML response from the IdP.
@@ -41,6 +67,24 @@ var ErrEmailNotVerified = errors.New("OIDC: email not verified by identity provi
 // ErrSAMLUserNotProvisioned is returned when JIT provisioning is disabled and
 // the SAML user has no pre-existing account.
 var ErrSAMLUserNotProvisioned = errors.New("SAML: user not found and JIT provisioning is disabled")
+
+// ErrOIDCNoEmail is returned when the identity provider hands back a profile
+// without an email address.
+//
+// The login has to fail here, and fail loudly. users.email is UNIQUE and NOT
+// NULL, so provisioning such a profile stores an empty email — and that row
+// then collides with every further email-less login (SQLSTATE 23505), turning a
+// mapping error at ONE login into a permanent lock-out for all of them. That is
+// the shape R1-07-B07-1 took live.
+var ErrOIDCNoEmail = errors.New("OIDC: identity provider returned no email address")
+
+// ErrNoOrganization is returned when an SSO login would have to provision a user
+// but the instance carries no organisation yet.
+//
+// Vakt runs one customer per server and the organisation is founded once, by
+// first-run setup. An SSO login is not a founding act — Service.Register refuses
+// for the same reason once an organisation exists (ErrRegistrationDisabled).
+var ErrNoOrganization = errors.New("SSO: instance has no organisation yet — run first-run setup before signing in via SSO")
 
 // casdoorTokenResponse is the JSON response from Casdoor's token endpoint.
 type casdoorTokenResponse struct {
@@ -70,6 +114,95 @@ type casdoorSAMLResponse struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 	Error string `json:"error"`
+}
+
+// casdoorEnvelope is the response Casdoor's own API controllers return:
+// status/msg/sub/name at the top level, the account object nested under data.
+//
+// R1-07-B07-1: /api/get-account answers in exactly this shape, and email plus
+// emailVerified exist ONLY inside data. Reading the body with a flat struct
+// picked up sub (top level, so the "empty profile" guard stayed silent) and left
+// email empty. Measured live against a real Casdoor.
+//
+// Data is deliberately a RawMessage: the field is absent from a plain OIDC
+// userinfo body and carries something other than an account object on Casdoor's
+// error responses, and neither may make the parse fail.
+type casdoorEnvelope struct {
+	Status string          `json:"status"`
+	Msg    string          `json:"msg"`
+	Data   json.RawMessage `json:"data"`
+}
+
+// casdoorAccount is the subset of Casdoor's user object this code consumes, as
+// it appears inside the envelope's data field.
+type casdoorAccount struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	DisplayName   string `json:"displayName"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"emailVerified"`
+	Avatar        string `json:"avatar"`
+}
+
+// parseCasdoorProfile reads a profile out of a Casdoor response body, whether it
+// arrives wrapped in the controller envelope (/api/get-account) or flat (an
+// OIDC-standard userinfo body). Flat values win; the nested account fills in
+// what the top level does not carry — which for get-account is everything except
+// sub and name.
+//
+// It stays tolerant of both shapes on purpose rather than switching to
+// /api/userinfo: get-account returns the full account regardless of which scopes
+// the OAuth client was granted, and the same function then also serves a
+// non-Casdoor provider answering in the flat OIDC shape.
+func parseCasdoorProfile(body []byte) (casdoorUserProfile, error) {
+	var profile casdoorUserProfile
+	if err := json.Unmarshal(body, &profile); err != nil {
+		return casdoorUserProfile{}, err
+	}
+
+	var env casdoorEnvelope
+	if err := json.Unmarshal(body, &env); err != nil {
+		return casdoorUserProfile{}, err
+	}
+	if env.Status == "error" {
+		msg := env.Msg
+		if msg == "" {
+			msg = "unknown error"
+		}
+		return casdoorUserProfile{}, fmt.Errorf("Casdoor: %s", msg)
+	}
+	if len(env.Data) == 0 {
+		return profile, nil
+	}
+
+	var account casdoorAccount
+	if err := json.Unmarshal(env.Data, &account); err != nil {
+		// data carries something that is not an account object (Casdoor puts
+		// varying payloads there). The flat read above is then all there is.
+		return profile, nil //nolint:nilerr // a non-account data field is not a parse failure
+	}
+
+	if profile.Sub == "" {
+		profile.Sub = account.ID
+	}
+	if profile.Email == "" {
+		profile.Email = account.Email
+	}
+	if !profile.EmailVerified {
+		profile.EmailVerified = account.EmailVerified
+	}
+	if profile.Avatar == "" {
+		profile.Avatar = account.Avatar
+	}
+	// The envelope's top-level name is the account's user name; data.displayName
+	// is the human-readable one. Prefer the latter for the profile's Name, which
+	// becomes display_name and the org name at JIT provisioning.
+	if account.DisplayName != "" {
+		profile.Name = account.DisplayName
+	} else if profile.Name == "" {
+		profile.Name = account.Name
+	}
+	return profile, nil
 }
 
 // OIDCLogin exchanges the provider code for a Paseto token pair via Casdoor.
@@ -145,8 +278,8 @@ func (s *Service) OIDCLogin(ctx context.Context, cfg *config.Config, provider, c
 		return nil, fmt.Errorf("OIDC: read profile response: %w", err)
 	}
 
-	var profile casdoorUserProfile
-	if err := json.Unmarshal(profileBody, &profile); err != nil {
+	profile, err := parseCasdoorProfile(profileBody)
+	if err != nil {
 		return nil, fmt.Errorf("OIDC: parse profile response: %w", err)
 	}
 	if profile.Sub == "" && profile.Email == "" {
@@ -160,7 +293,9 @@ func (s *Service) OIDCLogin(ctx context.Context, cfg *config.Config, provider, c
 	// Step 3: Provision or load user.
 	// emailVerified is sourced from Casdoor's profile. False forbids linking to
 	// existing local accounts (ADR-0033).
-	userID, orgID, roles, err := s.provisionOIDCUser(ctx, profile.Sub, provider, profile.Email, profile.Name, profile.Avatar, profile.EmailVerified, true)
+	// targetOrgID is "": Casdoor-proxied OIDC carries no org context, so a
+	// newly provisioned user joins the instance's organisation.
+	userID, orgID, roles, err := s.provisionOIDCUser(ctx, profile.Sub, provider, profile.Email, profile.Name, profile.Avatar, "", profile.EmailVerified, true)
 	if err != nil {
 		// S22-3: failed OIDC-Provisionierung wird auch persistiert
 		s.recordLogin(ctx, "", "", profile.Email, deviceHint, "oidc", "oidc_failed")
@@ -218,6 +353,24 @@ func (s *Service) SAMLLogin(ctx context.Context, cfg *config.Config, samlRespons
 	if samlResp.Error != "" {
 		return nil, fmt.Errorf("SAML: Casdoor error: %s", samlResp.Error)
 	}
+	// Read the profile through the same envelope-tolerant parse as the OIDC path.
+	// This endpoint is a Casdoor controller too, so the flat struct above has the
+	// shape R1-07-B07-1 broke on. Unlike the OIDC path this is NOT measured — no
+	// SAML flow was driven against a real Casdoor (SA-07 V07r-1) — the parse is
+	// simply tolerant of both shapes, and a flat body still lands in samlResp.
+	profile, err := parseCasdoorProfile(respBody)
+	if err != nil {
+		return nil, fmt.Errorf("SAML: parse response: %w", err)
+	}
+	if profile.Sub != "" {
+		samlResp.Sub = profile.Sub
+	}
+	if profile.Email != "" {
+		samlResp.Email = profile.Email
+	}
+	if profile.Name != "" {
+		samlResp.Name = profile.Name
+	}
 	if samlResp.Sub == "" && samlResp.Email == "" {
 		return nil, fmt.Errorf("SAML: received empty user profile from Casdoor")
 	}
@@ -227,7 +380,7 @@ func (s *Service) SAMLLogin(ctx context.Context, cfg *config.Config, samlRespons
 
 	// SAML assertions carry an XML-DSig that Casdoor verifies before answering us,
 	// so the email is considered IdP-verified.
-	userID, orgID, roles, err := s.provisionOIDCUser(ctx, samlResp.Sub, "saml", samlResp.Email, samlResp.Name, "", true, true)
+	userID, orgID, roles, err := s.provisionOIDCUser(ctx, samlResp.Sub, "saml", samlResp.Email, samlResp.Name, "", "", true, true)
 	if err != nil {
 		// S22-3: failed SAML auch persistieren.
 		s.recordLogin(ctx, "", "", samlResp.Email, deviceHint, "saml", "oidc_failed")
@@ -247,7 +400,12 @@ func (s *Service) SAMLLogin(ctx context.Context, cfg *config.Config, samlRespons
 func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, displayName, deviceHint string, jitEnabled bool) (*AuthResponse, error) {
 	// Direct SAML assertions are signature-verified by saml_direct.go before
 	// this code path is reached, so the email is treated as IdP-verified.
-	userID, resolvedOrgID, roles, err := s.provisionOIDCUser(ctx, nameID, "saml", email, displayName, "", true, jitEnabled)
+	//
+	// orgID comes from the org_saml_configs row the assertion was matched
+	// against — the organisation that configured this IdP. It used to be read
+	// here and then dropped, and JIT provisioning founded a personal org
+	// instead (R1-W2FIX-SSO-01); it is now the org the new user joins.
+	userID, resolvedOrgID, roles, err := s.provisionOIDCUser(ctx, nameID, "saml", email, displayName, "", orgID, true, jitEnabled)
 	if err != nil {
 		s.recordLogin(ctx, orgID, "", email, deviceHint, "saml_direct", "provision_failed")
 		return nil, err
@@ -269,7 +427,22 @@ func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, d
 //
 // createIfNotFound controls JIT provisioning: when false, a missing user
 // causes ErrSAMLUserNotProvisioned instead of auto-creating an account.
-func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, email, displayName, avatarURL string, emailVerified, createIfNotFound bool) (string, string, []string, error) {
+//
+// targetOrgID names the organisation a newly provisioned user joins. The direct
+// SAML SP path knows it from the org's SAML config; the Casdoor-proxied paths
+// pass "" and the instance's organisation is resolved instead. It is never a
+// NEW organisation — see resolveInstanceOrg.
+func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, email, displayName, avatarURL, targetOrgID string, emailVerified, createIfNotFound bool) (string, string, []string, error) {
+	// Fail closed on a profile without an email — for every SSO path, since all
+	// of them (OIDC, SAML via Casdoor, direct SAML) provision through here.
+	// The old behaviour was to create the account with an empty email, which the
+	// UNIQUE index then turned into a permanent lock-out for every further
+	// email-less login (R1-07-B07-1).
+	if email == "" {
+		log.Warn().Str("provider", provider).Msg("OIDC: identity provider returned no email address")
+		return "", "", nil, ErrOIDCNoEmail
+	}
+
 	// Try to find an existing user by OIDC subject.
 	var userID string
 	err := s.db.QueryRow(ctx,
@@ -279,41 +452,38 @@ func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, 
 
 	if err != nil {
 		// No existing user by subject — try to find by email (may already have a local account).
-		if email != "" {
-			emailErr := s.db.QueryRow(ctx,
-				`SELECT id::text FROM users WHERE email = $1`,
-				email,
-			).Scan(&userID)
-			if emailErr == nil {
-				// Linking would let an unverified-email IdP take over an existing local
-				// account.  Refuse unless the IdP has confirmed ownership.
-				if !emailVerified {
-					log.Warn().Str("provider", provider).Msg("OIDC: refusing to link unverified email to existing account")
-					return "", "", nil, ErrEmailNotVerified
-				}
-				// Link existing user to this OIDC subject.
-				if _, updateErr := s.db.Exec(ctx,
-					`UPDATE users SET oidc_subject = $1, oidc_provider = $2, avatar_url = COALESCE(NULLIF($3,''), avatar_url), last_login_at = NOW() WHERE id = $4::uuid`,
-					oidcSubject, provider, avatarURL, userID,
-				); updateErr != nil {
-					log.Warn().Err(updateErr).Str("user_id", userID).Msg("failed to link OIDC subject to existing user")
-				}
-			} else {
-				if !createIfNotFound {
-					return "", "", nil, ErrSAMLUserNotProvisioned
-				}
-				// Truly new user — create account.
-				userID, err = s.createOIDCUser(ctx, oidcSubject, provider, email, displayName, avatarURL)
-				if err != nil {
-					return "", "", nil, err
-				}
+		emailErr := s.db.QueryRow(ctx,
+			`SELECT id::text FROM users WHERE email = $1`,
+			email,
+		).Scan(&userID)
+		if emailErr == nil {
+			// Linking would let an unverified-email IdP take over an existing local
+			// account.  Refuse unless the IdP has confirmed ownership.
+			if !emailVerified {
+				log.Warn().Str("provider", provider).Msg("OIDC: refusing to link unverified email to existing account")
+				return "", "", nil, ErrEmailNotVerified
+			}
+			// Link existing user to this OIDC subject.
+			if _, updateErr := s.db.Exec(ctx,
+				`UPDATE users SET oidc_subject = $1, oidc_provider = $2, avatar_url = COALESCE(NULLIF($3,''), avatar_url), last_login_at = NOW() WHERE id = $4::uuid`,
+				oidcSubject, provider, avatarURL, userID,
+			); updateErr != nil {
+				log.Warn().Err(updateErr).Str("user_id", userID).Msg("failed to link OIDC subject to existing user")
 			}
 		} else {
 			if !createIfNotFound {
 				return "", "", nil, ErrSAMLUserNotProvisioned
 			}
-			// No email available — create with empty email placeholder.
-			userID, err = s.createOIDCUser(ctx, oidcSubject, provider, email, displayName, avatarURL)
+			// Truly new user — create the account inside the organisation that
+			// already exists. Never a fresh one (R1-W2FIX-SSO-01).
+			orgID := targetOrgID
+			if orgID == "" {
+				orgID, err = s.resolveInstanceOrg(ctx)
+				if err != nil {
+					return "", "", nil, err
+				}
+			}
+			userID, err = s.createOIDCUser(ctx, orgID, oidcSubject, provider, email, displayName, avatarURL)
 			if err != nil {
 				return "", "", nil, err
 			}
@@ -345,8 +515,42 @@ func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, 
 	return userID, orgID, []string{roleName}, nil
 }
 
-// createOIDCUser inserts a new user and creates their personal organisation.
-func (s *Service) createOIDCUser(ctx context.Context, oidcSubject, provider, email, displayName, avatarURL string) (string, error) {
+// resolveInstanceOrg returns the organisation an SSO user joins when the caller
+// does not name one: the oldest, which is the one first-run setup created.
+//
+// One customer per server, one organisation, one shared ISMS — setup refuses to
+// run a second time (setup.IsSetupComplete counts organisations), so the oldest
+// row IS the customer's. Additional organisations only exist in demo mode
+// (VAKT_DEMO=true), which is not a customer deployment.
+//
+// A missing organisation is refused, not created: founding the instance is
+// first-run setup's job, and letting an IdP login do it is exactly the defect
+// this function exists to close.
+func (s *Service) resolveInstanceOrg(ctx context.Context) (string, error) {
+	var orgID string
+	err := s.db.QueryRow(ctx, `
+		SELECT id::text FROM organizations
+		ORDER BY created_at ASC, id ASC
+		LIMIT 1`).Scan(&orgID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNoOrganization
+	}
+	if err != nil {
+		return "", fmt.Errorf("resolve instance organisation: %w", err)
+	}
+	return orgID, nil
+}
+
+// createOIDCUser inserts a new user and joins them to orgID as Viewer.
+//
+// R1-W2FIX-SSO-01: this used to INSERT a fresh organisation per user, so every SSO
+// colleague after the first landed in their own empty management system instead
+// of the customer's. Vakt is one customer per server with one shared ISMS; an
+// IdP login joins that organisation, it does not found another one.
+func (s *Service) createOIDCUser(ctx context.Context, orgID, oidcSubject, provider, email, displayName, avatarURL string) (string, error) {
+	if orgID == "" {
+		return "", ErrNoOrganization
+	}
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return "", fmt.Errorf("begin transaction: %w", err)
@@ -370,27 +574,6 @@ func (s *Service) createOIDCUser(ctx context.Context, oidcSubject, provider, ema
 	).Scan(&userID)
 	if err != nil {
 		return "", fmt.Errorf("insert OIDC user: %w", err)
-	}
-
-	// Derive org name from display name, fall back to email local part, then sub.
-	orgName := displayName
-	if orgName == "" && email != "" {
-		orgName = strings.SplitN(email, "@", 2)[0]
-	}
-	if orgName == "" {
-		orgName = oidcSubject
-	}
-	orgSlug := slugify(orgName)
-
-	var orgID string
-	err = tx.QueryRow(ctx, `
-		INSERT INTO organizations (name, slug)
-		VALUES ($1, $2)
-		RETURNING id::text`,
-		orgName, orgSlug,
-	).Scan(&orgID)
-	if err != nil {
-		return "", fmt.Errorf("insert organization: %w", err)
 	}
 
 	// Assign Viewer role by default for SSO users.

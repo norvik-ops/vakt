@@ -5,11 +5,25 @@ package bcm
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
+)
+
+// ESK-12: Fehler der BCP-Plan-Eingabe. ErrSchutzbedarfsklasseInvalid nennt
+// ausdruecklich den Wertebereich des CHECK aus Migration 216 — dieselbe Menge
+// (1,2,3), damit die Ablehnung vor der DB passiert und einen Namen hat.
+var (
+	ErrRTOOutOfRange              = errors.New("rto_hours must be between 1 and 8760")
+	ErrRPOOutOfRange              = errors.New("rpo_hours must be between 1 and 8760")
+	ErrSchutzbedarfsklasseInvalid = errors.New("schutzbedarfsklasse must be 1, 2 or 3")
 )
 
 // CreateBCPPlan creates a new BCP plan for the organisation.
 func (s *Service) CreateBCPPlan(ctx context.Context, orgID string, in CreateBCPPlanInput) (BCPPlan, error) {
+	if err := validateBCPPlanTargets(in.RTOHours, in.RPOHours, in.Schutzbedarfsklasse); err != nil {
+		return BCPPlan{}, err
+	}
 	return s.repo.CreateBCPPlan(ctx, orgID, in)
 }
 
@@ -24,8 +38,43 @@ func (s *Service) GetBCPPlan(ctx context.Context, orgID, id string) (BCPPlan, er
 }
 
 // UpdateBCPPlan updates an existing BCP plan.
+//
+// Hier steht ABSICHTLICH kein validateBCPPlanTargets: das PATCH mergt
+// (UpdateBCPPlanInput), also ist der Eingabezustand nicht der Zielzustand. Ein
+// PATCH mit nur rpo_hours=8 gegen einen Plan mit rto_hours=4 saehe hier
+// unauffaellig aus und wuerde die Invariante rpo <= rto trotzdem brechen.
+// Geprueft wird deshalb im Repository auf dem gemergten Zustand, innerhalb
+// derselben Transaktion und Zeilensperre, die auch schreibt.
 func (s *Service) UpdateBCPPlan(ctx context.Context, orgID, id string, in UpdateBCPPlanInput) (BCPPlan, error) {
 	return s.repo.UpdateBCPPlan(ctx, orgID, id, in)
+}
+
+// validateBCPPlanTargets prueft die BSI-200-4-Angaben eines BCP-Plans.
+//
+// Die Bereichspruefung liegt zusaetzlich in den `validate`-Tags der Input-Structs
+// (der Handler ruft sie). Sie steht hier ein zweites Mal, weil der Service auch
+// ohne Handler aufrufbar ist und die Schutzbedarfsklasse sonst nur noch vom
+// DB-CHECK gefangen wuerde — als 500er statt als benannter Eingabefehler.
+//
+// ErrRPOExceedsRTO ist dieselbe Domaeneninvariante, die validateBIAProcess fuer
+// BIA-Prozesse durchsetzt: man kann nicht weniger Daten verlieren wollen, als
+// man Zeit zum Wiederanlauf hat. Verglichen wird nur, wenn BEIDE Werte gesetzt
+// sind — gegen `null` laesst sich nichts pruefen, und das ist kein Fehler,
+// sondern der Zustand "noch nicht festgelegt".
+func validateBCPPlanTargets(rtoHours, rpoHours, schutzbedarfsklasse *int) error {
+	if rtoHours != nil && (*rtoHours < 1 || *rtoHours > BCPPlanMaxRTOHours) {
+		return fmt.Errorf("%w: rto_hours=%d", ErrRTOOutOfRange, *rtoHours)
+	}
+	if rpoHours != nil && (*rpoHours < 1 || *rpoHours > BCPPlanMaxRTOHours) {
+		return fmt.Errorf("%w: rpo_hours=%d", ErrRPOOutOfRange, *rpoHours)
+	}
+	if schutzbedarfsklasse != nil && (*schutzbedarfsklasse < 1 || *schutzbedarfsklasse > 3) {
+		return fmt.Errorf("%w: schutzbedarfsklasse=%d", ErrSchutzbedarfsklasseInvalid, *schutzbedarfsklasse)
+	}
+	if rtoHours != nil && rpoHours != nil && *rpoHours > *rtoHours {
+		return ErrRPOExceedsRTO
+	}
+	return nil
 }
 
 // DeleteBCPPlan removes a BCP plan.

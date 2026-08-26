@@ -113,9 +113,12 @@ Host is fine, DB is corrupt / dropped / rolled back too far.
 # 1. Stop API + Worker so they don't write during restore.
 docker compose stop vakt-api vakt-worker
 
-# 2. Pick the freshest verified backup.
+# 2. Pick the freshest verified backup. The passphrase is REQUIRED: backup.sh
+#    always encrypts the dump, so without it backup-verify.sh cannot check the
+#    dump and exits 1 rather than claiming "verification passed".
 ls -lt /backups/vakt/vakt-backup-*.tar.gz | head -5
-./scripts/backup-verify.sh /backups/vakt/vakt-backup-<DATE>.tar.gz
+VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key \
+  ./scripts/backup-verify.sh /backups/vakt/vakt-backup-<DATE>.tar.gz
 
 # 3. Restore. Prompts for the passphrase that wraps the Master Key.
 ./scripts/restore.sh /backups/vakt/vakt-backup-<DATE>.tar.gz
@@ -145,7 +148,9 @@ git clone git@github.com:norvik-ops/vakt.git /opt/vakt && cd /opt/vakt
 
 # 3. Place the freshest backup on the new host and restore.
 scp old-backup-host:/backups/vakt/vakt-backup-<DATE>.tar.gz /backups/vakt/
-./scripts/backup-verify.sh /backups/vakt/vakt-backup-<DATE>.tar.gz
+#    backup-verify.sh needs the passphrase (see §2) — without it: exit 1.
+VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key \
+  ./scripts/backup-verify.sh /backups/vakt/vakt-backup-<DATE>.tar.gz
 ./scripts/restore.sh        /backups/vakt/vakt-backup-<DATE>.tar.gz
 #    -> writes a .env with the recovered VAKT_SECRET_KEY
 

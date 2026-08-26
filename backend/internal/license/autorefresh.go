@@ -112,9 +112,7 @@ func NewAutoRefresher(token, baseURL string, enabled bool, h *Handler, db *pgxpo
 // keys issued before the token was embedded — and for anyone who prefers to set it
 // explicitly.
 func (r *AutoRefresher) currentToken() string {
-	r.handler.mu.RLock()
-	lic := r.handler.lic
-	r.handler.mu.RUnlock()
+	lic := r.handler.inst.Get()
 	if lic != nil && lic.RenewalToken != "" {
 		return lic.RenewalToken
 	}
@@ -125,9 +123,7 @@ func (r *AutoRefresher) currentToken() string {
 // about. This is the gate that turns a heartbeat into a renewal: outside the window,
 // the instance does not call at all.
 func (r *AutoRefresher) due() bool {
-	r.handler.mu.RLock()
-	lic := r.handler.lic
-	r.handler.mu.RUnlock()
+	lic := r.handler.inst.Get()
 	if lic == nil || lic.ExpiresAt == nil {
 		// A perpetual key never needs renewing. Nothing to ask for.
 		return false
@@ -197,20 +193,18 @@ func (r *AutoRefresher) tryRefresh(ctx context.Context) {
 		return
 	}
 
-	// Update in-memory license immediately.
-	r.handler.mu.Lock()
-	current := r.handler.lic
+	// Update the instance licence immediately — the same value the global
+	// licence middleware serves to every route (see Instance).
+	current := r.handler.inst.Get()
 	if current != nil && current.ExpiresAt != nil && lic.ExpiresAt != nil &&
 		!lic.ExpiresAt.After(*current.ExpiresAt) {
-		r.handler.mu.Unlock()
 		log.Debug().Msg("license: auto-refresh key not newer — no update")
 		// We are inside the window and the server did not grant a later expiry —
 		// e.g. the invoice is still open. The key will run out unless someone acts.
 		r.handler.setRenewalFailing(true)
 		return
 	}
-	r.handler.lic = lic
-	r.handler.mu.Unlock()
+	r.handler.inst.Set(lic)
 
 	// A newer key is in hand: renewal works. Must come after the Unlock above —
 	// setRenewalFailing takes the same mutex.

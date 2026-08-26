@@ -15,6 +15,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/artifact"
 )
 
 func (h *Handler) UploadEvidence(c echo.Context) error {
@@ -204,31 +206,29 @@ func (h *Handler) ExportEvidenceBundle(c echo.Context) error {
 	}
 
 	filename := fmt.Sprintf("evidence-%s.zip", ctrl.ControlID)
-	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
-	c.Response().Header().Set("Content-Type", "application/zip")
-	c.Response().WriteHeader(http.StatusOK)
-
-	w := zip.NewWriter(c.Response().Writer)
-	defer w.Close()
-
-	// Write control metadata.
-	ctrlFile, err := w.Create("control.json")
-	if err != nil {
-		return err
+	if err := artifact.Stream(c, "application/zip", filename, func(out io.Writer) error {
+		w := zip.NewWriter(out)
+		// Write control metadata.
+		ctrlFile, err := w.Create("control.json")
+		if err != nil {
+			return err
+		}
+		if err := json.NewEncoder(ctrlFile).Encode(ctrl); err != nil {
+			return err
+		}
+		// Write evidence index.
+		evidenceFile, err := w.Create("evidence.json")
+		if err != nil {
+			return err
+		}
+		if err := json.NewEncoder(evidenceFile).Encode(items); err != nil {
+			return err
+		}
+		return w.Close()
+	}); err != nil {
+		log.Error().Err(err).Msg("export evidence bundle: build failed")
+		return errResp(c, http.StatusInternalServerError, "failed to build evidence bundle", "CK_EXPORT_EVIDENCE_FAILED")
 	}
-	if err := json.NewEncoder(ctrlFile).Encode(ctrl); err != nil {
-		return err
-	}
-
-	// Write evidence index.
-	evidenceFile, err := w.Create("evidence.json")
-	if err != nil {
-		return err
-	}
-	if err := json.NewEncoder(evidenceFile).Encode(items); err != nil {
-		return err
-	}
-
 	return nil
 }
 

@@ -1,0 +1,48 @@
+# BASELINE fuer scripts/check_mirror_refs.py — Abschnitt C (Doku-Pfadverweise)
+#
+# JEDE ZEILE HIER IST EIN OFFENER DEFEKT, KEIN GUTGEHEISSENER ZUSTAND.
+#
+# Format: <datei-im-mirror>::<pfad-den-sie-nennt>
+#
+# Bedeutung einer Zeile: die gespiegelte Datei links nennt den Pfad rechts, der
+# Pfad existiert im privaten Repo, und scripts/build-public-mirror.sh nimmt ihn
+# nicht mit. Der Kunde liest also einen Verweis, dem er nicht folgen kann.
+#
+# Warum sie trotzdem hier stehen und nicht gefixt sind: der Fix ist je Zeile eine
+# ENTSCHEIDUNG, keine Mechanik — gehoert docs/security/, docs/adr/, docs/concepts/
+# oder backend/cmd/admin/ ins Kundenprodukt, oder gehoert der Verweis aus der
+# gespiegelten Datei raus? Das quer ueber sieben Dateien zu entscheiden ist eine
+# eigene Arbeit; der Commit, der diese Datei anlegt, hat die vier Befunde
+# R1-05-C01/C02/C04 und R1-04-L08 behandelt und diesen Rest gemessen und
+# aufgeschrieben, statt ihn stillschweigend mitlaufen zu lassen.
+#
+# Das Gate faellt in BEIDE Richtungen:
+#   · ein NEUER haengender Verweis, der hier nicht steht  -> rot
+#   · eine Zeile hier, die nicht mehr haengt              -> rot ("raus damit")
+# Die Liste kann damit schrumpfen, aber nicht stillschweigend wachsen.
+#
+# Stand: 2026-08-02, 24 Zeilen, gemessen am gebauten Mirror.
+CONTRIBUTING.md::docs/adr
+CONTRIBUTING.md::docs/adr/0000-template.md
+CONTRIBUTING.md::docs/adr/README.md
+CONTRIBUTING.md::docs/dev/api-contract-checklist.md
+CONTRIBUTING.md::docs/dev/service-pattern.md
+SECURITY.md::docs/security/pentest-intern.md
+SECURITY.md::docs/security/pentest-rfp.md
+SECURITY.md::docs/security/pentest-scope.md
+SECURITY.md::docs/security/responsible-disclosure.md
+SECURITY.md::docs/security/scim-verification.md
+SECURITY.md::docs/security/subprocessors.md
+SECURITY.md::docs/security/tom.md
+SECURITY.md::docs/security/vvt.md
+docs/SECURITY-ASSESSMENT.md::docs/security/pentest-intern.md
+docs/SECURITY-ASSESSMENT.md::docs/security/pentest-rfp.md
+docs/SECURITY-ASSESSMENT.md::docs/security/tom.md
+docs/UPGRADE.md::docs/concepts/api-key-scopes.md
+docs/guides/getting-started.md::docs/modules
+docs/operations.md::backend/cmd/rotate-key
+docs/operations.md::docs/roadmap-langfristig.md
+docs/wiki/admin-cli.md::backend/cmd/admin/main.go
+docs/wiki/admin-cli.md::docs/GLOSSARY.md
+docs/wiki/admin-cli.md::docs/concepts/rbac-model.md
+frontend/README.md::docs/dev/api-contract-checklist.md

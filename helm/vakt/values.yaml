@@ -1,0 +1,316 @@
+## Vakt Helm Chart — Default Values
+
+## Global image settings
+image:
+  api:
+    repository: ghcr.io/norvik-ops/vakt-api
+    tag: "0.42.49"
+    pullPolicy: IfNotPresent
+  frontend:
+    repository: ghcr.io/norvik-ops/vakt-frontend
+    tag: "0.42.49"
+    pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+## Pod-level securityContext applied to all Vakt-owned pods (api, worker, frontend).
+## These values implement Kubernetes Pod Security Standards "restricted" profile.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+## Container-level securityContext applied to the api + worker containers.
+## (frontend has its own block in the deployment template because nginx needs
+##  CAP_NET_BIND_SERVICE to bind port 80 as nonroot.)
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+## API deployment
+# Note: scaling to multiple replicas requires Redis (VAKT_REDIS_URL) to be
+# configured and reachable from all pods. Rate limiting and session management
+# use Redis as the shared backing store — there is no in-memory state that
+# would diverge across replicas (SCALE-007 fix).
+#
+# CAVEAT (corrected 2026-07-30, KONV-K1 F4). The 2026-07-29 wording of this note
+# (R1-27-V02) was wrong about the cause; ADR-0040 carried the same error and was
+# corrected in the same change — see its "Nachtrag (2026-07-30, KONV-K1 F4 /
+# R1-F3A-05)" at the end of the "Writer-Flow" section, which is the source of
+# truth for this design decision (PROCESS.md P9). This note and the comment above
+# audit.Write in backend/internal/shared/audit/writer.go restate it; all three
+# move together or none does.
+#
+# cmd/audit-verify can report a chain as BROKEN when
+# it is not tampered with. Do NOT read this as a property of replicaCount — the
+# earlier version of this note did, and that was wrong in a way that mattered:
+# an operator who followed it would sync clocks, keep replicaCount at 1, and
+# still get the false alarm.
+#
+# What actually happens. audit.Write extends the per-org hash chain by reading
+# the current chain tail with `SELECT entry_hash ... ORDER BY created_at DESC,
+# id DESC LIMIT 1 FOR UPDATE` and linking the new row to it. That row lock does
+# NOT serialise the chain: the second writer blocks on the tail row, and once it
+# gets the lock Postgres re-evaluates only that locked row — it does not re-run
+# the query and therefore does not see the row the first writer has meanwhile
+# INSERTed. Both writers link to the same predecessor. cmd/audit-verify replays
+# in created_at ASC and compares each stored prev_hash against the previous
+# row's entry_hash, so the second of the two rows fails that comparison and the
+# org is reported BROKEN. Documented response under ADR-0040 ("Operative
+# Empfehlungen"): DB snapshot, session invalidation, master-key rotation — an
+# expensive answer to a false alarm.
+#
+# Measured 2026-07-30 against Postgres 16 with the real audit.Write and the real
+# audit.VerifyOrgChain, in ONE process, one connection pool, one clock:
+#   tail  prev=<NULL>       entry=be62a824ffd1
+#   W1    prev=be62a824ffd1 entry=ca4d61a7e825
+#   W2    prev=be62a824ffd1 entry=3b1c9a98356d   <- same predecessor, fork
+#   VerifyOrgChain -> Status=broken, FullyVerified=false
+# The created_at values were strictly increasing and correctly ordered. So:
+#
+#   * The false alarm needs NEITHER multiple replicas NOR skewed clocks. Vakt
+#     has ~45 audit.Write call sites, three of them as bare `go audit.Write(...)`
+#     — concurrent audit writes to one org exist by construction at
+#     api.replicaCount: 1.
+#   * Raising api.replicaCount does not introduce the problem, but more
+#     concurrent writers make it more likely. That is the only thing this note
+#     has to do with replicaCount.
+#   * Keep NTP/chrony running anyway: created_at comes from the APP clock
+#     (time.Now() in audit.Write), so a backwards clock step is a SECOND,
+#     independent way to make the verifier replay rows out of order. Clock sync
+#     removes that one. It does not remove the one above, and no operator
+#     setting does.
+#
+# There is no configuration that avoids this. A real fix has to serialise the
+# chain extension itself (advisory lock per org, SERIALIZABLE, or a UNIQUE
+# constraint on (org_id, prev_hash) plus retry); it needs a migration and a
+# product decision and is tracked separately (R1-F3A-05). Until it lands, treat
+# an audit-verify exit 2 as SUSPECT rather than as evidence: check first whether
+# the flagged row shares its prev_hash with the row before it (that is this
+# false positive, not tampering) before invoking the ADR-0040 response.
+# This is a caveat, not a block — unlike worker.replicaCount below.
+api:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    type: ClusterIP
+    port: 8080
+  env:
+    VAKT_MODULES_ENABLED: "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr"
+    VAKT_LOG_LEVEL: "info"
+    # Per-pod pgx connection pool size (default 25). IMPORTANT (S90-6): the total
+    # connections to Postgres is VAKT_DB_MAX_CONNS × api.replicaCount (+ worker
+    # replicas). Keep that product BELOW your Postgres `max_connections` (default
+    # 100), reserving headroom for migrations/admin. For api.replicaCount ≥ 2,
+    # either lower this value (e.g. 100 / replicas − reserve) OR put a PgBouncer
+    # (transaction pooling) in front and point VAKT_DB_URL at it. The pool is
+    # already PgBouncer-transaction-mode compatible (CacheDescribe exec mode).
+    VAKT_DB_MAX_CONNS: "25"
+    # AI Copilot — Community-Feature seit v0.6.x.
+    #
+    # Provider und Modell stehen hier BEWUSST NICHT. Beide leitet die ConfigMap aus
+    # `ollama:` weiter unten ab — der einen Stelle, aus der auch der Init-Job das
+    # Modell zieht:
+    #
+    #   VAKT_AI_PROVIDER  = "ollama", wenn ollama.enabled, sonst "disabled"
+    #   VAKT_AI_MODEL     = ollama.model
+    #
+    # Vorher standen sie hier zusätzlich, und das waren zwei unabhängige Knöpfe für
+    # dasselbe: Wer `ollama.model` umstellte, liess ein Modell ziehen, nach dem die
+    # API nie fragte (sie las weiter diesen Wert) — jede KI-Anfrage lief dann gegen
+    # ein Modell, das gar nicht da war. Und `VAKT_AI_PROVIDER: "ollama"` blieb auch
+    # bei `ollama.enabled=false` stehen, die API rief also einen Service, den es
+    # nicht gab.
+    #
+    # Beides bleibt überschreibbar — hier eintragen gewinnt weiterhin. Für eine
+    # externe LLM-Quelle (z.B. Mistral EU): ollama.enabled=false, und hier
+    # VAKT_AI_PROVIDER/VAKT_AI_BASE_URL/VAKT_AI_MODEL explizit setzen.
+
+## Worker deployment (same image, different entrypoint)
+# WARNING: worker.replicaCount > 1 is NOT yet safe.
+# The Asynq scheduler runs in every worker replica; without leader election two
+# workers will enqueue the same cron task at the same second.  asynq.Unique()
+# prevents duplicate execution but the duplicate enqueue still consumes a Redis
+# round-trip and a Unique-lock key.  Set replicaCount > 1 only after leader
+# election is implemented (planned Sprint 82+).
+worker:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  concurrency: 8
+
+## Frontend deployment
+frontend:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  service:
+    type: ClusterIP
+    port: 80
+
+## Secrets — set these before deploying
+secrets:
+  dbUrl: ""          # postgres://<USER>:<PASS>@host:5432/db
+  redisUrl: ""       # redis://host:6379
+  secretKey: ""      # 64 hex chars (32 bytes)
+
+## Ingress
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  host: vakt.example.com
+  tls: []
+
+## Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+## PostgreSQL subchart (bitnami)
+##
+## S13-8: password MUSS beim Install explizit gesetzt werden — der vorherige
+## "changeme"-Default ist auf einen Honeypot-Wert gewechselt, der den Chart-
+## Install fehlschlagen laesst, bis ein echtes Passwort uebergeben wird:
+##
+##   helm install vakt ./helm/vakt \
+##     --set postgresql.auth.password=$(openssl rand -hex 32)
+##
+## Alternativ kann ein bestehendes Secret per existingSecret referenziert
+## werden (Bitnami-Standardpattern).
+postgresql:
+  enabled: true
+  auth:
+    database: vakt
+    username: vakt
+    # Honeypot — der Install-Hook in templates/_helpers.tpl lehnt diesen
+    # Wert ab. Niemals so deployen.
+    password: "MUST_BE_OVERRIDDEN"
+  primary:
+    persistence:
+      size: 10Gi
+
+## Redis subchart (bitnami)
+##
+## S13-8: Auth ist jetzt default-on. Auf 2026-05-21 wurde der vorherige
+## auth.enabled: false ersetzt — Redis in einem Cluster ohne NetworkPolicy
+## ist sonst aus jedem Sidecar erreichbar. Wer Auth explizit deaktivieren
+## muss (z.B. Mini-Cluster mit NetworkPolicy default-deny), setzt
+## --set redis.auth.enabled=false und uebernimmt damit die Verantwortung.
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    # Wird vom Bitnami-Chart automatisch generiert wenn leer; alternativ
+    # explizit setzen oder per existingSecret referenzieren.
+    password: ""
+  master:
+    persistence:
+      size: 2Gi
+
+## Ollama (lokales LLM für AI Copilot) — Community-Feature, default-on.
+## Auf Mini-Clustern (< 8 GB Worker-RAM) auf false setzen und entweder
+## ohne AI fahren (VAKT_AI_PROVIDER=disabled in api.env) oder einen externen
+## OpenAI-kompatiblen Endpoint nutzen (api.env.VAKT_AI_BASE_URL).
+## pgbouncer is NOT included in this Helm chart — it is provided as a sidecar
+## in the Docker Compose setup for connection pooling on single-node installs.
+## In Kubernetes, use an external pgbouncer Helm chart or configure
+## VAKT_DB_MAX_CONNS to match your PostgreSQL max_connections budget.
+
+ollama:
+  enabled: true
+  # DIE Stelle für das Modell: der Init-Job zieht es hier heraus, und die ConfigMap
+  # gibt genau dasselbe an die API weiter. Nur einen Wert ändern reicht also.
+  #
+  # Derselbe Default wie überall sonst (config.go, .env.example, Compose, README):
+  # qwen2.5:7b. Das Chart stand als einzige Stelle im Repo auf 3b — check-docs.py
+  # prüfte nur Markdown und hat die Drift nie gesehen; jetzt prüft es auch hier.
+  # Auf kleinen Nodes: auf "qwen2.5:3b" setzen UND die resources unten halbieren.
+  model: "qwen2.5:7b"          # Apache 2.0, ~4.5 GB Disk, ~4.5 GB Live-RAM
+  image:
+    repository: ollama/ollama
+    # Eine ECHTE Ollama-Version. Hier stand ueber viele Releases hinweg die
+    # Vakt-Version (zuletzt 0.42.41) — das Release-sed hat jede `tag:`-Zeile
+    # mitgezogen, auch diese, deren Kommentar genau das ausschliessen sollte.
+    # Ein solcher Tag existiert bei ollama/ollama nicht: ImagePullBackOff fuer
+    # jeden, der das Chart mit ai.enabled deployt. check-docs.py haelt das jetzt.
+    tag: "0.31.2"                  # pinned; update manually when upgrading Ollama
+    pullPolicy: IfNotPresent
+  # Auf qwen2.5:7b bemessen (~4,5 GB Live-RAM). Stand auf 2Gi/4Gi — das war für 3b
+  # gerechnet; ein blosser Modell-Tausch haette den Pod beim ersten Prompt OOM-killen
+  # lassen. Request = was der Node garantieren muss, Limit = Kopffreiheit für den
+  # Kontext. Der Node braucht damit realistisch 8 GB, wie README und .env.example
+  # ohnehin sagen.
+  resources:
+    requests:
+      cpu: 500m
+      memory: 5Gi
+    limits:
+      cpu: "2"
+      memory: 8Gi
+  persistence:
+    size: 10Gi                 # qwen2.5:7b belegt ~4,7 GB — Platz für ein zweites Modell
+    storageClass: ""           # Leerer String = default StorageClass
+  initJob:
+    enabled: true              # Init-Job zieht das Modell beim ersten Deploy
+
+## PodDisruptionBudget
+pdb:
+  enabled: true
+  minAvailable: 1
+  workerMinAvailable: 1
+
+## NetworkPolicy (opt-in — requires NetworkPolicy CNI support, e.g. Calico, Cilium)
+networkPolicy:
+  enabled: false
+
+serviceAccount:
+  create: false
+  name: ""
+
+## Database migration job — runs as a pre-install/pre-upgrade Helm hook.
+## Ensures schema is up-to-date before any API or worker pods start.
+migrateJob:
+  enabled: true
+
+## Uploads persistence — evidence file attachments uploaded via Vakt Comply.
+## Without persistence, uploaded files are lost on every pod restart.
+## Uses a PersistentVolumeClaim mounted at /app/data/uploads in the api pod.
+## Set enabled: false only if you use an external file store and override
+## VAKT_UPLOAD_DIR to point at a mounted network volume instead.
+uploads:
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""  # leave empty to use the cluster default StorageClass

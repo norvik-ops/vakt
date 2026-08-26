@@ -1091,9 +1091,17 @@ func runSeed(ctx context.Context, db *pgxpool.Pool, masterKeyHex, orgName, orgSl
 		}
 		// S88-5: seed applied physical-control checklists as evidence for A.7.7 + A.7.10.
 		if ctrl.id == "A.7.7" || ctrl.id == "A.7.10" {
+			// ON CONFLICT DO NOTHING deckt einen Wiederholungslauf des Seeds ab:
+			// seit Migration 257 traegt ck_evidence einen Teilindex ueber
+			// (org_id, control_id, source, title), den diese Zeile trifft.
 			if _, err := tx.Exec(ctx, `
 				INSERT INTO ck_evidence (control_id, org_id, title, description, source, collector_data, status)
-				VALUES ($1::uuid, $2::uuid, $3, $4, 'checklist', $5::jsonb, 'pending')`,
+				VALUES ($1::uuid, $2::uuid, $3, $4, 'checklist', $5::jsonb, 'pending')
+				ON CONFLICT (org_id, control_id, source, title)
+				  WHERE control_id IS NOT NULL
+				    AND source <> 'manual'
+				    AND auto_source_type IS NULL
+				DO NOTHING`,
 				ctrlID, orgID,
 				fmt.Sprintf("Checkliste: %s (%s)", ctrl.title, ctrl.id),
 				"Geführte Checkliste für physische Maßnahme angewendet (ISO A.7.x)",

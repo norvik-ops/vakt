@@ -203,7 +203,7 @@ Payloads are HMAC-SHA256 signed with the `X-Vakt-Signature` header when a secret
 
 ### Vakt Aware (`vaktaware`)
 
-Training assignment and completion tracking are available in Community. The phishing-campaign, template and target-group endpoints below require **Pro** (`FeatureVaktAware`).
+Training assignment and completion tracking are available in Community. The phishing-campaign, template and target-group endpoints below require **Pro** (`vaktaware_advanced`, `features.FeatureSecReflex`).
 
 | Method | Path | Description |
 |--------|------|-------------|

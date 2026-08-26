@@ -1,4 +1,7 @@
 import { toast } from '../hooks/useToast'
+import { readCsrfToken } from '../../api/client'
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 /**
  * downloadBlob fetches a URL and triggers a file download — but ONLY after
@@ -13,14 +16,30 @@ import { toast } from '../hooks/useToast'
  * nothing.
  *
  * Returns true on success, false when the download was aborted due to an error.
+ *
+ * R1-18-D4 follow-up: `init` lets a caller pick the method, so this helper can
+ * issue a write — and it used to send no CSRF token, which would have 403'd.
+ * Every call site is a GET today, so this was latent rather than broken, but a
+ * wrapper that quietly drops the header is how the original defect class got
+ * in. The token is attached for non-safe methods, from the canonical
+ * readCsrfToken() so the in-memory fallback survives a proxy that rewrites
+ * Set-Cookie.
  */
 export async function downloadBlob(
   url: string,
   filename: string,
   init?: RequestInit,
 ): Promise<boolean> {
+  const method = (init?.method ?? 'GET').toUpperCase()
+  const csrf = SAFE_METHODS.has(method) ? null : readCsrfToken()
   try {
-    const res = await fetch(url, { credentials: 'include', ...init })
+    const res = await fetch(url, {
+      credentials: 'include',
+      ...init,
+      // After ...init so a caller's headers cannot drop the token — the
+      // v0.42.22 spread-order rule.
+      headers: { ...(init?.headers as Record<string, string> | undefined), ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
+    })
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
       throw new Error(body.error ?? body.message ?? `HTTP ${res.status.toString()}`)

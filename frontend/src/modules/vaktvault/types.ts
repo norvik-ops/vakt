@@ -26,32 +26,56 @@ export interface Secret {
   value: string
 }
 
-/** Metadata for an async Git repository scan for leaked credentials. */
+/**
+ * Metadata for an async Git repository scan for leaked credentials.
+ *
+ * K5-11: mirrors vaktvault.GitScan (backend/internal/modules/vaktvault/models.go).
+ * The previous shape declared `result_count`, `started_at` and `completed_at` —
+ * none of which the backend emits — so the red "N findings" badge could never
+ * appear, no matter how many cleartext secrets a scan turned up.
+ */
 export interface GitScan {
   id: string
+  org_id: string
   repo_url: string
+  branch: string
   /** Current scan lifecycle state; transitions from `pending` → `running` → `completed` | `failed`. */
   status: 'pending' | 'running' | 'completed' | 'failed'
-  /** Total number of potential secrets found; only populated when `status === "completed"`. */
-  result_count?: number
-  started_at?: string
-  completed_at?: string
+  /** Total number of potential secrets found. */
+  finding_count: number
+  open_count: number
+  dismissed_count: number
+  error_message?: string
+  scanned_at?: string
   created_at: string
 }
 
-/** A single leaked-credential finding from a Git repository scan. */
+/**
+ * A single leaked-credential finding from a Git repository scan.
+ *
+ * K5-12: mirrors vaktvault.ScanResult. `dismissed` (a boolean the backend never
+ * sends) used to decide the active/dismissed split — `!undefined` is `true`, so
+ * every finding stayed in the red block and Dismiss looked like a no-op. The real
+ * discriminator is `status`.
+ */
 export interface ScanResult {
   id: string
+  org_id: string
   scan_id: string
+  repo_url: string
+  commit_hash?: string
   file_path: string
   line_number: number
   /** Classifier label for the detected secret (e.g. `"AWS_ACCESS_KEY"`, `"GH_TOKEN"`). */
-  secret_type: string
-  /** Redacted context snippet around the matched line; never contains the full secret. */
-  snippet: string
-  /** Whether a user has manually dismissed this finding as a false positive. */
-  dismissed: boolean
+  pattern_name: string
+  /** Redacted preview of the match (first4…last4); never contains the full secret. */
+  match_preview: string
+  severity: string
+  /** `open` | `dismissed` — `dismissed` is what the Dismiss endpoint persists. */
+  status: string
   dismiss_reason?: string
+  dismiss_count: number
+  created_at: string
 }
 
 /** A programmatic API access token scoped to specific SecVault operations. */

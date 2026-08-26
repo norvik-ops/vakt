@@ -378,7 +378,11 @@ func CheckCertificationDeadlines(ctx context.Context, db *pgxpool.Pool, _ *Maile
 		notifyBody := fmt.Sprintf("Milestone \"%s\" ist am %s fällig.",
 			title, targetDate.Format("02.01.2006"))
 
-		notify.Send(ctx, db, orgID, notifyTitle, notifyBody, notifType, "vaktcomply")
+		if err := notify.Send(ctx, db, orgID, notifyTitle, notifyBody, notifType, "vaktcomply"); err != nil {
+			log.Error().Err(err).Str("org_id", orgID).Str("milestone", title).
+				Msg("CheckCertificationDeadlines: In-App-Meldung NICHT geschrieben")
+			continue
+		}
 		log.Info().Str("org_id", orgID).Str("milestone", title).Int("days_until", daysUntil).
 			Msg("CheckCertificationDeadlines: in-app notification sent")
 	}

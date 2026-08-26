@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pdf/fpdf"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -1128,7 +1128,7 @@ func (s *Service) ExportInterestedPartiesPDF(ctx context.Context, orgID string) 
 }
 
 func buildInterestedPartiesPDF(parties []InterestedParty) ([]byte, error) {
-	pdf := fpdf.New("L", "mm", "A4", "")
+	pdf := pdfutil.New("L")
 	pdf.SetMargins(12, 12, 12)
 	pdf.SetAutoPageBreak(true, 12)
 	exportedAt := time.Now().UTC()

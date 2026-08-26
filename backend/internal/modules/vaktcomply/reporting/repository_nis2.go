@@ -140,13 +140,16 @@ func (r *Repository) GetNIS2Incident(ctx context.Context, orgID, incidentID stri
 	var (
 		reportable    pgtype.Bool
 		stage         pgtype.Text
+		discoveredAt  pgtype.Timestamptz
 		detectedAt    pgtype.Timestamptz
 		ewd, frd, fnd pgtype.Timestamptz
 		ewsa, frsa    pgtype.Timestamptz
 		fnsa          pgtype.Timestamptz
 	)
+	// discovered_at is the legal anchor for the Art. 23(4) deadlines and must be
+	// selected here — MarkIncidentReportable used to fall back to time.Now().
 	err := r.db.QueryRow(ctx, `
-		SELECT id::text, org_id::text, title, status,
+		SELECT id::text, org_id::text, title, status, discovered_at,
 		       nis2_reportable, nis2_reporting_stage, nis2_detected_at,
 		       nis2_early_warning_due, nis2_full_report_due, nis2_final_report_due,
 		       nis2_early_warning_submitted_at, nis2_full_report_submitted_at, nis2_final_report_submitted_at
@@ -154,13 +157,16 @@ func (r *Repository) GetNIS2Incident(ctx context.Context, orgID, incidentID stri
 		 WHERE id = $1::uuid AND org_id = $2::uuid`,
 		incidentID, orgID,
 	).Scan(
-		&inc.ID, &inc.OrgID, &inc.Title, &inc.Status,
+		&inc.ID, &inc.OrgID, &inc.Title, &inc.Status, &discoveredAt,
 		&reportable, &stage, &detectedAt,
 		&ewd, &frd, &fnd,
 		&ewsa, &frsa, &fnsa,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get nis2 incident: %w", err)
+	}
+	if discoveredAt.Valid {
+		inc.DiscoveredAt = discoveredAt.Time
 	}
 	if reportable.Valid {
 		b := reportable.Bool

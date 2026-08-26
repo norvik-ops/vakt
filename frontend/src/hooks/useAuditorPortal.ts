@@ -50,6 +50,38 @@ export interface AuditorPolicy {
   created_at: string
 }
 
+// Shape rules for these endpoints — read the handler, do not generalise:
+//
+//   * MOST list endpoints wrap their rows in a pagination envelope
+//     (`pagination.Wrap` / `pagination.WrapCursor` on the Go side). Typing one
+//     of those as `T[]` is not merely inaccurate: the envelope is truthy, so a
+//     `= []` / `?? []` default never applies and `.map()` throws (R1-11-D01).
+//   * BUT NOT ALL. `ListFrameworks` returns `c.JSON(200, frameworks)` — a bare
+//     array — so `useAuditorFrameworks` below is correctly typed `T[]`.
+//     `ListAuditRecords` is bare too (no hook here). There is no blanket rule.
+//   * Which META a wrapper carries depends on the handler's branching:
+//     `ListControls` and `ListRisks` are dual-branch and default to the CURSOR
+//     branch when no `page` param is sent (these hooks never send one), so they
+//     carry CursorMeta. `ListIncidents`/`ListPolicies` wrap unconditionally with
+//     offset metadata, so they carry OffsetMeta.
+export interface OffsetMeta {
+  page: number
+  limit: number
+  total: number
+  total_pages: number
+}
+
+export interface CursorMeta {
+  limit: number
+  next_cursor?: string
+  has_more: boolean
+}
+
+export interface Paginated<T, M = OffsetMeta> {
+  data: T[]
+  pagination: M
+}
+
 // ---------------------------------------------------------------------------
 // Fetch helper — uses auditor session token instead of user Paseto token
 // ---------------------------------------------------------------------------
@@ -78,37 +110,48 @@ export function useAuditorFrameworks(token: string | null) {
   })
 }
 
+// Dual-branch handler, cursor branch is the default (no `?page=` sent here).
 export function useAuditorControls(frameworkId: string | null, token: string | null) {
-  return useQuery<AuditorControl[]>({
+  return useQuery<Paginated<AuditorControl, CursorMeta>>({
     queryKey: ['auditor-portal', 'controls', frameworkId, token],
-    queryFn: () => auditorFetch<AuditorControl[]>(`/frameworks/${frameworkId ?? ''}/controls`, token ?? ''),
+    queryFn: () =>
+      auditorFetch<Paginated<AuditorControl, CursorMeta>>(
+        `/frameworks/${frameworkId ?? ''}/controls`,
+        token ?? '',
+      ),
     enabled: !!token && !!frameworkId,
     retry: false,
   })
 }
 
+// ListRisks (handler_risks.go:65) is dual-branch exactly like ListControls —
+// no `?page=` is sent here, so the CURSOR branch runs and the envelope carries
+// CursorMeta. Typing it OffsetMeta would promise a `pagination.total` that is
+// `undefined` at runtime: the same truthy-but-wrong-shape class this file fixes.
 export function useAuditorRisks(token: string | null) {
-  return useQuery<{ data: AuditorRisk[]; total: number }>({
+  return useQuery<Paginated<AuditorRisk, CursorMeta>>({
     queryKey: ['auditor-portal', 'risks', token],
-    queryFn: () => auditorFetch<{ data: AuditorRisk[]; total: number }>('/risks', token ?? ''),
+    queryFn: () => auditorFetch<Paginated<AuditorRisk, CursorMeta>>('/risks', token ?? ''),
     enabled: !!token,
     retry: false,
   })
 }
 
+// Unconditional offset wrapper (handler_ops.go:832) — OffsetMeta is correct.
 export function useAuditorIncidents(token: string | null) {
-  return useQuery<{ data: AuditorIncident[]; total: number }>({
+  return useQuery<Paginated<AuditorIncident>>({
     queryKey: ['auditor-portal', 'incidents', token],
-    queryFn: () => auditorFetch<{ data: AuditorIncident[]; total: number }>('/incidents', token ?? ''),
+    queryFn: () => auditorFetch<Paginated<AuditorIncident>>('/incidents', token ?? ''),
     enabled: !!token,
     retry: false,
   })
 }
 
+// Unconditional offset wrapper (handler_reporting.go:502) — OffsetMeta is correct.
 export function useAuditorPolicies(token: string | null) {
-  return useQuery<{ data: AuditorPolicy[]; total: number }>({
+  return useQuery<Paginated<AuditorPolicy>>({
     queryKey: ['auditor-portal', 'policies', token],
-    queryFn: () => auditorFetch<{ data: AuditorPolicy[]; total: number }>('/policies', token ?? ''),
+    queryFn: () => auditorFetch<Paginated<AuditorPolicy>>('/policies', token ?? ''),
     enabled: !!token,
     retry: false,
   })

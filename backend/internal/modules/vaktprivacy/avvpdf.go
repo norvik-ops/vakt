@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 )
 
 // AVVWithBody holds all fields needed to render an AVV PDF.
@@ -31,7 +32,7 @@ type AVVWithSCC struct {
 // GenerateAVVPDF renders an AVV body as a PDF and returns the raw bytes.
 // The document uses the same blue-header style as vaktcomply reports.
 func GenerateAVVPDF(avv AVVWithBody, orgName string) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 
@@ -106,7 +107,7 @@ func GenerateAVVPDF(avv AVVWithBody, orgName string) ([]byte, error) {
 
 // GenerateSCCPDF renders an AVV with EU Standard Contractual Clauses (SCC) annexes as PDF.
 func GenerateSCCPDF(avv AVVWithSCC, orgName string) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 

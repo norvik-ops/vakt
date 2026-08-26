@@ -47,19 +47,29 @@ type ReportType = 'compliance' | 'findings' | 'risk' | 'board_report'
 type Schedule = 'weekly' | 'monthly' | 'quarterly'
 type Format = 'pdf' | 'csv'
 
+// K5-13: mirrors scheduledreports.ScheduledReport /
+// CreateScheduledReportInput (backend/internal/shared/scheduledreports/service.go).
+// The field is `report_type`, not `type` — CreateScheduledReportInput validates
+// `report_type` as required, so every create and every edit came back 422, and
+// the list rendered `reportTypeLabels[undefined]`.
 interface ScheduledReport {
   id: string
+  org_id: string
   name: string
-  type: ReportType
+  report_type: ReportType
   schedule: Schedule
   recipients: string[]
   format: Format
+  active: boolean
   next_run_at: string | null
   last_run_at: string | null
   created_at: string
 }
 
-type CreateScheduledReportInput = Omit<ScheduledReport, 'id' | 'created_at' | 'next_run_at' | 'last_run_at'>
+// `active` is part of the create input and is written straight into the
+// scheduled_reports row (service.go Create). Omitting it made every report the UI
+// created inactive, so the scheduler never picked it up.
+type CreateScheduledReportInput = Omit<ScheduledReport, 'id' | 'org_id' | 'created_at' | 'next_run_at' | 'last_run_at'>
 
 // ─── API hooks ────────────────────────────────────────────────────────────────
 
@@ -214,10 +224,11 @@ interface ReportDialogProps {
 
 const emptyForm: CreateScheduledReportInput = {
   name: '',
-  type: 'compliance',
+  report_type: 'compliance',
   schedule: 'monthly',
   recipients: [],
   format: 'pdf',
+  active: true,
 }
 
 function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialogProps) {
@@ -226,7 +237,7 @@ function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialog
   const scheduleLabels = useScheduleLabels()
   const [form, setForm] = useState<CreateScheduledReportInput>(() =>
     initial
-      ? { name: initial.name, type: initial.type, schedule: initial.schedule, recipients: initial.recipients, format: initial.format }
+      ? { name: initial.name, report_type: initial.report_type, schedule: initial.schedule, recipients: initial.recipients, format: initial.format, active: initial.active }
       : { ...emptyForm }
   )
 
@@ -263,8 +274,8 @@ function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialog
           <div className="space-y-1.5">
             <Label>{t('scheduledReports.dialog.labelType')}</Label>
             <Select
-              value={form.type}
-              onValueChange={(v) => { setForm({ ...form, type: v as ReportType }); }}
+              value={form.report_type}
+              onValueChange={(v) => { setForm({ ...form, report_type: v as ReportType }); }}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -369,7 +380,7 @@ function ReportCard({ report, onEdit, onDelete, onRunNow, isRunning }: ReportCar
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="font-semibold text-primary text-sm">{report.name}</h3>
-          <p className="text-xs text-secondary mt-0.5">{reportTypeLabels[report.type]}</p>
+          <p className="text-xs text-secondary mt-0.5">{reportTypeLabels[report.report_type]}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button

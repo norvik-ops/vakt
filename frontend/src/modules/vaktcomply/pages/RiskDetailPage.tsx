@@ -341,7 +341,9 @@ export default function RiskDetailPage() {
                 {updateResidual.isPending ? t('vaktcomply.riskDetail.saving') : t('vaktcomply.riskDetail.saveValues')}
               </Button>
 
-              {/* Risk acceptance section (only when treatment_status = accepted) */}
+              {/* Risk acceptance section (only when the register status is 'accepted').
+                  This gate was always the right one; the backend precondition read
+                  treatment_status and could never be satisfied — R1-14c-12. */}
               {risk.status === 'accepted' && (
                 <div className="border-t pt-4 space-y-2">
                   <p className="text-xs font-medium">{t('vaktcomply.riskDetail.formalAcceptance')}</p>

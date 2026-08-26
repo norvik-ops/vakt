@@ -1,0 +1,12 @@
+FROM aquasec/trivy:0.62.0@sha256:cb84170aa1fb6942c11b638969dce0845735c35f40d3bd48851c7f2d83a3c1ae AS trivy-src
+FROM projectdiscovery/nuclei:v3.4.4@sha256:87bb57b9be70c90a6be8516c3852ca73370139ec32fe4bf6281f067c4b06db4a AS nuclei-src
+FROM anchore/syft:v1.18.1@sha256:b8c170b8e51bfc4779ec3ef4399942c57290f5ce76a9c3af564c9d00d4946a6b AS syft-src
+
+FROM alpine:3.21
+COPY --from=trivy-src /usr/local/bin/trivy /scanners/trivy
+COPY --from=nuclei-src /usr/local/bin/nuclei /scanners/nuclei
+# syft powers POST /vaktscan/assets/:id/sbom. Without it the endpoint returned 202
+# and the worker failed forever with "syft not found in PATH" (R-H28/S131-F2).
+COPY --from=syft-src /syft /scanners/syft
+# Copies scanner binaries into the mounted /target volume on every compose-up.
+ENTRYPOINT ["/bin/sh", "-c", "cp /scanners/trivy /scanners/nuclei /scanners/syft /target/ && chmod 755 /target/trivy /target/nuclei /target/syft && echo 'scanners installed'"]

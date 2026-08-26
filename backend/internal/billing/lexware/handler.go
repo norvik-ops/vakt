@@ -518,12 +518,16 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 	// The licence row goes in BEFORE the key is signed, because the mail has to carry
 	// that licence's renewal token — a key mailed without one leaves the customer unable
 	// to auto-renew, and there is no fixing it after the fact.
+	//
+	// One TrialExpiry() for the row AND the key: computing it twice put the row and the
+	// key a few microseconds apart for no reason.
+	trialExpires := license.TrialExpiry()
 	var renewalToken string
 	if err := h.db.QueryRow(ctx, `
 		INSERT INTO billing_licenses (subscription_id, org_name, license_key, expires_at, kind, note)
 		VALUES ($1, $2, '', $3, 'trial', 'mit der Rechnung ausgestellt, vor der Zahlung')
 		RETURNING renewal_token`,
-		id, company, license.TrialExpiry()).Scan(&renewalToken); err != nil {
+		id, company, trialExpires).Scan(&renewalToken); err != nil {
 		log.Error().Err(err).Str("request_id", id).Msg("billing: create licence row")
 		return ApproveResult{InvoiceID: invoiceID,
 			Message: "FEHLER: Lizenz-Datensatz konnte nicht angelegt werden.\n\n" + err.Error() +
@@ -534,10 +538,14 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 	// The customer gets a 45-day key straight away. Making a B2B buyer wait days for a
 	// bank transfer to clear before they can even start would be a strange way to sell
 	// software.
-	key, mailErr := h.issuer.Issue(licensing.Request{
-		OrgName: company, Email: email, Interval: interval, Trial: true,
-		RenewalToken: renewalToken,
-	}, pdf, "Rechnung-Vakt-Pro.pdf")
+	// The trial expiry is passed in rather than derived a second time inside the
+	// issuer: the row above was created with license.TrialExpiry() already, and two
+	// calls to it are two different instants. IssueUntil also means every path with a
+	// licence row behind it goes through LicenceRequest — Issue is left to the admin
+	// CLI, which is the only caller that legitimately has no row and no token.
+	key, mailErr := h.issuer.IssueUntil(
+		licensing.ForLicence(renewalToken, company, email, interval).AsTrial(),
+		trialExpires, pdf, "Rechnung-Vakt-Pro.pdf")
 
 	if _, err := h.db.Exec(ctx,
 		`UPDATE billing_licenses SET license_key = $2 WHERE renewal_token = $1::uuid`,
@@ -729,10 +737,8 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 	// staying up.
 	entitledTo := periodEnd.AddDate(0, 0, plan.GraceDays)
 
-	key, mailErr := h.issuer.IssueUntil(licensing.Request{
-		OrgName: company, Email: email, Interval: interval, Trial: false,
-		RenewalToken: renewalToken,
-	}, entitledTo, nil, "")
+	key, mailErr := h.issuer.IssueUntil(
+		licensing.ForLicence(renewalToken, company, email, interval), entitledTo, nil, "")
 	if key == "" {
 		log.Error().Err(mailErr).Str("invoice_id", invoiceID).
 			Msg("billing: CRITICAL — payment settled but license key could not be signed")
@@ -742,12 +748,21 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 	// The new key and the next billing date land together. next_invoice_at is set
 	// HERE and nowhere else: an invoice is only ever raised for a customer whose
 	// previous one was paid.
+	// R1-W4A-N1: Diese beiden Schreibvorgaenge SIND „cycle advanced". Ihr
+	// Fehler wurde geloggt und danach unten trotzdem „payment settled, full
+	// license key issued, cycle advanced" gemeldet — die Zeile, die man im Log
+	// sucht, wenn man wissen will, ob eine Zahlung sauber durchlief. Ohne
+	// next_invoice_at wird nie wieder eine Rechnung gestellt; ohne die zweite
+	// Zeile zaehlt der Platz weiter als Testlizenz.
+	cycleAdvanced := true
 	if _, err := h.db.Exec(ctx, `
 		UPDATE billing_quote_requests
 		   SET status = 'paid', paid_at = COALESCE(paid_at, NOW()),
 		       license_key = $2, next_invoice_at = $3
 		 WHERE id = $1`, subID, key, plan.NextInvoiceAt(periodEnd)); err != nil {
-		log.Error().Err(err).Str("invoice_id", invoiceID).Msg("billing: persist license key")
+		cycleAdvanced = false
+		log.Error().Err(err).Str("invoice_id", invoiceID).Str("subscription_id", subID).
+			Msg("billing: CRITICAL — Zahlung verbucht, aber next_invoice_at NICHT gesetzt: fuer dieses Abo wird nie wieder eine Rechnung gestellt")
 	}
 
 	// Same licence, upgraded from trial to full. NOT a second row: that would count
@@ -757,7 +772,9 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 		   SET license_key = $2, expires_at = $3, kind = 'full', note = 'issued on payment'
 		 WHERE renewal_token = $1::uuid`,
 		renewalToken, key, entitledTo); err != nil {
-		log.Error().Err(err).Str("subscription_id", subID).Msg("billing: record issued licence")
+		cycleAdvanced = false
+		log.Error().Err(err).Str("subscription_id", subID).
+			Msg("billing: CRITICAL — Schluessel ausgestellt, aber die Lizenzzeile NICHT aktualisiert: der Platz zaehlt weiter als Testlizenz")
 	}
 
 	if mailErr != nil {
@@ -792,6 +809,14 @@ func (h *Handler) settle(ctx context.Context, invoiceID string) {
 		}
 	}
 
+	if !cycleAdvanced {
+		log.Error().
+			Str("invoice_id", invoiceID).
+			Str("subscription_id", subID).
+			Str("email_redacted", logsafe.RedactEmail(email)).
+			Msg("billing: CRITICAL — Zahlung eingegangen und Schluessel gemailt, aber der Abrechnungszyklus wurde NICHT fortgeschrieben. Von Hand nachziehen.")
+		return
+	}
 	log.Info().
 		Str("invoice_id", invoiceID).
 		Str("subscription_id", subID).
@@ -951,7 +976,15 @@ func (h *Handler) GetLicense(c echo.Context) error {
 	}
 
 	if h.issuer.Enabled() && time.Until(expires) < license.RenewBelowDays*24*time.Hour && limit.After(expires) {
-		fresh, err := h.issuer.SignUntil(licensing.Request{OrgName: orgName, Interval: interval}, limit)
+		// ForLicence, not a bare request: the token this instance authenticated with
+		// has to travel back INSIDE the fresh key. It used to be left out here, and the
+		// consequence was the exact opposite of a renewal — tryRefresh replaced the
+		// customer's key with one carrying no token, currentToken() went empty, the
+		// refresher marked itself failing and never called again. A paid-up instance
+		// went dark at the end of its period, and the replacement mail did not heal it
+		// (it dropped the token too, subscription.go).
+		fresh, err := h.issuer.SignUntil(
+			licensing.ForLicence(token, orgName, "", interval), limit)
 		if err != nil {
 			// Serve the old key. It is still valid, and the customer did not break
 			// anything — locking them out over OUR signing problem would be the worst

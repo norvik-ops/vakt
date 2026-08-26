@@ -9,18 +9,36 @@ Vollständige versionsspezifische Hinweise: [`docs/UPGRADE.md`](../UPGRADE.md)
 ## Standard-Upgrade (Docker Compose)
 
 ```bash
-# 1. Backup erstellen (zwingend vor jedem Upgrade)
+cd /opt/vakt
+./scripts/update.sh
+```
+
+Einzeln gefahren sind es diese Schritte:
+
+```bash
+# 1. Backup erstellen — ZUERST, vor jeder Änderung an der Installation.
+#    Scheitert es später (Platte voll, DB weg), steht sonst ein gemischter
+#    Stand da: neue Compose-Datei, alte Container, keine Sicherung.
 cd /opt/vakt
 ./scripts/backup.sh /backups/vakt
 
-# 2. Neue Images ziehen
+# 2. Auslieferungs-Dateien holen (docker-compose.yml, Caddyfile, scripts/).
+#    Sie gehören zur Installation, nicht zu den Images, und `docker compose pull`
+#    fasst sie nicht an. Zwischen zwei Versionen stecken hier regelmäßig
+#    Härtungsänderungen. Details + Weg ohne git-Checkout: docs/UPGRADE.md.
+git pull --ff-only
+
+# 3. Neue Images ziehen
 docker compose pull
 
-# 3. Migrationen ausführen (separater Schritt — Pflicht für Prod)
+# 4. Migrationen ausführen (separater Schritt — Pflicht für Prod)
 docker compose run --rm migrate up
+
+# 5. Neu starten — ohne Dienstliste, damit die in Schritt 2 geänderten
+#    Konfigurationen von caddy/postgres/redis/pgbouncer auch greifen
 docker compose up -d
 
-# 4. Verify
+# 6. Verify
 docker compose ps
 curl http://localhost/health | jq '.status, .version'
 ```
@@ -42,9 +60,14 @@ Demo-Outages (Migration 128/129) verursacht hat. CI-Lint blockiert beide SQL-Feh
 
 ## Kubernetes / Helm-Upgrade
 
+Das Chart liegt im Repository unter `helm/vakt/`; ein veröffentlichtes
+Chart-Repository gibt es nicht. Also: neuen Stand ziehen, dann aus dem
+Arbeitsverzeichnis upgraden.
+
 ```bash
-helm repo update
-helm upgrade vakt vakt/vakt \
+git pull
+helm dependency update ./helm/vakt
+helm upgrade vakt ./helm/vakt \
   --namespace vakt \
   --values values.yaml \
   --wait

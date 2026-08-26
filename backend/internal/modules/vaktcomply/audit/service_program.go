@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -129,7 +129,7 @@ func (s *Service) ExportAuditReport(ctx context.Context, orgID, auditID string) 
 }
 
 func buildAuditReportPDF(audit *AuditProgramAudit, findings []AuditFinding) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 	exportedAt := time.Now().UTC()

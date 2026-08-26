@@ -120,7 +120,8 @@ func (s *TIAService) ListAdequacyDecisions(ctx context.Context) ([]AdequacyDecis
 	}
 	defer rows.Close()
 
-	var out []AdequacyDecision
+	// R1-18-D1: initialise non-nil so an empty result serialises as [] not null.
+	out := make([]AdequacyDecision, 0)
 	for rows.Next() {
 		var d AdequacyDecision
 		if err := rows.Scan(&d.CountryCode, &d.CountryName, &d.HasAdequacy,
@@ -216,7 +217,8 @@ func (s *TIAService) ListTransfers(ctx context.Context, orgID string) ([]DataTra
 	}
 	defer rows.Close()
 
-	var out []DataTransfer
+	// R1-18-D1: initialise non-nil so an empty result serialises as [] not null.
+	out := make([]DataTransfer, 0)
 	for rows.Next() {
 		var t DataTransfer
 		if err := rows.Scan(
@@ -309,7 +311,8 @@ func (s *TIAService) ListTIAsForTransfer(ctx context.Context, orgID, transferID 
 	}
 	defer rows.Close()
 
-	var out []TransferImpactAssessment
+	// R1-18-D1: initialise non-nil so an empty result serialises as [] not null.
+	out := make([]TransferImpactAssessment, 0)
 	for rows.Next() {
 		var t TransferImpactAssessment
 		var supOut, reviewedBy, validUntil *string

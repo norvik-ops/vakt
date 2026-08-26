@@ -306,13 +306,73 @@ WHERE id = $1;
 SELECT content, scope FROM vb_reports
 WHERE id = $1 AND org_id = $2 AND status = 'completed';
 
+-- ── Findings Upsert (single, by cve_id) ─────────────────────────────────────
+
+-- name: UpsertSPFindingByCVE :one
+-- Single-shot INSERT...ON CONFLICT für Import-Flows, deren Fund eine CVE trägt
+-- (SARIF/CycloneDX/CSV). Konfliktschlüssel: (org_id, asset_id, cve_id) — das ist
+-- der einzige SCANNER-AGNOSTISCHE Dedup-Schlüssel des Schemas und damit der
+-- einzige, über den zwei verschiedene Werkzeuge denselben Fund zusammenführen
+-- können. Die Auswahl zwischen dieser Query und UpsertSPFindingByRawID trifft
+-- Repository.UpsertImportedFinding.
+--
+-- Das `WHERE cve_id IS NOT NULL` hinter der Konfliktspalten-Liste ist Pflicht,
+-- kein Filter — dieselbe Begründung wie bei der raw_id-Variante darunter
+-- (partieller Index, Arbiter-Inferenz erst im Planner, R1-SA26-D01).
+--
+-- `raw_id` fehlt in der Spaltenliste mit Absicht und bleibt NULL. Der
+-- raw_id-Index läuft über (org_id, raw_id, scanner) — OHNE das Asset. Trüge eine
+-- CVE-geschlüsselte Zeile zusätzlich ein raw_id, dann stritten zwei partielle
+-- Unique-Indexe um dieselbe Zeile: Derselbe Fund auf einem ZWEITEN Asset ist für
+-- den CVE-Arbiter konfliktfrei, verletzt aber den raw_id-Index → SQLSTATE 23505.
+-- Genau eine Zeile, genau ein Dedup-Schlüssel. Die scanner-eigene Kennung bleibt
+-- im Titel erhalten.
+--
+-- `sources` sammelt (Vereinigung), `scanner` bleibt beim Erstfinder: sonst wäre
+-- nach dem Zusammenführen nicht mehr erkennbar, wer den Fund zuerst meldete.
+-- Gleiches Muster wie der CVE-Zweig in repository_sbom.go (BatchUpsertFindings).
+INSERT INTO vb_findings
+  (org_id, asset_id, cve_id, title, description, severity,
+   cvss_score, status, scanner, sources, sla_due_at,
+   reopen_count, occurrence_count, last_seen_at)
+VALUES
+  ($1, $2, $3, $4, $5, $6,
+   $7, $8, $9, $10, $11,
+   0, 1, NOW())
+ON CONFLICT (org_id, asset_id, cve_id) WHERE cve_id IS NOT NULL DO UPDATE
+  SET title            = EXCLUDED.title,
+      description      = EXCLUDED.description,
+      severity         = EXCLUDED.severity,
+      cvss_score       = EXCLUDED.cvss_score,
+      sla_due_at       = EXCLUDED.sla_due_at,
+      sources          = (SELECT ARRAY(SELECT DISTINCT unnest(vb_findings.sources || EXCLUDED.sources))),
+      occurrence_count = vb_findings.occurrence_count + 1,
+      last_seen_at     = NOW(),
+      updated_at       = NOW()
+RETURNING id, org_id, asset_id, scan_id, cve_id,
+          title, description, severity,
+          cvss_score, epss_score, epss_percentile, risk_score,
+          status, scanner, raw_id, sources, template_id,
+          assigned_to, justification,
+          reopen_count, occurrence_count,
+          last_seen_at, sla_due_at, created_at, updated_at;
+
 -- ── Findings Upsert (single, by raw_id) ─────────────────────────────────────
 
 -- name: UpsertSPFindingByRawID :one
--- Single-shot INSERT...ON CONFLICT for importer flows (SARIF/CycloneDX/CSV).
+-- Single-shot INSERT...ON CONFLICT for importer flows (SARIF/CycloneDX/CSV/Wazuh).
 -- Conflict key: (org_id, raw_id, scanner). Multi-row Upserts with conditional
 -- dedup keys (cve_id vs template_id) remain procedural in the repo because
 -- the conditional INSERT-vs-UPDATE branch isn't expressible in a single sqlc query.
+--
+-- Das `WHERE raw_id IS NOT NULL` hinter der Konfliktspalten-Liste ist Pflicht,
+-- kein Filter: der einzige passende Unique-Index ist partiell
+-- (idx_vb_findings_dedup_rawid, Migration 120). PostgreSQL inferiert einen
+-- partiellen Index nur als Arbiter, wenn dessen Praedikat hier wiederholt wird —
+-- sonst SQLSTATE 42P10 fuer JEDEN Aufrufer (R1-SA26-D01). PREPARE sieht das
+-- nicht, die Inferenz laeuft erst im Planner; Regressionstest deshalb
+-- ausfuehrend in internal/modules/vaktscan/upsert_rawid_arbiter_real_test.go.
+-- Gleiches Muster wie repository_sbom.go:191/:222 und die Collector-Upserts.
 INSERT INTO vb_findings
   (org_id, asset_id, cve_id, title, description, severity,
    cvss_score, status, scanner, raw_id, sources, sla_due_at,
@@ -321,7 +381,7 @@ VALUES
   ($1, $2, $3, $4, $5, $6,
    $7, $8, $9, $10, $11, $12,
    0, 1, NOW())
-ON CONFLICT (org_id, raw_id, scanner) DO UPDATE
+ON CONFLICT (org_id, raw_id, scanner) WHERE raw_id IS NOT NULL DO UPDATE
   SET title            = EXCLUDED.title,
       description      = EXCLUDED.description,
       severity         = EXCLUDED.severity,

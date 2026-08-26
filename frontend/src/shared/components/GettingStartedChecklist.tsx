@@ -4,6 +4,7 @@ import { CheckCircle2, Circle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../api/client'
+import type { ApiResponse } from '../../api/contract'
 import { useFrameworks } from '../../modules/vaktcomply/hooks/useFrameworks'
 import { useTeamMembers } from '../../hooks/useTeam'
 
@@ -18,15 +19,28 @@ export function useTOTPStatus() {
   })
 }
 
+// R1-11-D02: both hooks used to guess the response shape — `data.count ??
+// data.data.length` — and each guessed a shape the endpoint does not return.
+//
+// GET /vaktcomply/evidence/auto answers a bare JSON array (evidence_auto/
+// handler.go:110) and ignores ?limit entirely. On an array `.count` is
+// undefined and `.data` is undefined, so the fallback yielded 0 and the
+// "Evidence" onboarding step was permanently grey however many records
+// existed. Its sibling below only worked by accident: /vaktprivacy/vvt does
+// send an envelope, so the `.data.length` half of the guess happened to hit.
+//
+// A guess that covers two shapes hides which one is real and reports a
+// confident zero when it is wrong about both. Each hook now names the shape
+// its own endpoint documents.
+
 export function useHasEvidence() {
   return useQuery<boolean>({
     queryKey: ['checklist', 'evidence'],
     queryFn: async () => {
-      // A small proof-of-evidence query — we just need to know if any exists.
-      // We re-use the auto-evidence endpoint since it surfaces pending uploads.
-      const data = await apiFetch<{ count?: number; data?: unknown[] }>('/vaktcomply/evidence/auto?limit=1')
-      const count = data.count ?? (Array.isArray((data as { data?: unknown[] }).data) ? (data as { data: unknown[] }).data.length : 0)
-      return count > 0
+      const items = await apiFetch<ApiResponse<'/vaktcomply/evidence/auto', 'get'>>(
+        '/vaktcomply/evidence/auto',
+      )
+      return items.length > 0
     },
     staleTime: 30_000,
     retry: false,
@@ -37,9 +51,11 @@ export function useHasVvt() {
   return useQuery<boolean>({
     queryKey: ['checklist', 'vvt'],
     queryFn: async () => {
-      const data = await apiFetch<{ count?: number; data?: unknown[] }>('/vaktprivacy/vvt?limit=1')
-      const count = data.count ?? (Array.isArray((data as { data?: unknown[] }).data) ? (data as { data: unknown[] }).data.length : 0)
-      return count > 0
+      const res = await apiFetch<ApiResponse<'/vaktprivacy/vvt', 'get'>>('/vaktprivacy/vvt?limit=1')
+      // pagination.total, not data.length: with limit=1 the page is capped at
+      // one row, so counting rows would answer "is there at least one" by
+      // accident rather than by design.
+      return res.pagination.total > 0
     },
     staleTime: 30_000,
     retry: false,

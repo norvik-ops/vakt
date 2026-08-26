@@ -136,34 +136,66 @@ func TestLoad_MalformedKey_ReturnsCommunity(t *testing.T) {
 	}
 }
 
-func TestLoad_EnterpriseKey(t *testing.T) {
+// TestLoad_UnknownTierFallsBackToCommunity ist die Rot-Abnahme fuer die
+// Abschaffung des Enterprise-Tiers (2026-08-08).
+//
+// Der Schluessel ist mit UNSEREM Schluessel korrekt signiert, nicht abgelaufen
+// und traegt die vollstaendige Feature-Liste — nur sein Tier verkauft dieses
+// Build nicht mehr. Genau dieser Fall darf weder abstuerzen noch still
+// durchgehen: waere der Tier bloss unbekannt statt abgelehnt, blieben die
+// Features im Schluessel in Kraft und der Traeger haette Vollzugriff auf alles,
+// was drinsteht. Signaturgueltigkeit sagt, WER einen Schluessel ausgestellt hat,
+// nicht, WAS die Plattform heute noch verkauft.
+func TestLoad_UnknownTierFallsBackToCommunity(t *testing.T) {
 	priv, restore := setupTestKeys(t)
 	defer restore()
 
-	exp := int64(1830211200)
-	p := payload{Tier: "enterprise", Org: "Big Corp", IssuedAt: 1778923388, Exp: &exp}
+	exp := time.Now().Add(365 * 24 * time.Hour).Unix()
+	p := payload{Tier: "enterprise", Features: allFeatures, Org: "Big Corp", IssuedAt: 1778923388, Exp: &exp}
 	key := makeTestKey(t, priv, p)
 
 	lic := Load(key, false)
-	if !lic.IsEnterprise() {
-		t.Fatal("want IsEnterprise()=true")
+
+	if lic == nil {
+		t.Fatal("Load must never return nil — ein unbekanntes Tier ist ein Downgrade, kein Absturz")
 	}
-	if !lic.IsPro() {
-		t.Fatal("enterprise must also be pro")
+	if lic.Tier != "community" {
+		t.Fatalf("unbekanntes Tier muss auf community zurueckfallen, got %q", lic.Tier)
+	}
+	if lic.IsPro() {
+		t.Fatal("ein Schluessel mit unbekanntem Tier darf nicht als Pro gelten")
+	}
+	// Der eigentliche Punkt: die Features im Schluessel duerfen NICHT greifen.
+	for _, f := range []string{FeatureTISAX, FeatureDORA, FeatureISO42001, FeatureSSO, FeatureSCIMProvisioning} {
+		if lic.Has(f) {
+			t.Errorf("Schluessel mit unbekanntem Tier gewaehrt %q — stiller Vollzugriff", f)
+		}
+		if lic.HasReadOnly(f) {
+			t.Errorf("Schluessel mit unbekanntem Tier gewaehrt Lesezugriff auf %q", f)
+		}
 	}
 }
 
-func TestIsEnterprise_NilLicense(t *testing.T) {
-	var l *License
-	if l.IsEnterprise() {
-		t.Fatal("nil license must not be enterprise")
-	}
-}
+// TestSign_RefusesUnknownTier: derselbe Riegel auf der Ausstellungsseite. Einen
+// Schluessel zu signieren, den Load anschliessend wegwirft, ist die schlechteste
+// Fehlerform — er sieht gekauft aus und verhaelt sich kostenlos.
+func TestSign_RefusesUnknownTier(t *testing.T) {
+	priv, restore := setupTestKeys(t)
+	defer restore()
 
-func TestIsEnterprise_Demo(t *testing.T) {
-	lic := Load("", true)
-	if !lic.IsEnterprise() {
-		t.Fatal("demo license must be enterprise")
+	privDER, err := x509.MarshalECPrivateKey(priv)
+	if err != nil {
+		t.Fatalf("marshal private key: %v", err)
+	}
+	privPEM := string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privDER}))
+
+	if _, err := Sign(privPEM, "enterprise", "Big Corp", allFeatures, nil); err == nil {
+		t.Fatal("Sign muss ein Tier ablehnen, das die Plattform nicht verkauft")
+	}
+	// Nicht-Vakuitaet: derselbe Aufruf mit einem verkauften Tier muss durchgehen,
+	// sonst waere der Test auch dann gruen, wenn Sign gar nichts mehr signiert.
+	if _, err := Sign(privPEM, "pro", "Acme GmbH", []string{FeatureSSO, FeatureAPI}, nil); err != nil {
+		t.Fatalf("Sign muss ein verkauftes Tier weiterhin signieren: %v", err)
 	}
 }
 
@@ -346,7 +378,7 @@ func TestAutoRefresher_CommunityNeverCalls(t *testing.T) {
 func TestNewHandler_WithOptions(t *testing.T) {
 	lic := communityLicense()
 	h := NewHandler(lic)
-	if h.lic != lic {
+	if h.inst.Get() != lic {
 		t.Fatal("handler lic mismatch")
 	}
 	h2 := h.WithDB(nil).WithRedis(nil).WithAutoRenewal()
@@ -440,12 +472,14 @@ func TestLegacyProKeyFallback(t *testing.T) {
 			t.Errorf("legacy Pro key must implicitly grant %q", f)
 		}
 	}
-	// Enterprise-only features must NOT be granted via the legacy fallback.
+	// Features outside legacyProFeatures must NOT be granted via the fallback:
+	// tisax is not sold at all (features.UnsoldFeatures), scim_provisioning is a
+	// current Pro feature that this old key simply does not carry.
 	if lic.Has(FeatureTISAX) {
-		t.Error("legacy Pro key must not grant enterprise-only feature tisax")
+		t.Error("legacy Pro key must not grant unsold feature tisax")
 	}
 	if lic.Has(FeatureSCIMProvisioning) {
-		t.Error("legacy Pro key must not grant enterprise-only feature scim_provisioning")
+		t.Error("legacy Pro key must not grant unlisted feature scim_provisioning")
 	}
 }
 

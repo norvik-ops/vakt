@@ -32,9 +32,16 @@ type Metrics struct {
 	licencesLive   atomic.Int64
 	lastReconcile  atomic.Int64 // unix seconds; 0 = never
 	reconcileError atomic.Int64 // 1 = the last reconciliation failed
+	corsRejected   atomic.Int64 // Aufrufe mit nicht freigegebenem Ursprung
 }
 
 var billingMetrics Metrics
+
+// recordCORSRejected zaehlt einen Aufruf, dessen Ursprung nicht freigegeben ist.
+//
+// Zusammen mit der Log-Zeile in cors.go ist das die einzige Spur, die eine im
+// Browser geblockte Bestellung auf unserer Seite ueberhaupt hinterlaesst.
+func recordCORSRejected() { billingMetrics.corsRejected.Add(1) }
 
 // WriteMetrics renders the Prometheus exposition format.
 //
@@ -79,6 +86,22 @@ func WriteMetrics(w io.Writer) {
 	g("vakt_billing_reconcile_age_seconds",
 		"Sekunden seit dem letzten erfolgreichen Lexware-Abgleich. Waechst er ueber ein paar Stunden, laeuft der Abgleich nicht mehr — und Stornos bleiben unentdeckt.",
 		age)
+
+	// Kein Messwert, sondern ein Zaehler: er kennt nur eine Richtung. Als Gauge
+	// ausgewiesen waere jede Rate-Abfrage falsch.
+	//
+	// Warum ueberhaupt: Ein Bestellformular, dessen Ursprung nicht freigegeben ist,
+	// scheitert AUSSCHLIESSLICH im Browser des Interessenten. Kein Handler laeuft,
+	// kein Fehler entsteht, keine der Zahlen darueber bewegt sich — der Verkaufsweg
+	// steht still und alles sieht gesund aus. Steigt dieser Zaehler, ist entweder
+	// VAKT_BILLING_CORS_ORIGINS falsch oder eine fremde Seite ruft uns auf; beides
+	// will man wissen, und beides sieht man sonst nicht.
+	c := func(name, help string, v int64) {
+		fmt.Fprintf(w, "# HELP %s %s\n# TYPE %s counter\n%s %d\n", name, help, name, name, v)
+	}
+	c("vakt_billing_cors_rejected_total",
+		"Aufrufe des Bestellformular-Endpunkts mit nicht freigegebenem Ursprung. >0 heisst: entweder ist die Ursprungsliste falsch und es kann niemand mehr bestellen, oder eine fremde Seite ruft uns auf.",
+		m.corsRejected.Load())
 }
 
 // RefreshMetrics recomputes the gauges. Called after every reconciliation, so the

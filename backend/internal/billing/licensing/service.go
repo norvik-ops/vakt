@@ -52,24 +52,75 @@ func NewIssuer(privateKeyPEM string, smtpCfg SMTPConfig) *Issuer {
 // attempted — only the billing instance holds it.
 func (i *Issuer) Enabled() bool { return i != nil && i.privateKeyPEM != "" }
 
-// Request describes one license to issue.
+// Request describes one license to issue BY HAND — the admin CLI signing a key for
+// which no licence row exists.
+//
+// Everything that has a row behind it uses LicenceRequest instead. See
+// renewalToken below for why that is a separate type and not a field anyone may set.
 type Request struct {
 	OrgName  string // shown inside the key; also the customer's company name
 	Email    string
 	Interval string // "year" or "month"
 	Trial    bool   // 45-day key issued at invoice time, before payment lands
 
-	// RenewalToken lets the customer's instance fetch its next key by itself.
+	// renewalToken lets the customer's instance fetch its next key by itself.
 	//
-	// Without it the mail hands over a key that expires in 395 days and nothing
-	// else — the customer would have to paste a new one by hand, while
-	// .env.example and the docs promise "kein manueller Eingriff bei
-	// Verlängerungen". The token used to exist only for customers who bought
-	// through Polar; the invoice flow shipped without one.
+	// Without it the mail hands over a key that expires and nothing else — the
+	// customer would have to paste a new one by hand, while .env.example and the
+	// docs promise "kein manueller Eingriff bei Verlängerungen". Worse, the token
+	// travels INSIDE the key (license.payload.RenewalToken): an instance that is
+	// handed a key without one loses the only copy it had, because tryRefresh
+	// replaces the key it is holding. AutoRefresher.currentToken() then returns "",
+	// the refresher marks itself failing and never calls again, and the instance
+	// goes dark after the paid period — while the customer is fully paid up.
 	//
-	// Empty is allowed (the admin CLI signs keys without a quote request behind
-	// them) — the mail then simply omits the auto-renewal section.
-	RenewalToken string
+	// It is UNEXPORTED on purpose. As an exported field it had to be remembered at
+	// six call sites; two of them forgot it (GetLicense's re-sign and the
+	// expiring-key sweep) and nothing failed loudly. The only way to set it now is
+	// ForLicence, whose signature cannot be satisfied without it.
+	renewalToken string
+
+	// seat marks a key that an MSP provisioned FOR ITS END CUSTOMER. That recipient
+	// paid us nothing and never saw an order confirmation, so the payment wording
+	// must not reach them. Set by LicenceRequest.ForSeat.
+	seat bool
+}
+
+// LicenceRequest is a Request with a licence ROW behind it: every key that
+// billing_licenses can ever renew.
+//
+// The renewal token is a constructor argument rather than a struct field because
+// forgetting it is silent and terminal (see Request.renewalToken). A field can be
+// omitted; an argument cannot. That is the whole reason this type exists — it is not
+// an abstraction, it is a compiler check.
+type LicenceRequest struct{ r Request }
+
+// ForLicence builds the signing request for one licence row.
+//
+// renewalToken is the ROW's own token (billing_licenses.renewal_token), never the
+// subscription id: an MSP's ten seats are ten tokens against one subscription, and
+// keying on the subscription would hand all ten instances the MSP's own key.
+func ForLicence(renewalToken, orgName, email, interval string) LicenceRequest {
+	return LicenceRequest{r: Request{
+		OrgName:      orgName,
+		Email:        email,
+		Interval:     interval,
+		renewalToken: renewalToken,
+	}}
+}
+
+// AsTrial marks the 45-day key that goes out WITH the invoice, before the money
+// lands. The mail then promises the full key on payment instead of claiming one.
+func (l LicenceRequest) AsTrial() LicenceRequest {
+	l.r.Trial = true
+	return l
+}
+
+// ForSeat marks a key an MSP provisioned for one of its end customers, so the mail
+// stops telling that recipient their payment arrived.
+func (l LicenceRequest) ForSeat() LicenceRequest {
+	l.r.seat = true
+	return l
 }
 
 // SignUntil produces a key that expires exactly when the caller says.
@@ -78,22 +129,35 @@ type Request struct {
 // actually paid for (lexware.Entitlement). Deriving it from the interval instead would
 // let a customer who stopped paying keep renewing forever — the subscription's status
 // stays "paid" once it has ever been paid.
-func (i *Issuer) SignUntil(r Request, expires time.Time) (string, error) {
+func (i *Issuer) SignUntil(l LicenceRequest, expires time.Time) (string, error) {
 	if !i.Enabled() {
 		return "", fmt.Errorf("licensing: no signing key configured (VAKT_LICENSE_PRIVATE_KEY)")
 	}
-	org := strings.TrimSpace(r.OrgName)
-	if org == "" {
-		org = r.Email
+	if l.r.renewalToken == "" {
+		// Unreachable through ForLicence with a real row (renewal_token is NOT NULL
+		// DEFAULT gen_random_uuid()). Loud rather than silent anyway: a token-less key
+		// on a row-backed path is the failure this type exists to prevent, and the
+		// callers all fall back to serving the key the customer already holds.
+		return "", fmt.Errorf("licensing: refusing to sign a licence-row key with no renewal token")
 	}
-	return license.SignWithToken(i.privateKeyPEM, "pro", org, r.RenewalToken, features.ProTier, &expires)
+	return license.SignWithToken(i.privateKeyPEM, "pro", i.orgOf(l.r), l.r.renewalToken, features.ProTier, &expires)
 }
 
-// Sign produces the license key without sending mail. Used by the CLI, and by
-// Issue below.
+// Sign produces the license key without sending mail. The admin CLI path: no licence
+// row, therefore no renewal token, therefore no auto-renewal — and the mail leaves the
+// auto-renewal section out instead of pointing at a token that does not exist.
 func (i *Issuer) Sign(r Request) (string, error) {
 	key, _, err := i.sign(r)
 	return key, err
+}
+
+// orgOf is what gets embedded in the key and shown to the customer. The email is
+// the fallback so a key is never signed for an empty organisation.
+func (i *Issuer) orgOf(r Request) string {
+	if org := strings.TrimSpace(r.OrgName); org != "" {
+		return org
+	}
+	return r.Email
 }
 
 // sign returns the key AND the moment it stops working.
@@ -105,16 +169,12 @@ func (i *Issuer) sign(r Request) (string, time.Time, error) {
 	if !i.Enabled() {
 		return "", time.Time{}, fmt.Errorf("licensing: no signing key configured (VAKT_LICENSE_PRIVATE_KEY)")
 	}
-	org := strings.TrimSpace(r.OrgName)
-	if org == "" {
-		org = r.Email
-	}
 	status := ""
 	if r.Trial {
 		status = "trialing"
 	}
 	expiry := license.KeyExpiry(r.Interval, status)
-	key, err := license.SignWithToken(i.privateKeyPEM, "pro", org, r.RenewalToken, features.ProTier, &expiry)
+	key, err := license.SignWithToken(i.privateKeyPEM, "pro", i.orgOf(r), r.renewalToken, features.ProTier, &expiry)
 	return key, expiry, err
 }
 
@@ -136,12 +196,12 @@ func termOf(interval string) string {
 
 // IssueUntil signs a key with an explicit expiry and mails it. This is what a real
 // sale uses — the expiry is capped at the period the customer actually paid for.
-func (i *Issuer) IssueUntil(r Request, expires time.Time, invoicePDF []byte, invoiceName string) (string, error) {
-	key, err := i.SignUntil(r, expires)
+func (i *Issuer) IssueUntil(l LicenceRequest, expires time.Time, invoicePDF []byte, invoiceName string) (string, error) {
+	key, err := i.SignUntil(l, expires)
 	if err != nil {
 		return "", err
 	}
-	if err := i.sendMail(r, key, expires, invoicePDF, invoiceName); err != nil {
+	if err := i.sendMail(l.r, key, expires, invoicePDF, invoiceName); err != nil {
 		return key, err
 	}
 	return key, nil
@@ -150,6 +210,9 @@ func (i *Issuer) IssueUntil(r Request, expires time.Time, invoicePDF []byte, inv
 // Issue signs a key and mails it to the customer. If invoicePDF is non-empty it
 // is attached — so the invoice and the key that unlocks the product arrive in
 // one message, from us, rather than the customer chasing two senders.
+//
+// Hand-signed keys only (admin CLI); everything with a licence row uses IssueUntil,
+// because only that path can be given the row's renewal token.
 func (i *Issuer) Issue(r Request, invoicePDF []byte, invoiceName string) (string, error) {
 	key, expires, err := i.sign(r)
 	if err != nil {
@@ -186,7 +249,25 @@ func licenseMail(r Request, key string, expires time.Time) (subject, body string
 	subject = "Deine Vakt Pro Lizenz — Zahlung eingegangen"
 	intro := "deine Zahlung ist eingegangen — vielen Dank. Hier ist dein Lizenzschlüssel für " + termOf(r.Interval) + ".\r\n\r\n" +
 		"Er ersetzt den 45-Tage-Schlüssel aus der Auftragsbestätigung: einfach in deiner Instanz eintragen, dann läuft die Lizenz bis zum " + until + "."
-	if r.Trial {
+	switch {
+	case r.seat:
+		// Dritter Text, dritter Empfaenger. Dieser hier ist der ENDKUNDE EINES MSP:
+		// sein Dienstleister hat den Platz fuer ihn eingerichtet. Er hat nie an uns
+		// gezahlt, nie eine Auftragsbestaetigung gesehen und nie einen
+		// 45-Tage-Schluessel gehabt — der Zahlungstext behauptete ihm gegenueber
+		// also drei Dinge, von denen keines stimmte, in der einzigen Mail, die er je
+		// von uns bekommt.
+		//
+		// Und keine Laufzeit-Floskel: ein Sitzschluessel endet, wenn die bezahlte
+		// Periode DES MSP endet (lexware.Entitlement), nicht nach einem vollen Jahr
+		// oder Monat. Wer drei Monate nach dem Jahreskauf einen Platz bekommt, haelt
+		// einen 9-Monats-Schluessel. Genannt wird deshalb nur das Datum — das kann
+		// vom ausgestellten Schluessel gar nicht erst abweichen, weil es aus ihm
+		// stammt.
+		subject = "Deine Vakt Pro Lizenz"
+		intro = "dein Zugang zu Vakt Pro ist eingerichtet — dein IT-Dienstleister hat ihn für dich bereitgestellt.\r\n\r\n" +
+			"Hier ist dein Lizenzschlüssel: einfach in deiner Instanz eintragen, dann läuft die Lizenz bis zum " + until + "."
+	case r.Trial:
 		subject = "Deine Vakt Pro Lizenz (45 Tage, bis zum Zahlungseingang)"
 		intro = "vielen Dank für deinen Auftrag. Anbei findest du deine Rechnung.\r\n\r\n" +
 			"Damit du sofort loslegen kannst, liegt schon jetzt ein Lizenzschlüssel bei — er läuft bis zum " + until + ". " +
@@ -197,7 +278,7 @@ func licenseMail(r Request, key string, expires time.Time) (subject, body string
 	// Auto-renewal. Only meaningful when the key came from a quote request — the
 	// CLI signs keys that have no row to renew against.
 	renewal := ""
-	if r.RenewalToken != "" {
+	if r.renewalToken != "" {
 		renewal = fmt.Sprintf(`
 Damit sich die Lizenz künftig von selbst verlängert, trage zusätzlich ein:
   VAKT_LICENSE_TOKEN=%s
@@ -206,7 +287,7 @@ Deine Instanz holt sich damit einmal täglich den aktuellen Schlüssel. Bei eine
 Verlängerung musst du dann nichts mehr eintragen. Übertragen wird ausschließlich
 dieser Token — keine Daten aus deiner Instanz. Der Token ist optional; ohne ihn
 funktioniert alles wie gewohnt, nur der Schlüsselwechsel bleibt manuell.
-`, r.RenewalToken)
+`, r.renewalToken)
 	}
 
 	body = fmt.Sprintf(`Hallo,

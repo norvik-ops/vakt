@@ -15,15 +15,20 @@ import (
 
 // ── conversion helpers ────────────────────────────────────────────────────────
 
-func float64PtrToNumeric(v *float64) pgtype.Numeric {
+// float64PtrToNumericArg produces a query argument for a PostgreSQL numeric
+// column from an optional float64. It returns a pgtype.Float8, not a
+// pgtype.Numeric, on purpose: pgx v5's numeric codec encodes any Float64Valuer
+// (pgtype.Float8 implements it), whereas pgtype.Numeric.Scan(float64) is NOT
+// supported in pgx v5 — Scan only accepts nil/string and returns
+// "cannot scan float64". If that error is discarded (as it was, R1-20-A2), an
+// empty/invalid Numeric is written and every float KPI is silently persisted as
+// NULL. This mirrors the read path, where a numeric column is decoded via
+// Numeric.Float64Value() → Float8.
+func float64PtrToNumericArg(v *float64) pgtype.Float8 {
 	if v == nil {
-		return pgtype.Numeric{}
+		return pgtype.Float8{}
 	}
-	var n pgtype.Numeric
-	if err := n.Scan(*v); err != nil {
-		return pgtype.Numeric{}
-	}
-	return n
+	return pgtype.Float8{Float64: *v, Valid: true}
 }
 
 func intPtrToInt4(v *int) pgtype.Int4 {
@@ -120,18 +125,18 @@ func (r *Repository) UpsertKPISnapshot(ctx context.Context, orgID string, snap K
 			kpi_phishing_click_rate     = EXCLUDED.kpi_phishing_click_rate`,
 		orgID,
 		snap.SnapshotDate,
-		float64PtrToNumeric(snap.ComplianceScore),
+		float64PtrToNumericArg(snap.ComplianceScore),
 		intPtrToInt4(snap.OpenCriticalControls),
 		intPtrToInt4(snap.OpenHighRisks),
-		float64PtrToNumeric(snap.ResidualRiskAvg),
+		float64PtrToNumericArg(snap.ResidualRiskAvg),
 		intPtrToInt4(snap.OpenIncidents),
-		float64PtrToNumeric(snap.IncidentMTTRDays),
-		float64PtrToNumeric(snap.EvidenceCoverage),
+		float64PtrToNumericArg(snap.IncidentMTTRDays),
+		float64PtrToNumericArg(snap.EvidenceCoverage),
 		intPtrToInt4(snap.ExpiringEvidenceCount),
-		float64PtrToNumeric(snap.FindingSLACompliance),
+		float64PtrToNumericArg(snap.FindingSLACompliance),
 		intPtrToInt4(snap.OpenMajorNCs),
-		float64PtrToNumeric(snap.SuppliersOverduePct),
-		float64PtrToNumeric(snap.PhishingClickRate),
+		float64PtrToNumericArg(snap.SuppliersOverduePct),
+		float64PtrToNumericArg(snap.PhishingClickRate),
 	)
 	if err != nil {
 		return fmt.Errorf("upsert kpi snapshot: %w", err)

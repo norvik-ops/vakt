@@ -52,10 +52,32 @@ type WriteEntry struct {
 //
 // Each entry extends the per-org hash chain: prev_hash is the entry_hash of
 // the most-recent existing row for this org (NULL for the first row), and
-// entry_hash is SHA-256(prev_hash || canonical(this_row)).  The select-for-
-// update keeps the chain serialisable under concurrent writers in the same
-// org — at the cost of a per-write row-lock, which is acceptable given audit
-// inserts are already on a fire-and-forget goroutine.  See ADR-0040.
+// entry_hash is SHA-256(prev_hash || canonical(this_row)).  See ADR-0040.
+//
+// KNOWN GAP (KONV-K1 F4, tracked as R1-F3A-05 — do not read the SELECT below
+// as a serialisation primitive): the `FOR UPDATE` does NOT make concurrent
+// chain extension safe. A second writer blocks on the tail row, and when it
+// acquires the lock Postgres re-evaluates only that locked row — it does not
+// re-execute the query, so it does not see the row the first writer has
+// meanwhile INSERTed. Both writers then link to the same predecessor, and
+// VerifyOrgChain (which replays in created_at ASC and compares each stored
+// prev_hash against the previous row's entry_hash) reports the org as
+// ChainBroken. Measured against Postgres 16 with this function and the real
+// verifier, in a single process: two entries carried the same prev_hash and
+// VerifyOrgChain returned Status=broken with strictly increasing created_at.
+// An empty chain forks even more directly — both writers find no row, take no
+// lock at all, and insert with prev_hash = NULL.
+//
+// Closing this needs a real serialisation of the chain extension (advisory
+// lock per org, SERIALIZABLE, or UNIQUE (org_id, prev_hash) with retry) plus a
+// migration; that is a product decision and is deliberately not built here.
+//
+// This comment is one of three places that state the same thing. The source of
+// truth is ADR-0040, "Nachtrag (2026-07-30, KONV-K1 F4 / R1-F3A-05)" at the end
+// of the "Writer-Flow" section — it also records why DB-side time or a monotone
+// sequence column does NOT fix this. The operator-facing consequence is the
+// caveat next to api.replicaCount in helm/vakt/values.yaml. Whoever builds the
+// serialisation changes all three.
 func Write(ctx context.Context, db *pgxpool.Pool, e WriteEntry) {
 	if db == nil {
 		return

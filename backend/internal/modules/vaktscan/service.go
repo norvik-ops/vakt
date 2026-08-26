@@ -20,9 +20,9 @@ import (
 
 	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/services/evidence_auto"
+	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/notify"
-	"github.com/matharnica/vakt/internal/shared/platform/events"
 	"github.com/matharnica/vakt/internal/shared/platform/webhooks"
 	"github.com/matharnica/vakt/internal/shared/queuemetrics"
 	"github.com/matharnica/vakt/internal/shared/safego"
@@ -62,8 +62,13 @@ func (s *Service) WithRedis(rdb *redis.Client) {
 }
 
 // WithWebhooks sets the webhook service used to fire outgoing events.
+//
+// R1-14b-02: Damit wird zugleich der ausgehende "finding.created"-Webhook an das
+// Repository gehaengt. Er hing bisher am verwaisten Service.UpsertFinding und war
+// deshalb genauso tot wie die Compliance-Bruecke.
 func (s *Service) WithWebhooks(svc *webhooks.WebhookService) {
 	s.webhookSvc = svc
+	s.repo.addFindingSink(webhookSink{svc: s})
 }
 
 // triggerWebhook fires a webhook event in a background goroutine so the caller
@@ -174,6 +179,11 @@ func (s *Service) GetSLADashboard(ctx context.Context, orgID string) ([]SLAEntry
 	return entries, nil
 }
 
+// defaultSLARemediationDays ist die Frist für Funde, deren Schweregrad keine
+// eigene Regel hat — die BSI-Grundschutz-Basis. Ein Fund ohne passende Regel
+// bekommt diese Frist, statt aus der Überwachung zu fallen.
+const defaultSLARemediationDays = 90
+
 // slaDaysForSeverity maps a severity label to the org's configured remediation window in days.
 // Unrecognised severity values fall back to 90 days (the BSI-Grundschutz baseline).
 func slaDaysForSeverity(cfg *SLAConfig, severity string) int {
@@ -187,7 +197,7 @@ func slaDaysForSeverity(cfg *SLAConfig, severity string) int {
 	case "low":
 		return cfg.LowDays
 	default:
-		return 90
+		return defaultSLARemediationDays
 	}
 }
 
@@ -333,31 +343,18 @@ func taskTypeForScanner(scanner string) string {
 // Findings
 // ---------------------------------------------------------------------------
 
-// UpsertFinding upserts a single finding and fires the finding.created webhook.
-// It is used by scanner import flows that create findings one-by-one.
+// UpsertFinding upserts a single finding.
+//
+// R1-14b-02: Webhook und Compliance-Ereignis standen frueher HIER — und nur hier.
+// Diese Methode hatte im ganzen Baum null Produktiv-Aufrufer, also entstand
+// keines von beidem je. Beides haengt jetzt an Repository.UpsertFinding, an dem
+// kein Pfad vorbeikommt (Begruendung in finding_events.go). Der Aufruf unten
+// loest sie darum mit aus; hier steht bewusst keine zweite Erzeugung, sonst
+// entstuende jedes Ereignis doppelt.
 func (s *Service) UpsertFinding(ctx context.Context, orgID string, f Finding) (*Finding, error) {
 	result, err := s.repo.UpsertFinding(ctx, orgID, f)
 	if err != nil {
 		return nil, err
-	}
-	s.triggerWebhook(ctx, orgID, "finding.created", map[string]any{
-		"id":       result.ID,
-		"title":    result.Title,
-		"severity": result.Severity,
-		"org_id":   orgID,
-	})
-	// S88-8: emit a cross-module finding-created event for critical/high findings
-	// so the Scan→Comply bridge attaches it as evidence on A.8.8/A.8.9 (idempotent,
-	// consumed by the worker — no direct cross-module call here).
-	if s.asynqClient != nil && (result.Severity == "critical" || result.Severity == "high") {
-		if task, taskErr := crossevidence.NewRecordEvidenceTask(
-			events.FindingCreated(orgID, result.ID, result.Title, result.Severity),
-		); taskErr == nil {
-			if _, enqErr := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(crossevidence.Queue)); enqErr != nil {
-				queuemetrics.RecordError(crossevidence.Queue)
-				log.Warn().Err(enqErr).Str("finding_id", result.ID).Msg("vaktscan: finding-created event enqueue failed")
-			}
-		}
 	}
 
 	// Notify org on critical/high severity findings.
@@ -373,11 +370,12 @@ func (s *Service) UpsertFinding(ctx context.Context, orgID string, f Finding) (*
 			if capturedSev == "high" {
 				sev = "Hoch"
 			}
-			notify.Send(notifyCtx, s.db, capturedOrgID,
+			// R1-W4A-N1: Regel 3 — innerhalb von safego.Run den Fehler
+			// zurueckgeben, safego loggt ihn.
+			return notify.Send(notifyCtx, s.db, capturedOrgID,
 				"Neues "+sev+"-Finding",
 				"Das Finding \""+capturedTitle+"\" wurde als "+sev+" eingestuft.",
 				"warning", "vaktscan")
-			return nil
 		})
 	}
 	return result, nil
@@ -421,11 +419,11 @@ func (s *Service) UpdateFinding(ctx context.Context, orgID, findingID string, in
 		safego.Run(ctx, "vaktscan.finding.notify.assigned", func(parent context.Context) error {
 			notifyCtx, notifyCancel := context.WithTimeout(context.WithoutCancel(parent), 10*time.Second)
 			defer notifyCancel()
-			notify.Send(notifyCtx, s.db, capturedOrgID,
+			// R1-W4A-N1: Regel 3 — siehe oben.
+			return notify.Send(notifyCtx, s.db, capturedOrgID,
 				"Finding zugewiesen",
 				"Das Finding \""+capturedTitle+"\" wurde einem Bearbeiter zugewiesen.",
 				"info", "vaktscan")
-			return nil
 		})
 	}
 
@@ -694,12 +692,12 @@ func (s *Service) ExportFindings(ctx context.Context, orgID, format string, filt
 			if f.RiskScore != nil {
 				riskScore = fmt.Sprintf("%.4f", *f.RiskScore)
 			}
-			if err := w.Write([]string{
+			if err := w.Write(csvsafe.Row([]string{
 				f.ID, f.OrgID, f.AssetID, cveID, f.Title, f.Severity,
 				f.Status, f.Scanner, riskScore,
 				f.LastSeenAt.Format(time.RFC3339),
 				f.CreatedAt.Format(time.RFC3339),
-			}); err != nil {
+			})); err != nil {
 				return nil, fmt.Errorf("write CSV row: %w", err)
 			}
 		}

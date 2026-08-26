@@ -88,7 +88,10 @@ interface FrameworkRowProps {
 function FrameworkRow({ fw, token }: FrameworkRowProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
-  const { data: controls = [], isLoading } = useAuditorControls(expanded ? fw.id : null, token)
+  // The endpoint answers with a pagination envelope, so unwrap `.data` like
+  // the risks/incidents/policies tabs below (R1-11-D01).
+  const { data, isLoading } = useAuditorControls(expanded ? fw.id : null, token)
+  const controls = data?.data ?? []
 
   const readiness = fw.readiness_score
 

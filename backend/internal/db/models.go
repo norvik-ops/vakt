@@ -1674,6 +1674,9 @@ type Webhooks struct {
 
 // ── S60: BCP / Notfallhandbuch ────────────────────────────────────────────────
 
+// Feldreihenfolge = physische Spaltenreihenfolge von ck_bcp_plans (Migration 156
+// + 216-Anhang). sqlc emittiert `RETURNING *` in genau dieser Reihenfolge; wer
+// hier umsortiert, muss die Scan-Reihenfolge der vier Queries mitziehen.
 type CkBcpPlans struct {
 	ID                  string             `json:"id"`
 	OrgID               string             `json:"org_id"`
@@ -1682,12 +1685,12 @@ type CkBcpPlans struct {
 	Version             string             `json:"version"`
 	Status              string             `json:"status"`
 	Owner               string             `json:"owner"`
-	RtoHours            int32              `json:"rto_hours"`
-	RpoHours            int32              `json:"rpo_hours"`
-	Schutzbedarfsklasse int32              `json:"schutzbedarfsklasse"`
-	LastTestedAt        pgtype.Date        `json:"last_tested_at"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	RtoHours            pgtype.Int4        `json:"rto_hours"`
+	RpoHours            pgtype.Int4        `json:"rpo_hours"`
+	Schutzbedarfsklasse pgtype.Int4        `json:"schutzbedarfsklasse"`
+	LastTestedAt        pgtype.Date        `json:"last_tested_at"`
 }
 
 type CkBcpTests struct {
@@ -1764,6 +1767,9 @@ type CkProtectionNeedAssessments struct {
 	FinalizedAt     pgtype.Timestamptz `json:"finalized_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	// Soft-Link auf vb_assets (Migration 159), NULL = nicht verknuepft. Kein FK
+	// (Modul-Isolation, ADR-0079), daher pgtype.UUID statt des string-Overrides.
+	VbAssetID pgtype.UUID `json:"vb_asset_id"`
 }
 
 // ── S60: Berechtigungskonzept ─────────────────────────────────────────────────

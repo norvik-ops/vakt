@@ -47,8 +47,10 @@ function ScanResultsPanel({ scanId }: { scanId: string }) {
     return <p className="text-sm text-secondary py-4 text-center">{t('vault.gitScans.noFindings')}</p>
   }
 
-  const active = results.filter((r) => !r.dismissed)
-  const dismissed = results.filter((r) => r.dismissed)
+  // K5-12: split on `status`, the field the backend actually sends and the
+  // Dismiss endpoint actually writes (handler.go sets status = 'dismissed').
+  const active = results.filter((r) => r.status !== 'dismissed')
+  const dismissed = results.filter((r) => r.status === 'dismissed')
 
   return (
     <div className="mt-3 space-y-2">
@@ -57,10 +59,10 @@ function ScanResultsPanel({ scanId }: { scanId: string }) {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <Badge variant="destructive" className="text-xs">{result.secret_type}</Badge>
+                <Badge variant="destructive" className="text-xs">{result.pattern_name}</Badge>
                 <span className="font-mono text-xs text-secondary truncate">{result.file_path}:{result.line_number}</span>
               </div>
-              <code className="text-xs text-primary font-mono block truncate">{result.snippet}</code>
+              <code className="text-xs text-primary font-mono block truncate">{result.match_preview}</code>
             </div>
             <Button
               size="sm"
@@ -119,8 +121,8 @@ function ScanRow({ scan }: { scan: GitScan }) {
         <GitBranch className="w-4 h-4 text-secondary shrink-0" />
         <span className="font-mono text-sm text-primary flex-1 truncate">{scan.repo_url}</span>
         <Badge variant={statusVariant[scan.status]} className="capitalize">{scan.status}</Badge>
-        {scan.result_count != null && scan.result_count > 0 && (
-          <Badge variant="destructive">{scan.result_count} finding{scan.result_count !== 1 ? 's' : ''}</Badge>
+        {scan.finding_count > 0 && (
+          <Badge variant="destructive">{scan.finding_count} finding{scan.finding_count !== 1 ? 's' : ''}</Badge>
         )}
         <span className="text-xs text-secondary">{formatDate(scan.created_at)}</span>
         {expanded ? <ChevronUp className="w-4 h-4 text-secondary" /> : <ChevronDown className="w-4 h-4 text-secondary" />}

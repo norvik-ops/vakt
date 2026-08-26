@@ -24,7 +24,7 @@ const CAMPAIGN: Campaign = {
   name: 'Q1 Awareness',
   status: 'draft',
   template_id: 't-1',
-  target_group_id: 'tg-1',
+  group_id: 'tg-1',
   from_name: 'Security Team',
   from_email: 'security@example.com',
   subject: 'Wichtige Info',
@@ -45,11 +45,14 @@ const TEMPLATE: Template = {
   created_at: '2026-01-01T00:00:00Z',
 }
 
+// K5-14: no target_count here — vaktaware.TargetGroup does not emit one. The
+// fixture used to set `target_count: 42`, which is why nothing noticed that the
+// page rendered "0 targets" against the real backend.
 const TARGET_GROUP: TargetGroup = {
   id: 'tg-1',
+  org_id: 'o-1',
   name: 'Alle Mitarbeitenden',
   source: 'manual',
-  target_count: 42,
   created_at: '2026-01-01T00:00:00Z',
 }
 

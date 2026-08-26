@@ -57,12 +57,51 @@ function isTestStale(test: BCPTest | undefined): boolean {
 
 // ─── Empty forms ──────────────────────────────────────────────────────────────
 
+// ESK-12: rto/rpo/schutzbedarfsklasse starten als null — "noch nicht festgelegt".
+// Ein Vorbelegen mit 72/24/2 waere genau der Defekt, den dieser Fix beseitigt:
+// eine BSI-200-4-Angabe, die aussieht, als haette jemand sie entschieden.
 function emptyPlanForm(): CreateBCPPlanInput {
-  return { title: '', scope: '', version: '1.0', owner: '' }
+  return {
+    title: '',
+    scope: '',
+    version: '1.0',
+    status: 'draft',
+    owner: '',
+    rto_hours: null,
+    rpo_hours: null,
+    schutzbedarfsklasse: null,
+  }
 }
 
+// Traegt ALLE Felder in das Formular, damit das Bearbeiten-Formular den
+// gespeicherten Zustand zeigt und nicht einen leeren.
+//
+// Zur Semantik des PATCH (REV-ESK12 B1): ein FEHLENDES Feld laesst den
+// gespeicherten Wert unveraendert, ein `null` loescht ihn. Diese Funktion darf
+// deshalb nicht `undefined` mit `null` verwechseln — sie uebernimmt die Werte
+// des Plans unveraendert, und ein Feld, das der Nutzer im Dialog leert, geht als
+// ausdrueckliches `null` ans Backend (numOrNull). Waere hier ein Feld
+// vergessen, saehe der Nutzer es im Formular nicht; geloescht wuerde es nicht.
 function planToForm(p: BCPPlan): CreateBCPPlanInput {
-  return { title: p.title, scope: p.scope, version: p.version, owner: p.owner }
+  return {
+    title: p.title,
+    scope: p.scope,
+    version: p.version,
+    status: p.status,
+    owner: p.owner,
+    rto_hours: p.rto_hours,
+    rpo_hours: p.rpo_hours,
+    schutzbedarfsklasse: p.schutzbedarfsklasse,
+  }
+}
+
+// Leeres Zahlenfeld -> null ("nicht festgelegt"), nicht 0. Die 0 wuerde die API
+// mit 422 ablehnen (rto_hours >= 1) und saehe in der Anzeige aus wie "sofort".
+function numOrNull(raw: string): number | null {
+  const trimmed = raw.trim()
+  if (trimmed === '') return null
+  const n = Number(trimmed)
+  return Number.isFinite(n) ? n : null
 }
 
 function emptyTestForm(planId: string): CreateBCPTestInput {
@@ -208,6 +247,41 @@ function BCPTestList({ plan }: { plan: BCPPlan }) {
   )
 }
 
+// ─── BSI-200-4-Kennzahlen des Plans ───────────────────────────────────────────
+
+// ESK-12: Ein nicht festgelegter Wert wird als "nicht festgelegt" ausgewiesen,
+// nicht als Zahl. Wer RTO/RPO fuer einen Auditor liest, muss "noch offen" von
+// "72 Stunden entschieden" unterscheiden koennen — bis zu diesem Fix lieferte
+// die API fuer jeden Plan 72/24/2 und die Seite zeigte nichts davon.
+function BCPPlanTargets({ plan }: { plan: BCPPlan }) {
+  const { t } = useTranslation()
+  const notSet = <span className="text-muted-foreground italic">{t('bcp.notSet')}</span>
+  const klasseLabel = plan.schutzbedarfsklasse
+    ? `${String(plan.schutzbedarfsklasse)} — ${t(`bcm.bia.klasse${String(plan.schutzbedarfsklasse)}`)}`
+    : null
+
+  return (
+    <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+      <div className="flex gap-1.5">
+        <dt className="text-muted-foreground">RTO (h)</dt>
+        <dd>{plan.rto_hours ?? notSet}</dd>
+      </div>
+      <div className="flex gap-1.5">
+        <dt className="text-muted-foreground">RPO (h)</dt>
+        <dd>{plan.rpo_hours ?? notSet}</dd>
+      </div>
+      <div className="flex gap-1.5">
+        <dt className="text-muted-foreground">{t('bcm.bia.schutzbedarfsklasse')}</dt>
+        <dd>{klasseLabel ?? notSet}</dd>
+      </div>
+      <div className="flex gap-1.5">
+        <dt className="text-muted-foreground">{t('bcp.lastTested')}</dt>
+        <dd>{plan.last_tested_at ?? notSet}</dd>
+      </div>
+    </dl>
+  )
+}
+
 // ─── Plan row ─────────────────────────────────────────────────────────────────
 
 function BCPPlanCard({
@@ -255,6 +329,7 @@ function BCPPlanCard({
         )}
       </CardHeader>
       <CardContent className="pt-0">
+        <BCPPlanTargets plan={plan} />
         <BCPTestList plan={plan} />
       </CardContent>
     </Card>
@@ -294,8 +369,14 @@ export default function BCPPage() {
 
   function handleSubmit() {
     if (editId) {
+      // ESK-12 (Variante, im selben Diff mitgenommen): hier stand fest
+      // `status: 'draft'`. Jede Bearbeitung eines aktiven oder archivierten
+      // Plans setzte ihn damit stillschweigend auf Entwurf zurueck — dieselbe
+      // Klasse wie der Befund selbst (ein Wert, den niemand gewaehlt hat, wird
+      // als gewaehlt geschrieben), nur an einem anderen Feld. Der Status kommt
+      // jetzt aus dem Formular und ist im Dialog auswaehlbar.
       updatePlan.mutate(
-        { ...form, status: 'draft' },
+        { ...form, status: form.status ?? 'draft' },
         { onSuccess: () => { setDialogOpen(false); } },
       )
     } else {
@@ -399,6 +480,70 @@ export default function BCPPage() {
                 />
               </div>
             </div>
+            {/* ESK-12: die drei BSI-200-4-Angaben. Leer bleiben ist erlaubt und
+                heisst "noch nicht festgelegt" — es wird nichts vorbelegt. */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="bcp-rto">RTO (h)</Label>
+                <Input
+                  id="bcp-rto"
+                  type="number"
+                  min={1}
+                  max={8760}
+                  placeholder={t('bcp.notSet')}
+                  value={form.rto_hours ?? ''}
+                  onChange={(e) => { setForm((f) => ({ ...f, rto_hours: numOrNull(e.target.value) })); }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bcp-rpo">RPO (h)</Label>
+                <Input
+                  id="bcp-rpo"
+                  type="number"
+                  min={1}
+                  max={8760}
+                  placeholder={t('bcp.notSet')}
+                  value={form.rpo_hours ?? ''}
+                  onChange={(e) => { setForm((f) => ({ ...f, rpo_hours: numOrNull(e.target.value) })); }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t('bcm.bia.schutzbedarfsklasse')}</Label>
+                <Select
+                  value={form.schutzbedarfsklasse ? String(form.schutzbedarfsklasse) : 'none'}
+                  onValueChange={(v) => {
+                    setForm((f) => ({
+                      ...f,
+                      schutzbedarfsklasse: v === 'none' ? null : (Number(v) as 1 | 2 | 3),
+                    }))
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('bcp.notSet')}</SelectItem>
+                    <SelectItem value="1">1 — {t('bcm.bia.klasse1')}</SelectItem>
+                    <SelectItem value="2">2 — {t('bcm.bia.klasse2')}</SelectItem>
+                    <SelectItem value="3">3 — {t('bcm.bia.klasse3')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {editId && (
+              <div className="space-y-1.5">
+                <Label>{t('bcp.statusLabel')}</Label>
+                <Select
+                  value={form.status ?? 'draft'}
+                  onValueChange={(v) => { setForm((f) => ({ ...f, status: v as BCPPlan['status'] })); }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">{t('bcp.status.draft')}</SelectItem>
+                    <SelectItem value="active">{t('bcp.status.active')}</SelectItem>
+                    <SelectItem value="archived">{t('bcp.status.archived')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setDialogOpen(false); }}>

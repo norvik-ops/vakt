@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/services/crossevidence"
@@ -128,10 +128,33 @@ func (s *Service) computeORP3Compliance(ctx context.Context, orgID string, from,
 	trainings, _ := s.repo.CountCompletedTrainingsInPeriod(ctx, orgID, from, to)
 	hasTrainings := trainings > 0
 
+	// R1-35-01/R1-SA25-01 — „eine Regel existiert" ist kein Nachweis, dass
+	// eingewiesen wurde.
+	//
+	// A2 („Schulungsplan") und A5 („Analyse des Schulungsbedarfs") sind Aussagen
+	// über eine VORHANDENE Planung — dafür ist die aktive Regel der richtige
+	// Beleg, beide bleiben unverändert.
+	//
+	// A3 („Einweisung neuer Mitarbeiter") ist dagegen eine Aussage über die
+	// gelebte PRAXIS. Solange die Auto-Einschreibung defekt war (disjunkte
+	// Wertemengen, kein Abonnent), meldete A3 „erfüllt", obwohl nie ein
+	// Mitarbeiter eingeschrieben wurde — und dieser Bericht fließt als Nachweis
+	// nach Vakt Comply. A3 verlangt deshalb jetzt die Regel UND mindestens eine
+	// tatsächlich erzeugte Einschreibung.
+	//
+	// Bewusst in Kauf genommen: Eine Organisation mit aktiver Regel, die im
+	// Zeitraum niemanden eingestellt hat, meldet A3 nun als nicht erfüllt. Diesen
+	// Fall sauber auszunehmen bräuchte die Zahl der Eintritte aus hr_employees —
+	// ein Lesezugriff über die Modulgrenze, den ADR-0079 verbietet. Ein
+	// falsch-negativer Prüfpunkt ist die sichere Richtung: er löst eine Rückfrage
+	// aus, ein falsch-positiver behauptet etwas.
+	autoEnrolled, _ := s.repo.CountNewEmployeeEnrollmentsInPeriod(ctx, orgID, from, to)
+	inductionEvidenced := hasNewEmpRule && autoEnrolled > 0
+
 	reqs := []ORP3Requirement{
 		{ID: "ORP.3.A1", Title: "Sensibilisierung der Mitarbeiter für Informationssicherheit", Fulfilled: hasCampaign},
 		{ID: "ORP.3.A2", Title: "Schulungsplan für Informationssicherheit", Fulfilled: hasNewEmpRule},
-		{ID: "ORP.3.A3", Title: "Einweisung neuer Mitarbeiter", Fulfilled: hasNewEmpRule},
+		{ID: "ORP.3.A3", Title: "Einweisung neuer Mitarbeiter", Fulfilled: inductionEvidenced},
 		{ID: "ORP.3.A4", Title: "Schulungsmaßnahmen zu Informationssicherheit", Fulfilled: hasTrainings},
 		{ID: "ORP.3.A5", Title: "Analyse des Schulungsbedarfs", Fulfilled: hasNewEmpRule},
 		{ID: "ORP.3.A6", Title: "Schulung auf Leitungsebene", Fulfilled: hasCampaign},
@@ -154,7 +177,7 @@ func (s *Service) computeORP3Compliance(ctx context.Context, orgID string, from,
 
 // generateTrainingMatrixPDF renders the training matrix report as PDF using fpdf.
 func generateTrainingMatrixPDF(r *TrainingMatrixReport) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 	pdf.AliasNbPages("{nb}")

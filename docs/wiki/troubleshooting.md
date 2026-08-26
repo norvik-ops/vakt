@@ -128,6 +128,28 @@ Vollständiges Rollback-Verfahren: [`docs/operations/migrations-rollback.md`](..
 
 ---
 
+## `audit-verify` meldet eine gebrochene Kette
+
+`audit-verify` prüft das manipulationssichere Audit-Protokoll (Hash-Kette pro Organisation). Drei Ergebnisse sind möglich:
+
+| Meldung | Bedeutung | Aktion |
+|---------|-----------|--------|
+| `chain OK` | Alle Einträge geprüft, alle unverändert. | Keine. |
+| `chain NOT fully verifiable` | Einträge ohne Prüfsumme gefunden — vor Einführung der Kette geschrieben und deshalb **nicht prüfbar**. Das ist weder „in Ordnung" noch „manipuliert". | Keine. Der Bestand wächst nicht mehr; er wird bewusst **nicht** nachträglich mit Prüfsummen versehen (das würde nichts belegen). |
+| `chain broken / row tampered` | Ein Eintrag passt nicht zur Kette. | Sofort: DB-Snapshot ziehen, Sitzungen invalidieren, Master-Key rotieren, Incident-Response. |
+
+**Erst prüfen, bevor eskaliert wird — ein Zeitsprung erzeugt denselben Fehlalarm.**
+Die Reihenfolge der Kette richtet sich nach `created_at`, und dieser Wert kommt aus der **Uhr der Anwendung**, nicht aus der Datenbank. Zwei Konstellationen erzeugen ein `broken`, obwohl niemand etwas manipuliert hat:
+
+- **Mehrere API-Instanzen hinter einem Load-Balancer mit auseinanderlaufenden Uhren.** Läuft die Uhr von Container A vor, kann ein *später* geschriebener Eintrag von Container B einen *früheren* Zeitstempel tragen. Prüfen: `docker compose exec vakt-api date -u` auf jedem API-Container; die Werte müssen bis auf Sekunden übereinstimmen. Abhilfe: NTP/chrony auf allen Hosts aktivieren.
+- **Ein rückwärts gerichteter Zeitsprung** (NTP-Korrektur, VM-Snapshot-Restore, manuelles Stellen der Uhr) — das trifft auch eine **einzelne** Instanz.
+
+Fällt der Fehler zeitlich mit einem Uhrensprung oder dem Hochskalieren der API zusammen, ist ein Fehlalarm wahrscheinlicher als ein Angriff. Der Verdacht entlastet aber nicht: **den Snapshot trotzdem ziehen**, bevor weiter untersucht wird.
+
+Für Kubernetes steht derselbe Hinweis an `api.replicaCount` in `helm/vakt/values.yaml`.
+
+---
+
 ## Container startet nicht
 
 **Log-Analyse:**

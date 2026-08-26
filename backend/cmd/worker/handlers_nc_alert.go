@@ -38,12 +38,17 @@ func handleEffectivenessCheckOverdueAlert(pool *pgxpool.Pool) asynq.HandlerFunc 
 		log.Info().Int("count", len(items)).Msg("effectiveness_check_overdue_alert: found overdue CAPAs")
 
 		for _, item := range items {
-			notify.Send(ctx, pool, item.OrgID,
+			// Keine Marke — die Abfrage liefert die CAPA erneut, solange sie
+			// ueberfaellig ist. Der Fehler unterdrueckt also nichts dauerhaft.
+			if err := notify.Send(ctx, pool, item.OrgID,
 				"Wirksamkeitsprüfung überfällig",
 				fmt.Sprintf("Eine Major-NC (CAPA %s) hat das Prüfdatum überschritten und wurde noch nicht als wirksam bestätigt.", item.CAPAID),
 				"warning",
 				"vaktcomply",
-			)
+			); err != nil {
+				log.Error().Err(err).Str("org_id", item.OrgID).Str("capa_id", item.CAPAID).
+					Msg("effectiveness_check_overdue_alert: In-App-Meldung NICHT geschrieben")
+			}
 		}
 
 		return nil

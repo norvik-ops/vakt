@@ -41,9 +41,12 @@ func TestAuditChain_VerifyAfterInserts(t *testing.T) {
 		})
 	}
 
-	bad, err := audit.VerifyOrgChain(ctx, pool, orgID)
+	res, err := audit.VerifyOrgChain(ctx, pool, orgID)
 	require.NoError(t, err)
-	assert.Empty(t, bad, "freshly-written chain must verify clean — got bad row %q", bad)
+	assert.Equal(t, audit.ChainIntact, res.Status,
+		"freshly-written chain must verify clean — got %+v", res)
+	assert.Equal(t, 3, res.Verified, "all three rows must be counted as verified")
+	assert.Zero(t, res.Unverifiable, "audit.Write must never leave a row unchained")
 }
 
 // TestAuditChain_DetectsTamperedRow simulates an attacker who reaches into
@@ -79,9 +82,10 @@ func TestAuditChain_DetectsTamperedRow(t *testing.T) {
 		WHERE id = $1::uuid`, targetID)
 	require.NoError(t, err)
 
-	bad, err := audit.VerifyOrgChain(ctx, pool, orgID)
+	res, err := audit.VerifyOrgChain(ctx, pool, orgID)
 	require.NoError(t, err)
-	assert.Equal(t, targetID, bad, "chain verifier must localise the tamper to the modified row")
+	assert.Equal(t, audit.ChainBroken, res.Status)
+	assert.Equal(t, targetID, res.FirstBadRow, "chain verifier must localise the tamper to the modified row")
 }
 
 // TestAuditChain_DetectsDeletedRow guards another tamper shape: removing an
@@ -112,9 +116,10 @@ func TestAuditChain_DetectsDeletedRow(t *testing.T) {
 	_, err := pool.Exec(ctx, `DELETE FROM audit_log WHERE id = $1::uuid`, targetID)
 	require.NoError(t, err)
 
-	bad, err := audit.VerifyOrgChain(ctx, pool, orgID)
+	res, err := audit.VerifyOrgChain(ctx, pool, orgID)
 	require.NoError(t, err)
-	assert.Equal(t, nextID, bad, "deletion of a chain link must be flagged on the next row")
+	assert.Equal(t, audit.ChainBroken, res.Status)
+	assert.Equal(t, nextID, res.FirstBadRow, "deletion of a chain link must be flagged on the next row")
 }
 
 // bootPostgresWithOrg boots Postgres + runs migrations + seeds one org and
@@ -128,7 +133,7 @@ func bootPostgresWithOrg(t *testing.T) (*pgxpool.Pool, string, func()) {
 	defer cancel()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		imagePostgres,
 		postgres.WithDatabase("vakt_test"),
 		postgres.WithUsername("vakt"),
 		postgres.WithPassword("vakt"),

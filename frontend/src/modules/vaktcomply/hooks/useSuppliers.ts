@@ -66,19 +66,13 @@ export function useDeleteSupplier() {
 export function useImportSuppliersCSV() {
   const queryClient = useQueryClient()
   return useMutation<CSVImportResult, Error, FormData>({
-    mutationFn: async (formData) => {
-      const res = await fetch('/api/v1/vaktcomply/suppliers/import-csv', {
+    // apiFetch omits Content-Type for FormData so the browser sets the
+    // multipart boundary itself — see client.ts.
+    mutationFn: (formData) =>
+      apiFetch<CSVImportResult>('/vaktcomply/suppliers/import-csv', {
         method: 'POST',
-        credentials: 'include',
         body: formData,
-        // Do NOT set Content-Type — browser sets multipart boundary automatically.
-      })
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string }
-        throw new Error(body.error ?? `HTTP ${res.status.toString()}`)
-      }
-      return res.json() as Promise<CSVImportResult>
-    },
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'suppliers'] })
     },

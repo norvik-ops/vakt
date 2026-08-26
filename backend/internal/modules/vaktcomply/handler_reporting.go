@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 	"github.com/matharnica/vakt/internal/shared/xlsxexport"
@@ -237,10 +238,13 @@ func (h *Handler) GetSoACSV(c echo.Context) error {
 		if e.Applicable {
 			applicable = "Ja"
 		}
-		_ = w.Write([]string{
+		// R1-24-D03: Begruendung und Titel sind nutzergesetzt und landeten
+		// woertlich in der Zelle. csvsafe.Row entschaerft fuehrende
+		// Formelzeichen.
+		_ = w.Write(csvsafe.Row([]string{
 			e.FrameworkName, e.Domain, e.Title, applicable, e.Status,
 			e.JustificationApplicable, e.JustificationNotApplicable,
-		})
+		}))
 	}
 	w.Flush()
 	return nil
@@ -464,7 +468,7 @@ func (h *Handler) ExportDedicatedSoA(c echo.Context) error {
 		c.Response().Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w := csv.NewWriter(c.Response().Writer)
 		for _, row := range rows {
-			_ = w.Write(row)
+			_ = w.Write(csvsafe.Row(row))
 		}
 		w.Flush()
 		return nil
@@ -712,7 +716,7 @@ func (h *Handler) GetCampaignStats(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "campaign ID required", "CK_BAD_REQUEST")
 	}
 
-	stats, err := h.service.Policy.GetCampaignStats(c.Request().Context(), cid)
+	stats, err := h.service.Policy.GetCampaignStats(c.Request().Context(), orgID(c), cid)
 	if err != nil {
 		log.Error().Err(err).Msg("get campaign stats")
 		return errResp(c, http.StatusInternalServerError, "failed to get stats", "CK_CAMPAIGN_STATS_FAILED")
@@ -727,7 +731,7 @@ func (h *Handler) ListCampaignRequests(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "campaign ID required", "CK_BAD_REQUEST")
 	}
 
-	requests, err := h.service.Policy.ListCampaignRequests(c.Request().Context(), cid)
+	requests, err := h.service.Policy.ListCampaignRequests(c.Request().Context(), orgID(c), cid)
 	if err != nil {
 		log.Error().Err(err).Msg("list campaign requests")
 		return errResp(c, http.StatusInternalServerError, "failed to list requests", "CK_CAMPAIGN_REQUESTS_FAILED")

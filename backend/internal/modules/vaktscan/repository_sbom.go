@@ -159,10 +159,19 @@ func (r *Repository) upsertEOLCache(ctx context.Context, product, cycle string, 
 // ---------------------------------------------------------------------------
 
 // BatchUpsertFindings inserts or deduplicates multiple findings in a single
-// pgx.Batch round-trip. Each finding is upserted using the same logic as
-// UpsertFinding but without returning the full row, to minimise wire overhead.
-// Errors for individual rows are logged but do not abort the batch; the number
-// of successfully processed rows is returned.
+// pgx.Batch round-trip. Jede Zeile liefert per RETURNING nur die vier Felder
+// zurueck, die danach gebraucht werden (id, title, severity, occurrence_count) —
+// nicht die volle Zeile, das spart Leitung.
+//
+// Ein Fehler in EINER Zeile bricht den ganzen Batch ab und gibt 0 zurueck: pgx
+// faehrt den Batch in einer impliziten Transaktion, es ist dann nichts
+// gespeichert (GB-2). Der frueher hier dokumentierte "Zeile loggen und
+// weiterzaehlen"-Weg gibt es seitdem nicht mehr.
+//
+// Zurueckgegeben wird die Zahl der Zeilen, die die Datenbank tatsaechlich
+// geschrieben hat. Neu entstandene Funde meldet die Methode ausserdem an die
+// Sinks des Repositorys (R1-14b-02, siehe finding_events.go) — daran haengt die
+// Scan-Evidenz in Vakt Comply.
 func (r *Repository) BatchUpsertFindings(ctx context.Context, orgID string, findings []Finding) (int, error) {
 	if len(findings) == 0 {
 		return 0, nil
@@ -170,12 +179,31 @@ func (r *Repository) BatchUpsertFindings(ctx context.Context, orgID string, find
 
 	batch := &pgx.Batch{}
 	for _, f := range findings {
+		// Choke-Point gegen den Stapel-Abbruch (R1-W6C-N1).
+		//
+		// Die Aufrufer normalisieren ihren Schweregrad bereits beim Parsen; das
+		// hier ist der Gürtel zum Hosenträger. Der Grund ist die Bauart des
+		// Stapels: pgx fährt ihn in EINER impliziten Transaktion, eine einzige
+		// vom CHECK abgelehnte Zeile rollt also ALLES zurück — der Scan meldet
+		// „fehlgeschlagen" und keiner der anderen Funde ist gespeichert. Eine
+		// Prüfung je Zeile weiter oben schützt nur die Aufrufer, die daran
+		// gedacht haben; hier kommt jeder vorbei. `f` ist eine Kopie aus der
+		// range-Schleife, die Liste des Aufrufers bleibt unberührt.
+		f.Severity, _ = normalizeSeverity(f.Severity)
+
 		sources := f.Sources
 		if sources == nil {
 			sources = []string{}
 		}
 
-		if f.CVEID != nil && *f.CVEID != "" {
+		// Ein einziger Ort entscheidet, was in `cve_id` landet — hier wie im
+		// Einzel-Upsert (UpsertImportedFinding). Sonst hinge die
+		// scanner-übergreifende Zusammenführung an der Schreibweise des
+		// jeweiligen Scanners: Für den Unique-Index sind „cve-2021-44228" und
+		// „CVE-2021-44228" zwei Schlüssel. Siehe cveKey in dedup_keys.go.
+		cve := cveKey(f.CVEID)
+
+		if cve != nil {
 			// CVE-keyed upsert: merge on (org_id, asset_id, cve_id).
 			batch.Queue(`
 				INSERT INTO vb_findings
@@ -200,8 +228,9 @@ func (r *Repository) BatchUpsertFindings(ctx context.Context, orgID string, find
 				                          ELSE vb_findings.reopen_count
 				                        END,
 				      sources          = (SELECT ARRAY(SELECT DISTINCT unnest(vb_findings.sources || EXCLUDED.sources))),
-				      updated_at       = NOW()`,
-				orgID, f.AssetID, f.ScanID, f.CVEID, f.Title, f.Description, f.Severity,
+				      updated_at       = NOW()
+				RETURNING id::text, title, severity, occurrence_count`,
+				orgID, f.AssetID, f.ScanID, cve, f.Title, f.Description, f.Severity,
 				f.CVSSScore, f.EPSSScore, f.EPSSPercentile, f.RiskScore,
 				f.Status, f.Scanner, dedupKey(f.RawID), sources, dedupKey(f.TemplateID),
 				f.AssignedTo, f.Justification,
@@ -231,8 +260,9 @@ func (r *Repository) BatchUpsertFindings(ctx context.Context, orgID string, find
 				                          ELSE vb_findings.reopen_count
 				                        END,
 				      sources          = (SELECT ARRAY(SELECT DISTINCT unnest(vb_findings.sources || EXCLUDED.sources))),
-				      updated_at       = NOW()`,
-				orgID, f.AssetID, f.ScanID, f.CVEID, f.Title, f.Description, f.Severity,
+				      updated_at       = NOW()
+				RETURNING id::text, title, severity, occurrence_count`,
+				orgID, f.AssetID, f.ScanID, cve, f.Title, f.Description, f.Severity,
 				f.CVSSScore, f.EPSSScore, f.EPSSPercentile, f.RiskScore,
 				f.Status, f.Scanner, dedupKey(f.RawID), sources, dedupKey(f.TemplateID),
 				f.AssignedTo, f.Justification,
@@ -249,8 +279,9 @@ func (r *Repository) BatchUpsertFindings(ctx context.Context, orgID string, find
 				  ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7,
 				   $8, $9, $10, $11,
 				   $12, $13, $14, $15, $16,
-				   $17::uuid, $18, 0, 1, NOW())`,
-				orgID, f.AssetID, f.ScanID, f.CVEID, f.Title, f.Description, f.Severity,
+				   $17::uuid, $18, 0, 1, NOW())
+				RETURNING id::text, title, severity, occurrence_count`,
+				orgID, f.AssetID, f.ScanID, cve, f.Title, f.Description, f.Severity,
 				f.CVSSScore, f.EPSSScore, f.EPSSPercentile, f.RiskScore,
 				f.Status, f.Scanner, dedupKey(f.RawID), sources, dedupKey(f.TemplateID),
 				f.AssignedTo, f.Justification,
@@ -259,24 +290,63 @@ func (r *Repository) BatchUpsertFindings(ctx context.Context, orgID string, find
 	}
 
 	br := r.db.SendBatch(ctx, batch)
-	defer br.Close()
 
-	// GB-2: the returned count must come from the DB (RowsAffected), not from the
-	// intent (a "row Exec returned no error" tally). pgx sends a batch inside one
-	// implicit transaction, so a single failing statement rolls the WHOLE batch
-	// back — the previous "log the row and keep counting" pattern reported success
-	// for data that never landed. So: sum the CommandTag RowsAffected on success,
-	// and on ANY row error return 0 + the error (nothing was committed).
-	var affected int64
-	for i := range findings {
-		ct, err := br.Exec()
-		if err != nil {
-			log.Error().Err(err).Int("index", i).Msg("batch upsert finding: batch aborted")
-			return 0, fmt.Errorf("batch upsert findings (row %d): %w", i, err)
+	// GB-2: the returned count must come from the DB, not from the intent (a "row
+	// returned no error" tally). pgx sends a batch inside one implicit transaction,
+	// so a single failing statement rolls the WHOLE batch back — the previous
+	// "log the row and keep counting" pattern reported success for data that never
+	// landed. So: count the rows the DB actually returned, and on ANY row error
+	// return 0 + the error (nothing was committed).
+	//
+	// R1-14b-02: statt Exec wird jetzt Query gelesen. Jede der drei Varianten
+	// (CVE-, Template-Schluessel, schluesselloser INSERT) liefert per RETURNING
+	// genau eine Zeile, der Zaehler bleibt also DB-gestuetzt. Zusaetzlich faellt
+	// dabei ab, WELCHE Zeilen neu entstanden sind (occurrence_count == 1) — ohne
+	// diese Auskunft koennte der Scanner-Pfad kein finding-created-Ereignis
+	// erzeugen, und genau daran hing die Scan-Evidenz-Kette.
+	var affected int
+	var created []Finding
+	batchErr := func() error {
+		for i := range findings {
+			rows, err := br.Query()
+			if err != nil {
+				return fmt.Errorf("batch upsert findings (row %d): %w", i, err)
+			}
+			var f Finding
+			var got bool
+			for rows.Next() {
+				if scanErr := rows.Scan(&f.ID, &f.Title, &f.Severity, &f.OccurrenceCount); scanErr != nil {
+					rows.Close()
+					return fmt.Errorf("batch upsert findings (row %d): scan: %w", i, scanErr)
+				}
+				got = true
+			}
+			rows.Close()
+			if err := rows.Err(); err != nil {
+				return fmt.Errorf("batch upsert findings (row %d): %w", i, err)
+			}
+			if got {
+				affected++
+				if isNewlyCreated(f) {
+					created = append(created, f)
+				}
+			}
 		}
-		affected += ct.RowsAffected()
+		return nil
+	}()
+	if closeErr := br.Close(); closeErr != nil && batchErr == nil {
+		batchErr = fmt.Errorf("batch upsert findings: close: %w", closeErr)
 	}
-	return int(affected), nil
+	if batchErr != nil {
+		log.Error().Err(batchErr).Msg("batch upsert finding: batch aborted")
+		return 0, batchErr
+	}
+
+	// Erst NACH dem erfolgreichen Close melden: vor dem Close ist die implizite
+	// Transaktion nicht abgeschlossen: ein Ereignis fuer eine Zeile, die noch
+	// zurueckgerollt werden kann, waere genau die Luege, gegen die GB-2 steht.
+	r.emitFindingsCreated(ctx, orgID, created)
+	return affected, nil
 }
 
 // ---------------------------------------------------------------------------

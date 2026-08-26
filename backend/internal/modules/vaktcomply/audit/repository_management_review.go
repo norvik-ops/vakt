@@ -162,7 +162,9 @@ ORDER BY review_date DESC`
 	}
 	defer rows.Close()
 
-	var out []ManagementReview
+	// make([]T,0) not nil: bare-array GET handler serialises this straight to
+	// c.JSON with no nil-guard, so a nil slice would emit `null` (R1-F3-01 class).
+	out := make([]ManagementReview, 0)
 	for rows.Next() {
 		mr, err := scanManagementReview(rows)
 		if err != nil {

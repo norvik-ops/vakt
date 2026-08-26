@@ -53,7 +53,7 @@ func TestMiddlewareChain_EndToEnd(t *testing.T) {
 	defer cancel()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		imagePostgres,
 		postgres.WithDatabase("vakt_test"),
 		postgres.WithUsername("vakt"),
 		postgres.WithPassword("vakt"),
@@ -71,7 +71,7 @@ func TestMiddlewareChain_EndToEnd(t *testing.T) {
 
 	redisC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        "redis:7-alpine",
+			Image:        imageRedis,
 			ExposedPorts: []string{"6379/tcp"},
 			WaitingFor:   wait.ForListeningPort("6379/tcp").WithStartupTimeout(60 * time.Second),
 		},
@@ -116,7 +116,7 @@ func TestMiddlewareChain_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 
 	// Build the fully-wired protected group exactly like cmd/api/main.go.
-	lic := license.Load("", false)
+	lic := license.NewInstance(license.Load("", false))
 	e := echo.New()
 	api := e.Group("/api/v1")
 	protected := api.Group("", auth.AuthMiddleware(key, pool, rdb))

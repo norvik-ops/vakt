@@ -175,10 +175,11 @@ func (s *Seats) Issue(ctx context.Context, subID, orgName, sendTo, by string) (*
 		return nil, err
 	}
 
-	key, mailErr := s.issuer.IssueUntil(licensing.Request{
-		OrgName: orgName, Email: sendTo, Interval: interval, Trial: false,
-		RenewalToken: token,
-	}, entitledTo, nil, "")
+	// ForSeat, because the recipient is the MSP's END CUSTOMER: they paid us nothing,
+	// never saw an order confirmation and never held a 45-day key. The default mail
+	// asserted all three to them.
+	key, mailErr := s.issuer.IssueUntil(
+		licensing.ForLicence(token, orgName, sendTo, interval).ForSeat(), entitledTo, nil, "")
 	if key == "" {
 		// Nothing was signed: drop the placeholder rather than leave a seat burnt on
 		// a licence that does not exist.

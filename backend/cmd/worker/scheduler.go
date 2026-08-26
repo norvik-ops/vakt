@@ -27,6 +27,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
+	"github.com/matharnica/vakt/internal/shared/redisopt"
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"
 )
@@ -37,7 +38,7 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		redisURL = cfg.RedisUrl
 	}
 	scheduler := asynq.NewScheduler(
-		asynqRedisOpt(redisURL),
+		redisopt.AsynqFromURL(redisURL),
 		&asynq.SchedulerOpts{},
 	)
 

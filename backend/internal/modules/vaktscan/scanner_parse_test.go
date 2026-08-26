@@ -75,7 +75,7 @@ func TestFindingsFromTrivy(t *testing.T) {
 		AssetID: "33333333-3333-3333-3333-333333333333",
 	}
 
-	findings, err := findingsFromTrivy([]byte(trivyRealOutput), payload)
+	findings, sevReport, err := findingsFromTrivy([]byte(trivyRealOutput), payload)
 	require.NoError(t, err)
 	require.Len(t, findings, 3, "die Funde ALLER Results werden zu einer flachen Liste — pro Result-Block zu gruppieren würde die Hälfte verlieren")
 
@@ -95,9 +95,15 @@ func TestFindingsFromTrivy(t *testing.T) {
 	assert.Equal(t, "open", f.Status)
 	require.NotNil(t, f.RiskScore, "ohne Risikowert lässt sich nichts priorisieren — das ist der halbe Produktnutzen")
 
+	// Diese Ausgabe enthält nur Grade, die Trivy dokumentiert — es gibt also
+	// nichts umzudeuten und nichts zu melden.
+	assert.Empty(t, sevReport.note(),
+		"bekannte Schweregrade dürfen keinen Hinweis am Scan erzeugen")
+
 	// Dritter Fund: kein CVSS, keine Severity.
 	f = findings[2]
-	assert.Equal(t, "info", f.Severity, "ohne Severity ist ein Fund `info`, nicht leer")
+	assert.Equal(t, "unknown", f.Severity,
+		"ohne Severity ist ein Fund `unknown` — `info` hieße „bewertet, unkritisch“ und wäre eine Bewertung, die nie stattgefunden hat")
 	assert.Nil(t, f.CVSSScore,
 		"ohne CVSS-Wert bleibt der Wert NIL — eine 0 wäre die Behauptung „harmlos“, und das ist eine andere Aussage als „unbekannt“")
 	require.NotNil(t, f.CVEID)
@@ -108,17 +114,17 @@ func TestFindingsFromTrivy_LeereUndKaputteAusgabe(t *testing.T) {
 	payload := ScanPayload{ScanID: "s", OrgID: "o", AssetID: "a"}
 
 	// Ein sauberes Image: gültiges JSON, keine Funde. Das ist ein ERGEBNIS, kein Fehler.
-	findings, err := findingsFromTrivy([]byte(`{"Results":[]}`), payload)
+	findings, _, err := findingsFromTrivy([]byte(`{"Results":[]}`), payload)
 	require.NoError(t, err)
 	assert.Empty(t, findings)
 
 	// Kaputte Ausgabe MUSS ein Fehler sein und darf nicht als „keine Funde“
 	// durchgehen — sonst meldet ein abgestürzter Scanner ein sauberes System.
-	_, err = findingsFromTrivy([]byte(`{"Results": [ das ist kein JSON`), payload)
+	_, _, err = findingsFromTrivy([]byte(`{"Results": [ das ist kein JSON`), payload)
 	require.Error(t, err, "unlesbare Scanner-Ausgabe darf nicht wie ein sauberes Ergebnis aussehen")
 
 	// Auch eine leere Ausgabe (Scanner lief, schrieb nichts) ist ein Fehler.
-	_, err = findingsFromTrivy(nil, payload)
+	_, _, err = findingsFromTrivy(nil, payload)
 	require.Error(t, err)
 }
 
@@ -137,7 +143,7 @@ func TestFindingsFromNuclei(t *testing.T) {
 		AssetID: "33333333-3333-3333-3333-333333333333",
 	}
 
-	findings := findingsFromNuclei([]byte(nucleiRealOutput), payload)
+	findings, sevReport := findingsFromNuclei([]byte(nucleiRealOutput), payload)
 
 	// Drei Funde: die zwei vor der kaputten Zeile UND der eine dahinter.
 	//
@@ -164,15 +170,19 @@ func TestFindingsFromNuclei(t *testing.T) {
 	// Der Fund NACH der kaputten Zeile — der Beweis, dass wirklich nur die eine
 	// Zeile verloren geht.
 	assert.Equal(t, "missing-severity", findings[2].TemplateID)
-	assert.Equal(t, "info", findings[2].Severity, "ohne Severity ist ein Fund `info`")
+	assert.Equal(t, "unknown", findings[2].Severity,
+		"ohne Severity ist ein Fund `unknown`, nicht `info`")
+
+	assert.Empty(t, sevReport.note(),
+		"bekannte Schweregrade dürfen keinen Hinweis am Scan erzeugen")
 }
 
 func TestFindingsFromNuclei_LeereAusgabe(t *testing.T) {
 	// Nuclei ohne Treffer schreibt gar nichts. Das ist ein Ergebnis, kein Fehler —
 	// und darf keine Panik auslösen.
-	findings := findingsFromNuclei(nil, ScanPayload{ScanID: "s"})
+	findings, _ := findingsFromNuclei(nil, ScanPayload{ScanID: "s"})
 	assert.Empty(t, findings)
 
-	findings = findingsFromNuclei([]byte("\n\n"), ScanPayload{ScanID: "s"})
+	findings, _ = findingsFromNuclei([]byte("\n\n"), ScanPayload{ScanID: "s"})
 	assert.Empty(t, findings)
 }

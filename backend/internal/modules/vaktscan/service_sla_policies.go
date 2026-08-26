@@ -117,11 +117,21 @@ func RunSLACheckForOrg(ctx context.Context, pool *pgxpool.Pool, orgID string) er
 	for i := range findings {
 		f := &findings[i]
 		if f.SLADueAt == nil {
-			pol, ok := policyMap[f.Severity]
-			if !ok {
-				continue
+			// Ohne passende Richtlinie gilt die BSI-Grundschutz-Basis, nicht
+			// „gar keine Frist".
+			//
+			// Vorher stand hier `continue`: Ein Fund, für dessen Schweregrad es
+			// keine Richtlinienzeile gab, bekam still weder eine Frist noch einen
+			// SLA-Status — er verschwand aus der Überwachung, ohne dass irgendwo
+			// etwas stand. Seit `unknown` ein zulässiger Schweregrad ist (Migration
+			// 265) trifft das systematisch zu, denn vb_sla_policies kennt den Wert
+			// nicht. slaDaysForSeverity beantwortet dieselbe Frage längst mit 90
+			// Tagen; hier galt eine andere Antwort, und die war stumm.
+			days := defaultSLARemediationDays
+			if pol, ok := policyMap[f.Severity]; ok {
+				days = pol.RemediationDays
 			}
-			due := f.CreatedAt.Add(time.Duration(pol.RemediationDays) * 24 * time.Hour)
+			due := f.CreatedAt.Add(time.Duration(days) * 24 * time.Hour)
 			if err := repo.SetFindingSLADue(ctx, orgID, f.ID, due); err != nil {
 				log.Warn().Err(err).Str("finding", f.ID).Msg("set sla_due_at failed")
 			}

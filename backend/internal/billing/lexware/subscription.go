@@ -342,12 +342,24 @@ func (h *Handler) MailExpiringKeys(ctx context.Context, every time.Duration) {
 	}
 }
 
+// renewalProgress is the minimum a fresh key must gain over the one the customer
+// already holds before it is worth a mail.
+//
+// A bare "later than what they hold" would be a one-microsecond test, and
+// billing_invoices.period_end is a DATE while billing_licenses.expires_at is a
+// timestamptz — a rounding difference is not a reason to write to a customer. Real
+// progress is a whole billing period, so a day sits far below anything genuine and
+// far above any rounding. It is deliberately NOT a "we mailed recently" window: this
+// measures whether there is something new to give, which is the condition that can
+// actually clear itself.
+const renewalProgress = 24 * time.Hour
+
 func (h *Handler) mailExpiringOnce(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
 	rows, err := h.db.Query(ctx, `
-		SELECT bl.renewal_token, bl.org_name, s.email, s.interval
+		SELECT bl.renewal_token, bl.org_name, bl.expires_at, s.email, s.interval
 		  FROM billing_licenses bl
 		  JOIN billing_quote_requests s ON s.id = bl.subscription_id
 		 WHERE bl.revoked_at IS NULL
@@ -365,16 +377,20 @@ func (h *Handler) mailExpiringOnce(ctx context.Context) {
 		return
 	}
 
-	type due struct{ token, org, email, interval string }
+	type due struct {
+		token, org, email, interval string
+		keyExpires                  time.Time
+	}
 	var list []due
 	for rows.Next() {
 		var d due
-		if err := rows.Scan(&d.token, &d.org, &d.email, &d.interval); err == nil {
+		if err := rows.Scan(&d.token, &d.org, &d.keyExpires, &d.email, &d.interval); err == nil {
 			list = append(list, d)
 		}
 	}
 	rows.Close()
 
+	var mailed, skippedNoProgress int
 	for _, d := range list {
 		// Never past what they paid for. A customer whose period has run out and whose
 		// next invoice is unpaid gets nothing — that IS the cut-off.
@@ -383,7 +399,36 @@ func (h *Handler) mailExpiringOnce(ctx context.Context) {
 			continue
 		}
 
-		key, err := h.issuer.SignUntil(licensing.Request{OrgName: d.org, Interval: d.interval}, expiry)
+		// The sweep has to make PROGRESS, and its own action did not.
+		//
+		// Selection is expires_at < NOW() + MailBelowDays (35). The action sets
+		// expires_at to the entitlement — period end plus grace — which on the monthly
+		// plan is 33 to 36 days out, so it stayed under the cutoff. The condition that
+		// selected the row was still true on the next pass, twelve hours later, and on
+		// every pass after that: roughly 58 licence-key mails a month to a customer for
+		// whom nothing was wrong. It is the mirror image of the reconcile bug this file
+		// already records ("die Warnung LOESCHTE SICH SELBST") — here the condition
+		// never clears itself.
+		//
+		// The condition that actually terminates is not a timer and not a counter: it
+		// is whether we have anything NEW to hand over. Below renewalProgress the key
+		// we would sign expires when the one they already hold does, so the mail
+		// carries nothing. The moment the entitlement really moves — a renewal invoice
+		// is booked, an MSP extends and its seat rows fall behind — this is true again
+		// and exactly one mail goes out. Silence here would be worse than the spam, so
+		// the guard is deliberately tied to progress and not to "we mailed recently":
+		// a failed send leaves expires_at untouched and is retried on the next pass.
+		if !expiry.After(d.keyExpires.Add(renewalProgress)) {
+			skippedNoProgress++
+			continue
+		}
+
+		key, err := h.issuer.SignUntil(
+			// With the token: the whole point of this mail is that the customer can
+			// stop receiving it, and that only works if the key carries the token the
+			// text tells them to set. Without it the mail also broke the auto-renewal
+			// of anyone who HAD set it (see GetLicense).
+			licensing.ForLicence(d.token, d.org, d.email, d.interval), expiry)
 		if err != nil {
 			log.Error().Err(err).Str("org", d.org).Msg("billing: could not sign renewal key")
 			continue
@@ -428,8 +473,17 @@ Norvik Ops
 			log.Error().Err(err).Str("org", d.org).Msg("billing: renewal key mailed but not stored")
 		}
 
+		mailed++
 		log.Info().Str("org", d.org).Str("expires", expiry.Format("2006-01-02")).
 			Str("email_redacted", logsafe.RedactEmail(d.email)).
-			Msg("billing: renewal key mailed (no auto-renewal token set)")
+			Msg("billing: renewal key mailed")
 	}
+
+	// The denominator, so a sweep that suppresses too much is visible instead of
+	// merely quiet. skipped_no_progress is the normal steady state: every monthly
+	// customer sits permanently below the 35-day cutoff and is passed over on every
+	// run until their entitlement actually moves.
+	log.Info().Int("selected", len(list)).Int("mailed", mailed).
+		Int("skipped_no_progress", skippedNoProgress).
+		Msg("billing: expiring-key sweep done")
 }

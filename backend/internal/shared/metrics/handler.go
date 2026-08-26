@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 
@@ -20,13 +21,15 @@ import (
 
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/queuemetrics"
+	"github.com/matharnica/vakt/internal/shared/redisopt"
 )
 
 // Handler serves Prometheus-format metrics.
 type Handler struct {
-	db            *pgxpool.Pool
-	redisAddr     string // optional — used for queue-depth metrics
-	redisPassword string // optional — Redis AUTH password (see WithRedisPassword)
+	db *pgxpool.Pool
+	// redisOpt are the full parsed connection options — optional; when nil the
+	// queue-depth and per-task Asynq metrics are omitted entirely.
+	redisOpt *redis.Options
 }
 
 // NewHandler constructs a Handler.
@@ -34,25 +37,30 @@ func NewHandler(db *pgxpool.Pool) *Handler {
 	return &Handler{db: db}
 }
 
-// WithRedisAddr sets the Redis address for queue-depth metrics.
-// When not set, queue-depth metrics are omitted.
-func (h *Handler) WithRedisAddr(addr string) *Handler {
-	h.redisAddr = addr
-	return h
-}
-
-// WithRedisPassword sets the Redis AUTH password used by the queue-depth and
-// per-task Asynq metrics clients.
+// WithRedis sets the Redis connection used by the queue-depth and per-task
+// Asynq metrics. When not set, both metric families are omitted.
 //
 // S121-C3 (I1): the shipped compose default runs Redis with --requirepass, but
 // the metrics Redis/Asynq clients were built with only {Addr} and no Password.
 // On any auth-protected Redis (i.e. the default deployment) every SCAN/Inspector
 // call failed with NOAUTH, so vakt_queue_depth and vakt_asynq_jobs_* were
-// silently absent — a Zabbix blind spot for queue backlog. Mirrors the worker
-// wiring in cmd/worker/main.go.
-func (h *Handler) WithRedisPassword(password string) *Handler {
-	h.redisPassword = password
+// silently absent — a Zabbix blind spot for queue backlog.
+//
+// R1-14b-01: this takes the full options rather than (addr, password), because
+// the same class of bug came back one field over. Both consumers below read
+// data the WORKER wrote — queue keys via the Inspector, metric:asynq:* via
+// SCAN — and both were pinned to DB 0 regardless of the configured database.
+// On a URL like redis://host:6379/1 they scraped an empty database and emitted
+// a calm, zero-depth queue: a metric that is not missing but wrong, which is
+// the harder kind to notice.
+func (h *Handler) WithRedis(opts *redis.Options) *Handler {
+	h.redisOpt = opts
 	return h
+}
+
+// redisConfigured reports whether Redis-backed metrics can be emitted at all.
+func (h *Handler) redisConfigured() bool {
+	return h.redisOpt != nil && h.redisOpt.Addr != ""
 }
 
 // ServeMetrics writes Prometheus-format metrics (text/plain; version=0.0.4).
@@ -240,15 +248,17 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	fmt.Fprintln(w, "# TYPE vakt_db_pool_idle gauge")
 	fmt.Fprintf(w, "vakt_db_pool_idle %d\n", poolStats.IdleConns())
 
-	// vakt_queue_depth — Asynq queue depths (only when Redis is configured)
-	fmt.Fprintln(w, "# HELP vakt_queue_depth Asynq queue depth by queue name")
-	fmt.Fprintln(w, "# TYPE vakt_queue_depth gauge")
-	if h.redisAddr != "" {
-		h.writeQueueDepth(ctx, w)
+	// vakt_queue_depth / _retry / _archived — Zustand der Asynq-Warteschlangen.
+	// Die Stichproben gibt es nur mit konfiguriertem Redis; die Familien werden
+	// trotzdem immer deklariert, damit eine Zeitreihe nicht ganz verschwindet.
+	var snaps []queueSnapshot
+	if h.redisConfigured() {
+		snaps = h.collectQueueSnapshots()
 	}
+	writeQueueMetrics(w, snaps)
 
 	// S58-1: per-task job-duration counters written by the worker middleware.
-	if h.redisAddr != "" {
+	if h.redisConfigured() {
 		h.writeAsynqJobMetrics(ctx, w)
 	}
 
@@ -482,10 +492,14 @@ func (h *Handler) collectBusinessMetrics(ctx context.Context, orgIDs []string) (
 // because it only knows about queues, not the per-task-type breakdown
 // we need ("which specific job is slow / failing?").
 func (h *Handler) writeAsynqJobMetrics(ctx context.Context, w io.Writer) {
-	if h.redisAddr == "" {
+	if !h.redisConfigured() {
 		return
 	}
-	rdb := redis.NewClient(&redis.Options{Addr: h.redisAddr, Password: h.redisPassword})
+	// R1-14b-01: redisopt.GoRedis copies the options — these keys are written
+	// by the WORKER into the configured database, so the client MUST select the
+	// same one. It used to be rebuilt from {Addr, Password} and always landed in
+	// DB 0, which returned an empty SCAN and therefore no job metrics at all.
+	rdb := redis.NewClient(redisopt.GoRedis(h.redisOpt))
 	defer func() { _ = rdb.Close() }()
 
 	// SCAN once for all metric keys; parse each into (kind, task, result).
@@ -514,8 +528,7 @@ func (h *Handler) writeAsynqJobMetrics(ctx context.Context, w io.Writer) {
 		return
 	}
 
-	type entry struct{ task, result, kind, value string }
-	entries := make([]entry, 0, len(allKeys))
+	entries := make([]asynqMetricEntry, 0, len(allKeys))
 	for i, key := range allKeys {
 		// metric:asynq:<kind>:<task>:<result>
 		parts := strings.SplitN(strings.TrimPrefix(key, "metric:asynq:"), ":", 3)
@@ -526,14 +539,10 @@ func (h *Handler) writeAsynqJobMetrics(ctx context.Context, w io.Writer) {
 		if !ok || v == "" {
 			continue
 		}
-		entries = append(entries, entry{task: parts[1], result: parts[2], kind: parts[0], value: v})
+		entries = append(entries, asynqMetricEntry{task: parts[1], result: parts[2], kind: parts[0], value: v})
 	}
 
-	// Group by kind to emit a clean Prometheus block per metric family.
-	byKind := map[string][]entry{}
-	for _, e := range entries {
-		byKind[e.kind] = append(byKind[e.kind], e)
-	}
+	byKind := groupAsynqEntries(entries)
 
 	emit := func(name, help, metricType string, kind string) {
 		es, ok := byKind[kind]
@@ -558,23 +567,145 @@ func (h *Handler) writeAsynqJobMetrics(ctx context.Context, w io.Writer) {
 		"gauge", "duration_ms_max")
 }
 
-// writeQueueDepth queries Asynq queue depths and writes them to w.
-// One gauge line per known queue; errors are logged but don't abort the output.
-func (h *Handler) writeQueueDepth(_ context.Context, w io.Writer) {
-	inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: h.redisAddr, Password: h.redisPassword})
+// asynqMetricEntry ist ein aus Redis gelesener Zählerstand.
+type asynqMetricEntry struct{ task, result, kind, value string }
+
+// groupAsynqEntries ordnet die Zählerstände nach Metrik-Familie, ergänzt
+// fehlende Fehler-Zeitreihen und sortiert stabil.
+//
+// R1-19-02: Für jeden Task, der überhaupt läuft, muss die Zeitreihe
+// `result="err"` existieren — auch wenn sie 0 ist.
+//
+// Bisher gab es die Zeile nur, wenn tatsächlich etwas fehlgeschlagen war, und
+// sie verschwand nach sieben Tagen wieder (Schlüssel-Verfall, siehe
+// asynq_middleware.go). Eine fehlende Zeitreihe ist für einen Alarm aber nicht
+// dasselbe wie eine 0: Zabbix bekommt gar keinen Wert, das Item wird „nicht
+// unterstützt", und der Trigger feuert nie. Ausgerechnet der Fall, auf den es
+// ankommt — ein Task, der lange sauber lief und dann kippt — hatte damit keine
+// Grundlinie, gegen die man ihn hätte vergleichen können.
+//
+// Grundlage ist der ok-Zähler: Wer erfolgreich lief, existiert und bekommt
+// eine err-Zeile. Ein Task, von dem es überhaupt keine Spur gibt, wird nicht
+// erfunden.
+//
+// Herausgelöst aus writeAsynqJobMetrics, damit diese Regel ohne Redis prüfbar
+// ist.
+func groupAsynqEntries(entries []asynqMetricEntry) map[string][]asynqMetricEntry {
+	haveCount := map[string]bool{}
+	tasksWithCount := map[string]bool{}
+	for _, e := range entries {
+		if e.kind != "count" {
+			continue
+		}
+		haveCount[e.task+"|"+e.result] = true
+		tasksWithCount[e.task] = true
+	}
+	for task := range tasksWithCount {
+		if !haveCount[task+"|err"] {
+			entries = append(entries, asynqMetricEntry{task: task, result: "err", kind: "count", value: "0"})
+		}
+	}
+
+	byKind := map[string][]asynqMetricEntry{}
+	for _, e := range entries {
+		byKind[e.kind] = append(byKind[e.kind], e)
+	}
+	// Stabile Reihenfolge: SCAN liefert die Schlüssel in beliebiger Folge, und
+	// die Ergänzung oben läuft über eine Map. Ohne Sortierung wechselt die
+	// Ausgabe bei jedem Abruf ihre Zeilenreihenfolge.
+	for kind := range byKind {
+		es := byKind[kind]
+		sort.Slice(es, func(i, j int) bool {
+			if es[i].task != es[j].task {
+				return es[i].task < es[j].task
+			}
+			return es[i].result < es[j].result
+		})
+	}
+	return byKind
+}
+
+// queueSnapshot ist der Zustand einer Warteschlange, wie ihn der Asynq-
+// Inspector meldet. Eigener Typ, damit die Formatierung ohne laufendes Redis
+// prüfbar ist — vorher steckte sie in der Schleife, die den Inspector abfragt,
+// und war damit nur gegen eine echte Redis-Instanz testbar.
+type queueSnapshot struct {
+	Name     string
+	Pending  int
+	Active   int
+	Retry    int
+	Archived int
+}
+
+// collectQueueSnapshots fragt den Asynq-Inspector nach allen Warteschlangen.
+// Fehler werden geloggt, brechen die Metrik-Ausgabe aber nicht ab.
+func (h *Handler) collectQueueSnapshots() []queueSnapshot {
+	inspector := asynq.NewInspector(redisopt.Asynq(h.redisOpt))
 	defer func() { _ = inspector.Close() }()
 
 	queues, err := inspector.Queues()
 	if err != nil {
 		log.Error().Err(err).Msg("metrics: list asynq queues")
-		return
+		return nil
 	}
+	snaps := make([]queueSnapshot, 0, len(queues))
 	for _, name := range queues {
 		info, err := inspector.GetQueueInfo(name)
 		if err != nil {
 			log.Error().Err(err).Str("queue", name).Msg("metrics: get queue info")
 			continue
 		}
-		fmt.Fprintf(w, "vakt_queue_depth{queue=%q} %d\n", name, info.Pending+info.Active)
+		snaps = append(snaps, queueSnapshot{
+			Name:     name,
+			Pending:  info.Pending,
+			Active:   info.Active,
+			Retry:    info.Retry,
+			Archived: info.Archived,
+		})
+	}
+	return snaps
+}
+
+// writeQueueMetrics schreibt die drei Warteschlangen-Familien im Prometheus-
+// Textformat.
+//
+// R1-19-02: vorher gab es nur `vakt_queue_depth` als `Pending + Active`.
+// Ein Auftrag, der dauerhaft fehlschlägt, wandert aber von `Pending` nach
+// `Retry` und von dort nach `Archived` — beides zählte die Kennzahl nicht,
+// also meldete jede Warteschlange 0, während live 8 Wiederholungs- und 20
+// Archiv-Einträge lagen. Ein wachsender Rückstand war damit unsichtbar.
+//
+// Bewusst DREI Kennzahlen statt einer Summe, weil es drei verschiedene
+// Zustände sind:
+//
+//   - depth (pending + active) — Arbeit, die noch ansteht. Läuft von selbst
+//     leer. Ein Schwellwert darauf misst Last.
+//   - retry — fehlgeschlagen, wird aber erneut versucht. Vorübergehend; ein
+//     dauerhaft erhöhter Wert bedeutet, dass etwas nicht durchkommt.
+//   - archived — endgültig aufgegeben, nach allen Versuchen. Läuft NIE von
+//     selbst leer, sondern nur durch einen Menschen (`asynq queue purge`).
+//
+// Archivierte Aufträge dürfen deshalb nicht in `depth` einfließen: Sie würden
+// den Wert dauerhaft anheben und jeden Lastschwellwert unbrauchbar machen —
+// entweder er feuert für immer, oder er wird so hoch gesetzt, dass er nie
+// feuert. Aus demselben Grund bleibt `depth` bei seiner alten Bedeutung: ein
+// bestehendes Zabbix-Item würde sonst still etwas anderes messen als vorher.
+func writeQueueMetrics(w io.Writer, snaps []queueSnapshot) {
+	fmt.Fprintln(w, "# HELP vakt_queue_depth Asynq queue depth by queue name (pending + active)")
+	fmt.Fprintln(w, "# TYPE vakt_queue_depth gauge")
+	for _, s := range snaps {
+		fmt.Fprintf(w, "vakt_queue_depth{queue=%q} %d\n", s.Name, s.Pending+s.Active)
+	}
+
+	fmt.Fprintln(w, "# HELP vakt_queue_retry Asynq jobs awaiting a retry after a failure, by queue name")
+	fmt.Fprintln(w, "# TYPE vakt_queue_retry gauge")
+	for _, s := range snaps {
+		fmt.Fprintf(w, "vakt_queue_retry{queue=%q} %d\n", s.Name, s.Retry)
+	}
+
+	fmt.Fprintln(w, "# HELP vakt_queue_archived Asynq jobs given up on after exhausting all retries, by queue name")
+	fmt.Fprintln(w, "# TYPE vakt_queue_archived gauge")
+	for _, s := range snaps {
+		fmt.Fprintf(w, "vakt_queue_archived{queue=%q} %d\n", s.Name, s.Archived)
 	}
 }

@@ -17,7 +17,8 @@ import { InfoBanner } from '../../../shared/components/InfoBanner'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { useDSRs, useCreateDSR, useUpdateDSR, useDeleteDSR, useDSRSummary, useResolveDSR } from '../hooks/useDSRs'
 import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
-import type { DSR, DSRType, DSRStatus, CreateDSRInput, UpdateDSRInput, ResolveDSRInput } from '../types'
+import type { DSR, DSRType, DSRStatus, DSRResolutionType, CreateDSRInput, UpdateDSRInput, ResolveDSRInput } from '../types'
+import { ERASURE_EVIDENCE_MARKER } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const STATUS_CLASS: Record<DSRStatus, string> = {
@@ -181,7 +182,7 @@ export default function DSRPage() {
   const [erasureId, setErasureId] = useState<string | null>(null)
   const [erasureNote, setErasureNote] = useState('')
   const [resolveTarget, setResolveTarget] = useState<DSR | null>(null)
-  const [resolveForm, setResolveForm] = useState<ResolveDSRInput>({ resolution_type: 'completed', resolution_notes: '', extension_reason: '' })
+  const [resolveForm, setResolveForm] = useState<ResolveDSRInput>({ resolution_type: 'fulfilled', resolution_notes: '', extension_reason: '' })
 
   const { data: dsrs, isLoading, isError } = useDSRs()
   const { data: summary } = useDSRSummary()
@@ -204,7 +205,7 @@ export default function DSRPage() {
 
   function openResolve(dsr: DSR) {
     setResolveTarget(dsr)
-    setResolveForm({ resolution_type: 'completed', resolution_notes: '', extension_reason: '' })
+    setResolveForm({ resolution_type: 'fulfilled', resolution_notes: '', extension_reason: '' })
   }
 
   function handleErasureOpen(id: string) {
@@ -267,6 +268,16 @@ export default function DSRPage() {
 
   const isPending = createDSR.isPending || updateDSR.isPending
   const canSubmitCreate = createForm.requester_name && createForm.requester_email && !isPending
+
+  // Art. 17 DSGVO: an erasure request may only be closed as fulfilled once the
+  // erasure has actually run. The server enforces this (409
+  // PO_ERASURE_NOT_EXECUTED) — mirroring it here only spares the user a dead
+  // end, it is not the control. The condition is the same one the server
+  // applies: executed means completed AND carrying the evidence block.
+  const resolveNeedsErasureFirst =
+    resolveTarget?.type === 'erasure' &&
+    !(resolveTarget.status === 'completed' && (resolveTarget.notes ?? '').includes(ERASURE_EVIDENCE_MARKER))
+  const resolveBlocked = resolveNeedsErasureFirst && resolveForm.resolution_type === 'fulfilled'
 
   const openDSRs = dsrs?.filter((d) => d.status === 'open' || d.status === 'in_progress' || d.status === 'overdue' || d.status === 'extended') ?? []
   const closedDSRs = dsrs?.filter((d) => d.status === 'completed' || d.status === 'rejected') ?? []
@@ -445,16 +456,22 @@ export default function DSRPage() {
               <Label>{t('vaktprivacy.dsrPage.resolveLabelResult')}</Label>
               <Select
                 value={resolveForm.resolution_type}
-                onValueChange={(v) => { setResolveForm(f => ({ ...f, resolution_type: v as DSRStatus })); }}
+                onValueChange={(v) => { setResolveForm(f => ({ ...f, resolution_type: v as DSRResolutionType })); }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="completed">{t('vaktprivacy.dsrPage.resolveCompleted')}</SelectItem>
+                  <SelectItem value="fulfilled" disabled={resolveNeedsErasureFirst}>{t('vaktprivacy.dsrPage.resolveCompleted')}</SelectItem>
                   <SelectItem value="rejected">{t('vaktprivacy.dsrPage.resolveRejected')}</SelectItem>
                   <SelectItem value="extended">{t('vaktprivacy.dsrPage.resolveExtended')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {resolveBlocked && (
+              <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400 text-xs flex gap-2">
+                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{t('vaktprivacy.dsrPage.resolveErasureNotExecuted')}</span>
+              </div>
+            )}
             {resolveForm.resolution_type === 'extended' && (
               <div className="space-y-1.5">
                 <Label>{t('vaktprivacy.dsrPage.resolveLabelExtensionReason')}</Label>
@@ -480,7 +497,7 @@ export default function DSRPage() {
             <Button variant="outline" onClick={() => { setResolveTarget(null); }}>{t('common.cancel')}</Button>
             <Button
               onClick={handleResolve}
-              disabled={resolveDSR.isPending || (resolveForm.resolution_type === 'extended' && !resolveForm.extension_reason?.trim())}
+              disabled={resolveDSR.isPending || resolveBlocked || (resolveForm.resolution_type === 'extended' && !resolveForm.extension_reason?.trim())}
             >
               {resolveDSR.isPending ? t('vaktprivacy.dsrPage.savingPending') : t('vaktprivacy.dsrPage.resolveBtn')}
             </Button>

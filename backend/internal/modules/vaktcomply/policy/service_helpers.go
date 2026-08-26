@@ -12,7 +12,22 @@ import (
 
 // --- Internal helpers ---
 
-// computeReadinessReport calculates readiness metrics given controls and evidence counts.
+// ComputeReadinessReport calculates readiness metrics given controls and
+// evidence counts.
+//
+// R1-14b-A7: bis hierher wurde ausschliesslich die Anzahl der Nachweise
+// ausgewertet. ck_controls.manual_status und not_applicable — die beiden
+// Felder, die der Nutzer in der Oberflaeche pflegt — blieben ohne Wirkung:
+// ein Control auf "umgesetzt" zu setzen bewegte Bericht, Score-Snapshot und
+// Framework-PDF um exakt null, waehrend ein angehaengter Nachweis am selben
+// Control sie sehr wohl bewegte.
+//
+// Die Vorrangregel steht bereits in ResolveStatus (not_applicable >
+// manual_status > Nachweis-Anzahl) und wird von checkFrameworkMilestone
+// benutzt; sie gilt jetzt auch hier. Nicht-anwendbare Controls bleiben in
+// TotalControls sichtbar (die Zahl steht als "Gesamt: N Controls" im PDF),
+// zaehlen aber nicht in den Nenner des Scores — genauso, wie es
+// checkFrameworkMilestone und die Gap-Analyse im Audit-Paket handhaben.
 func ComputeReadinessReport(fw *Framework, controls []Control, evidenceCounts map[string]int) *ReadinessReport {
 	report := &ReadinessReport{
 		FrameworkID:   fw.ID,
@@ -25,24 +40,30 @@ func ComputeReadinessReport(fw *Framework, controls []Control, evidenceCounts ma
 	domainCovered := make(map[string]int)
 
 	for _, c := range controls {
-		count := evidenceCounts[c.ID]
-		domainTotal[c.Domain]++
+		// evidenceCounts ist die Quelle der Nachweis-Anzahl; c.EvidenceCount
+		// ist bei den Aufrufern nicht gefuellt. ResolveStatus liest das Feld,
+		// also wird es hier gesetzt statt die Vorrangregel zu duplizieren.
+		c.EvidenceCount = evidenceCounts[c.ID]
 
-		switch {
-		case count >= 2:
+		switch ResolveStatus(c) {
+		case "not_applicable":
+			report.NotApplicable++
+			continue
+		case "covered", "implemented":
 			report.Covered++
 			domainCovered[c.Domain]++
-		case count == 1:
+		case "partial", "in_progress":
 			report.Partial++
 			domainCovered[c.Domain]++ // partial counts as half for domain score
 		default:
 			report.Missing++
 		}
+		domainTotal[c.Domain]++
 	}
 
-	// Overall readiness score.
-	if report.TotalControls > 0 {
-		report.ReadinessScore = ReadinessScore(report.Covered, report.Partial, report.TotalControls)
+	// Overall readiness score over the applicable controls.
+	if applicable := report.TotalControls - report.NotApplicable; applicable > 0 {
+		report.ReadinessScore = ReadinessScore(report.Covered, report.Partial, applicable)
 	}
 
 	// Per-domain scores.

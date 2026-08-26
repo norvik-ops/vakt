@@ -25,18 +25,22 @@ VAKT_MODULES_ENABLED=vaktscan,vaktvault,vaktaware,vaktprivacy
 | **BSI IT-Grundschutz** | 38 Bausteine als Framework abbildbar |
 | **EU AI Act** (2024/1689) | KI-System-Inventar; Risikoklassen; technische Dokumentation nach Art. 11 / Annex IV |
 | **DSGVO Art. 32 TOM** | 13 TOMs mit ISO-27001-Deckungsanalyse |
-| **ISO 42001** | KI-Management-System-Framework |
-
 | **CRA** (Cyber Resilience Act) | Controls für Hersteller von Produkten mit digitalen Elementen |
 | **CIS Controls v8** | 61 IG1-Safeguards in 18 Kontrollgruppen mit CIS ↔ ISO 27001 Mapping |
+| **KRITIS-DachG** | Controls für Betreiber kritischer Anlagen nach dem KRITIS-Dachgesetz |
+| **BSI C5:2020** | Cloud-Computing-Kriterienkatalog des BSI |
 | **ISO 27017:2015** | Cloud-Security-Controls für CSP & CSC; 31 Controls inkl. CLD-Erweiterungen; Mapping ↔ ISO 27001/C5/BSI |
 | **ISO 27018:2019** | PII-Schutz in Public Clouds (Art.-28-DSGVO-Auftragsverarbeiter); Mapping ↔ DSGVO-TOM/C5/ISO 27001 |
 
-> **Lizenz-Hinweis:** NIS2, ISO 27001, DSGVO-TOM, CIS, KRITIS und C5 sind in der Community
-> Edition enthalten. Der BSI-IT-Grundschutz-Workflow (Modellierung, Grundschutz-Check,
-> Cockpit, Referenzberichte), EU AI Act und CRA erfordern **Pro**. Details: [FAQ → Editionen](../faq.md).
+> **Lizenz-Hinweis:** In der Community Edition enthalten sind **NIS2** und **ISO 27001**.
 >
-> **ISO 27017 und ISO 27018** sind im Code vorhanden, werden aber aktuell nicht öffentlich angeboten.
+> **Pro** schaltet frei: DSGVO-TOM, CIS Controls v8, KRITIS-DachG, BSI C5, ISO 27017 und
+> ISO 27018 (gemeinsam über `multi_framework`), den BSI-IT-Grundschutz-Workflow
+> (Modellierung, Grundschutz-Check, Cockpit, Referenzberichte), EU AI Act und CRA.
+>
+> Quelle der Wahrheit ist `frameworkFeatureGate` in
+> `backend/internal/modules/vaktcomply/handler.go` zusammen mit `ProTier` in
+> `backend/internal/shared/platform/features/tiers.go`.
 
 Mehrere Frameworks können gleichzeitig aktiv sein. Vakt zeigt pro Framework einen Readiness-Score und eine Gap-Analyse.
 

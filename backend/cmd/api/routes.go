@@ -58,6 +58,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/platform/ldap"
 	"github.com/matharnica/vakt/internal/shared/platform/trustcenter"
 	sharedwebhooks "github.com/matharnica/vakt/internal/shared/platform/webhooks"
+	"github.com/matharnica/vakt/internal/shared/redisopt"
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"
 	"github.com/matharnica/vakt/internal/shared/search"
@@ -113,13 +114,20 @@ func readinessHandler(db readinessDBPinger, rdb readinessRedisPinger, ver string
 // and pprof. It returns early (without error) when the DB, Redis, or secret
 // key prerequisites are not met; the caller's Echo instance is left with only
 // the routes that were successfully registered.
-func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.Echo, cfg *config.Config, log zerolog.Logger, lic *license.License) {
+func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.Echo, cfg *config.Config, log zerolog.Logger, licInst *license.Instance) {
 	ctx := context.Background()
 	pool, err := shareddb.Connect(ctx, cfg.DBUrl)
 	if err != nil {
 		log.Warn().Err(err).Msg("DB unavailable — all routes disabled")
 		return
 	}
+
+	// A licence activated through the UI lives in license_keys, not in
+	// VAKT_LICENSE_KEY. Without this the instance would come back as Community
+	// after every restart on exactly the routes that have no org context —
+	// GET /license, the SSO login entry points, SCIM. No-op when an env key or
+	// the demo seed already supplied a Pro licence.
+	license.AdoptActivatedKey(ctx, pool, licInst)
 
 	api := e.Group("/api/v1")
 
@@ -270,6 +278,37 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		}
 	}
 	authHandler := auth.NewHandler(authSvc, cfg)
+
+	// An admin issuing a password reset for another member is break-glass, the
+	// same class as the MFA reset and the role change next to it, and it has to
+	// leave a trace. The auth package cannot call audit.Write itself — audit
+	// imports auth for its route registration, so the direct call would be an
+	// import cycle — hence the injection seam. This is the composition root, the
+	// one place that imports both; wired here it stays a single line instead of a
+	// dependency inversion nobody can follow.
+	//
+	// Unwired, the seam is silent: the reset keeps working and simply records
+	// nothing, which is the worst shape a missing audit entry can have. The
+	// regression test cmd/api/admin_reset_audit_wiring_test.go asserts the entry
+	// actually lands.
+	//
+	// Shape follows the sibling break-glass entry in usermgmt (action reset_mfa):
+	// the target is identified by its user id, not by its address. `delivered`
+	// records whether the reset mail actually went out — an admin-issued reset
+	// that never reached the user is a different event to an auditor than one
+	// that did, and the handler already knows which happened.
+	auth.SetAdminResetAuditWriter(func(ctx context.Context, e auth.AdminResetAuditEntry) {
+		audit.Write(ctx, pool, audit.WriteEntry{
+			OrgID:        e.OrgID,
+			UserID:       e.ActorUserID,
+			Action:       "admin_password_reset",
+			ResourceType: "auth/password",
+			ResourceID:   e.TargetUserID,
+			Details:      map[string]string{"delivered": strconv.FormatBool(e.Delivered)},
+			IPAddress:    e.IP,
+		})
+	})
+
 	authGroup := api.Group("/auth", authRateLimiter)
 	auth.Register(authGroup, authHandler)
 	// Apply Redis-backed rate limit specifically to the 4 credential routes.
@@ -288,7 +327,30 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// org's admin IP allowlist — mounted once here so every /admin route, across
 	// all ~6 admin sub-groups and any added later, is covered without a variant-miss
 	// (S131-C2/R-H17). The middleware itself no-ops for non-/admin paths.
-	protected := api.Group("", auth.AuthMiddleware(pasetoKey, pool, rdb), sharedmw.ValidateUUIDParams(), sharedmw.OrgIPAllowlist(pool))
+	//
+	// AdminIPAllowlist is the env-configured twin (VAKT_ADMIN_ALLOWED_IPS) and now
+	// sits on the same single mount, for the same reason. It used to be mounted per
+	// /admin sub-group and reached only 48 of 59 admin routes — the eleven it missed
+	// included the role change, the MFA break-glass reset and the admin
+	// password-reset-token generator. The reference documentation described it as
+	// covering "Admin-Endpunkte" without qualification, so an operator who
+	// configured it believed the whole admin surface was restricted (Codeaudit v5b,
+	// R1-10-V01/ESK-8; gate: cmd/api/admin_ip_allowlist_coverage_test.go).
+	//
+	// It is deliberately the FIRST middleware of the chain — ahead of auth, CSRF and
+	// the role checks. A request from an IP that is not allowed to touch the admin
+	// surface must be turned away before anything else looks at it; otherwise the
+	// blocked client still learns from the differing error codes which admin routes
+	// exist, whether its token is valid and whether it holds the Admin role. Ordering
+	// it first is also what makes the coverage gate meaningful: while CSRF answered
+	// first, 33 admin write routes returned CSRF_MISSING and no test could tell
+	// whether an IP guard sat behind it at all.
+	protected := api.Group("",
+		sharedmw.AdminIPAllowlist(),
+		auth.AuthMiddleware(pasetoKey, pool, rdb),
+		sharedmw.ValidateUUIDParams(),
+		sharedmw.OrgIPAllowlist(pool),
+	)
 
 	// CSRF protection: double-submit-cookie pattern on state-changing methods.
 	// API-key requests (Bearer sk_/vakt_) are exempt because they are not
@@ -308,7 +370,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 
 	// Per-request license resolution: load DB key / check revocation blocklist after auth sets org_id.
 	// rdb is passed for optional Redis caching (60 s TTL) to avoid 2 DB queries per request.
-	protected.Use(license.DBMiddleware(pool, lic, rdb))
+	protected.Use(license.DBMiddleware(pool, licInst, rdb))
 
 	// Global per-org rate limiting: 300 req/min, keyed by org_id from Paseto claims.
 	// Must be applied after auth middleware has populated org_id in the context.
@@ -345,7 +407,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// VAKT_LICENSE_AUTORENEW=false switches it off. Then Norvik mails the next key and
 	// the instance never speaks to us — a supported path, not a trap. The Community
 	// Edition has no key and never calls at all.
-	licHandler := license.RegisterRoutes(api, lic, auth.AuthMiddleware(pasetoKey, pool, rdb), pool, rdb)
+	licHandler := license.RegisterRoutes(api, licInst, auth.AuthMiddleware(pasetoKey, pool, rdb), pool, rdb)
 	if cfg.LicenseAutoRenew {
 		licHandler.WithAutoRenewal()
 		refresher := license.NewAutoRefresher(cfg.LicenseToken, cfg.LicenseRefreshURL, true, licHandler, pool, rdb)
@@ -374,8 +436,17 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// org is locked out of all sensitive writes while the toggle is on.
 	mfaSensitive := sharedmw.RequireMFASensitive(pool, totpKey, auth.ValidateTOTP)
 
+	// R1-14b-01: EINE Ableitung der Asynq-Verbindung fuer den gesamten
+	// API-Prozess. Vorher baute jede der vier Enqueue-Stellen hier
+	// {Addr, Password} von Hand und liess DB fallen — traegt VAKT_REDIS_URL eine
+	// Datenbanknummer, schrieb die API nach DB 0, waehrend der Worker aus DB N
+	// las. Die Kette brach lautlos: kein Fehler, kein Log, kein Wiederholungs-
+	// versuch. Der abgeleitete Wert wird ab hier weitergereicht, nie nachgebaut;
+	// das Gate asynq_redis_db_coverage_test.go haelt das fest.
+	asynqOpt := redisopt.Asynq(redisOpt)
+
 	// Admin routes (also require Admin role)
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
+	asynqClient := asynq.NewClient(asynqOpt)
 	adminSvc := admin.NewService(pool, cfg.ModulesEnabled)
 	adminSvc.WithNotifyService(notify.NewService(pool, cfg))
 	adminSvc.WithMasterKey(rawMasterKey)
@@ -386,8 +457,12 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	admin.Register(protected, adminHandler, adminHealth, pool, rdb, mfaSensitive)
 	internal.GET("/api/v1/internal/backup-config", adminHandler.GetInternalBackupConfig)
 	// Job queue stats — admin-only, same auth guard as other admin routes.
-	jobsHandler := admin.NewJobsHandler(redisOpt.Addr, redisOpt.Password)
-	protected.GET("/admin/jobs", jobsHandler.GetQueueStats, auth.RequireRole("Admin"), sharedmw.IPAllowlist())
+	// The IP allowlist is NOT repeated here: it hangs once on `protected` as
+	// AdminIPAllowlist. Repeating it per route is what made the guard's coverage
+	// drift in the first place — a repetition looks like coverage and is really a
+	// second place that has to be kept in sync.
+	jobsHandler := admin.NewJobsHandler(redisOpt)
+	protected.GET("/admin/jobs", jobsHandler.GetQueueStats, auth.RequireRole("Admin"))
 	// Admin-scoped auth management routes (password reset token generation without SMTP).
 	auth.RegisterAdminRoutes(protected, authHandler)
 	log.Info().Msg("admin routes registered")
@@ -418,7 +493,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 
 	// Module routes — all behind auth middleware, sharing the same DB pool
 	if cfg.IsModuleEnabled("vaktscan") {
-		vbSvc := vaktscan.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
+		vbSvc := vaktscan.NewService(pool, asynqOpt)
 		vbSvc.WithRedis(rdb)
 		vbSvc.WithWebhooks(webhookSvc)
 		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb)), vaktscan.NewHandler(vbSvc))
@@ -521,7 +596,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// Auditor portal — read-only vaktcomply access via session token (no Bearer auth).
 		// license.DBMiddleware is added so feature gates (FeatureAuditPDF etc.) resolve
 		// correctly for the auditor's org without a Paseto token in the request (S78-6c).
-		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool), license.DBMiddleware(pool, lic, rdb)), ckHandler)
+		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool), license.DBMiddleware(pool, licInst, rdb)), ckHandler)
 		// Auto-evidence inbox — GitHub, SecReflex, SecPulse
 		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		log.Info().Msg("vaktcomply routes registered")
@@ -538,11 +613,19 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		log.Info().Msg("vaktvault routes registered (protected + public share)")
 	}
 
+	// R1-SA25-01: vaktaware subscribes to the HR entry event to auto-enrol new
+	// employees. Declared here and assigned inside the module guard below,
+	// because vakthr (further down) is what fires the event. Stays nil when
+	// vaktaware is disabled — WithEmployeeOnboardingTrigger then falls back to
+	// the noop.
+	var hrOnboardingTrigger vakthr.EmployeeOnboardingTrigger
+
 	if cfg.IsModuleEnabled("vaktaware") {
 		pgSvc := vaktaware.NewService(pool, vaktaware.SMTPConfig{
 			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
-		}, asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
+		}, asynqOpt)
+		hrOnboardingTrigger = vaktaware.NewEnrollmentTrigger(pgSvc)
 		awareHandler := vaktaware.NewHandler(pgSvc)
 		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware", rdb)), awareHandler)
 		// S127-1 (D4/D5): public tracking + phish-report. Mounted on the PUBLIC api
@@ -574,7 +657,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	}
 
 	if cfg.IsModuleEnabled("vaktprivacy") {
-		poSvc := vaktprivacy.NewService(pool, asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password})
+		poSvc := vaktprivacy.NewService(pool, asynqOpt)
 		// Art. 17 erasure deletes hr_/sr_ PII through the owning modules' erasers,
 		// not by writing those prefixes from vaktprivacy (module isolation,
 		// ADR-0079). Order is IRRELEVANT here by design: the resolver below hands
@@ -588,7 +671,14 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		tiaSvc := vaktprivacy.NewTIAService(pool)
 		poHandler := vaktprivacy.NewHandler(poSvc).WithDB(pool).WithTIA(tiaSvc)
 		if alertSvc != nil {
-			poHandler.WithAlerting(alertSvc.Fire)
+			// Adapter statt Methodenwert: Fire liefert seit ADR-0083 ein
+			// FireResult zurueck, AlertFunc ist void. Der Rueckgabewert wird
+			// hier bewusst verworfen — diese Naht setzt keine Sperre, also
+			// unterdrueckt ein Fehlschlag auch nichts. (h.alertFunc hat
+			// derzeit ueberhaupt keinen Aufrufer, siehe R1-W7A-N1.)
+			poHandler.WithAlerting(func(ctx context.Context, orgID, event string, payload map[string]any) {
+				_ = alertSvc.Fire(ctx, orgID, event, payload)
+			})
 		}
 		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy", rdb)), poHandler)
 		// DSR portal uses URL slug/token — exempt from Bearer auth; rate-limited to 30 req/min per IP
@@ -603,7 +693,8 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		hrSvc := vakthr.NewService(vakthr.NewRepository(pool)).
 			WithEvidenceWriter(hrEvidence).
 			WithAccessReviewTrigger(hrAccessReview).
-			WithSessionRevoker(authSvc) // S131-C1: offboarding must kill the access token (pw_version), not just refresh sessions
+			WithEmployeeOnboardingTrigger(hrOnboardingTrigger). // R1-SA25-01: without this, no entry ever reaches vaktaware
+			WithSessionRevoker(authSvc)                         // S131-C1: offboarding must kill the access token (pw_version), not just refresh sessions
 		hrHandler = vakthr.NewHandler(hrSvc)
 		vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr", rdb)), hrHandler)
 		log.Info().Msg("vakthr routes registered")
@@ -677,7 +768,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	log.Info().Msg("audit log routes registered")
 
 	// Full data export — DSGVO Art. 20 portability + migration safety
-	dataexport.RegisterRoutes(protected.Group("/export"), pool, cfg.ModulesEnabled)
+	dataexport.RegisterRoutes(protected.Group("/export"), pool, cfg.ModulesEnabled, cfg.Version)
 	log.Info().Msg("data export routes registered")
 
 	// Auditor portal — invite management (admin) + public accept route
@@ -781,9 +872,13 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	if cfg.MetricsEnabled {
 		metricsToken := os.Getenv("VAKT_METRICS_TOKEN")
 		metrics.RegisterWithOptions(e, pool, metrics.RegisterOptions{
-			RedisAddr:     redisOpt.Addr,
-			RedisPassword: redisOpt.Password, // S121-C3 (I1): auth for --requirepass Redis
-			MetricsToken:  metricsToken,
+			// S121-C3 (I1): auth for --requirepass Redis. R1-14b-01: die vollen
+			// Optionen statt zwei Strings — durch zwei Strings passt die
+			// Datenbanknummer per Konstruktion nicht hindurch, und der
+			// Queue-Depth-Inspector zaehlte deshalb Warteschlangen in DB 0,
+			// waehrend der Worker in DB N arbeitete.
+			Redis:        redisOpt,
+			MetricsToken: metricsToken,
 		})
 		log.Info().Msg("metrics endpoint registered")
 	}

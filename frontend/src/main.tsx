@@ -9,6 +9,7 @@ import { ErrorBoundary } from './shared/components/ErrorBoundary'
 import { MFAChallengeProvider } from './shared/components/MFAChallengeProvider'
 import { FeatureLockedError, MFARequiredError, MFAStepUpError } from './api/client'
 import { toast } from './shared/hooks/useToast'
+import { describeMissingRole } from './shared/utils/errorMessages'
 import './i18n'
 import './index.css'
 
@@ -32,8 +33,12 @@ const queryClient = new QueryClient({
       // Step-up cancelled: the user closed the TOTP prompt — not an error to toast.
       if (error instanceof MFAStepUpError) return
       if (error instanceof Error && error.message === 'Unauthorized') return
-      const msg = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten.'
-      toast(msg, 'error')
+      const raw = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten.'
+      // An insufficient-role 403 names the missing role; turn it into a sentence
+      // that also says where to grant it. Every other message passes through
+      // unchanged — this is deliberately not the full humanizeError() mapping,
+      // which would rewrite unrelated toasts too.
+      toast(describeMissingRole(raw) ?? raw, 'error')
     },
   }),
 })

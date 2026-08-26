@@ -14,11 +14,24 @@ vi.mock('../hooks/useGitScans', () => ({
 
 // ── fixtures ──────────────────────────────────────────────────────────────────
 
+// K5-11: every key here is a json tag of vaktvault.GitScan. The fixture used to
+// say `result_count: 2` and the assertion below checked for "2 findings" — a
+// green test for a badge that could never render against the real backend, which
+// emits `finding_count`. What keeps it honest is the `GitScan` type annotation
+// below plus GitScansPage.contract.test.tsx, which drives the page through
+// apiFetch: G15 reads type DECLARATIONS, not object literals, so it does not see
+// fixtures at all — measured, a fixture reverted to `result_count: 2` leaves the
+// gate at exit 0 and only the vitest run goes red.
 const SCAN: GitScan = {
   id: 'scan-1',
+  org_id: 'org-1',
   repo_url: 'https://github.com/acme/backend',
+  branch: 'main',
   status: 'completed',
-  result_count: 2,
+  finding_count: 2,
+  open_count: 2,
+  dismissed_count: 0,
+  scanned_at: '2026-01-15T10:05:00Z',
   created_at: '2026-01-15T10:00:00Z',
 }
 

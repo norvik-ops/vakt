@@ -1,30 +1,116 @@
 package vaktcomply
 
 import (
-	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/reporting"
 )
 
-func TestApproveISMSScopeRoleCheck(t *testing.T) {
-	svc := &Service{repo: nil} // repo is never reached for non-admin
-	ctx := context.Background()
+// approvalRouteHarness mountiert die ECHTE Routenregistrierung auf einem echten
+// Echo und legt nur die Identitaet unter, die sonst die AuthMiddleware setzt —
+// mit demselben Schluessel und demselben Typ (`roles`, []string, middleware.go).
+// Genau diese Naht war der Defekt: Der Service las `role` (Singular, string),
+// den niemand setzt. Ein Test, der die Rollenpruefung direkt auf dem Service
+// aufruft, haette das nie gesehen, weil er den Wert selbst mitgebracht haette.
+//
+// Der Service ist absichtlich nil: Fuer die Ablehnung wird er nie erreicht.
+// middleware.Recover() faengt den Panic ab, falls doch — dann ist der Status
+// 500 und eben NICHT 403, was fuer die Durchlass-Faelle die Aussage ist.
+func approvalRouteHarness(t *testing.T, roles []string) *echo.Echo {
+	t.Helper()
+	e := echo.New()
+	e.Use(middleware.Recover())
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set("org_id", "11111111-1111-1111-1111-111111111111")
+			c.Set("user_id", "22222222-2222-2222-2222-222222222222")
+			c.Set("roles", roles)
+			return next(c)
+		}
+	})
+	registerRoutes(e.Group(""), &Handler{})
+	return e
+}
 
-	_, err := svc.ApproveISMSScope(ctx, "org-1", "scope-1", "user-1", "analyst")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "only admins")
+// TestISMSScopeApprovalIsAdminOnly haelt die eine verbliebene Antwort auf die
+// Berechtigungsfrage fest: die Route. Vor R1-W7C-N1 gab es zwei — die Route
+// liess Admin und SecurityAnalyst durch, der Service verlangte "admin" aus
+// einem ungesetzten Kontextschluessel und lehnte damit jeden ab.
+func TestISMSScopeApprovalIsAdminOnly(t *testing.T) {
+	denied := map[string][]string{
+		"SecurityAnalyst": {"SecurityAnalyst"},
+		"InternalAuditor": {"InternalAuditor"},
+		"Viewer":          {"Viewer"},
+		"ohne Rolle":      nil,
+	}
+	for name, roles := range denied {
+		t.Run("abgelehnt/"+name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/isms-scope/approve",
+				strings.NewReader(`{"id":"33333333-3333-3333-3333-333333333333"}`))
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			approvalRouteHarness(t, roles).ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusForbidden, rec.Code)
+			assert.Contains(t, rec.Body.String(), "AUTH_INSUFFICIENT_ROLE")
+		})
+	}
 
-	_, err = svc.ApproveISMSScope(ctx, "org-1", "scope-1", "user-1", "viewer")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "only admins")
+	// Der Admin kommt durch die Rollenpruefung. Belegt wird das ohne Datenbank
+	// ueber die Pflichtfeldpruefung des Handlers: Ein leerer Body erzeugt 400
+	// "id is required" — eine Antwort, die es nur GIBT, wenn der Request den
+	// Handler ueberhaupt erreicht hat. Vor dem Fix war hier 403.
+	t.Run("durchgelassen/Admin", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/isms-scope/approve", strings.NewReader(`{}`))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		approvalRouteHarness(t, []string{"Admin"}).ServeHTTP(rec, req)
+		require.Equal(t, http.StatusBadRequest, rec.Code, "Admin muss den Handler erreichen, nicht 403 bekommen")
+		assert.Contains(t, rec.Body.String(), "id is required")
+	})
+}
 
-	_, err = svc.ApproveISMSScope(ctx, "org-1", "scope-1", "user-1", "")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "only admins")
+// TestManagementReviewApprovalIsInternalAuditorOnly haelt die Rollenmatrix aus
+// ADR-0055 fest: Admin ❌, SecurityAnalyst ❌, InternalAuditor ✅. Der geloeschte
+// Service-Check verlangte "admin" und widersprach damit dem ADR — er war nur
+// deshalb nie aufgefallen, weil er ohnehin jeden ablehnte.
+func TestManagementReviewApprovalIsInternalAuditorOnly(t *testing.T) {
+	const path = "/management-reviews/33333333-3333-3333-3333-333333333333/approve"
+
+	denied := map[string][]string{
+		"Admin":           {"Admin"},
+		"SecurityAnalyst": {"SecurityAnalyst"},
+		"Viewer":          {"Viewer"},
+		"ohne Rolle":      nil,
+	}
+	for name, roles := range denied {
+		t.Run("abgelehnt/"+name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, path, nil)
+			approvalRouteHarness(t, roles).ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusForbidden, rec.Code)
+			assert.Contains(t, rec.Body.String(), "AUTH_INSUFFICIENT_ROLE")
+		})
+	}
+
+	// InternalAuditor kommt durch die Rollenpruefung und laeuft ohne Service in
+	// den abgefangenen Panic (500). Die Aussage ist "nicht 403" — den Beweis,
+	// dass danach wirklich freigegeben wird, fuehrt der Integrationstest gegen
+	// echtes Postgres.
+	t.Run("durchgelassen/InternalAuditor", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		approvalRouteHarness(t, []string{"InternalAuditor"}).ServeHTTP(rec, req)
+		assert.NotEqual(t, http.StatusForbidden, rec.Code, "InternalAuditor darf nicht an der Rollenpruefung scheitern")
+	})
 }
 
 func TestMapAssetType(t *testing.T) {
@@ -91,20 +177,50 @@ func TestNIS2ReportabilityCheck_IsReportable(t *testing.T) {
 	}
 }
 
-func TestMarkIncidentReportable_DeadlineCalculation(t *testing.T) {
-	detectedAt := time.Date(2026, 6, 10, 10, 0, 0, 0, time.UTC)
-	incidentID := uuid.New()
-
-	// Verify deadline arithmetic without hitting the DB.
-	earlyWarning := detectedAt.Add(24 * time.Hour)
-	fullReport := detectedAt.Add(72 * time.Hour)
-	finalReport := detectedAt.Add(30 * 24 * time.Hour)
-
-	assert.Equal(t, detectedAt.Add(24*time.Hour), earlyWarning, "early warning = T+24h")
-	assert.Equal(t, detectedAt.Add(72*time.Hour), fullReport, "full report = T+72h")
-	assert.Equal(t, detectedAt.Add(720*time.Hour), finalReport, "final report = T+720h (30d)")
-
-	_ = incidentID // used in service test with live DB
+// TestNIS2Deadlines_CalendarMonth pins the three Art. 23(4) deadlines against the
+// real function. The previous version of this test recomputed the arithmetic
+// inline and asserted it against itself — a tautology that stayed green no
+// matter what the service did, and that also cemented the wrong 30-day month.
+func TestNIS2Deadlines_CalendarMonth(t *testing.T) {
+	cases := []struct {
+		name      string
+		from      time.Time
+		wantFinal time.Time
+	}{
+		{
+			// The case where 30 days and one calendar month diverge, and where
+			// time.AddDate would normalise 31 February into 3 March instead of
+			// clamping to 28 February.
+			name:      "Monatsende klemmt auf den letzten Tag des Zielmonats",
+			from:      time.Date(2026, 1, 31, 9, 0, 0, 0, time.UTC),
+			wantFinal: time.Date(2026, 2, 28, 9, 0, 0, 0, time.UTC),
+		},
+		{
+			name:      "Schaltjahr klemmt auf den 29. Februar",
+			from:      time.Date(2028, 1, 31, 9, 0, 0, 0, time.UTC),
+			wantFinal: time.Date(2028, 2, 29, 9, 0, 0, 0, time.UTC),
+		},
+		{
+			name:      "Jahreswechsel",
+			from:      time.Date(2025, 12, 31, 23, 30, 0, 0, time.UTC),
+			wantFinal: time.Date(2026, 1, 31, 23, 30, 0, 0, time.UTC),
+		},
+		{
+			name:      "Monatsmitte bleibt auf demselben Tag",
+			from:      time.Date(2026, 6, 10, 10, 0, 0, 0, time.UTC),
+			wantFinal: time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ew, full, final := reporting.NIS2Deadlines24_72_1M(tc.from)
+			assert.Equal(t, tc.from.Add(24*time.Hour), ew, "Fruehwarnung = T+24h")
+			assert.Equal(t, tc.from.Add(72*time.Hour), full, "Meldung = T+72h")
+			assert.Equal(t, tc.wantFinal, final,
+				"ein Monat ist ein Kalenderzeitraum, keine 30 Tage — und time.AddDate "+
+					"normalisiert einen Monatsueberlauf, statt ihn zu klemmen")
+		})
+	}
 }
 
 func TestNIS2DeadlineCheck_StageFiltering(t *testing.T) {

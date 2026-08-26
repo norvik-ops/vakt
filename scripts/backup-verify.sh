@@ -58,8 +58,23 @@ cat "$WORK_DIR/manifest.json"
 echo "→ Checking dump integrity..."
 if [ -f "$WORK_DIR/db.pgdump.gpg" ]; then
 	if [ -z "$PASSPHRASE" ]; then
-		echo "WARNING: db.pgdump.gpg found but no passphrase — skipping dump integrity check" >&2
-		echo "  Set VAKT_BACKUP_PASSPHRASE or VAKT_BACKUP_PASSPHRASE_FILE to verify the dump."
+		# ESK-7: das war die letzte Stelle, an der ein LEERER oder beschaedigter
+		# Dump noch haette auffallen koennen — und ohne Passphrase uebersprang das
+		# Skript sie und meldete darunter trotzdem "Backup verification passed".
+		# Die HMAC-Signatur davor beweist nur, dass das Archiv unveraendert ist;
+		# ein unveraendertes Archiv mit einem 0-Byte-Dump ist ebenso "gueltig".
+		# `backup.sh` verschluesselt IMMER (die Passphrase ist dort Pflicht) —
+		# fehlt sie hier, ist die Pruefung strukturell unmoeglich, nicht optional.
+		# Deshalb Fehler statt Warnung: ein "verification passed" ohne geprueften
+		# Dump ist eine falsche Zusage, und falsche Doku/Meldungen sind schlimmer
+		# als fehlende.
+		echo "ERROR: Archiv enthaelt einen verschluesselten Dump, aber es ist keine Passphrase gesetzt." >&2
+		echo "       Die Dump-Integritaet kann damit NICHT geprueft werden — dieses Skript sagt" >&2
+		echo "       deshalb nicht 'verification passed'. Setze VAKT_BACKUP_PASSPHRASE oder" >&2
+		echo "       VAKT_BACKUP_PASSPHRASE_FILE." >&2
+		echo "       (Die HMAC-Signatur ist gueltig: das Archiv ist unveraendert. Das ist eine" >&2
+		echo "       andere Aussage als 'der Dump ist brauchbar'.)" >&2
+		exit 1
 	else
 		DUMP_TMP=$(mktemp)
 		trap 'rm -f "$DUMP_TMP"; rm -rf "$WORK_DIR"' EXIT

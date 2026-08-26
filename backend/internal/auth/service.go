@@ -172,9 +172,25 @@ func NewService(db *pgxpool.Pool, redisClient *redis.Client, key paseto.V4Symmet
 	}
 }
 
-// newDummyBcryptHash precomputes a bcrypt hash (cost 12) of a cryptographically
-// random value. It is compared against during failed logins for unknown e-mails
-// so the bcrypt cost is paid on every attempt, eliminating the timing oracle.
+// defaultDummyBcryptCost is the production cost factor of the dummy hash. It
+// MUST equal the cost used for real password hashes (12, OWASP 2025) — the
+// whole point of the dummy compare is that it is indistinguishable in duration
+// from a real one, and cost is what determines that duration.
+const defaultDummyBcryptCost = 12
+
+// dummyBcryptCost is the cost factor actually used by newDummyBcryptHash.
+// var (not const) for the same reason as recoveryCodeBcryptCost/
+// backupCodeBcryptCost: a cost-12 bcrypt op costs ~2.4s under -race, and this
+// package builds one on every NewService call. Tests lower it to
+// bcrypt.MinCost via TestMain; the tests that actually assert the timing
+// defense restore defaultDummyBcryptCost for themselves (see
+// login_timing_test.go). Production never changes it.
+var dummyBcryptCost = defaultDummyBcryptCost
+
+// newDummyBcryptHash precomputes a bcrypt hash of a cryptographically random
+// value at dummyBcryptCost (production: 12). It is compared against during
+// failed logins for unknown e-mails so the bcrypt cost is paid on every
+// attempt, eliminating the timing oracle.
 func newDummyBcryptHash() []byte {
 	secret := make([]byte, 32)
 	if _, err := rand.Read(secret); err != nil {
@@ -182,7 +198,7 @@ func newDummyBcryptHash() []byte {
 		// work; fall back to a fixed value so CompareHashAndPassword still runs.
 		secret = []byte("vakt-dummy-timing-defense-fallback")
 	}
-	h, err := bcrypt.GenerateFromPassword(secret, 12)
+	h, err := bcrypt.GenerateFromPassword(secret, dummyBcryptCost)
 	if err != nil {
 		// Should never happen; return a static valid-cost-12 hash so the compare
 		// path stays non-nil. ("invalid" placeholder is never the right password.)
@@ -406,12 +422,15 @@ func (s *Service) Login(ctx context.Context, email, password, deviceHint string)
 			return nil, fmt.Errorf("issue mfa pending token: %w", ptErr)
 		}
 		s.recordLogin(ctx, orgID, userID, email, deviceHint, "password", "mfa_pending")
+		// R1-14cA-13: no user object before the second factor. This response used
+		// to carry id, email, display name and role — so whoever held the password
+		// alone learned the account's name and its role in the organisation, which
+		// is exactly what the second factor is there to keep out of reach. The
+		// mfa_pending token carries the subject internally; the client needs
+		// nothing else until /auth/2fa/login-verify hands back a real session.
 		return &AuthResponse{
 			MFARequired: true,
 			MFAToken:    pending,
-			User: AuthUser{
-				ID: userID, Email: email, DisplayName: displayName, Roles: []string{roleName},
-			},
 		}, nil
 	}
 
@@ -556,16 +575,32 @@ func pwVersionKey(userID string) string {
 // If Redis is not wired (integration tests that pass nil for the client),
 // also fall back to 0 — the password-version invalidation is best-effort
 // anyway, not a correctness guarantee.
+// currentPwVersion liefert die pw_version, die beim Anmelden in den Token gestempelt
+// wird. Sie MUSS dieselbe Quelle lesen wie checkPwVersion in der Middleware, sonst
+// stempelt die Anmeldung einen Wert, den die Zugangspruefung anschliessend ablehnt.
+//
+// Die frueher Fassung las ausschliesslich Redis und nahm bei JEDEM Fehlschlag 0 an.
+// Das ausgelieferte Redis laeuft mit `allkeys-lru`, Verdraengung ist also eingeplant:
+// Nach dem Verlust des Schluessels stempelte die Anmeldung 0, die Middleware las die
+// echte Version aus PostgreSQL und verlangte Gleichheit — der Betroffene kam herein
+// und bekam danach auf JEDE Anfrage dauerhaft 401. Zwei Quellen fuer dieselbe Frage
+// laufen immer irgendwann auseinander; hier war es nur eine Frage der Zeit.
 func (s *Service) currentPwVersion(ctx context.Context, userID string) int64 {
-	if s.redis == nil {
-		return 0
+	if s.redis != nil {
+		val, err := s.redis.Get(ctx, pwVersionKey(userID)).Int64()
+		if err == nil {
+			return val
+		}
 	}
-	val, err := s.redis.Get(ctx, pwVersionKey(userID)).Int64()
-	if err != nil {
-		// redis.Nil means key doesn't exist yet — treat as version 0.
-		return 0
+	// Redis fehlt, ist ausgefallen oder der Schluessel wurde verdraengt: PostgreSQL
+	// ist die Quelle der Wahrheit — dieselbe, aus der checkPwVersion liest.
+	if v, ok := pwVersionFromDB(ctx, s.db, userID); ok {
+		return v
 	}
-	return val
+	// Auch PG nicht verfuegbar: die alte Regel "abwesend heisst 0" gilt weiter, und
+	// checkPwVersion faellt im selben Fall auf dieselbe Regel zurueck. Damit bleiben
+	// beide Seiten auch im Ausfall einig.
+	return 0
 }
 
 // sha256Hex returns the hex-encoded SHA-256 hash of s.
@@ -759,19 +794,46 @@ func (s *Service) recordIPLoginFailure(ctx context.Context, ip string) {
 // back to a PG table that had no record, so the revoked token was accepted for
 // up to AccessTokenTTL. Dual-writing closes that window; the PG write is
 // best-effort (revokeInFallback logs its own errors and no-ops without a db).
+//
+// R1-W7A-N3: it used to return a hard nil even though BOTH sinks can fail. The
+// caller — the logout handler — answered 200 either way, so a user could be told
+// "logged out" while the access token stayed valid for the rest of its hour.
+// The return value now states what happened:
+//
+//	both sinks accepted    → nil
+//	exactly one accepted   → nil, logged at ERROR
+//	neither accepted       → error
+//
+// The middle case is deliberately a success, not a half-failure: one live sink
+// is enough for checkDenyList to reject the token on the very next request, so
+// the revocation IS in effect and telling the user otherwise would be false in
+// the alarming direction. It is logged loudly all the same, because the S124-5
+// dual-write exists to survive a LATER outage of the other sink, and a partial
+// write quietly reopens exactly that window.
 func (s *Service) RevokeToken(ctx context.Context, rawToken string) error {
-	rCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
 	key := tokenDenyKey(rawToken)
 	expiresAt := time.Now().Add(AccessTokenTTL)
 
 	// Always persist to the PG fallback so a later Redis outage cannot resurrect
 	// the token.
-	s.denyFall.revokeInFallback(ctx, key, expiresAt)
+	pgErr := s.denyFall.revokeInFallback(ctx, key, expiresAt)
 
-	if err := s.redis.Set(rCtx, key, "1", AccessTokenTTL).Err(); err != nil {
-		// PG already has the record above; Redis is the fast path, not the only one.
-		log.Warn().Err(err).Msg("RevokeToken: Redis write failed — revocation persisted in PG fallback")
+	redisErr := errors.New("no redis client configured")
+	if s.redis != nil {
+		rCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+		redisErr = s.redis.Set(rCtx, key, "1", AccessTokenTTL).Err()
+	}
+
+	switch {
+	case redisErr == nil && pgErr == nil:
+		return nil
+	case redisErr != nil && pgErr != nil:
+		return fmt.Errorf("revoke token: no sink accepted the revocation (redis: %v; fallback: %w)", redisErr, pgErr)
+	case redisErr != nil:
+		log.Error().Err(redisErr).Msg("RevokeToken: Redis write failed — revocation holds in the PG fallback only, the dual-write window is open")
+	default:
+		log.Error().Err(pgErr).Msg("RevokeToken: PG fallback write failed — revocation holds in Redis only, a Redis outage would resurrect this token")
 	}
 	return nil
 }
@@ -829,7 +891,14 @@ func (s *Service) RevokeAllSessions(ctx context.Context, userID string) error {
 		_ = s.redis.Del(rCtx, keys...) // best-effort
 	}
 
-	s.bumpPwVersion(ctx, userID)
+	if err := s.bumpPwVersion(ctx, userID); err != nil {
+		// R1-W7A-N3: the pw_version bump is the ONLY mechanism that invalidates
+		// the stateless Paseto access tokens already handed out. Swallowing its
+		// failure made "sessions revoked" mean "the refresh rows are gone, the
+		// access tokens live on" — which is the half that matters within the
+		// first hour.
+		return fmt.Errorf("revoke sessions: %w", err)
+	}
 	return nil
 }
 
@@ -840,34 +909,68 @@ func (s *Service) RevokeAllSessions(ctx context.Context, userID string) error {
 // stateless Paseto access tokens. Best-effort with logging, matching the password
 // reset path (S87-6): PG is the durable truth, checkPwVersion falls back to the PG
 // value if the Redis mirror is stale, so a Redis outage does not un-revoke a token.
-func (s *Service) bumpPwVersion(ctx context.Context, userID string) {
-	if s.db == nil {
-		return
+func (s *Service) bumpPwVersion(ctx context.Context, userID string) error {
+	return bumpPwVersionWith(ctx, s.db, s.redis, userID)
+}
+
+// bumpPwVersionWith is the pool-level form of bumpPwVersion. It exists so the
+// session handler — which holds the same two connections but no Service — can
+// invalidate access tokens without a wiring change (R1-21-A06).
+// R1-W7A-N3 — it now REPORTS its outcome instead of only logging it. Which
+// failures count, read off checkPwVersion rather than guessed:
+//
+//   - PG write failed, Redis increment also failed → nothing moved anywhere.
+//     Every token already issued stays valid. Error.
+//   - PG write succeeded, Redis MIRROR failed → the durable truth is right and
+//     the hot path is wrong, and the hot path is what decides: checkPwVersion
+//     reads Redis first and only consults PG when Redis is *unreachable* or the
+//     key is *absent*. A reachable Redis holding the stale old number therefore
+//     answers "matches" and waves the revoked token straight through. Error —
+//     this is the quiet one, and it looks like success from every angle except
+//     this return value.
+//   - PG write failed, legacy Redis increment succeeded → enforced on the hot
+//     path, not durable. Not an error; logged.
+//   - rdb == nil → there is no hot path to fall out of step with (checkPwVersion
+//     is only reached when a Redis client is wired), so PG alone is the whole
+//     truth. Not an error.
+func bumpPwVersionWith(ctx context.Context, db *pgxpool.Pool, rdb *redis.Client, userID string) error {
+	if db == nil {
+		return fmt.Errorf("bump pw_version: db not available")
 	}
 	pgCtx, pgCancel := context.WithTimeout(ctx, 2*time.Second)
 	defer pgCancel()
 	var newPwVersion int64
-	if pgErr := s.db.QueryRow(pgCtx,
+	pgErr := db.QueryRow(pgCtx,
 		`UPDATE users SET pw_version = pw_version + 1 WHERE id = $1::uuid RETURNING pw_version`,
 		userID,
-	).Scan(&newPwVersion); pgErr != nil {
+	).Scan(&newPwVersion)
+	if pgErr != nil {
 		log.Error().Err(pgErr).Str("user_id", userID).Msg("bump pw_version: PostgreSQL update failed")
 	}
-	if s.redis == nil {
-		return
+	if rdb == nil {
+		if pgErr != nil {
+			return fmt.Errorf("bump pw_version: %w", pgErr)
+		}
+		return nil
 	}
 	incrCtx, incrCancel := context.WithTimeout(ctx, 2*time.Second)
 	defer incrCancel()
 	if newPwVersion > 0 {
 		// Keep Redis in lockstep with PG so the hot path returns the same value.
-		if setErr := s.redis.Set(incrCtx, pwVersionKey(userID), newPwVersion, 0).Err(); setErr != nil {
+		if setErr := rdb.Set(incrCtx, pwVersionKey(userID), newPwVersion, 0).Err(); setErr != nil {
 			log.Error().Err(setErr).Str("user_id", userID).Msg("bump pw_version: Redis mirror failed")
+			return fmt.Errorf("bump pw_version: redis mirror out of step with pg, revocation not enforced on the hot path: %w", setErr)
 		}
-	} else if incrErr := s.redis.Incr(incrCtx, pwVersionKey(userID)).Err(); incrErr != nil {
-		// PG update failed — fall back to the legacy Redis-only increment so the
-		// revocation still invalidates tokens on the hot path.
-		log.Error().Err(incrErr).Str("user_id", userID).Msg("bump pw_version: Redis increment failed")
+		return nil
 	}
+	// PG update failed — fall back to the legacy Redis-only increment so the
+	// revocation still invalidates tokens on the hot path.
+	if incrErr := rdb.Incr(incrCtx, pwVersionKey(userID)).Err(); incrErr != nil {
+		log.Error().Err(incrErr).Str("user_id", userID).Msg("bump pw_version: Redis increment failed")
+		return fmt.Errorf("bump pw_version: neither pg nor redis accepted the bump (pg: %v; redis: %w)", pgErr, incrErr)
+	}
+	log.Error().Err(pgErr).Str("user_id", userID).Msg("bump pw_version: PG unavailable — bump holds in Redis only, it will not survive an eviction")
+	return nil
 }
 
 // tokenDenyKey returns the Redis key used to blacklist an access token.

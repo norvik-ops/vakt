@@ -1,0 +1,31 @@
+Vakt {{ .Chart.AppVersion }} deployed successfully as "{{ .Release.Name }}".
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Access Vakt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{{- if .Values.ingress.enabled }}
+  URL: https://{{ .Values.ingress.host }}
+{{- else }}
+  Port-forward the frontend:
+    kubectl port-forward svc/{{ include "vakt.fullname" . }}-frontend 8080:80 -n {{ .Release.Namespace }}
+  Then open: http://localhost:8080
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  First login
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Visit /setup to create your admin account on first run.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Troubleshooting
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Check API logs:
+    kubectl logs -l app.kubernetes.io/component=api -n {{ .Release.Namespace }}
+
+  Check worker logs:
+    kubectl logs -l app.kubernetes.io/component=worker -n {{ .Release.Namespace }}
+
+  Docs: https://github.com/norvik-ops/vakt/tree/main/docs/wiki

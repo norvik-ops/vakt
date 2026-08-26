@@ -24,9 +24,12 @@ vi.mock('../hooks/useBCMScore', () => ({
   }),
 }))
 
+// K5-08: fixture keys are bcm.BIASummary's json tags. The previous fixture used
+// total/high_critical/avg_rto_hours/avg_rpo_hours — names the backend never
+// sends — so this file was green over a response shape that cannot occur.
 vi.mock('../hooks/useBIA', () => ({
   useBIASummary: () => ({
-    data: { total: 3, high_critical: 2, avg_rto_hours: 12, avg_rpo_hours: 4 },
+    data: { total_processes: 3, critical_count: 2, shortest_rto_hours: 12, klasse_breakdown: { '1': 1, '2': 0, '3': 2 } },
   }),
 }))
 
@@ -41,8 +44,8 @@ vi.mock('../hooks/useRecoveryPlans', () => ({
 vi.mock('../hooks/useEmergencyContacts', () => ({
   useEmergencyContacts: () => ({
     data: [
-      { id: '1', name: 'Max Mustermann', escalation_level: 1, role: 'CISO', phone: '', email: '', available_247: true, notes: '' },
-      { id: '2', name: 'Erika Muster', escalation_level: 2, role: 'ISB', phone: '', email: '', available_247: false, notes: '' },
+      { id: '1', name: 'Max Mustermann', escalation_level: 1, role: 'CISO', phone: '', email: '', available_24_7: true, notes: '' },
+      { id: '2', name: 'Erika Muster', escalation_level: 2, role: 'ISB', phone: '', email: '', available_24_7: false, notes: '' },
     ],
   }),
 }))

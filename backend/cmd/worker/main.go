@@ -41,6 +41,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	cloudintegration "github.com/matharnica/vakt/internal/shared/platform/integrations/cloud"
+	"github.com/matharnica/vakt/internal/shared/redisopt"
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"
 )
@@ -71,30 +72,16 @@ func newMetricsRedis(redisURL string) *redis.Client {
 	return redis.NewClient(opt)
 }
 
-// asynqRedisOpt converts VAKT_REDIS_URL to an asynq.RedisClientOpt.
-// Accepts both full URLs (redis://host:port) and bare addr (host:port).
-func asynqRedisOpt(redisURL string) asynq.RedisClientOpt {
-	if redisURL == "" {
-		return asynq.RedisClientOpt{Addr: "localhost:6379"}
-	}
-	if parsed, err := redis.ParseURL(redisURL); err == nil {
-		return asynq.RedisClientOpt{
-			Addr:     parsed.Addr,
-			Password: parsed.Password,
-			DB:       parsed.DB,
-		}
-	}
-	// Bare host:port (no scheme) — pass through directly.
-	// redisauth-ok: a bare host:port carries no password by construction; an
-	// auth-protected Redis must be configured via the redis://:pass@host form
-	// (the shipped compose default), which takes the ParseURL branch above.
-	return asynq.RedisClientOpt{Addr: redisURL}
-}
+// R1-14b-01: die Ableitung von VAKT_REDIS_URL zu den Asynq-Optionen stand
+// frueher hier als lokale Funktion asynqRedisOpt — und noch einmal, ohne DB, an
+// vier Stellen in cmd/api/routes.go. Zwei Ableitungen sind zwei Wahrheiten; wer
+// eine davon anfasst, hat die andere nicht in der Hand. Sie liegt jetzt in
+// internal/shared/redisopt und wird von beiden Binaries benutzt.
 
 func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Client) {
 	cfg, _ := config.Load()
 
-	redisOpt := asynqRedisOpt(cfg.RedisUrl)
+	redisOpt := redisopt.AsynqFromURL(cfg.RedisUrl)
 
 	// enqueueClient lets a handful of worker handlers chain a follow-up job after
 	// their own job completes (e.g. SBOM generation → EOL check, S5/W1). Closed on
@@ -205,37 +192,43 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 	mux.HandleFunc(bsi.TaskBSIFeedSync, handleBSIFeedSync(pool))
 
 	// Cross-module evidence — training/DSR/rotation events → SecVitals controls
-	mux.HandleFunc(crossevidence.TaskRecordEvidence, handleRecordEvidence(pool))
+	mux.HandleFunc(crossevidence.TaskRecordEvidence, handleRecordEvidence(cfg, pool))
 
 	// SecVitals: daily evidence expiry alert
 	mux.HandleFunc(vaktcomply.TaskEvidenceExpiryAlert, handleEvidenceExpiryAlert(pool))
 
 	// SecVitals: periodic DORA/NIS2 incident deadline check
-	mux.HandleFunc(vaktcomply.TaskIncidentDeadlineCheck, handleIncidentDeadlineCheck(pool))
+	mux.HandleFunc(vaktcomply.TaskIncidentDeadlineCheck, handleIncidentDeadlineCheck(cfg, pool))
 
 	// SecVitals: DORA Ampel-Status update every 5 minutes (S37-4)
-	mux.HandleFunc(vaktcomply.TaskDORADeadlineStatus, handleDORADeadlineStatus(pool))
+	mux.HandleFunc(vaktcomply.TaskDORADeadlineStatus, handleDORADeadlineStatus(cfg, pool))
 
 	// SecVitals: daily NIS2 classified-incident deadline check (S39-2)
-	mux.HandleFunc(vaktcomply.TaskNIS2ObligationCheck, handleNIS2ObligationCheck(pool))
+	mux.HandleFunc(vaktcomply.TaskNIS2ObligationCheck, handleNIS2ObligationCheck(cfg, pool))
 
 	// SecVitals: daily supplier certificate expiry check
-	mux.HandleFunc(vaktcomply.TaskCertExpiryCheck, handleCertExpiryCheck(pool))
+	mux.HandleFunc(vaktcomply.TaskCertExpiryCheck, handleCertExpiryCheck(cfg, pool))
 
 	// SecVitals: daily overdue control test CAPA creation
-	mux.HandleFunc(taskControlTestCheck, handleControlTestCheck(pool))
+	mux.HandleFunc(taskControlTestCheck, handleControlTestCheck(cfg, pool))
 
 	// Error budget: weekly SLO compliance report
 	mux.HandleFunc(taskErrorBudgetReport, handleErrorBudgetReport(pool))
 
 	// SecVitals: CCM — run all due automated control checks
-	mux.HandleFunc(vaktcomply.TaskCCMRunDue, handleCCMRunDue(pool))
+	mux.HandleFunc(vaktcomply.TaskCCMRunDue, handleCCMRunDue(cfg, pool))
 
 	// SecVitals: daily compliance score snapshot for trend charts
-	mux.HandleFunc(vaktcomply.TaskScoreSnapshot, handleScoreSnapshot(pool))
+	mux.HandleFunc(vaktcomply.TaskScoreSnapshot, handleScoreSnapshot(cfg, pool))
 
 	// Notifications: daily compliance deadline email alerts
 	mux.HandleFunc(notifications.TaskNotifyDeadlines, handleNotifyDeadlines(cfg, pool))
+
+	// Notifications: external delivery (Slack/Teams/email/webhook). The enqueue
+	// side (notify.Service.Notify) shipped for years with NO registered handler,
+	// so every notification hit "handler not found", retried 25×, then archived
+	// while its DB row stayed 'pending' forever (R1-19-W01). This is the consumer.
+	mux.HandleFunc(notify.NotificationJobType, notify.DeliverHandler(pool, notify.DefaultSenders(cfg)))
 
 	// Admin: daily revocation of expired SCIM tokens
 	mux.HandleFunc(admin.TaskSCIMTokenExpiry, handleSCIMTokenExpiry(pool))
@@ -276,24 +269,24 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 	mux.HandleFunc(taskEffectivenessCheckOverdueAlert, handleEffectivenessCheckOverdueAlert(pool))
 
 	// S61-7: daily ISMS KPI snapshot
-	mux.HandleFunc(vaktcomply.TaskISMSKPISnapshot, handleISMSKPISnapshot(pool))
+	mux.HandleFunc(vaktcomply.TaskISMSKPISnapshot, handleISMSKPISnapshot(cfg, pool))
 
 	// S67-4: daily evidence staleness sweep
-	mux.HandleFunc(vaktcomply.TaskEvidenceStalenessCheck, handleEvidenceStalenessCheck(pool))
+	mux.HandleFunc(vaktcomply.TaskEvidenceStalenessCheck, handleEvidenceStalenessCheck(cfg, pool))
 
 	// S70-4: daily contractor expiry check
-	mux.HandleFunc(vakthr.TaskContractorExpiryCheck, handleContractorExpiryCheck(pool))
+	mux.HandleFunc(vakthr.TaskContractorExpiryCheck, handleContractorExpiryCheck(cfg, pool))
 	// S70-5: quarterly vault access review creation
 	mux.HandleFunc(vaktvault.TaskQuarterlyAccessReview, handleQuarterlyAccessReview(pool))
 
 	// S74-2: daily BSI check progress snapshot
-	mux.HandleFunc(vaktcomply.TaskBSIKPISnapshot, handleBSIKPISnapshot(pool))
+	mux.HandleFunc(vaktcomply.TaskBSIKPISnapshot, handleBSIKPISnapshot(cfg, pool))
 
 	// S86-4: daily BCM evidence sync for DER.4 controls
-	mux.HandleFunc(vaktcomply.TaskBCMEvidenceSync, handleBCMEvidenceSync(pool))
+	mux.HandleFunc(vaktcomply.TaskBCMEvidenceSync, handleBCMEvidenceSync(cfg, pool))
 
 	// S88-2: daily backup-freshness check (ISO A.8.13 / DER.4 evidence + staleness)
-	mux.HandleFunc(vaktcomply.TaskBackupFreshnessCheck, handleBackupFreshnessCheck(pool))
+	mux.HandleFunc(vaktcomply.TaskBackupFreshnessCheck, handleBackupFreshnessCheck(cfg, pool))
 
 	return srv, mux, enqueueClient
 }
@@ -374,7 +367,7 @@ func main() {
 		healthAddr = ":" + p
 	}
 	go func() {
-		inspector := asynq.NewInspector(asynqRedisOpt(cfg.RedisUrl))
+		inspector := asynq.NewInspector(redisopt.AsynqFromURL(cfg.RedisUrl))
 		defer func() { _ = inspector.Close() }()
 		healthSrv := &http.Server{
 			Addr:         healthAddr,

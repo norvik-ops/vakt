@@ -1,0 +1,125 @@
+# S89-4: Optional automated-backup scheduler.
+#
+# Opt-in — this service only starts when you ask for it:
+#   docker compose -f docker-compose.yml -f docker-compose.backup.yml --profile backup up -d
+#
+# It runs scripts/backup-cron.sh on the VAKT_BACKUP_SCHEDULE cron expression:
+# create → verify → (optional off-site push) → prune by retention. Backups are
+# written to the host path VAKT_BACKUP_DIR (default ./data/backups).
+#
+# Required in .env for non-interactive backups:
+#   VAKT_SECRET_KEY, VAKT_BACKUP_PASSPHRASE
+# Optional:
+#   VAKT_BACKUP_SCHEDULE (cron, default "0 2 * * *"), VAKT_BACKUP_RETENTION_DAYS,
+#   VAKT_BACKUP_OFFSITE_CMD, VAKT_BACKUP_NOTIFY_WEBHOOK / VAKT_BACKUP_NOTIFY_CMD
+#
+# Prefer host cron instead? See docs/wiki/configuration.md → "Automatische Backups".
+#
+# ESK-7 (Codeaudit-v5b): dieser Service hatte KEINEN `networks:`-Block und landete
+# damit im automatisch erzeugten `default`-Netz — `postgres` liegt aber auf
+# `db-net` (`internal: true`) und `vakt-api` auf `app-net`. Der Scheduler konnte
+# also weder die Datenbank dumpen noch seine Konfiguration von der API laden; er
+# lief brav nach Zeitplan und produzierte nichts. Ein alter Kommentar hier riet,
+# `app-net` "bei Bedarf" zu ergaenzen — ein Hinweis ist keine Verdrahtung.
+#
+# Reichweite dieses Containers (bewusst begrenzt): er bekommt KEINEN
+# Docker-Socket. Damit kann er das Uploads-Volume nicht sehen und schreibt ein
+# reines Datenbank-Archiv. Das ist eine Sicherheitsentscheidung (ein Docker-Socket
+# ist Root-aequivalent), keine Nachlaessigkeit — backup.sh meldet diesen Zustand
+# jetzt ausdruecklich und schreibt ihn als `"uploads": "unchecked"` ins Manifest,
+# statt ihn als "keine Anhaenge" zu verbuchen. Wer Evidence-Dateien mit im Archiv
+# braucht, faehrt scripts/backup.sh vom Host (dort ist Docker verfuegbar).
+
+services:
+  backup:
+    image: postgres:16-alpine
+    profiles: ["backup"]
+    env_file: .env
+    networks:
+      # db-net: der Dump selbst. app-net: VAKT_INTERNAL_API_URL für
+      # backup-cron.sh → /api/v1/internal/backup-config (Retention, Passphrase,
+      # Off-site-Ziel kommen von dort).
+      #
+      # egress: NICHT optional. db-net und app-net sind BEIDE `internal: true`;
+      # ein Container, der nur an ihnen hängt, hat keinen Weg nach draußen — und
+      # der Entrypoint muss `apk add` fahren, weil dem postgres-Image gpg und
+      # openssl fehlen (gemessen: bash/stat/find/tar/gzip/sha256sum sind da,
+      # gpg + openssl + curl nicht). Ohne egress schlägt `apk` mit rc=4 fehl,
+      # `set -e` beendet den Entrypoint und `restart: unless-stopped` dreht eine
+      # Crash-Loop — der Container startet dann NIE, statt bloß nichts zu
+      # produzieren. Das ist die Regression, die die erste Fassung dieses Fixes
+      # erzeugt hat.
+      #
+      # Datenschutz-Einordnung (CLAUDE.md → „Kein Datenabfluss"): egress trägt
+      # hier KEINE Kundendaten nach außen. Es geht um den Paket-Download beim
+      # Start und um den vom Kunden selbst konfigurierten Off-Site-Push
+      # (nextcloud/s3/sftp), der ohne Ausgang per Definition nicht funktionieren
+      # kann. Dasselbe Muster wie api/worker/ollama (S131-A4, ADR-0076).
+      - db-net
+      - app-net
+      - egress
+    environment:
+      # Backups run against postgres directly (not pgbouncer) for a clean dump.
+      VAKT_DB_URL: "postgres://vakt:${POSTGRES_PASSWORD:?err: POSTGRES_PASSWORD not set}@postgres:5432/vakt?sslmode=disable"
+      VAKT_BACKUP_DIR: /backups
+      VAKT_BACKUP_SCHEDULE: "${VAKT_BACKUP_SCHEDULE:-0 2 * * *}"
+      VAKT_BACKUP_RETENTION_DAYS: "${VAKT_BACKUP_RETENTION_DAYS:-30}"
+    volumes:
+      - ./scripts:/scripts:ro
+      - "${VAKT_BACKUP_DIR:-./data/backups}:/backups"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        # gnupg war hier NIE drin — backup.sh:80 bricht ohne gpg hart ab ("gpg not
+        # found — install gnupg to run backup"), der Scheduler kam also nie über
+        # den ersten Tick hinaus. findutils/coreutils müssen bleiben: `find` ist im
+        # Image nur als busybox-Variante da, und die kennt `-printf` nicht — genau
+        # das nutzt backup-cron.sh:145, um das neueste Archiv zu finden. Ein
+        # Versuch, die Liste auf "was fehlt laut command -v" zu kürzen, hat exakt
+        # daran den Zyklus NACH dem Schreiben des Archivs zerlegt: die Datei lag da,
+        # `find -printf` scheiterte, und der Zyklus meldete "no archive found".
+        if ! apk add --no-cache bash gnupg openssl curl findutils coreutils; then
+          echo "[backup] FEHLER: 'apk add' fehlgeschlagen — der Scheduler startet nicht." >&2
+          echo "[backup]" >&2
+          echo "[backup] Dieser Container installiert gpg/openssl/curl/findutils BEI JEDEM START" >&2
+          echo "[backup] von dl-cdn.alpinelinux.org. Zwei Ursachen sind haeufig:" >&2
+          echo "[backup]   1. Kein Ausgang ins Netz — das Netzwerk 'egress' fehlt am Service" >&2
+          echo "[backup]      (docker-compose.backup.yml); db-net und app-net sind internal:true." >&2
+          echo "[backup]   2. AIR-GAP oder CDN-Ausfall. In einer abgeschotteten Installation" >&2
+          echo "[backup]      kann dieser Container derzeit NICHT laufen — nutze in diesem Fall" >&2
+          echo "[backup]      host-cron mit scripts/backup-cron.sh (docs/wiki/configuration.md," >&2
+          echo "[backup]      Abschnitt 'Automatische Backups'). Ein eigenes Image mit" >&2
+          echo "[backup]      eingebackenen Paketen ist als Folge-Story offen." >&2
+          echo "[backup]" >&2
+          echo "[backup] Der Container beendet sich; 'restart: unless-stopped' startet ihn neu." >&2
+          exit 1
+        fi
+        # Verifizieren statt annehmen — und zwar FÄHIGKEITEN, nicht bloße Präsenz.
+        # `command -v find` ist auch mit busybox erfüllt; die Frage ist, ob der
+        # `find` die Option kann, die der Aufrufer benutzt. Ein fehlendes Werkzeug
+        # erst um 02:00 im Cron-Log zu entdecken, ist die stille Variante dieses
+        # Fehlers, und ein Werkzeug, das da ist aber anders kann, die noch stillere.
+        for t in gpg openssl pg_dump bash find; do
+          command -v "$$t" >/dev/null 2>&1 || { echo "[backup] FEHLER: $$t fehlt nach der Installation" >&2; exit 1; }
+        done
+        find /backups -maxdepth 0 -printf '' 2>/dev/null || { echo "[backup] FEHLER: find kennt -printf nicht (findutils fehlt) — backup-cron.sh koennte das Archiv nicht finden" >&2; exit 1; }
+        # Kein /etc/vakt-backup.env mehr: busybox-crond gibt seine EIGENE Umgebung
+        # an die Jobs weiter (gemessen, inklusive Werten mit Leerzeichen und
+        # Sternchen). Die frühere Datei schrieb `export VAKT_BACKUP_SCHEDULE=0 2 * * *`
+        # UNQUOTIERT — `sh` brach mit "export: line 2: 2: bad variable name" (rc=2)
+        # ab, und weil `export` ein Special Builtin ist, starb die ganze Job-Shell.
+        # Ergebnis: jeder Tick tat nichts. Löschen ist hier der Fix, nicht Quoten.
+        printf '%s cd /scripts && bash /scripts/backup-cron.sh run >> /backups/backup-cron.log 2>&1\n' \
+          "$$VAKT_BACKUP_SCHEDULE" > /etc/crontabs/root
+        echo "[backup] scheduler started: $$VAKT_BACKUP_SCHEDULE → /backups"
+        exec crond -f -l 8
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

@@ -1,6 +1,7 @@
 package scim
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -9,6 +10,13 @@ import (
 	"github.com/matharnica/vakt/internal/shared/logsafe"
 	"github.com/rs/zerolog/log"
 )
+
+// noApplicableOpsDetail is what a PATCH gets back that this implementation
+// could not apply anything from. Naming the supported paths is the point: the
+// IdP admin who mis-templated the request has to be able to see what to send.
+const noApplicableOpsDetail = "no supported operation in this PATCH — " +
+	`supported: replace on "active", "displayName", "userName", ` +
+	`"emails[type eq \"work\"].value", "externalId"`
 
 // Handler serves the SCIM 2.0 endpoints under /api/v1/scim/v2/.
 type Handler struct {
@@ -89,6 +97,38 @@ type createUserRequest struct {
 	Name        scimName    `json:"name"`
 	Emails      []scimEmail `json:"emails"`
 	Active      *bool       `json:"active"`
+}
+
+// identity splits the two things a SCIM User resource carries that Vakt used to
+// conflate: the login name the IdP keys its user on (userName) and the address
+// the person receives mail at (emails[], primary first).
+//
+// R1-14-D08: emails[] was read and dropped, and userName landed in users.email.
+// An IdP that keeps the two apart — Entra ID's userPrincipalName vs. mail is the
+// common case — provisioned an account whose mail address is a login name.
+//
+// Each falls back to the other, so a resource that carries only one of them
+// still provisions.
+func (r createUserRequest) identity() (userName, email string) {
+	userName = r.UserName
+	for _, e := range r.Emails {
+		if e.Value == "" {
+			continue
+		}
+		if email == "" || e.Primary {
+			email = e.Value
+		}
+		if e.Primary {
+			break
+		}
+	}
+	if email == "" {
+		email = userName
+	}
+	if userName == "" {
+		userName = email
+	}
+	return userName, email
 }
 
 // createGroupRequest is the POST /Groups request body.
@@ -196,15 +236,8 @@ func (h *Handler) CreateUser(c echo.Context) error {
 		return scimError(c, http.StatusBadRequest, "invalidValue", "invalid request body")
 	}
 
-	email := req.UserName
-	if email == "" {
-		for _, e := range req.Emails {
-			if e.Primary || email == "" {
-				email = e.Value
-			}
-		}
-	}
-	if email == "" {
+	userName, email := req.identity()
+	if userName == "" {
 		return scimError(c, http.StatusBadRequest, "invalidValue", "userName or emails[].value is required")
 	}
 
@@ -214,7 +247,7 @@ func (h *Handler) CreateUser(c echo.Context) error {
 	}
 
 	u, err := h.svc.CreateUser(c.Request().Context(), orgID, SCIMUser{
-		UserName:    email,
+		UserName:    userName,
 		Email:       email,
 		DisplayName: req.DisplayName,
 		FirstName:   req.Name.GivenName,
@@ -223,6 +256,9 @@ func (h *Handler) CreateUser(c echo.Context) error {
 		ExternalID:  req.ExternalID,
 	})
 	if err != nil {
+		if errors.Is(err, ErrUserNameTaken) {
+			return scimError(c, http.StatusConflict, "uniqueness", "userName or email already belongs to another account")
+		}
 		log.Error().Err(err).Str("org_id", orgID).Str("email_redacted", logsafe.RedactEmail(email)).Msg("scim: create user failed")
 		return scimError(c, http.StatusInternalServerError, "internalError", "failed to provision user")
 	}
@@ -239,14 +275,7 @@ func (h *Handler) ReplaceUser(c echo.Context) error {
 		return scimError(c, http.StatusBadRequest, "invalidValue", "invalid request body")
 	}
 
-	email := req.UserName
-	if email == "" {
-		for _, e := range req.Emails {
-			if e.Primary || email == "" {
-				email = e.Value
-			}
-		}
-	}
+	userName, email := req.identity()
 
 	active := true
 	if req.Active != nil {
@@ -254,7 +283,7 @@ func (h *Handler) ReplaceUser(c echo.Context) error {
 	}
 
 	u, err := h.svc.ReplaceUser(c.Request().Context(), orgID, userID, SCIMUser{
-		UserName:    email,
+		UserName:    userName,
 		Email:       email,
 		DisplayName: req.DisplayName,
 		FirstName:   req.Name.GivenName,
@@ -263,8 +292,11 @@ func (h *Handler) ReplaceUser(c echo.Context) error {
 		ExternalID:  req.ExternalID,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return scimError(c, http.StatusNotFound, "notFound", "User not found")
+		}
+		if errors.Is(err, ErrUserNameTaken) {
+			return scimError(c, http.StatusConflict, "uniqueness", "userName or email already belongs to another account")
 		}
 		log.Error().Err(err).Str("user_id", userID).Msg("scim: replace user failed")
 		return scimError(c, http.StatusInternalServerError, "internalError", "failed to replace user")
@@ -284,8 +316,14 @@ func (h *Handler) PatchUser(c echo.Context) error {
 
 	u, err := h.svc.PatchUser(c.Request().Context(), orgID, userID, req.Operations)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return scimError(c, http.StatusNotFound, "notFound", "User not found")
+		}
+		if errors.Is(err, ErrNoApplicableOps) {
+			return scimError(c, http.StatusBadRequest, "invalidPath", noApplicableOpsDetail)
+		}
+		if errors.Is(err, ErrUserNameTaken) {
+			return scimError(c, http.StatusConflict, "uniqueness", "userName or email already belongs to another account")
 		}
 		log.Error().Err(err).Str("user_id", userID).Msg("scim: patch user failed")
 		return scimError(c, http.StatusInternalServerError, "internalError", "failed to patch user")
@@ -299,6 +337,10 @@ func (h *Handler) DeleteUser(c echo.Context) error {
 	userID := c.Param("id")
 
 	if err := h.svc.DeactivateUser(c.Request().Context(), orgID, userID); err != nil {
+		if errors.Is(err, ErrLastAdmin) {
+			return scimError(c, http.StatusConflict, "mutability",
+				"refusing to deprovision the last admin of this organisation — promote another member first")
+		}
 		log.Error().Err(err).Str("user_id", userID).Msg("scim: delete user failed")
 		return scimError(c, http.StatusInternalServerError, "internalError", "failed to delete user")
 	}
@@ -409,8 +451,11 @@ func (h *Handler) PatchGroup(c echo.Context) error {
 
 	g, err := h.svc.PatchGroup(c.Request().Context(), orgID, groupID, req.Operations)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return scimError(c, http.StatusNotFound, "notFound", "Group not found")
+		}
+		if errors.Is(err, ErrNoApplicableOps) {
+			return scimError(c, http.StatusBadRequest, "invalidPath", noApplicableOpsDetail)
 		}
 		log.Error().Err(err).Str("group_id", groupID).Msg("scim: patch group failed")
 		return scimError(c, http.StatusInternalServerError, "internalError", "failed to patch group")

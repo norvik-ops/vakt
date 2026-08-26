@@ -26,6 +26,13 @@ func Sign(privateKeyPEM, tier, org string, features []string, expires *time.Time
 // SignWithToken embeds the licence's own renewal token, so the instance can fetch
 // its next key by itself when this one runs low. See payload.RenewalToken.
 func SignWithToken(privateKeyPEM, tier, org, renewalToken string, features []string, expires *time.Time) (string, error) {
+	// Refuse to mint a tier the loading side discards (see sellableTiers). A key
+	// that verifies but grants nothing is the worst failure shape available: it
+	// looks bought, behaves free, and the customer finds out at the first 402.
+	// Loud here, where a human is still in the loop.
+	if !KnownTier(tier) {
+		return "", fmt.Errorf("license: refusing to sign unknown tier %q (sold tiers: community, pro)", tier)
+	}
 	privateKeyPEM = strings.ReplaceAll(privateKeyPEM, `\n`, "\n")
 	block, _ := pem.Decode([]byte(privateKeyPEM))
 	if block == nil {

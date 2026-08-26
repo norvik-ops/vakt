@@ -71,17 +71,77 @@ func (r *Repository) ListReports(ctx context.Context, orgID string) ([]Report, e
 	return out, nil
 }
 
-// UpsertFindingByRawID inserts a finding or updates it on conflict of
-// (org_id, raw_id, scanner). This is used for import operations (SARIF, CycloneDX, CSV).
-func (r *Repository) UpsertFindingByRawID(ctx context.Context, orgID string, f Finding) (*Finding, error) {
+// UpsertImportedFinding legt einen importierten Fund an oder führt ihn mit einem
+// vorhandenen zusammen — und wählt dafür den Dedup-Schlüssel, der zu dem Fund
+// passt (SARIF, CycloneDX, CSV, Wazuh).
+//
+// Warum die Wahl hier steht und nicht beim Aufrufer (R1-RV-01):
+//
+// vb_findings hat drei partielle Unique-Indexe (Migration 120). Zwei davon
+// betreffen den Import-Weg:
+//
+//	idx_vb_findings_dedup_cve   (org_id, asset_id, cve_id) WHERE cve_id IS NOT NULL
+//	idx_vb_findings_dedup_rawid (org_id, raw_id, scanner)  WHERE raw_id IS NOT NULL
+//
+// Der CVE-Index ist der einzige SCANNER-AGNOSTISCHE. Nur über ihn führen zwei
+// verschiedene Werkzeuge denselben Fund zusammen; der raw_id-Index kann das
+// nicht, er trägt den Scanner im Schlüssel.
+//
+// Beide bewachen aber dieselbe Zeile. Wer `cve_id` füllt und weiterhin über den
+// raw_id-Arbiter schreibt, bekommt deshalb SQLSTATE 23505 statt einer
+// Zusammenführung, sobald ein zweiter Scanner dieselbe CVE auf demselben Asset
+// meldet. „cve_id setzen" und „Arbiter umstellen" sind aus diesem Grund keine
+// zwei Aufgaben, sondern eine — und sie gehören an EINE Stelle, sonst driften
+// sie auseinander.
+//
+// Regel: Trägt der Fund eine CVE, ist die CVE sein Dedup-Schlüssel und `raw_id`
+// bleibt NULL (die Query lässt die Spalte weg — Begründung dort). Trägt er
+// keine, bleibt es beim raw_id-Schlüssel wie bisher.
+//
+// Umbenannt aus `UpsertFindingByRawID`: Der alte Name beschrieb ab dem Moment
+// das Falsche, in dem die Methode zwei Arbiter kennt.
+func (r *Repository) UpsertImportedFinding(ctx context.Context, orgID string, f Finding) (*Finding, error) {
+	// Derselbe Choke-Point wie in BatchUpsertFindings: Ein Schweregrad, den der
+	// CHECK nicht kennt, darf keinen Import abbrechen. Hier trifft es zwar nur
+	// eine Zeile statt eines ganzen Stapels — der Aufrufer (SARIF, CycloneDX)
+	// bricht die Schleife aber beim ersten Fehler ab, der Rest der Datei geht
+	// also genauso verloren.
+	f.Severity, _ = normalizeSeverity(f.Severity)
+
 	sources := f.Sources
 	if sources == nil {
 		sources = []string{}
 	}
+
+	if cve := cveKey(f.CVEID); cve != nil {
+		row, err := r.q.UpsertSPFindingByCVE(ctx, db.UpsertSPFindingByCVEParams{
+			OrgID:       orgID,
+			AssetID:     f.AssetID,
+			CveID:       optTextPtr(cve),
+			Title:       f.Title,
+			Description: spOptText(f.Description),
+			Severity:    f.Severity,
+			CvssScore:   float64PtrToNumeric(f.CVSSScore),
+			Status:      f.Status,
+			Scanner:     f.Scanner,
+			Sources:     sources,
+			SlaDueAt:    spOptTs(f.SLADueAt),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("upsert finding by cve_id: %w", err)
+		}
+		out := findingFromVbFindings(row)
+		r.emitNewFinding(ctx, orgID, out)
+		return &out, nil
+	}
+
 	row, err := r.q.UpsertSPFindingByRawID(ctx, db.UpsertSPFindingByRawIDParams{
-		OrgID:       orgID,
-		AssetID:     f.AssetID,
-		CveID:       optTextPtr(f.CVEID),
+		OrgID:   orgID,
+		AssetID: f.AssetID,
+		// Per Definition dieses Zweigs leer: hätte der Fund eine CVE, liefe er
+		// oben. Ein Leerstring darf hier nicht stehen — `''` ist NOT NULL und
+		// würde den CVE-Index für jede Zeile scharf machen (siehe cveKey).
+		CveID:       optTextPtr(nil),
 		Title:       f.Title,
 		Description: spOptText(f.Description),
 		Severity:    f.Severity,
@@ -96,6 +156,7 @@ func (r *Repository) UpsertFindingByRawID(ctx context.Context, orgID string, f F
 		return nil, fmt.Errorf("upsert finding by raw_id: %w", err)
 	}
 	out := findingFromVbFindings(row)
+	r.emitNewFinding(ctx, orgID, out)
 	return &out, nil
 }
 

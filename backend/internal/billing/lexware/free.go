@@ -92,9 +92,8 @@ func (h *Handler) approveFree(ctx context.Context, id, company, email, product, 
 	// A FULL key straight away — not a 45-day trial. A trial key is a placeholder for a
 	// payment that is coming; here no payment is coming, so there is nothing to hold the
 	// key back for.
-	key, err := h.issuer.SignUntil(licensing.Request{
-		OrgName: company, Email: email, Interval: interval, RenewalToken: renewalToken,
-	}, entitledTo)
+	key, err := h.issuer.SignUntil(
+		licensing.ForLicence(renewalToken, company, email, interval), entitledTo)
 	if err != nil {
 		log.Error().Err(err).Str("request_id", id).Msg("billing: sign free licence")
 		return ApproveResult{Message: "FEHLER: Schlüssel konnte nicht signiert werden.\n\n" + err.Error()}

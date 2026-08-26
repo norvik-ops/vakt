@@ -403,7 +403,7 @@ func (h *Handler) enableFrameworkNamed(name string) echo.HandlerFunc {
 // static routes and hits the generic, feature-gate-less
 // /frameworks/:name/enable — without this check, that's a paywall bypass
 // (any Admin/SecurityAnalyst on any license tier could enable any
-// Pro/Enterprise framework just by varying casing in the URL).
+// gated framework just by varying casing in the URL).
 var frameworkFeatureGate = map[string]features.Feature{
 	"CRA":      features.FeatureCRA,
 	"EUAIACT":  features.FeatureEUAIAct,

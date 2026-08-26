@@ -67,7 +67,11 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.GET("/frameworks/tisax/iso-mapping", h.GetTISAXISOMapping, features.Require(features.FeatureTISAX))
 	g.GET("/frameworks/tisax/coverage-after-iso", h.GetTISAXCoverageAfterISO, features.Require(features.FeatureTISAX))
 	g.GET("/frameworks/:id", h.GetFrameworkByID)
-	// Tiering mirrors the public pricing page: BSI/EUAIACT/CRA = Pro, TISAX/DORA/ISO42001 = Enterprise.
+	// Tiering mirrors the public pricing page: BSI/EUAIACT/CRA = Pro.
+	// TISAX/DORA/ISO42001 are sold to nobody (features.UnsoldFeatures, 2026-08-08):
+	// no issued key carries those strings, so these three routes answer 402 for
+	// every customer by design. The gates stay wired so the day they are sold is a
+	// one-line change, not an audit.
 	// The features.Require(...) gate below only fires for the EXACT casing
 	// registered here — Echo's router is case-sensitive, so /frameworks/cra/enable
 	// (or any other casing) falls through to the generic, ungated
@@ -488,7 +492,12 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// CRITICAL: /isms-scope/versions and /isms-scope/approve and /isms-scope/export-pdf
 	// must be registered BEFORE /isms-scope to avoid route conflicts.
 	g.GET("/isms-scope/versions", h.ListISMSScopeVersions)
-	g.POST("/isms-scope/approve", h.ApproveISMSScope, rw)
+	// Freigabe ist enger als Bearbeitung: Admin allein, nicht `rw`. Das ist die
+	// engere der beiden Antworten, die es bis R1-W7C-N1 gab (Route: Admin oder
+	// SecurityAnalyst; Service: "admin"), und sie gilt jetzt an genau einer
+	// Stelle. Beobachtbar aendert das nichts fuer SecurityAnalyst — der bekam
+	// vorher wie nachher 403; nur der Admin kommt jetzt ueberhaupt durch.
+	g.POST("/isms-scope/approve", h.ApproveISMSScope, auth.RequireRole("Admin"))
 	g.GET("/isms-scope", h.GetISMSScope)
 	g.POST("/isms-scope", h.CreateOrUpdateISMSScope, rw)
 

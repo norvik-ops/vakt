@@ -11,6 +11,7 @@ import (
 	"html/template"
 	"regexp"
 	"strings"
+	texttemplate "text/template"
 	"time"
 
 	"github.com/google/uuid"
@@ -408,27 +409,60 @@ func (s *Service) AddTarget(ctx context.Context, orgID, groupID, email, firstNam
 }
 
 // ImportTargetsCSV parses a CSV string and upserts targets into the given group.
-// Returns the number of successfully imported rows and a slice of per-row errors.
+// It returns how many DISTINCT target persons the file put into the group, and a
+// line-numbered note for every row that did not make it.
+//
+// Both halves used to be wrong (L2-04):
+//
+//   - „imported" counted processed lines. The statement underneath is an upsert
+//     (ON CONFLICT (group_id, email) DO UPDATE), so a repeated address counted
+//     again without adding anybody. Measured: a 5-row file answered
+//     {"imported":5,"errors":null} and left 4 rows in sr_targets.
+//   - There was no address check at all. parts[0] went in unread, including the
+//     empty string. Those are exactly the entries the mail server later refuses
+//     with 501 — and before this wave's fix they were still counted as
+//     „versendet" (L2-01).
+//
+// vaktscan's importer already did it this way (handler_csv.go): the count comes
+// from what was written, and bad rows are named.
 func (s *Service) ImportTargetsCSV(ctx context.Context, orgID, groupID, csvContent string) (int, []string) {
 	var imported int
 	var errs []string
+	seen := make(map[string]bool)
+
 	scanner := bufio.NewScanner(strings.NewReader(csvContent))
 	lineNum := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		lineNum++
 		if lineNum == 1 {
-			continue // skip header
+			// The first line is the header by convention. Say so when it looks
+			// like data, otherwise the first employee vanishes without a word.
+			if addressSafe.MatchString(strings.ToLower(strings.TrimSpace(strings.Split(line, ",")[0]))) {
+				errs = append(errs, fmt.Sprintf(
+					"Zeile 1 wurde als Kopfzeile uebersprungen, enthielt aber eine Adresse — "+
+						"die Datei braucht eine Kopfzeile (email,first_name,last_name,department)"))
+			}
+			continue
 		}
 		if line == "" {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) < 1 {
-			errs = append(errs, fmt.Sprintf("line %d: invalid", lineNum))
+		email := strings.ToLower(strings.TrimSpace(parts[0]))
+		if email == "" {
+			errs = append(errs, fmt.Sprintf("Zeile %d: keine E-Mail-Adresse", lineNum))
 			continue
 		}
-		email := strings.TrimSpace(parts[0])
+		if !addressSafe.MatchString(email) {
+			errs = append(errs, fmt.Sprintf("Zeile %d: %q ist keine gueltige E-Mail-Adresse", lineNum, email))
+			continue
+		}
+		if seen[email] {
+			errs = append(errs, fmt.Sprintf("Zeile %d: %s steht mehrfach in der Datei", lineNum, email))
+			continue
+		}
+
 		firstName, lastName, dept := "", "", ""
 		if len(parts) > 1 {
 			firstName = strings.TrimSpace(parts[1])
@@ -440,10 +474,18 @@ func (s *Service) ImportTargetsCSV(ctx context.Context, orgID, groupID, csvConte
 			dept = strings.TrimSpace(parts[3])
 		}
 		if _, err := s.repo.CreateTarget(ctx, orgID, groupID, email, firstName, lastName, dept); err != nil {
-			errs = append(errs, fmt.Sprintf("line %d: %v", lineNum, err))
-		} else {
-			imported++
+			errs = append(errs, fmt.Sprintf("Zeile %d: %v", lineNum, err))
+			continue
 		}
+		seen[email] = true
+		imported++
+	}
+	// bufio.Scanner stops at a line longer than 64 KB and reports it only here.
+	// Without this check the import would end early and still answer 200 with a
+	// count that looks like the whole file went in.
+	if err := scanner.Err(); err != nil {
+		errs = append(errs, fmt.Sprintf(
+			"Datei nach Zeile %d abgebrochen (%v) — der Rest wurde NICHT importiert", lineNum, err))
 	}
 	return imported, errs
 }
@@ -489,9 +531,33 @@ func (s *Service) ListCampaigns(ctx context.Context, orgID string) ([]Campaign, 
 	return s.repo.ListCampaigns(ctx, orgID)
 }
 
+// smtpConfigured mirrors the definition the startup log uses
+// (cmd/api/main.go: SMTPHost != "" && != "localhost").
+//
+// The guard below used to ask `Host == ""`, but the shipped default is
+// "localhost" (internal/config/config.go), so on an untouched installation the
+// guard never fired: the same process logged `smtp_configured: false` at startup
+// and then accepted a campaign launch, which ran straight into
+// "dial tcp 127.0.0.1:1025: connection refused" in the worker (L2-05).
+func (c SMTPConfig) configured() bool {
+	return c.Host != "" && c.Host != "localhost" && c.Host != "127.0.0.1"
+}
+
+// launchableStates are the states a campaign may be started from. Anything else
+// is either already on its way or already over, and starting it again would mail
+// the whole workforce a second time (L3-05).
+var launchableStates = map[string]bool{"draft": true, "scheduled": true, "failed": true}
+
 func (s *Service) LaunchCampaign(ctx context.Context, orgID, campaignID string) error {
-	if s.smtpCfg.Host == "" {
+	if !s.smtpCfg.configured() {
 		return fmt.Errorf("SMTP not configured")
+	}
+	campaign, err := s.repo.GetCampaign(ctx, orgID, campaignID)
+	if err != nil {
+		return fmt.Errorf("get campaign: %w", err)
+	}
+	if !launchableStates[campaign.Status] {
+		return fmt.Errorf("campaign is %s and cannot be launched again", campaign.Status)
 	}
 	if err := s.repo.UpdateCampaignStatus(ctx, orgID, campaignID, "running"); err != nil {
 		return err
@@ -502,6 +568,13 @@ func (s *Service) LaunchCampaign(ctx context.Context, orgID, campaignID string) 
 			"org_id":      orgID,
 		})
 		task := asynq.NewTask(TaskSendCampaign, payload)
+		// Deliberately no asynq.TaskID here. It would look like a second guard
+		// against a duplicate send, but its uniqueness also covers ARCHIVED tasks:
+		// once a campaign's send task had exhausted its retries, that campaign
+		// could never be launched again, and the guard would have replaced a
+		// double send with a permanent dead end. The duplicate-mail protection
+		// sits where it can be tested — the per-recipient claim in
+		// SendCampaignEmails — and the status guard above stops the double click.
 		if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Queue(Queue)); err != nil {
 			queuemetrics.RecordError(Queue)
 			log.Warn().Err(err).Str("campaign_id", campaignID).Msg("failed to enqueue send_campaign job")
@@ -713,11 +786,41 @@ var mailPlaceholderPattern = regexp.MustCompile(`\{\{\s*([a-zA-Z_]+)\s*\}\}`)
 
 // mailPlaceholderFields maps the snake_case tokens used in campaign presets and the
 // template editor to the struct fields the renderer populates per target.
+//
+// The map has to cover EVERY token that ships, not a plausible-looking subset.
+// The first version of this fix covered four tokens and left out the two that
+// appear in the shipped library most often — {{open_pixel}} is in all 50 presets
+// and {{company}} in 22 — so all 50 stayed unsendable and the only thing that
+// changed was the name of the undefined function in the error. Whether the map is
+// complete is now a test over presetTemplates() (TestEveryPresetRenders), not a
+// judgement call at review time.
+//
+// track_url is the seed's spelling (cmd/seed/main.go writes {{TRACK_URL}} into
+// sr_templates): an alias costs one line and spares a data migration on every
+// instance that ran the seed.
 var mailPlaceholderFields = map[string]string{
 	"first_name":   ".FirstName",
 	"last_name":    ".LastName",
 	"email":        ".Email",
+	"department":   ".Department",
+	"company":      ".Company",
 	"tracking_url": ".TrackingURL",
+	"track_url":    ".TrackingURL",
+	"open_pixel":   ".OpenPixel",
+}
+
+// mailRenderData is the value every campaign mail — body, subject and both
+// sender header parts — is rendered against.
+type mailRenderData struct {
+	FirstName   string
+	LastName    string
+	Email       string
+	Department  string
+	Company     string
+	TrackingURL string
+	// OpenPixel is typed template.HTML so html/template emits the <img> tag
+	// instead of escaping it into visible text.
+	OpenPixel template.HTML
 }
 
 // normaliseMailPlaceholders rewrites known snake_case placeholders ({{first_name}})
@@ -733,28 +836,110 @@ func normaliseMailPlaceholders(body string) string {
 	})
 }
 
+// addressSafe matches a plain RFC-5322-ish address: the subset an SMTP server
+// will accept in MAIL FROM without quoting.
+var addressSafe = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+// companySlugPattern collapses everything that may not appear in a domain label.
+var companySlugPattern = regexp.MustCompile(`[^a-z0-9]+`)
+
+// companySlug turns an organisation name into something that can stand inside an
+// address: 21 presets build their spoofed sender from the company name
+// (helpdesk@{{company}}-it.de). Substituting the display name verbatim yields
+// "helpdesk@Acme GmbH-it.de" — an address with a space in it, which the mail
+// server rejects for the whole session. The lookalike domain is the point of the
+// simulation, so slug it rather than fall back to the real sender.
+func companySlug(name string) string {
+	s := companySlugPattern.ReplaceAllString(strings.ToLower(name), "-")
+	return strings.Trim(s, "-")
+}
+
+// openPixelHTML is the 1x1 open-tracking image. One definition, used both by the
+// {{open_pixel}} placeholder and by buildMIMEMessage's fallback append, so the two
+// cannot drift into emitting two different pixels.
+func openPixelHTML(appURL, trackingToken string) string {
+	return fmt.Sprintf(`<img src="%s" width="1" height="1" style="display:none" alt="" />`,
+		openPixelURL(appURL, trackingToken))
+}
+
+func openPixelURL(appURL, trackingToken string) string {
+	return appURL + "/api/v1/vaktaware/track/" + trackingToken + "?event=open"
+}
+
+// renderHeader renders a mail header value (subject, sender name, sender address).
+// text/template, not html/template: these are not HTML, and escaping them would
+// turn "Müller & Partner" into "Müller &amp; Partner" in the recipient's inbox.
+func renderHeader(name, raw string, data mailRenderData) (string, error) {
+	tmpl, err := texttemplate.New(name).Parse(normaliseMailPlaceholders(raw))
+	if err != nil {
+		return "", err
+	}
+	var sb strings.Builder
+	if err := tmpl.Execute(&sb, data); err != nil {
+		return "", err
+	}
+	return sb.String(), nil
+}
+
+// failCampaign records that this run is over and will not resume by itself, then
+// returns the error that ended it.
+//
+// Before this existed there was no failure state at all: the module only ever
+// wrote running / aborted / completed, so a send that broke off — no template, no
+// group, template not parseable, target list unreadable — left the campaign on
+// „running" forever. Nobody saw an error; Asynq retried 25 times and archived the
+// task silently (L2-03).
+func (s *Service) failCampaign(ctx context.Context, orgID, campaignID string, cause error) error {
+	if err := s.repo.UpdateCampaignStatus(ctx, orgID, campaignID, "failed"); err != nil {
+		log.Error().Err(err).Str("campaign_id", campaignID).
+			Msg("could not mark campaign as failed — it will keep reading as running")
+	}
+	return cause
+}
+
 // SendCampaignEmails sends phishing simulation emails to all targets in the campaign group.
 // Each email is personalised with the target's name and a unique tracking token.
+//
+// The function is idempotent per recipient. It has to be: the send is an Asynq
+// task, and Asynq redelivers a task whose handler errored or whose worker died
+// mid-run (restart, OOM, lease expiry). Without a per-recipient claim, a restart
+// in the middle of a send mailed the phishing simulation to every employee a
+// second time and doubled the delivery count, which halves the click rate and
+// makes the campaign look better than it was (L3-05).
 func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID string) error {
 	campaign, err := s.repo.GetCampaign(ctx, orgID, campaignID)
 	if err != nil {
+		// Nothing to mark: without the campaign row there is no status to write.
 		return fmt.Errorf("get campaign: %w", err)
 	}
+	// A finished or cancelled campaign does not go out again, no matter who asks.
+	if campaign.Status == "completed" || campaign.Status == "aborted" {
+		log.Warn().Str("campaign_id", campaignID).Str("status", campaign.Status).
+			Msg("send requested for a campaign that is already over — ignoring")
+		return nil
+	}
 	if campaign.TemplateID == nil {
-		return fmt.Errorf("campaign has no template")
+		return s.failCampaign(ctx, orgID, campaignID, fmt.Errorf("campaign has no template"))
 	}
 	if campaign.GroupID == nil {
-		return fmt.Errorf("campaign has no target group")
+		return s.failCampaign(ctx, orgID, campaignID, fmt.Errorf("campaign has no target group"))
 	}
 
 	tmpl, err := s.repo.GetTemplate(ctx, orgID, *campaign.TemplateID)
 	if err != nil {
-		return fmt.Errorf("get template: %w", err)
+		return s.failCampaign(ctx, orgID, campaignID, fmt.Errorf("get template: %w", err))
 	}
 
 	targets, err := s.repo.ListTargets(ctx, orgID, *campaign.GroupID)
 	if err != nil {
-		return fmt.Errorf("list targets: %w", err)
+		return s.failCampaign(ctx, orgID, campaignID, fmt.Errorf("list targets: %w", err))
+	}
+
+	// started_at was declared on the campaign, rendered by the frontend and
+	// written by no code path at all — every campaign, including the successful
+	// ones, reported „gestartet: —".
+	if err := s.repo.SetCampaignStarted(ctx, orgID, campaignID); err != nil {
+		log.Warn().Err(err).Str("campaign_id", campaignID).Msg("could not record campaign start time")
 	}
 
 	// Parse once; re-execute per target. All 50 shipped presets (and the editor's
@@ -766,38 +951,120 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 	// the seed render without a data migration.
 	bodyTmpl, err := template.New("body").Parse(normaliseMailPlaceholders(tmpl.HTMLBody))
 	if err != nil {
-		return fmt.Errorf("parse template body: %w", err)
+		return s.failCampaign(ctx, orgID, campaignID, fmt.Errorf("parse template body: %w", err))
 	}
 
+	// {{company}} appears in 22 of the 50 shipped presets — in the body, in the
+	// subject and in the spoofed sender. Resolve it once per campaign.
+	company, err := s.repo.GetOrgName(ctx, orgID)
+	if err != nil {
+		return s.failCampaign(ctx, orgID, campaignID, fmt.Errorf("resolve company name: %w", err))
+	}
+	companyAddr := companySlug(company)
+
+	// Subject and sender fall back campaign → template. Without the template step
+	// the preset's spoofed sender never reaches the wire, which is the one thing
+	// a phishing simulation is about.
+	subjectRaw := firstNonEmpty(campaign.Subject, tmpl.Subject)
+	fromNameRaw := firstNonEmpty(campaign.FromName, tmpl.FromName)
+	fromEmailRaw := firstNonEmpty(campaign.FromEmail, tmpl.FromEmail, s.smtpCfg.from())
+
+	// pending carries what has to be reconciled once the mail server has spoken:
+	// one entry per message handed over, in the same order.
+	type pendingMail struct {
+		targetID string
+		email    string
+		token    string
+	}
 	var msgs []OutboundMail
+	var pending []pendingMail
 	failed := 0
+	skipped := 0
+
+	// abandon releases a recipient this run claimed but will not mail. Without it
+	// the claim would sit on 'pending' forever and the next run would skip the
+	// person — a rendering slip would silently cost them the simulation.
+	abandon := func(targetID, email string, cause error, what string) {
+		log.Warn().Err(cause).Str("target", email).Str("campaign_id", campaignID).Msg(what)
+		if err := s.repo.MarkDelivery(ctx, orgID, campaignID, targetID, "failed", cause.Error()); err != nil {
+			log.Error().Err(err).Str("campaign_id", campaignID).Msg("could not record the failed delivery")
+		}
+		failed++
+	}
 
 	for _, target := range targets {
 		if target.IsBounced {
+			// Hard-bounced addresses are recorded by the send path itself (a 5xx
+			// rejection sets the flag), so this branch is reachable in operation
+			// and not only from a test that sets the flag by hand.
+			log.Debug().Str("campaign_id", campaignID).Msg("skipping a hard-bounced address")
 			continue
 		}
-		trackingToken := uuid.New().String()
 
-		var bodyBuf bytes.Buffer
-		data := map[string]string{
-			"FirstName":   target.FirstName,
-			"LastName":    target.LastName,
-			"Email":       target.Email,
-			"TrackingURL": s.smtpCfg.trackingURL(trackingToken),
-		}
-		if err := bodyTmpl.Execute(&bodyBuf, data); err != nil {
-			log.Warn().Err(err).Str("target", target.Email).Msg("template render failed, skipping target")
+		// Claim the recipient before doing any work for them. ON CONFLICT DO
+		// NOTHING makes the claim the idempotency token: if a previous run — or a
+		// second worker — already has it, this run skips the person instead of
+		// mailing them twice.
+		claimed, err := s.repo.ClaimDelivery(ctx, orgID, campaignID, target.ID)
+		if err != nil {
+			log.Error().Err(err).Str("campaign_id", campaignID).Msg("could not claim a recipient, skipping")
 			failed++
 			continue
 		}
-
-		subject := campaign.Subject
-		if subject == "" {
-			subject = tmpl.Subject
+		if !claimed {
+			skipped++
+			continue
 		}
-		fromName := campaign.FromName
-		fromEmail := campaign.FromEmail
-		if fromEmail == "" {
+
+		trackingToken := uuid.New().String()
+
+		pixel := ""
+		if campaign.TrackOpens {
+			pixel = openPixelHTML(s.smtpCfg.AppURL, trackingToken)
+		}
+		data := mailRenderData{
+			FirstName:   target.FirstName,
+			LastName:    target.LastName,
+			Email:       target.Email,
+			Department:  target.Department,
+			Company:     company,
+			TrackingURL: s.smtpCfg.trackingURL(trackingToken),
+			OpenPixel:   template.HTML(pixel), //nolint:gosec // pixel is built from config, not user input
+		}
+
+		var bodyBuf bytes.Buffer
+		if err := bodyTmpl.Execute(&bodyBuf, data); err != nil {
+			abandon(target.ID, target.Email, err, "template render failed")
+			continue
+		}
+
+		// Headers carry placeholders too: 21 presets put {{company}} in the
+		// sender, 2 put {{first_name}} in the subject. Rendering only the body
+		// put the literal string "{{company}}" into the From line.
+		headerData := data
+		headerData.OpenPixel = ""
+		subject, err := renderHeader("subject", subjectRaw, headerData)
+		if err != nil {
+			abandon(target.ID, target.Email, err, "subject render failed")
+			continue
+		}
+		fromName, err := renderHeader("from_name", fromNameRaw, headerData)
+		if err != nil {
+			abandon(target.ID, target.Email, err, "sender name render failed")
+			continue
+		}
+		addrData := headerData
+		addrData.Company = companyAddr
+		fromEmail, err := renderHeader("from_email", fromEmailRaw, addrData)
+		if err != nil {
+			abandon(target.ID, target.Email, err, "sender address render failed")
+			continue
+		}
+		if !addressSafe.MatchString(fromEmail) {
+			// One malformed MAIL FROM is rejected for the whole SMTP session, so
+			// it would cost the campaign every recipient, not just this one.
+			log.Warn().Str("from_email", fromEmail).Str("campaign_id", campaignID).
+				Msg("rendered sender address is not a valid address, falling back to the configured sender")
 			fromEmail = s.smtpCfg.from()
 		}
 
@@ -823,18 +1090,66 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 			// An untrackable mail is worse than an unsent one: it lands, the
 			// recipient clicks, nothing is counted, and the campaign reports a 0%
 			// click rate that reads like a well-trained workforce.
-			log.Error().Err(err).Str("target", target.Email).Msg("could not record sent event, skipping target — the mail would be untrackable")
-			failed++
+			abandon(target.ID, target.Email, err, "could not record sent event — the mail would be untrackable")
 			continue
 		}
 
 		body := buildMIMEMessage(fromName, fromEmail, target.Email, subject, bodyBuf.String(), trackingToken, s.smtpCfg.AppURL, campaign.TrackOpens)
 		msgs = append(msgs, OutboundMail{From: fromEmail, To: target.Email, Body: body})
+		pending = append(pending, pendingMail{targetID: target.ID, email: target.Email, token: trackingToken})
 	}
 
 	// Send all messages over a single connection.
-	sent, sendErr := s.mail.Send(ctx, msgs)
-	failed += len(msgs) - sent
+	results, sendErr := s.mail.Send(ctx, msgs)
+	if len(results) != len(msgs) {
+		// A sender that does not report per message cannot be reconciled. Treat
+		// every message as unaccounted for rather than assume it went out — an
+		// invented „versendet" is exactly the number this fix exists to remove.
+		log.Error().Str("campaign_id", campaignID).
+			Int("messages", len(msgs)).Int("results", len(results)).
+			Msg("mail sender returned an incomplete report — counting nothing as delivered")
+		results = make([]DeliveryResult, len(msgs))
+	}
+
+	// Reconcile. The „sent" event was written BEFORE the mail left (the token has
+	// to exist before a recipient can click), so a message the mail server
+	// refused leaves a tracking row behind that claims a delivery which never
+	// happened. That row is what made a campaign report „Versendet: 3" while one
+	// mail had gone out (L2-01). It is also worthless on its own: no mail carries
+	// the token, so no click can ever resolve it.
+	sent := 0
+	for i, r := range results {
+		p := pending[i]
+		if r.Delivered {
+			sent++
+			if err := s.repo.MarkDelivery(ctx, orgID, campaignID, p.targetID, "delivered", ""); err != nil {
+				log.Error().Err(err).Str("campaign_id", campaignID).Msg("could not record the delivery")
+			}
+			continue
+		}
+		failed++
+		reason := "delivery failed"
+		if r.Err != nil {
+			reason = r.Err.Error()
+		}
+		if err := s.repo.MarkDelivery(ctx, orgID, campaignID, p.targetID, "failed", reason); err != nil {
+			log.Error().Err(err).Str("campaign_id", campaignID).Msg("could not record the failed delivery")
+		}
+		if err := s.repo.DeleteTrackingEventByToken(ctx, orgID, p.token); err != nil {
+			log.Error().Err(err).Str("campaign_id", campaignID).
+				Msg("could not withdraw the sent event of an undelivered mail — the campaign will over-report")
+		}
+		// A 5xx is the mail server saying the address is wrong, not that the
+		// moment is. That is a hard bounce, and it is the only bounce signal this
+		// deployment can observe: there is no VERP return path and no webhook, so
+		// an asynchronous bounce after the relay accepted the mail stays invisible.
+		if r.Permanent {
+			if err := s.repo.MarkTargetBounced(ctx, orgID, p.targetID); err != nil {
+				log.Error().Err(err).Str("campaign_id", campaignID).Msg("could not mark the address as bounced")
+			}
+		}
+	}
+
 	if sendErr != nil {
 		log.Error().Err(sendErr).Str("campaign_id", campaignID).Int("failed", len(msgs)-sent).Msg("campaign delivery had failures")
 	}
@@ -843,7 +1158,20 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 		Str("campaign_id", campaignID).
 		Int("sent", sent).
 		Int("failed", failed).
+		Int("skipped_already_sent", skipped).
 		Msg("campaign email delivery complete")
+
+	// A run in which nothing left the machine is not a completed campaign. The
+	// distinction matters downstream: these numbers travel to Vakt Comply as
+	// evidence, and „completed, 0 versendet, 0 % Klickrate" is indistinguishable
+	// from a workforce that fell for nothing.
+	if sent == 0 && len(msgs) > 0 {
+		cause := fmt.Errorf("campaign delivered no mail at all (%d attempted)", len(msgs))
+		if sendErr != nil {
+			cause = fmt.Errorf("campaign delivered no mail at all (%d attempted): %w", len(msgs), sendErr)
+		}
+		return s.failCampaign(ctx, orgID, campaignID, cause)
+	}
 
 	if err := s.repo.SetCampaignCompleted(ctx, orgID, campaignID); err != nil {
 		return err
@@ -856,6 +1184,16 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 	return nil
 }
 
+// firstNonEmpty returns the first non-empty argument, or "" if there is none.
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // sanitizeHeader removes CR and LF characters from an email header value to
 // prevent CRLF injection attacks (CWE-93). Callers must apply this to every
 // user-supplied value that appears in a raw MIME header line.
@@ -864,11 +1202,15 @@ func sanitizeHeader(v string) string {
 }
 
 // buildMIMEMessage constructs a minimal HTML email with optional open-tracking pixel.
+//
+// The append is a fallback for templates that do NOT position the pixel
+// themselves. All 50 presets do, via {{open_pixel}}; appending a second one there
+// would mean two identical <img> tags per mail, i.e. a duplicate open request from
+// every mail client that loads images.
 func buildMIMEMessage(fromName, fromEmail, to, subject, htmlBody, trackingToken, appURL string, trackOpens bool) []byte {
 	body := htmlBody
-	if trackOpens && trackingToken != "" {
-		pixelURL := appURL + "/api/v1/vaktaware/track/" + trackingToken + "?event=open"
-		pixel := fmt.Sprintf(`<img src="%s" width="1" height="1" style="display:none" alt="" />`, pixelURL)
+	if trackOpens && trackingToken != "" && !strings.Contains(body, openPixelURL(appURL, trackingToken)) {
+		pixel := openPixelHTML(appURL, trackingToken)
 		if idx := strings.LastIndex(body, "</body>"); idx >= 0 {
 			body = body[:idx] + pixel + body[idx:]
 		} else {

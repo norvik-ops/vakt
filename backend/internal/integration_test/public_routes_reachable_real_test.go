@@ -5,80 +5,31 @@
 
 package integration_test
 
-import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
+import "github.com/labstack/echo/v4"
 
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
+// HIER STAND DAS G10-GATE ("oeffentliche Routen sind ohne Token erreichbar").
+// Es ist nach cmd/api/public_routes_reachable_test.go umgezogen — Codeaudit v5c,
+// R1-SA12-D06 / R1-SA10-04.
+//
+// Grund: Es baute ein eigenes echo.New() und rief RegisterPublic selbst auf.
+// Damit pruefte es seinen eigenen Nachbau und las cmd/api/routes.go nie. Der
+// Defekt, gegen den es gebaut wurde (S127), WAR aber der Mount-Punkt: fuenf
+// Routen trugen den Kommentar "public, no auth" und hingen unter `protected`.
+// Ein Rueckfall genau dorthin waere hier gruen geblieben, weil der Nachbau
+// weiterhin ohne Auth-Middleware mountete.
+//
+// Der echte Baum kommt aus setupEcho(), und setupEcho() liegt in `package main`
+// von cmd/api — von hier aus nicht importierbar. Deshalb der Umzug, nicht bloss
+// eine Reparatur an Ort und Stelle.
+//
+// Diese Datei bleibt nur wegen des Helfers darunter bestehen, den ein anderer
+// Test dieses Pakets nutzt.
 
-	"github.com/matharnica/vakt/internal/modules/vaktaware"
-	"github.com/matharnica/vakt/internal/modules/vaktvault"
-	"github.com/matharnica/vakt/internal/shared/platform/trustcenter"
-)
-
-// passThroughMW is a no-op echo.MiddlewareFunc for wiring RegisterPublic in tests:
-// the per-route rate limiter (R-H15/S131-C2) is production-only; the test just needs
-// the routes registered.
+// passThroughMW is a no-op echo.MiddlewareFunc for wiring RegisterPublic in
+// tests: the per-route rate limiter (R-H15/S131-C2) is production-only, a test
+// just needs the routes registered.
+//
+// Genutzt von vaktaware_e2e_mailpit_real_test.go. Dort geht es um den
+// Mail-Durchstich (Kampagne → Mailpit → Tracking-Handler), nicht um den
+// Mount-Punkt — fuer diesen Zweck ist ein selbst gebauter Baum richtig.
 var passThroughMW echo.MiddlewareFunc = func(next echo.HandlerFunc) echo.HandlerFunc { return next }
-
-// TestPublicRoutesReachableWithoutToken is the S127-5 (G10) gate — the counter to
-// rbaccov, which only proves write⇒403. This proves the OTHER direction for the
-// deliberately-public routes: they MUST be reachable WITHOUT a token.
-//
-// The whole of Sprint 127 exists because these routes (Vakt Aware tracking
-// pixel/click/submit + Vakt Vault share link) were commented "public" but mounted
-// under `protected`, so every recipient without a session got 401 and the module
-// was silently dead. No prior gate caught that. This closes the gap: if any of
-// these slips back behind auth, it returns 401/403 here and the build goes red.
-//
-// Run against a real (empty) DB so the token-only handlers execute cleanly
-// (unknown token → pixel 200 / not-found / bad-request), never 401/403.
-func TestPublicRoutesReachableWithoutToken(t *testing.T) {
-	if testing.Short() {
-		t.Skip("integration: -short mode")
-	}
-	pool, _, cleanup := bootPostgresWithOrg(t)
-	defer cleanup()
-
-	awareSvc := vaktaware.NewService(pool, vaktaware.SMTPConfig{})
-	vaultSvc := vaktvault.NewService(pool, make([]byte, 32), nil)
-
-	e := echo.New()
-	// Mount exactly as cmd/api/routes.go does for the public groups — NO auth mw.
-	vaktaware.RegisterPublic(e.Group("/api/v1/vaktaware"), vaktaware.NewHandler(awareSvc), passThroughMW)
-	vaktvault.RegisterPublic(e.Group("/api/v1/vaktvault"), vaktvault.NewHandler(vaultSvc), passThroughMW)
-	// S131-D4 (R-H13/D18-06): the public Trust Center data route must live under
-	// /api/v1 (Caddy only proxies /api/*), reachable without a token.
-	trustcenter.Register(e.Group("/api/v1"), pool)
-
-	publicRoutes := []struct{ method, path string }{
-		{http.MethodGet, "/api/v1/vaktaware/track/sometoken"},     // open pixel
-		{http.MethodGet, "/api/v1/vaktaware/t/sometoken"},         // click
-		{http.MethodPost, "/api/v1/vaktaware/t/sometoken/submit"}, // form submit
-		{http.MethodPost, "/api/v1/vaktaware/phish-report"},       // phish-report webhook
-		{http.MethodGet, "/api/v1/vaktvault/share/sometoken"},     // vault share link
-		{http.MethodGet, "/api/v1/trust/some-org-slug"},           // public trust center page data
-	}
-
-	for _, rt := range publicRoutes {
-		rt := rt
-		t.Run(rt.method+" "+rt.path, func(t *testing.T) {
-			req := httptest.NewRequest(rt.method, rt.path, nil) // NO Authorization header
-			rec := httptest.NewRecorder()
-			e.ServeHTTP(rec, req)
-			assert.NotEqual(t, http.StatusUnauthorized, rec.Code,
-				"%s %s must be reachable without a token — it is a public route", rt.method, rt.path)
-			assert.NotEqual(t, http.StatusForbidden, rec.Code,
-				"%s %s must not be role-gated — it is a public route", rt.method, rt.path)
-		})
-	}
-
-	// The open pixel is additionally an enumeration oracle if it distinguishes a
-	// valid from an invalid token (S127 §3c) — it must return 200 either way.
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/vaktaware/track/definitely-invalid", nil)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code, "open pixel must return 200 even for an unknown token (no oracle)")
-}

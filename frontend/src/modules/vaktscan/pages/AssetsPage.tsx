@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Server, ScanSearch, Upload } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -16,11 +16,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../../../components/ui/select'
-import { useAssets, useCreateAsset, useImportAssets } from '../hooks/useAssets'
+import { useAssets, useCreateAsset } from '../hooks/useAssets'
 import { useFirstAction } from '../../../shared/hooks/useFirstAction'
+import { useFeature } from '../../../shared/hooks/useFeature'
 import { ClassificationBadge } from '../components/ClassificationBadge'
 import type { Asset, ClassificationLevel } from '../types'
-import type { CreateAssetInput, ImportAssetsResult } from '../hooks/useAssets'
+import type { CreateAssetInput } from '../hooks/useAssets'
 import { toast } from '../../../shared/hooks/useToast'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { ErrorState } from '../../../shared/components/ErrorState'
@@ -58,7 +59,7 @@ const assetTypeLabels: Record<Asset['type'], string> = {
 const emptyForm: CreateAssetInput = {
   name: '',
   type: 'server',
-  target: '',
+  external_url: '',
   criticality: 'medium',
   tags: [],
   classification: 'internal',
@@ -78,12 +79,12 @@ function ASSET_COLUMNS(t: (key: string) => string, formatDate: (v: string) => st
       render: (row) => <span>{assetTypeLabels[row.type]}</span>,
     },
     {
-      key: 'target',
+      key: 'external_url',
       label: t('vaktscan.assetsPage.colTarget'),
       mobileHide: true,
       render: (row) => (
         <span className="font-mono text-xs text-secondary">
-          {row.target || <span className="text-secondary/40">—</span>}
+          {row.external_url || <span className="text-secondary/40">—</span>}
         </span>
       ),
     },
@@ -150,13 +151,24 @@ export default function AssetsPage() {
   const assets = rawAssets // keep for length check
   const sortedAssetsForRender = sortedAssets
   const createAsset = useCreateAsset()
-  const importAssets = useImportAssets()
   const [open, setOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
   const [csvImportOpen, setCsvImportOpen] = useState(false)
-  const [importResult, setImportResult] = useState<ImportAssetsResult | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<CreateAssetInput>(emptyForm)
+
+  // R23-02: the page carried a SECOND, hand-rolled import dialog for
+  // POST /vaktscan/assets/import, and its `importOpen` state was only ever set
+  // to false — no call site anywhere set it to true, so the dialog could not be
+  // opened and useImportAssets had exactly one caller, a dead one.
+  //
+  // Deleting it would have hidden a worse problem than it solved. The two
+  // endpoints are not duplicates: /vaktscan/assets/import is Community, while
+  // /vaktscan/assets/import/csv is gated behind FeatureSecPulse
+  // (vaktscan/routes.go:31 vs :54). The only REACHABLE button pointed at the
+  // Pro route, so on a Community licence asset CSV import answered 402 and the
+  // route that would have worked had no way in. Picking the endpoint by licence
+  // keeps one button and makes the feature work on both tiers.
+  const { enabled: hasSecPulse } = useFeature('vaktscan_advanced')
+  const importEndpoint = hasSecPulse ? '/vaktscan/assets/import/csv' : '/vaktscan/assets/import'
   const [tagsInput, setTagsInput] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -165,28 +177,6 @@ export default function AssetsPage() {
     setTagsInput('')
     setFormError(null)
     setOpen(true)
-  }
-
-  function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const fd = new FormData()
-    fd.append('file', file)
-    importAssets.mutate(fd, {
-      onSuccess: (result) => {
-        setImportResult(result)
-        if (result.errors.length === 0) {
-          toast(`${result.inserted} Assets importiert`, 'success')
-        } else {
-          toast(`${result.inserted} importiert, ${result.errored} Fehler`, 'info')
-        }
-      },
-      onError: (err) => {
-        setImportResult({ inserted: 0, errored: 0, errors: [err.message] })
-        toast(`Fehler: ${err.message}`, 'error')
-      },
-    })
-    e.target.value = ''
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -212,9 +202,9 @@ export default function AssetsPage() {
       <CSVImportDialog
         open={csvImportOpen}
         onClose={() => { setCsvImportOpen(false); }}
-        endpoint="/api/v1/vaktscan/assets/import/csv"
+        endpoint={importEndpoint}
         entityLabel="Assets"
-        columns={['name', 'type', 'target', 'criticality', 'tags']}
+        columns={['name', 'type', 'external_url', 'criticality', 'tags']}
         onSuccess={() => void refetch()}
       />
       <PageHeader
@@ -284,45 +274,6 @@ export default function AssetsPage() {
         />
       </div>
 
-      {/* CSV Import Dialog */}
-      <Dialog open={importOpen} onOpenChange={(v) => { if (!v) setImportOpen(false) }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('vaktscan.assetsPage.importDialogTitle')}</DialogTitle>
-            <DialogDescription>
-              {t('vaktscan.assetsPage.importDialogDesc')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <input
-              type="file"
-              accept=".csv"
-              ref={fileInputRef}
-              className="w-full text-sm text-primary file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-border file:bg-surface2 file:text-xs file:font-medium file:text-primary hover:file:bg-surface cursor-pointer"
-              onChange={handleImportFile}
-              disabled={importAssets.isPending}
-            />
-            {importAssets.isPending && (
-              <p className="text-sm text-secondary flex items-center gap-2">
-                <Spinner size="sm" className="w-3.5 h-3.5" />
-                {t('vaktscan.assetsPage.importing')}
-              </p>
-            )}
-            {importResult && (
-              <div className={`p-3 rounded-lg text-sm space-y-1 ${importResult.errors.length > 0 ? 'bg-yellow-500/10' : 'bg-green-500/10'}`}>
-                <p className="font-medium">{t('vaktscan.assetsPage.importResult', { inserted: importResult.inserted, errored: importResult.errored })}</p>
-                {importResult.errors.map((e, i) => (
-                  <p key={i} className="text-xs text-red-400">{e}</p>
-                ))}
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setImportOpen(false); }}>{t('common.close')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -368,8 +319,8 @@ export default function AssetsPage() {
                 <Input
                   id="asset-target"
                   placeholder="https://example.com or 192.168.1.1"
-                  value={form.target}
-                  onChange={(e) => { setForm({ ...form, target: e.target.value }); }}
+                  value={form.external_url}
+                  onChange={(e) => { setForm({ ...form, external_url: e.target.value }); }}
                   required
                   onInvalid={(e) => { (e.target as HTMLInputElement).setCustomValidity(t('validation.required')); }}
                   onInput={(e) => { (e.target as HTMLInputElement).setCustomValidity(''); }}

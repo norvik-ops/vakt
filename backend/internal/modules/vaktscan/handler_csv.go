@@ -159,7 +159,7 @@ func (h *Handler) parseFindingsCSV(c echo.Context, orgID string, r io.Reader) (i
 			SLADueAt:    slaDueAt,
 		}
 
-		if _, upsertErr := h.service.repo.UpsertFindingByRawID(ctx, orgID, f); upsertErr != nil {
+		if _, upsertErr := h.service.repo.UpsertImportedFinding(ctx, orgID, f); upsertErr != nil {
 			skipped++
 			errs = append(errs, fmt.Sprintf("row %d (%q): %s", rowNum, title, upsertErr))
 			continue

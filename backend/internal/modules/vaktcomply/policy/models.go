@@ -180,6 +180,7 @@ type ReadinessReport struct {
 	Covered        int                   `json:"covered"`
 	Partial        int                   `json:"partial"`
 	Missing        int                   `json:"missing"`
+	NotApplicable  int                   `json:"not_applicable"`
 	ReadinessScore float64               `json:"readiness_score"`
 	ByDomain       []DomainScore         `json:"by_domain"`
 	TISAXMaturity  *TISAXMaturitySummary `json:"tisax_maturity,omitempty"`

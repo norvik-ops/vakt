@@ -7,6 +7,7 @@ package vaktscan
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -34,7 +35,19 @@ func (h *Handler) ListSLAPolicies(c echo.Context) error {
 // UpsertSLAPolicy handles PUT /api/v1/vaktscan/sla-policies/:severity.
 func (h *Handler) UpsertSLAPolicy(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
-	severity := c.Param("severity")
+
+	// Der Schweregrad kommt roh aus dem URL-Pfad und ging bisher ungeprüft in den
+	// INSERT. vb_sla_policies trägt denselben CHECK wie vb_findings, ein Aufruf
+	// wie `PUT /vaktscan/sla-policies/Critical` lief also in SQLSTATE 23514 und
+	// wurde als 500 beantwortet — ein Eingabefehler, der als Serverfehler
+	// aussieht. Geprüft wird gegen dieselbe Menge, die das Schema kennt.
+	severity := strings.ToLower(strings.TrimSpace(c.Param("severity")))
+	if _, ok := canonicalSeverity[severity]; !ok {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "unknown severity: " + c.Param("severity"),
+			"code":  "VB_VALIDATION",
+		})
+	}
 
 	var input struct {
 		RemediationDays         int `json:"remediation_days" validate:"required,min=1,max=3650"`

@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../components/ui/alert-dialog'
-import { apiFetch } from '../api/client'
+import { apiFetch, readCsrfToken } from '../api/client'
 import { SkeletonTable } from '../shared/components/SkeletonLoaders'
 import { useFormatDate } from '../shared/hooks/useFormatDate'
 
@@ -61,10 +61,18 @@ function useRevokeOtherSessions() {
 // Panic-Button: explizit OHNE die aktuelle Session ausnehmen. Frontend muss
 // nach dem Call zwingend redirecten — der eigene Token ist gleich invalide.
 async function panicRevokeAll(): Promise<void> {
+  // Not apiFetch: revoking every session invalidates our own token, so the
+  // 401 handling and /login redirect apiFetch performs would fight the
+  // caller's own redirect. The token comes from the canonical readCsrfToken()
+  // — the inline `document.cookie.match(...)` this replaced had neither the
+  // in-memory fallback (the whole point of it: proxies that rewrite
+  // Set-Cookie) nor decodeURIComponent, so it 403'd exactly where the
+  // fallback was needed.
+  const csrf = readCsrfToken()
   await fetch('/api/v1/auth/sessions', {
     method: 'DELETE',
     credentials: 'include',
-    headers: { 'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] ?? '' },
+    headers: csrf ? { 'X-CSRF-Token': csrf } : {},
   })
 }
 

@@ -45,7 +45,7 @@ func TestOIDC_EmailVerified_LinkingGate(t *testing.T) {
 	defer cancel()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		imagePostgres,
 		postgres.WithDatabase("vakt_test"),
 		postgres.WithUsername("vakt"),
 		postgres.WithPassword("vakt"),
@@ -128,7 +128,7 @@ func TestOIDC_EmailVerified_LinksOnVerified(t *testing.T) {
 	defer cancel()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		imagePostgres,
 		postgres.WithDatabase("vakt_test"),
 		postgres.WithUsername("vakt"),
 		postgres.WithPassword("vakt"),

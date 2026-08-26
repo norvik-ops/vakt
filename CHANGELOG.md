@@ -4,6 +4,13 @@ All notable user-facing changes to Vakt are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [Unreleased]
+
+### Security
+- **Der Prüfbericht des Audit-Protokolls sagt jetzt, was er *nicht* prüfen konnte.** Einträge ohne Prüfsumme wurden bisher stillschweigend übersprungen, und die Prüfung meldete danach „Kette intakt" — eine Aussage über Einträge, die nie geprüft wurden. Es gibt jetzt einen dritten, eigenen Zustand („nicht verifizierbar"), und jeder Bericht nennt beide Zahlen: geprüfte und nicht prüfbare Einträge. Organisationen, deren Einträge ausschließlich ohne Prüfsumme vorliegen, fielen zuvor komplett aus dem Bericht heraus und werden jetzt mit aufgeführt.
+- **Einträge des KI-Agenten hängen jetzt an der Prüfkette.** Die beiden Protokolleinträge zum Agentenlauf (Start, genehmigter Schreibzugriff) wurden ohne Prüfsumme geschrieben und waren damit nicht auf Manipulation prüfbar. Bestehende Einträge werden **nicht** nachträglich mit Prüfsummen versehen — eine heute berechnete Prüfsumme würde nichts über die Vergangenheit belegen (ADR-0040).
+
+---
 ## [0.42.49] — 2026-07-27
 
 Sprint 132–135: Remediation des Codeaudit v4.

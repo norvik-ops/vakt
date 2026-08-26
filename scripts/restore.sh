@@ -20,6 +20,13 @@ for arg in "$@"; do
 	[ "$arg" = "--dry-run" ] && DRY_RUN=true
 done
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# ESK-7: derselbe Grund wie in backup.sh — postgres liegt auf einem
+# `internal: true`-Netz, das Host-`pg_restore` nicht erreichen kann. Der Fix nur
+# am Dump haette die halbe Kette geheilt (Variant-Miss-Klasse).
+# shellcheck source=scripts/backup-pg-target.sh
+source "${SCRIPT_DIR}/backup-pg-target.sh"
+
 if [ -z "$BACKUP_FILE" ] || [ ! -f "$BACKUP_FILE" ]; then
 	echo "ERROR: Usage: $0 <backup-file.tar.gz> [--dry-run]" >&2
 	exit 1
@@ -143,28 +150,167 @@ if [ "$DRY_RUN" = true ]; then
 	exit 0
 fi
 
-echo "→ Restoring PostgreSQL (this will DROP existing data)..."
+export VAKT_PG_URL="$DB_URL"
+# Siehe backup.sh: eine ungueltige Mode-Angabe muss den Lauf beenden, bevor eine
+# Kommandosubstitution sie in ein "dann eben Host" verwandelt.
+vakt_pg_require_valid_mode
+
+echo "→ Restoring (this will DROP existing database objects) via $(vakt_pg_describe)..."
 read -r -p "   Continue? [y/N] " confirm
 if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
 	echo "Aborted."
 	exit 0
 fi
 
-pg_restore --clean --if-exists -d "$DB_URL" "$WORK_DIR/db.pgdump"
-
+# ─── ESK-7 Fix 4: Uploads VOR dem Datenbank-Schritt ───────────────────────────
+# Die Reihenfolge war umgekehrt, und der Datenbank-Schritt bricht in genau dem
+# Fall ab, der der dokumentierte Anwendungsfall ist (Restore ueber eine
+# bestehende Instanz). Ergebnis war end-to-end reproduziert: Datenbank
+# wiederhergestellt, Evidence-Dateien weg, die API listete den Nachweis weiter
+# und der Download gab 404 — ein Compliance-Nachweis, der auf nichts zeigt.
+# Deshalb laufen die Dateien jetzt zuerst:
+#   * Sie sind additiv (`tar xzf` ueberschreibt und legt an, es loescht nichts),
+#     also ist der Schritt fuer sich harmlos und wiederholbar.
+#   * Sie sind das einzige, was nicht rekonstruierbar ist. Ein abgebrochener
+#     DB-Restore laesst sich erneut fahren; eine geloeschte Evidence-Datei nicht.
 if [ -f "$WORK_DIR/uploads.tar.gz" ]; then
-	UPLOADS_VOLUME=$(resolve_uploads_volume)
-	echo "→ Restoring uploads volume (evidence attachments) into ${UPLOADS_VOLUME}..."
-	if ! docker volume inspect "$UPLOADS_VOLUME" >/dev/null 2>&1; then
-		docker volume create "$UPLOADS_VOLUME"
+	# Best-effort, bewusst: dieser Schritt liegt jetzt VOR dem DB-Restore, darf
+	# ihn also nicht verhindern. Auf einem Host ohne Docker-CLI (der Fall, für den
+	# VAKT_BACKUP_PG_MODE=host existiert — externes/managed Postgres) lief hier
+	# vorher `docker volume inspect` in ein `command not found` (rc=127) und `set -e`
+	# beendete das Skript, bevor die Datenbank zurückkam. Vor der Umsortierung war
+	# die DB da und nur die Uploads fehlten; danach fehlte beides. Ein Fix darf
+	# keinen schlechteren Zustand erzeugen als der Defekt.
+	UPLOADS_RESTORED=false
+	if ! command -v docker >/dev/null 2>&1; then
+		echo "⚠  Uploads-Archiv liegt vor, aber es gibt keine Docker-CLI auf diesem Host." >&2
+		echo "   Die Evidence-Dateien werden NICHT wiederhergestellt; der Datenbank-Restore" >&2
+		echo "   läuft weiter. uploads.tar.gz liegt im Archiv und kann manuell in das" >&2
+		echo "   Uploads-Volume/-Verzeichnis entpackt werden." >&2
+	else
+		UPLOADS_VOLUME=$(resolve_uploads_volume)
+		echo "→ Restoring uploads volume (evidence attachments) into ${UPLOADS_VOLUME}..."
+		set +e
+		docker volume inspect "$UPLOADS_VOLUME" >/dev/null 2>&1 ||
+			docker volume create "$UPLOADS_VOLUME" >/dev/null
+		docker run --rm \
+			-v "${UPLOADS_VOLUME}:/data" \
+			-v "$WORK_DIR":/backup:ro \
+			alpine:latest sh -c "cd /data && tar xzf /backup/uploads.tar.gz"
+		UPLOADS_RC=$?
+		set -e
+		if [ "$UPLOADS_RC" -eq 0 ]; then
+			UPLOADS_RESTORED=true
+			echo "✓ Uploads volume restored"
+		else
+			echo "⚠  Uploads-Wiederherstellung fehlgeschlagen (rc=${UPLOADS_RC}). Der" >&2
+			echo "   Datenbank-Restore läuft weiter; die Dateien liegen unverändert im Archiv." >&2
+		fi
 	fi
-	docker run --rm \
-		-v "${UPLOADS_VOLUME}:/data" \
-		-v "$WORK_DIR":/backup:ro \
-		alpine:latest sh -c "cd /data && tar xzf /backup/uploads.tar.gz"
-	echo "✓ Uploads volume restored"
+	[ "$UPLOADS_RESTORED" = true ] || true
 else
-	echo "   (No uploads.tar.gz in archive — uploads volume not restored)"
+	# Das Archiv sagt selbst, warum nichts drin ist (manifest "uploads"-Feld,
+	# von backup.sh gesetzt). "Nicht nachgesehen" darf nicht wie "nichts da"
+	# aussehen — sonst haelt der Betreiber ein DB-only-Archiv fuer vollstaendig.
+	ARCHIVE_UPLOADS_STATE="unknown"
+	if [ -f "$WORK_DIR/manifest.json" ]; then
+		ARCHIVE_UPLOADS_STATE="$(sed -n 's/.*"uploads"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$WORK_DIR/manifest.json" | head -1)"
+		[ -n "$ARCHIVE_UPLOADS_STATE" ] || ARCHIVE_UPLOADS_STATE="unknown"
+	fi
+	case "$ARCHIVE_UPLOADS_STATE" in
+	unchecked)
+		echo "⚠  Dieses Archiv enthaelt KEINE Evidence-Dateien, weil das Backup sie nicht" >&2
+		echo "   pruefen konnte (kein Docker-Zugriff im Backup-Kontext). Die Dateien sind" >&2
+		echo "   NICHT verloren — sie sind nur nicht in diesem Archiv. Separat wiederherstellen." >&2
+		;;
+	absent)
+		echo "   (Archiv wurde ohne Evidence-Dateien erstellt — es gab damals keine.)"
+		;;
+	*)
+		echo "   (No uploads.tar.gz in archive, und das Manifest sagt nicht warum — Archiv aus einer aelteren Vakt-Version?)" >&2
+		;;
+	esac
+fi
+
+# ─── ESK-7 Fix 3: pg_restore-Exit auswerten statt pauschal daran zu sterben ───
+# `pg_restore` beendet mit 1, sobald IRGENDEIN Statement fehlschlug — auch dann,
+# wenn nur `--clean` ein Constraint nicht loesen konnte, das es gar nicht loesen
+# muss. Ueber einer bestehenden Vakt-Datenbank ist das der Normalfall und nicht
+# die Ausnahme: jede `audit_log`-Partition (Migration 151) erbt ihren
+# Primaerschluessel vom Elternteil, und `ALTER TABLE ONLY <partition> DROP
+# CONSTRAINT` ist dort per Definition unzulaessig. Gemessen gegen echtes
+# Postgres 16: rc=1, eine Meldung je Partition, "errors ignored on restore: N" —
+# und die Daten liegen danach korrekt in der Datenbank.
+# Der Fix ist NICHT, den Exit-Code zu ignorieren (das waere die stille Variante
+# desselben Fehlers), sondern die Fehlerzeilen zu klassifizieren UND danach an
+# der Datenbank zu pruefen, dass der Restore wirklich gelandet ist.
+RESTORE_LOG="$WORK_DIR/pg_restore.log"
+set +e
+vakt_pg_restore_from "$WORK_DIR/db.pgdump" >"$RESTORE_LOG" 2>&1
+RESTORE_RC=$?
+set -e
+
+TOTAL_ERRORS=$(grep -c '^pg_restore: error:' "$RESTORE_LOG" 2>/dev/null || true)
+BENIGN_ERRORS=$(grep -c 'cannot drop inherited constraint' "$RESTORE_LOG" 2>/dev/null || true)
+TOTAL_ERRORS=${TOTAL_ERRORS:-0}
+BENIGN_ERRORS=${BENIGN_ERRORS:-0}
+
+if [ "$RESTORE_RC" -eq 0 ]; then
+	echo "✓ Datenbank wiederhergestellt (pg_restore ohne Fehler)"
+elif [ "$TOTAL_ERRORS" -gt 0 ] && [ "$TOTAL_ERRORS" -eq "$BENIGN_ERRORS" ]; then
+	echo "✓ Datenbank wiederhergestellt (${BENIGN_ERRORS}× 'cannot drop inherited constraint'"
+	echo "  auf audit_log-Partitionen — erwartet beim Restore ueber eine bestehende DB,"
+	echo "  die Daten sind davon nicht betroffen)."
+else
+	echo "ERROR: pg_restore endete mit rc=${RESTORE_RC} und ${TOTAL_ERRORS} Fehler(n)," >&2
+	echo "       davon ${BENIGN_ERRORS} aus der bekannten harmlosen Klasse. Auszug:" >&2
+	grep '^pg_restore: error:' "$RESTORE_LOG" | grep -v 'cannot drop inherited constraint' | head -10 >&2
+	echo "       Die Evidence-Dateien wurden VORHER wiederhergestellt und sind unversehrt." >&2
+	echo "       Vollstaendiges Protokoll: ${RESTORE_LOG} (wird beim Beenden geloescht — jetzt sichern)" >&2
+	exit 1
+fi
+
+# Positive Gegenprobe: der Zaehler kommt aus der DATENBANK, nicht aus der Absicht
+# des Skripts. Eine Klassifizierung von Fehlerzeilen sagt "die Meldungen sehen
+# harmlos aus" — sie sagt nicht "die Daten sind da".
+#
+# Kalibrierung (bewusst, nicht aus Bequemlichkeit): HART faellt nur der Fall
+# `0 Tabellen`. Der ist eindeutig kaputt und hat keine legitime Ursache. Eine
+# ABWEICHUNG zwischen erwarteter und tatsaechlicher Zahl wird laut gemeldet, aber
+# nicht als Fehler gewertet — sie hat legitime Ursachen, und ein Check, der bei
+# gesundem System rot wird, wird abgeschaltet statt gelesen.
+# Konkret gemessen an einem Vakt-artigen Schema: `pg_restore --list` fuehrt fuer
+# eine partitionierte Tabelle NEBEN den Tabellen selbst auch `TABLE ATTACH`- und
+# `TABLE DATA`-Eintraege. Ein naives `grep -c ' TABLE '` zaehlte deshalb 10 statt
+# 6 und haette bei JEDEM Vakt-Restore Alarm geschlagen. Die Zeilenform ist daher
+# verankert: `<id>; <oid> <oid> TABLE <schema> <name> <owner>` — genau drei Felder
+# hinter TABLE. Eine Fehlinterpretation kann die Erwartung damit nur SENKEN, also
+# nur zu spaet warnen, nie falsch.
+EXPECTED_TABLES=0
+if command -v pg_restore >/dev/null 2>&1; then
+	EXPECTED_TABLES=$(pg_restore --list "$WORK_DIR/db.pgdump" 2>/dev/null |
+		grep -cE '^[0-9]+; [0-9]+ [0-9]+ TABLE [^ ]+ [^ ]+ [^ ]+$' || true)
+	EXPECTED_TABLES=${EXPECTED_TABLES:-0}
+fi
+
+set +e
+ACTUAL_TABLES=$(vakt_pg_base_table_count)
+COUNT_RC=$?
+set -e
+if [ "$COUNT_RC" -ne 0 ]; then
+	echo "   WARNUNG: Tabellenzahl nicht nachpruefbar (psql nicht erreichbar) —" >&2
+	echo "            der Restore ist damit NICHT gegengeprueft, nur unbeanstandet." >&2
+elif [ "$ACTUAL_TABLES" -eq 0 ]; then
+	echo "ERROR: Nach dem Restore stehen 0 Tabellen in der Datenbank. pg_restore hat" >&2
+	echo "       nichts hergestellt — das ist kein erfolgreicher Restore." >&2
+	echo "       Die Evidence-Dateien wurden VORHER wiederhergestellt und sind unversehrt." >&2
+	exit 1
+elif [ "$EXPECTED_TABLES" -gt 0 ] && [ "$ACTUAL_TABLES" -lt "$EXPECTED_TABLES" ]; then
+	echo "⚠  Gegenprobe: der Dump deklariert ${EXPECTED_TABLES} Tabellen, in public stehen" >&2
+	echo "   ${ACTUAL_TABLES}. Das kann legitim sein (Objekte in anderen Schemas), sollte" >&2
+	echo "   vor der Freigabe aber angesehen werden." >&2
+else
+	echo "✓ Gegenprobe: ${ACTUAL_TABLES} Tabellen in der Datenbank (Dump deklariert ${EXPECTED_TABLES})"
 fi
 
 # Hand the recovered key to the operator securely: a 0600 temp file that is

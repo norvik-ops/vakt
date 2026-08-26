@@ -20,11 +20,31 @@ import (
 type Repository struct {
 	db *pgxpool.Pool
 	q  *db.Queries
+
+	// sinks bekommen jedes TATSAECHLICH NEU entstandene Finding gemeldet.
+	// Warum das im Repository haengt und nicht in der Service-/Import-Schicht:
+	// finding_events.go, Abschnitt R1-14b-02.
+	sinks []findingCreatedSink
 }
 
 // NewRepository creates a new VulnBoard repository.
+//
+// Die Compliance-Bruecke haengt hier fest verdrahtet und nicht an einem
+// optionalen Setter: sie ist das Produktversprechen ("Scanner results flow as
+// compliance evidence into Vakt Comply"), und ein Setter, den ein neuer
+// Aufrufer vergessen kann, ist genau der Defekt, den R1-14b-02 behebt.
 func NewRepository(pool *pgxpool.Pool) *Repository {
-	return &Repository{db: pool, q: db.New(pool)}
+	return &Repository{
+		db:    pool,
+		q:     db.New(pool),
+		sinks: []findingCreatedSink{crossEvidenceSink{}},
+	}
+}
+
+// addFindingSink haengt einen weiteren Empfaenger an (genutzt von
+// Service.WithWebhooks fuer den ausgehenden finding.created-Webhook).
+func (r *Repository) addFindingSink(s findingCreatedSink) {
+	r.sinks = append(r.sinks, s)
 }
 
 // optStringText is the vaktscan-local nullable-text helper.

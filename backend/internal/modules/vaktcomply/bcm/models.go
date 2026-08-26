@@ -3,7 +3,10 @@
 
 package bcm
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // ── S86: BIA / BCM types ──────────────────────────────────────────────────────
 
@@ -140,6 +143,13 @@ type UpdateEmergencyContactInput struct {
 // ── S60: BCP / Notfallhandbuch ────────────────────────────────────────────────
 
 // BCPPlan represents a Business Continuity Plan document.
+//
+// ESK-12: RTOHours/RPOHours/Schutzbedarfsklasse sind Zeiger, weil "fuer diesen
+// Plan noch nicht festgelegt" ein echter Zustand ist und als `null` gemeldet
+// gehoert. Ein int haette den Zustand nicht ausdruecken koennen — er haette die
+// Migrations-Defaults 72/24/2 als planbezogene BSI-200-4-Angabe ausgegeben, also
+// eine Zahl behauptet, die niemand entschieden hat. RTO/RPO ist Audit-Evidenz.
+// LastTestedAt wird aus ck_bcp_tests ABGELEITET und ist kein Eingabefeld.
 type BCPPlan struct {
 	ID                  string    `json:"id"`
 	OrgID               string    `json:"org_id"`
@@ -148,9 +158,9 @@ type BCPPlan struct {
 	Version             string    `json:"version"`
 	Status              string    `json:"status"`
 	Owner               string    `json:"owner"`
-	RTOHours            int       `json:"rto_hours"`
-	RPOHours            int       `json:"rpo_hours"`
-	Schutzbedarfsklasse int       `json:"schutzbedarfsklasse"`
+	RTOHours            *int      `json:"rto_hours"`
+	RPOHours            *int      `json:"rpo_hours"`
+	Schutzbedarfsklasse *int      `json:"schutzbedarfsklasse"`
 	LastTestedAt        *string   `json:"last_tested_at"`
 	CreatedAt           time.Time `json:"created_at"`
 	UpdatedAt           time.Time `json:"updated_at"`
@@ -168,22 +178,149 @@ type BCPTest struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// BCPPlanMaxRTOHours begrenzt rto_hours/rpo_hours auf ein Jahr. Eine
+// Wiederanlaufzeit jenseits davon ist kein Kontinuitaetsziel mehr, sondern ein
+// Tippfehler; die Untergrenze 1 haelt die 0 draussen, die in der Antwort wie
+// "sofort" aussaehe, aber in Wahrheit "nicht gesetzt" hiesse (ESK-12).
+const BCPPlanMaxRTOHours = 8760
+
 // CreateBCPPlanInput is the request body for creating a BCP plan.
+//
+// ESK-12: Die drei BSI-200-4-Felder sind OPTIONAL (Zeiger) — ein bestehender
+// Aufrufer, der sie nicht schickt, verhaelt sich unveraendert (PROCESS.md P3,
+// additiv). Weggelassen heisst kuenftig `null` = "noch nicht festgelegt", nicht
+// mehr 72/24/2. last_tested_at fehlt hier bewusst: es wird aus den
+// ck_bcp_tests-Eintraegen abgeleitet (siehe RefreshCKBCPPlanLastTested).
+//
+// Die drei Felder tragen ABSICHTLICH keine `validate`-Bereichstags mehr
+// (REV-ESK12 B2). Mit ihnen fing `h.validate.Struct` jede Bereichsverletzung ab
+// und antwortete "Ungültige Eingabe" — der Aufrufer erfuhr also nicht, WELCHES
+// Feld er korrigieren muss, und die drei benannten Sentinels aus
+// validateBCPPlanTargets waren ueber HTTP unerreichbar. Die Pruefung liegt jetzt
+// nur noch dort, mit Namen und verletzendem Wert im Body.
 type CreateBCPPlanInput struct {
-	Title   string `json:"title"   validate:"required"`
-	Scope   string `json:"scope"`
-	Version string `json:"version"`
-	Status  string `json:"status"  validate:"omitempty,oneof=draft active archived"`
-	Owner   string `json:"owner"`
+	Title               string `json:"title"                validate:"required"`
+	Scope               string `json:"scope"`
+	Version             string `json:"version"`
+	Status              string `json:"status"               validate:"omitempty,oneof=draft active archived"`
+	Owner               string `json:"owner"`
+	RTOHours            *int   `json:"rto_hours"`
+	RPOHours            *int   `json:"rpo_hours"`
+	Schutzbedarfsklasse *int   `json:"schutzbedarfsklasse"`
 }
 
-// UpdateBCPPlanInput is the request body for updating a BCP plan.
+// UpdateBCPPlanInput is the request body for updating a BCP plan (PATCH).
+//
+// SEMANTIK (REV-ESK12 B1, ausdruecklich entschieden und hier maschinenlesbar):
+//
+//	Feld fehlt im Body   -> der gespeicherte Wert bleibt UNVERAENDERT
+//	Feld ist `null`      -> der gespeicherte Wert wird GELOESCHT
+//	Feld traegt einen Wert -> dieser Wert wird gesetzt
+//
+// Das ist RFC 7386 (JSON Merge Patch) und das, was der Methodenname PATCH
+// zusagt. Die Vorfassung dieses Commits hat stattdessen ersetzt: ein PATCH mit
+// {"title":…,"status":…} — also genau der Body, den openapi.yaml vorher als
+// vollstaendig auswies — loeschte rto_hours/rpo_hours/schutzbedarfsklasse mit
+// 200 und ohne Meldung. Das ist Datenverlust an derselben Audit-Evidenz, um die
+// dieser Befund geht: eine geloeschte RTO-Angabe ist in der Antwort nicht von
+// "noch nicht festgelegt" zu unterscheiden. Die Konsistenz mit den
+// String-Feldern, die das Argument dafuer war, ist jetzt andersherum
+// hergestellt — scope/version/owner mergen ebenfalls (auch sie gingen bei einem
+// PATCH ohne sie verloren; dieselbe Klasse, nur ohne eigenen Befund).
+//
+// title und status bleiben Pflichtfelder und damit ersetzend: was man nicht
+// weglassen KANN, kann man auch nicht durch Weglassen verlieren. Ein `""` in
+// scope/version/owner ist weiterhin ein zulaessiger Wert und leert das Feld —
+// dafuer muss es jetzt mitgeschickt werden.
 type UpdateBCPPlanInput struct {
-	Title   string `json:"title"   validate:"required"`
-	Scope   string `json:"scope"`
-	Version string `json:"version"`
-	Status  string `json:"status"  validate:"required,oneof=draft active archived"`
-	Owner   string `json:"owner"`
+	Title               string      `json:"title"                validate:"required"`
+	Scope               *string     `json:"scope"`
+	Version             *string     `json:"version"`
+	Status              string      `json:"status"               validate:"required,oneof=draft active archived"`
+	Owner               *string     `json:"owner"`
+	RTOHours            OptionalInt `json:"rto_hours"`
+	RPOHours            OptionalInt `json:"rpo_hours"`
+	Schutzbedarfsklasse OptionalInt `json:"schutzbedarfsklasse"`
+}
+
+// OptionalInt unterscheidet die DREI Zustaende, die ein Feld in einem
+// PATCH-Body haben kann. Ein `*int` kann nur zwei: "weggelassen" und "explizit
+// null" kommen beide als nil an, encoding/json setzt einen Zeiger bei `null`
+// auf nil und laesst ihn bei fehlendem Schluessel unberuehrt. Genau diese
+// Ununterscheidbarkeit war der Datenverlust aus REV-ESK12 B1 — die Information
+// lag im Body, wurde aber beim Dekodieren weggeworfen.
+//
+//	{}                     -> Set=false            -> unveraendert
+//	{"rto_hours": null}    -> Set=true,  Value=nil  -> geloescht
+//	{"rto_hours": 8}       -> Set=true,  Value=&8   -> gesetzt
+type OptionalInt struct {
+	Set   bool
+	Value *int
+}
+
+// UnmarshalJSON wird von encoding/json NUR aufgerufen, wenn der Schluessel im
+// Body vorkommt — das ist die Quelle der Information "Set".
+func (o *OptionalInt) UnmarshalJSON(data []byte) error {
+	o.Set = true
+	if string(data) == "null" {
+		o.Value = nil
+		return nil
+	}
+	var v int
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	o.Value = &v
+	return nil
+}
+
+// MarshalJSON haelt den Rundlauf dicht: ein geloeschtes Feld muss als `null`
+// wieder herauskommen, nicht als 0.
+func (o OptionalInt) MarshalJSON() ([]byte, error) {
+	if o.Value == nil {
+		return []byte("null"), nil
+	}
+	return json.Marshal(*o.Value)
+}
+
+// SetInt / ClearInt bauen die beiden gesetzten Zustaende im Go-Code (Tests,
+// interne Aufrufer) so, wie sie ueber die Leitung ankaemen.
+func SetInt(v int) OptionalInt { return OptionalInt{Set: true, Value: &v} }
+
+// ClearInt entspricht `"feld": null` im Body: ausdruecklich loeschen.
+func ClearInt() OptionalInt { return OptionalInt{Set: true} }
+
+// resolve liefert den Wert, der nach diesem PATCH gelten soll.
+func (o OptionalInt) resolve(current *int) *int {
+	if !o.Set {
+		return current
+	}
+	return o.Value
+}
+
+// resolveString liefert den String-Wert, der nach diesem PATCH gelten soll.
+func resolveString(in *string, current string) string {
+	if in == nil {
+		return current
+	}
+	return *in
+}
+
+// MergeInto legt den Requestbody ueber den gespeicherten Plan und gibt den
+// Zustand zurueck, der geschrieben werden soll. Sie ist der eine Ort, an dem die
+// oben dokumentierte Semantik steht — der Rundlauftest
+// TestBCPPlanPatch_OmittedFieldsSurvive prueft sie durch die volle Naht.
+func (in UpdateBCPPlanInput) MergeInto(cur BCPPlan) BCPPlan {
+	next := cur
+	next.Title = in.Title
+	next.Status = in.Status
+	next.Scope = resolveString(in.Scope, cur.Scope)
+	next.Version = resolveString(in.Version, cur.Version)
+	next.Owner = resolveString(in.Owner, cur.Owner)
+	next.RTOHours = in.RTOHours.resolve(cur.RTOHours)
+	next.RPOHours = in.RPOHours.resolve(cur.RPOHours)
+	next.Schutzbedarfsklasse = in.Schutzbedarfsklasse.resolve(cur.Schutzbedarfsklasse)
+	return next
 }
 
 // CreateBCPTestInput is the request body for logging a BCP test.

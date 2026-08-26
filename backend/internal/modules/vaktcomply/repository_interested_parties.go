@@ -22,7 +22,8 @@ func (r *Repository) ListInterestedParties(ctx context.Context, orgID string) ([
 	defer rows.Close()
 
 	today := time.Now().UTC().Format("2006-01-02")
-	var parties []InterestedParty
+	// R1-18-D1: initialise non-nil so an empty result serialises as [] not null.
+	parties := make([]InterestedParty, 0)
 	for rows.Next() {
 		var p InterestedParty
 		var reviewDate pgtype.Text

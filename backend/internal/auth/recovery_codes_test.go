@@ -12,14 +12,19 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// TestMain überschreibt den bcrypt-Cost-Faktor für alle Tests in diesem
-// Package — cost=12 in Production, cost=MinCost (4) in Tests. 8 Codes ×
-// bcrypt cost 12 dauern ~2.4s pro Aufruf; mit -race und vielen Tests
-// schlägt das gegen 2-Min-Test-Timeout. Format/Unique-Assertions hängen
-// nicht vom Cost ab.
+// TestMain überschreibt die bcrypt-Cost-Faktoren für alle Tests in diesem
+// Package — cost=12 in Production, cost=MinCost (4) in Tests. Ein einzelner
+// cost-12-Aufruf dauert unter -race ~2.4s; mit vielen Tests schlägt das gegen
+// das 2-Min-Test-Timeout. Format/Unique-Assertions hängen nicht vom Cost ab.
+//
+// R1-INT-01: dummyBcryptCost kam dazu, weil JEDER NewService-Aufruf einen
+// cost-12-Hash baute — allein login_timing_test.go + die SAML/OIDC-Tests
+// zahlten dafür ~21s. Die zwei Assertions, die den Cost wirklich brauchen,
+// stellen ihn sich selbst zurück (login_timing_test.go).
 func TestMain(m *testing.M) {
 	recoveryCodeBcryptCost = bcrypt.MinCost
 	backupCodeBcryptCost = bcrypt.MinCost
+	dummyBcryptCost = bcrypt.MinCost
 	m.Run()
 }
 

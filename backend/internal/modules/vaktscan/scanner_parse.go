@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -64,22 +63,29 @@ func SetScanRunnerForTest(f func(ctx context.Context, name string, args ...strin
 //
 // Trivy meldet Schwachstellen gruppiert nach Ziel (Image-Layer, Dateisystem-Pfad);
 // uns interessiert die flache Liste. Fehlende Felder sind bei Trivy normal und
-// kein Fehler: Ein Eintrag ohne Severity ist `info`, einer ohne CVSS-Wert hat
-// keinen (nicht 0 — das wäre die Behauptung „harmlos"), einer ohne CVE-ID ist ein
-// Fund ohne CVE, kein Fund ohne Namen.
-func findingsFromTrivy(out []byte, payload ScanPayload) ([]Finding, error) {
+// kein Fehler: Ein Eintrag ohne Severity ist `unknown` (unbewertet — nicht `info`,
+// das wäre die Behauptung „bewertet, unkritisch"), einer ohne CVSS-Wert hat keinen
+// (nicht 0 — das wäre die Behauptung „harmlos"), einer ohne CVE-ID ist ein Fund
+// ohne CVE, kein Fund ohne Namen.
+//
+// Der zweite Rückgabewert meldet Schweregrade, die Trivy geliefert hat und die
+// wir nicht kennen. Sie werden als `unknown` gespeichert, nicht verworfen — der
+// Aufrufer hängt den Hinweis an den Scan (siehe severity.go).
+func findingsFromTrivy(out []byte, payload ScanPayload) ([]Finding, severityReport, error) {
+	var report severityReport
+
 	var parsed trivyOutput
 	if err := json.Unmarshal(out, &parsed); err != nil {
-		return nil, fmt.Errorf("parse trivy output: %w", err)
+		return nil, report, fmt.Errorf("parse trivy output: %w", err)
 	}
 
 	scanID := payload.ScanID
 	var findings []Finding
 	for _, result := range parsed.Results {
 		for _, vuln := range result.Vulnerabilities {
-			severity := strings.ToLower(vuln.Severity)
-			if severity == "" {
-				severity = "info"
+			severity, unrecognised := normalizeSeverity(vuln.Severity)
+			if unrecognised {
+				report.add(vuln.Severity)
 			}
 
 			var cvss *float64
@@ -112,7 +118,7 @@ func findingsFromTrivy(out []byte, payload ScanPayload) ([]Finding, error) {
 			findings = append(findings, f)
 		}
 	}
-	return findings, nil
+	return findings, report, nil
 }
 
 // findingsFromNuclei übersetzt eine Nuclei-Ausgabe (JSONL — ein JSON-Objekt pro
@@ -135,7 +141,9 @@ func findingsFromTrivy(out []byte, payload ScanPayload) ([]Finding, error) {
 //
 // JSONL ist zeilenorientiert, also wird es zeilenorientiert gelesen. Damit ist das
 // Überspringen echt: Die Zeile danach wird wieder gelesen.
-func findingsFromNuclei(out []byte, payload ScanPayload) []Finding {
+func findingsFromNuclei(out []byte, payload ScanPayload) ([]Finding, severityReport) {
+	var report severityReport
+
 	scanID := payload.ScanID
 	var findings []Finding
 
@@ -156,9 +164,9 @@ func findingsFromNuclei(out []byte, payload ScanPayload) []Finding {
 			continue
 		}
 
-		severity := strings.ToLower(r.Info.Severity)
-		if severity == "" {
-			severity = "info"
+		severity, unrecognised := normalizeSeverity(r.Info.Severity)
+		if unrecognised {
+			report.add(r.Info.Severity)
 		}
 
 		f := Finding{
@@ -176,5 +184,5 @@ func findingsFromNuclei(out []byte, payload ScanPayload) []Finding {
 		ComputeRiskScore(&f)
 		findings = append(findings, f)
 	}
-	return findings
+	return findings, report
 }

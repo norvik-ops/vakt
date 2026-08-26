@@ -11,7 +11,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
 	platformldap "github.com/matharnica/vakt/internal/shared/platform/ldap"
 )
 
@@ -63,7 +62,7 @@ func (h *Handler) UpdateOrgSMTPSettings(c echo.Context) error {
 			})
 		}
 		var encErr error
-		passEnc, encErr = sharedcrypto.Encrypt(h.service.masterKey, []byte(in.Pass))
+		passEnc, encErr = h.service.sealSecret([]byte(in.Pass))
 		if encErr != nil {
 			log.Error().Err(encErr).Str("org_id", orgID).Msg("smtp password encryption failed")
 			return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -128,7 +127,7 @@ func (h *Handler) UpdateOrgBackupConfig(c echo.Context) error {
 		if len(h.service.masterKey) == 0 {
 			return nil, fmt.Errorf("master key not configured")
 		}
-		return sharedcrypto.Encrypt(h.service.masterKey, []byte(plaintext))
+		return h.service.sealSecret([]byte(plaintext))
 	}
 
 	var passphraseEnc []byte
@@ -266,7 +265,7 @@ func (h *Handler) GetInternalBackupConfig(c echo.Context) error {
 	}
 
 	if len(passphraseEnc) > 0 {
-		plain, decErr := sharedcrypto.Decrypt(h.service.masterKey, passphraseEnc)
+		plain, decErr := h.service.openSecret(passphraseEnc)
 		if decErr != nil {
 			log.Error().Err(decErr).Str("org_id", orgID).Msg("internal backup config: passphrase decrypt failed")
 			return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -278,7 +277,7 @@ func (h *Handler) GetInternalBackupConfig(c echo.Context) error {
 	}
 
 	if len(webhookEnc) > 0 {
-		plain, decErr := sharedcrypto.Decrypt(h.service.masterKey, webhookEnc)
+		plain, decErr := h.service.openSecret(webhookEnc)
 		if decErr != nil {
 			log.Error().Err(decErr).Str("org_id", orgID).Msg("internal backup config: notify webhook decrypt failed")
 			return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -292,7 +291,7 @@ func (h *Handler) GetInternalBackupConfig(c echo.Context) error {
 	// Load backup dest config
 	dest, destConfigEnc, err := h.service.repo.GetOrgBackupDest(ctx, orgID)
 	if err == nil && len(destConfigEnc) > 0 {
-		if plain, decErr := sharedcrypto.Decrypt(h.service.masterKey, destConfigEnc); decErr == nil {
+		if plain, decErr := h.service.openSecret(destConfigEnc); decErr == nil {
 			var destCfg BackupDestConfig
 			if json.Unmarshal(plain, &destCfg) == nil {
 				resp.BackupDestType = dest.Type
@@ -368,7 +367,7 @@ func (h *Handler) UpdateOrgLDAPConfig(c echo.Context) error {
 			})
 		}
 		var encErr error
-		bindPassEnc, encErr = sharedcrypto.Encrypt(h.service.masterKey, []byte(in.BindPass))
+		bindPassEnc, encErr = h.service.sealSecret([]byte(in.BindPass))
 		if encErr != nil {
 			log.Error().Err(encErr).Str("org_id", orgID).Msg("ldap bind password encryption failed")
 			return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -415,7 +414,7 @@ func (h *Handler) buildLDAPSyncer(c echo.Context, orgID string) (*platformldap.S
 			})
 			return nil, fmt.Errorf("master key not configured")
 		}
-		plain, decErr := sharedcrypto.Decrypt(h.service.masterKey, bindPassEnc)
+		plain, decErr := h.service.openSecret(bindPassEnc)
 		if decErr != nil {
 			log.Error().Err(decErr).Str("org_id", orgID).Msg("ldap test: bind password decrypt failed")
 			_ = c.JSON(http.StatusInternalServerError, map[string]string{
@@ -507,7 +506,7 @@ func (h *Handler) GetOrgBackupDest(c echo.Context) error {
 	}
 	// Decrypt config to populate non-secret fields + has_* booleans.
 	if len(configEnc) > 0 && len(h.service.masterKey) > 0 {
-		plain, err := sharedcrypto.Decrypt(h.service.masterKey, configEnc)
+		plain, err := h.service.openSecret(configEnc)
 		if err == nil {
 			var cfg BackupDestConfig
 			if json.Unmarshal(plain, &cfg) == nil {
@@ -562,7 +561,7 @@ func (h *Handler) UpdateOrgBackupDest(c echo.Context) error {
 	var existing BackupDestConfig
 	_, existingEnc, err := h.service.repo.GetOrgBackupDest(c.Request().Context(), orgID)
 	if err == nil && len(existingEnc) > 0 && len(h.service.masterKey) > 0 {
-		if plain, err := sharedcrypto.Decrypt(h.service.masterKey, existingEnc); err == nil {
+		if plain, err := h.service.openSecret(existingEnc); err == nil {
 			_ = json.Unmarshal(plain, &existing)
 		}
 	}
@@ -604,7 +603,7 @@ func (h *Handler) UpdateOrgBackupDest(c echo.Context) error {
 				"code":  "ADMIN_NO_MASTER_KEY",
 			})
 		}
-		configEnc, err = sharedcrypto.Encrypt(h.service.masterKey, plain)
+		configEnc, err = h.service.sealSecret(plain)
 		if err != nil {
 			log.Error().Err(err).Str("org_id", orgID).Msg("backup dest encryption failed")
 			return c.JSON(http.StatusInternalServerError, map[string]string{

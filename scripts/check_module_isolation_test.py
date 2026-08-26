@@ -13,6 +13,13 @@ The gate's own scan_file() is the unit under test: it takes one Go source and
 returns the (write, import) violations found in it, which is precisely the
 decision the gate is made of.
 
+Cases 9-13 (added 2026-07-30) cover the sqlc half. They exist because of K2-03:
+this file previously imported scan_file ALONE, so it could not, by construction,
+notice that the gate never looked at backend/db/queries/ — 217 prefix-writing
+queries sat outside everything this self-test could reach, and the self-test's
+green run read like coverage. A self-test whose scope is narrower than its gate
+certifies the part that was never in doubt.
+
 Exit non-zero on any failed case.
 """
 
@@ -22,7 +29,12 @@ import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from check_module_isolation import scan_file  # noqa: E402
+from check_module_isolation import (  # noqa: E402
+    find_sqlc_call_sites,
+    parse_sqlc_queries,
+    scan_file,
+    strip_go_code_noise,
+)
 
 FAILURES = []
 
@@ -128,10 +140,177 @@ func f(tx X) { tx.Exec(ctx, `SELECT 1 -- DELETE FROM hr_employees
     expect_writes=0, expect_imports=0,
 )
 
+
+# ── sqlc half (K2-03) ───────────────────────────────────────────────────────
+
+def run_sqlc_case(name, sql, go_files, expect_hits, expect_unparsed=0):
+    """Feed synthetic query file(s) + module Go file(s) through the sqlc
+    resolver and check how many cross-prefix write call sites come out."""
+    with tempfile.TemporaryDirectory() as td:
+        qdir = pathlib.Path(td) / "queries"
+        qdir.mkdir()
+        (qdir / "sample.sql").write_text(sql, encoding="utf-8")
+        writes, stats = parse_sqlc_queries(qdir)
+
+        module_files = [
+            (rel, own_module, own_prefix, src)
+            for rel, own_module, own_prefix, src in go_files
+        ]
+        hits = find_sqlc_call_sites(module_files, writes)
+
+    ok = True
+    if len(hits) != expect_hits:
+        FAILURES.append(
+            f"{name}: expected {expect_hits} cross-prefix sqlc call site(s), got "
+            f"{len(hits)}: {hits}"
+        )
+        ok = False
+    if len(stats["unparsed"]) != expect_unparsed:
+        FAILURES.append(
+            f"{name}: expected {expect_unparsed} unparsed query file(s), got "
+            f"{stats['unparsed']}"
+        )
+        ok = False
+    print(("PASS: " if ok else "FAIL: ") + name)
+
+
+GO_SCAN_CALL = [(
+    "internal/modules/vaktscan/h.go", "vaktscan", "vb_",
+    "package vaktscan\nfunc f(q *Q) { _, _ = q.InsertCKThing(ctx, arg) }\n",
+)]
+
+# ── 9. The K2-03 shape itself: module code calls a query that writes a
+#      foreign prefix. Nothing about this is visible in the Go source.
+run_sqlc_case(
+    "cross-prefix write through sqlc is caught",
+    "-- name: InsertCKThing :one\nINSERT INTO ck_evidence (org_id) VALUES ($1) RETURNING id;\n",
+    GO_SCAN_CALL,
+    expect_hits=1,
+)
+
+# ── 10. Same call, own prefix — must stay silent, or the gate is unusable.
+run_sqlc_case(
+    "own-prefix write through sqlc is legal",
+    "-- name: InsertCKThing :one\nINSERT INTO vb_assets (org_id) VALUES ($1) RETURNING id;\n",
+    GO_SCAN_CALL,
+    expect_hits=0,
+)
+
+# ── 11. Schema-qualified / quoted table names. This is the I4 variant of
+#      K2-06: the sibling gates demanded the bare identifier and therefore
+#      neither reported NOR counted `public.ck_x` / `"ck_x"`.
+run_sqlc_case(
+    "schema-qualified + quoted cross-prefix write is caught",
+    '-- name: InsertCKThing :exec\nINSERT INTO public."ck_evidence" (org_id) VALUES ($1);\n',
+    GO_SCAN_CALL,
+    expect_hits=1,
+)
+
+# ── 12. A query name that only APPEARS in a comment or a string is not a call
+#      site — the same rule the Go-literal half already follows (a gate that
+#      counts prose lies), and the mirror image of K2-07.
+run_sqlc_case(
+    "query name in a comment / string is not a call site",
+    "-- name: InsertCKThing :exec\nINSERT INTO ck_evidence (org_id) VALUES ($1);\n",
+    [(
+        "internal/modules/vaktscan/h.go", "vaktscan", "vb_",
+        'package vaktscan\n'
+        '// historical: this used q.InsertCKThing(ctx, a) before ADR-0079\n'
+        'const note = "removed q.InsertCKThing("\n',
+    )],
+    expect_hits=0,
+)
+
+# ── 13. A .sql file the parser cannot read is counted as unparsed, never
+#      silently treated as containing no writes.
+run_sqlc_case(
+    "query file without `-- name:` headers is counted as unparsed",
+    "INSERT INTO ck_evidence (org_id) VALUES ($1);\n",
+    GO_SCAN_CALL,
+    expect_hits=0, expect_unparsed=1,
+)
+
+# ── 14. R-03: strip_go_code_noise must be POSITION-PRESERVING.
+#      The gate computes the reported line as `code.count('\n', 0, m.start())+1`
+#      from the STRIPPED text. A swallowed newline therefore does not weaken
+#      detection — it sends the reader to the wrong line, which is worse than
+#      no finding at all, because it looks like one. Measured on the real tree
+#      before the fix: 2 of 207 module files shifted by 1, both triggered by the
+#      Go rune literal '"'.
+LINE_SHAPES = {
+    "rune literal '\"' (the R-03 trigger)":
+        "package a\nfunc f(s string) bool {\n\treturn s[0] == '\"'\n}\nvar x = 1\n",
+    "rune literal '`'":
+        "package a\nvar q = '`'\nvar x = 1\n",
+    "block comment across lines":
+        "package a\n/* one\n   two\n   three */\nvar x = 1\n",
+    "unterminated block comment at EOF":
+        "package a\n/* one\n   two\n",
+    "raw string across lines":
+        "package a\nvar s = `SELECT 1\nFROM t\nWHERE x`\nvar y = 2\n",
+    "escaped quote inside a string":
+        "package a\nvar s = \"he said \\\"hi\\\"\"\nvar y = 2\n",
+    "backslash at end of a string, then newline (invalid Go, must not eat the line)":
+        "package a\nvar s = \"trailing \\\nvar y = 2\n",
+    "line comment at EOF without a trailing newline":
+        "package a\n// note",
+    "CRLF line endings":
+        "package a\r\n// c\r\nvar x = 1\r\n",
+}
+shape_ok = True
+for label, src in LINE_SHAPES.items():
+    out = strip_go_code_noise(src)
+    if out.count("\n") != src.count("\n") or len(out) != len(src):
+        FAILURES.append(
+            f"strip_go_code_noise not position-preserving for {label}: "
+            f"{len(src)}/{src.count(chr(10))} in, {len(out)}/{out.count(chr(10))} out"
+        )
+        shape_ok = False
+print(("PASS: " if shape_ok else "FAIL: ")
+      + f"strip_go_code_noise preserves lines and length ({len(LINE_SHAPES)} shapes, R-03)")
+
+# ── 15. The same defect where it actually hurts: the REPORTED line number.
+#      Before the fix this reported :7 for a call that stands on line 8.
+LINE_PROBE_SRC = (
+    "package vaktvault\n"                                     # 1
+    "\n"                                                      # 2
+    "func quoteChar(s string) bool {\n"                       # 3
+    "\treturn len(s) > 0 && s[0] == '\"'\n"                   # 4  <- the trigger
+    "}\n"                                                     # 5
+    "\n"                                                      # 6
+    "func writeIt(ctx context.Context, q *db.Queries) error {\n"   # 7
+    "\t_, err := q.InsertCKThing(ctx, db.InsertCKThingParams{})\n"  # 8  <- the call
+    "\treturn err\n"                                          # 9
+    "}\n"                                                     # 10
+)
+with tempfile.TemporaryDirectory() as td:
+    qdir = pathlib.Path(td) / "queries"
+    qdir.mkdir()
+    (qdir / "sample.sql").write_text(
+        "-- name: InsertCKThing :exec\nINSERT INTO ck_evidence (org_id) VALUES ($1);\n",
+        encoding="utf-8",
+    )
+    writes, _ = parse_sqlc_queries(qdir)
+    hits = find_sqlc_call_sites(
+        [("internal/modules/vaktvault/probe.go", "vaktvault", "so_", LINE_PROBE_SRC)],
+        writes,
+    )
+if len(hits) != 1:
+    FAILURES.append(f"line-number probe: expected 1 hit, got {hits}")
+    print("FAIL: reported line number survives a rune literal above the call")
+elif hits[0][1] != 8:
+    FAILURES.append(
+        f"line-number probe: call stands on line 8, gate reports line {hits[0][1]} "
+        "— R-03 is back"
+    )
+    print("FAIL: reported line number survives a rune literal above the call")
+else:
+    print("PASS: reported line number survives a rune literal above the call (R-03)")
+
 if FAILURES:
     print("\nFAILED:")
     for f in FAILURES:
         print(f"  - {f}")
     sys.exit(1)
 
-print("\nALL TESTS PASSED (8 cases)")
+print("\nALL TESTS PASSED (15 cases: 8 Go-literal, 5 sqlc seam, 2 line fidelity)")

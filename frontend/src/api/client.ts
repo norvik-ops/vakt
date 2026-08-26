@@ -21,19 +21,74 @@ export interface AuthMe {
   csrf_token?: string
 }
 
+// Statuses that mean "the server did not answer the question", as opposed to
+// "the server answered: you are not signed in". Kept separate from
+// RETRYABLE_STATUS below because that set drives apiFetch's retry policy and
+// deliberately excludes 429 (apiFetch handles rate limits on their own path).
+const HYDRATE_TRANSIENT_STATUS = new Set([429, 500, 502, 503, 504])
+const HYDRATE_MAX_ATTEMPTS = 3
+const HYDRATE_BACKOFF_MS = 300
+
+/**
+ * Resolve the current user for the auth store, or null if there is none.
+ *
+ * R1-SA21-D1 (expiry path): this used to be `if (!res.ok) return null`, which
+ * read *every* non-2xx answer as "not signed in" — a 429 from the rate limiter,
+ * a 502 while the API restarts, a dropped connection on a flaky network. The
+ * store then cleared the user and the route guard bounced a perfectly valid
+ * session to /login. Only 401/403 actually carry that meaning; the rest mean
+ * "ask again".
+ *
+ * This is the twin of the sign-out defect, pointing the other way: there the
+ * client tore the session down locally without telling the server, here it tore
+ * it down locally although the server never said to.
+ *
+ * The safe default is unchanged: once the small retry budget is spent we still
+ * return null, so an API that is genuinely down lands the user on /login rather
+ * than in a half-rendered shell. Bounded on purpose — three attempts with a
+ * 300 ms base back off in well under two seconds, and the route guard shows a
+ * spinner meanwhile, so the cost of the retry is a slightly longer splash, not
+ * a hang.
+ */
 export async function fetchMe(): Promise<AuthMe | null> {
-  try {
-    const res = await fetch(`${API_BASE}/auth/me`, {
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-    })
-    if (!res.ok) return null
-    const me = (await res.json()) as AuthMe
-    setCsrfToken(me.csrf_token)
-    return me
-  } catch {
+  for (let attempt = 0; attempt < HYDRATE_MAX_ATTEMPTS; attempt++) {
+    const isLastAttempt = attempt === HYDRATE_MAX_ATTEMPTS - 1
+    let res: Response
+    try {
+      res = await fetch(`${API_BASE}/auth/me`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch {
+      // No answer at all — the most transient case there is.
+      if (isLastAttempt) return null
+      await new Promise((resolve) => setTimeout(resolve, HYDRATE_BACKOFF_MS * 2 ** attempt))
+      continue
+    }
+
+    if (res.ok) {
+      try {
+        const me = (await res.json()) as AuthMe
+        setCsrfToken(me.csrf_token)
+        return me
+      } catch {
+        // 2xx with an unreadable body is a broken contract, not a session state.
+        return null
+      }
+    }
+
+    if (HYDRATE_TRANSIENT_STATUS.has(res.status) && !isLastAttempt) {
+      const waitMs =
+        res.status === 429
+          ? Math.min(parseRetryAfter(res.headers.get('Retry-After')) * 1000, 2000)
+          : HYDRATE_BACKOFF_MS * 2 ** attempt
+      await new Promise((resolve) => setTimeout(resolve, waitMs))
+      continue
+    }
+
     return null
   }
+  return null
 }
 
 // Session-ID (refresh_sessions.id) wird beim Login vom Backend zurückgegeben
@@ -85,6 +140,26 @@ export class RateLimitedError extends Error {
   }
 }
 
+/**
+ * A failed request that carries the HTTP status that caused it.
+ *
+ * apiFetch used to throw a bare `new Error(message)` for every non-2xx answer,
+ * which flattens two very different situations into one: "the server rejected
+ * this" and "the server never managed to answer". A caller that has to tell
+ * them apart — sign-out being the case in point, where only the second means
+ * the session may still be alive — was left matching on message strings.
+ *
+ * Additive on purpose: it is still an Error and the message is unchanged, so
+ * existing catch blocks (including the `message === 'Unauthorized'` check in
+ * main.tsx) keep working untouched.
+ */
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
 // Retry idempotent methods (GET/HEAD/OPTIONS) on transient network failures and
 // 5xx responses. Non-idempotent methods (POST/PUT/PATCH/DELETE) are retried only
 // on a true network failure (where no request actually reached the server), never
@@ -111,7 +186,15 @@ export function setCsrfToken(token: string | null | undefined): void {
 // back in the X-CSRF-Token header — the double-submit-cookie pattern. Falls
 // back to the in-memory value from setCsrfToken() when the cookie isn't
 // JS-readable (see above).
-function readCsrfToken(): string | null {
+//
+// Exported for the handful of writes that genuinely cannot use apiFetch —
+// SSE streams that need the raw Response body, and downloads that return a
+// blob apiFetch would try to parse as JSON. Those must attach the header
+// themselves, and they must do it from HERE: several files grew their own
+// private copy that reads only document.cookie and therefore loses the
+// in-memory fallback above, which is exactly what keeps CSRF working behind a
+// proxy that rewrites Set-Cookie.
+export function readCsrfToken(): string | null {
   const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
   return match ? decodeURIComponent(match[1]) : inMemoryCsrfToken
 }
@@ -189,6 +272,35 @@ export async function apiFetch<T>(
   const sessionId = getSessionId()
   if (sessionId) sessionHeader['X-Vakt-Session-Id'] = sessionId
 
+  // Multipart uploads (R1-18-D4). A FormData body carries a boundary that only
+  // the browser can generate, and it does so only when NO Content-Type header
+  // is present — any value we write, including the JSON default below or one a
+  // caller copied from a JSON hook, replaces it with a boundary-less string the
+  // server cannot parse. Before this, every FormData upload therefore went
+  // around apiFetch with a raw fetch() and lost X-CSRF-Token, so all seven of
+  // them 403'd from the day they were written. Handling it here keeps the CSRF
+  // and session headers on one path instead of seven hand-rolled copies.
+  const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData
+
+  const buildHeaders = (mfa: string): Record<string, string> => {
+    // Spread order mirrors the fetch() call below: caller headers merge into
+    // the constructed object per key, they never replace it wholesale.
+    const headers: Record<string, string> = {
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...csrfHeader,
+      ...sessionHeader,
+      ...(options?.headers ?? {}),
+      // After the caller's headers so a step-up token is never clobbered.
+      ...(mfa ? { 'X-MFA-Token': mfa } : {}),
+    }
+    if (!isFormData) return headers
+    // Strip any Content-Type a caller supplied — on FormData it is always
+    // wrong, whatever its casing.
+    return Object.fromEntries(
+      Object.entries(headers).filter(([key]) => key.toLowerCase() !== 'content-type'),
+    )
+  }
+
   // Step-up MFA (S131-R-H24): filled after the server asks for a TOTP on a
   // sensitive write; re-sent on the retry. mfaPrompts caps the challenge loop so
   // repeated wrong codes cannot spin forever.
@@ -208,14 +320,7 @@ export async function apiFetch<T>(
         // wiping out X-CSRF-Token and X-Vakt-Session-Id on every request that
         // sets its own headers — the actual cause of the CSRF-header-missing
         // bug, unrelated to cookie readability.
-        headers: {
-          'Content-Type': 'application/json',
-          ...csrfHeader,
-          ...sessionHeader,
-          ...(options?.headers ?? {}),
-          // After ...options so a step-up token is never clobbered by a caller.
-          ...(mfaToken ? { 'X-MFA-Token': mfaToken } : {}),
-        },
+        headers: buildHeaders(mfaToken),
       })
     } catch (err) {
       // Network failure — retry only if we have attempts left.
@@ -259,7 +364,7 @@ export async function apiFetch<T>(
       // navigation would preserve that memory. The minor UX cost (lost router
       // state) is an acceptable trade for the guaranteed clean slate.
       window.location.href = '/login'
-      throw new Error('Unauthorized')
+      throw new ApiError('Unauthorized', 401)
     }
 
     if (res.status === 402) {
@@ -298,13 +403,25 @@ export async function apiFetch<T>(
         res.status >= 500
           ? 'Interner Fehler — bitte erneut versuchen'
           : `HTTP ${res.status.toString()}`
-      throw new Error(body.error ?? fallback)
+      throw new ApiError(body.error ?? fallback, res.status)
     }
 
     if (res.status === 204) return undefined as T
 
+    // Binary responses come back as a Blob. application/pdf and .zip belong
+    // here for the same reason octet-stream does: res.json() on them throws,
+    // so an endpoint returning one could not use apiFetch at all — which is
+    // precisely why the NIS2 PDF export hand-rolled its own fetch and lost its
+    // CSRF header (R1-18-D4). Any caller that was already receiving one of
+    // these through apiFetch was broken before this change, so widening the
+    // branch cannot regress a working path.
     const contentType = res.headers.get('content-type') ?? ''
-    if (contentType.includes('application/octet-stream') || contentType.includes('text/csv')) {
+    const isBinary =
+      contentType.includes('application/octet-stream') ||
+      contentType.includes('application/pdf') ||
+      contentType.includes('application/zip') ||
+      contentType.includes('text/csv')
+    if (isBinary) {
       return res.blob() as Promise<T>
     }
     return res.json() as Promise<T>

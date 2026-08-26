@@ -77,7 +77,8 @@ func (r *Repository) ListCryptoKeys(ctx context.Context, orgID string) ([]Crypto
 	}
 	defer rows.Close()
 
-	var out []CryptoKey
+	// R1-18-D1: initialise non-nil so an empty result serialises as [] not null.
+	out := make([]CryptoKey, 0)
 	for rows.Next() {
 		k, err := scanCryptoKey(rows)
 		if err != nil {

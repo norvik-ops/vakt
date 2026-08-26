@@ -8,12 +8,32 @@ set -euo pipefail
 #
 # Requires: docker, pg_dump, psql, openssl, bash.
 # Usage: bash scripts/restore_drill.sh
+#
+# ⚠ REICHWEITE DIESES DRILLS (ESK-7, 2026-07-30) — ein gruener Lauf hier ist KEIN
+# Nachweis, dass der Restore-Weg funktioniert:
+#   * Er restauriert ausschliesslich in eine FRISCHE, leere Datenbank ($DST_NAME
+#     ist ein neuer Container, der nie geseedet wird). Genau dort hat
+#     `pg_restore --clean --if-exists` nichts zu loeschen und endet mit rc=0. Der
+#     Defekt, der monatelang live war, tritt nur UEBER einer bestehenden Vakt-DB
+#     auf (rc=1, `cannot drop inherited constraint` je audit_log-Partition).
+#   * Er prueft eine Zwei-Spalten-Tabelle (`drill_evidence`) und kein
+#     partitioniertes `audit_log` — der Ausloeser fehlt also im Testschema.
+#   * Er prueft das Uploads-Volume NICHT. Der reproduzierte Endzustand des
+#     Defekts war "Datenbank da, Evidence-Dateien weg" — unsichtbar fuer diesen
+#     Drill.
+# Diese drei Luecken deckt `scripts/backup_restore_wiring_test.sh` ab (W1b/W2/W3/W6:
+# bestehende DB, partitioniertes audit_log, echtes Uploads-Volume, fataler
+# DB-Fehler). Dieser Drill bleibt fuer die RTO-Messung und den Tamper-Negativtest.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-SECRET_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-PASSPHRASE="drill-passphrase-12+"
+# Zur Laufzeit erzeugt statt als Literal committet (ESK-7). Einmal wuerfeln und
+# festhalten: Zeile 77 sichert damit, Zeile 84 und 102 stellen damit wieder her —
+# der HMAC der Signatur haengt am Schluessel, ein zweiter Wurf machte jede
+# Wiederherstellung ungueltig.
+SECRET_KEY="$(openssl rand -hex 32)"
+PASSPHRASE="drill-$(openssl rand -hex 12)"
 SRC_NAME="vakt-drill-src-$$"
 DST_NAME="vakt-drill-dst-$$"
 WORK="$(mktemp -d)"

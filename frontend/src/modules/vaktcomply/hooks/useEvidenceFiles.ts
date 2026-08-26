@@ -37,16 +37,9 @@ export function useUploadEvidenceFile(controlId: string) {
     mutationFn: (file: File) => {
       const formData = new FormData()
       formData.append('file', file)
-      return fetch(`/api/v1/vaktcomply/controls/${controlId}/evidence-files`, {
+      return apiFetch<EvidenceFile>(`/vaktcomply/controls/${controlId}/evidence-files`, {
         method: 'POST',
-        credentials: 'include',
         body: formData,
-      }).then(async (res) => {
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: res.statusText }))
-          throw new Error((err as { error?: string }).error ?? res.statusText)
-        }
-        return res.json() as Promise<EvidenceFile>
       })
     },
     onSuccess: () => {

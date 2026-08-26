@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 
 	auditmod "github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/reporting"
@@ -51,7 +52,7 @@ func reportFieldBlock(pdf *fpdf.Fpdf, label, value string) {
 // GenerateKPIReportPDF renders the current KPI dashboard snapshot as a PDF.
 // Every KPI is optional (pointer types) — a missing value renders as "n/a".
 func GenerateKPIReportPDF(dashboard reporting.KPIDashboard, orgName string, generatedAt time.Time) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 18)
 	pdf.AliasNbPages("{nb}")
@@ -117,7 +118,7 @@ func GenerateKPIReportPDF(dashboard reporting.KPIDashboard, orgName string, gene
 // GenerateManagementReviewPDF renders an ISO 27001 management review (Clause 9.3)
 // as an audit-ready PDF with all input and output sections.
 func GenerateManagementReviewPDF(review auditmod.ManagementReview, orgName string, generatedAt time.Time) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 18)
 	pdf.AliasNbPages("{nb}")

@@ -3,7 +3,13 @@ export interface Campaign {
   name: string
   status: 'draft' | 'scheduled' | 'running' | 'completed' | 'aborted'
   template_id: string
-  target_group_id: string
+  // K5-10: `group_id`, not `target_group_id` — vaktaware.Campaign /
+  // CreateCampaignInput (backend/internal/modules/vaktaware/models.go). Echo's
+  // binder silently dropped the old name, so every campaign created through the
+  // UI was stored with group_id = NULL: 201 Created, no target group, and the
+  // send failing later in service.go ("campaign has no target group"). Nullable
+  // on the way out because the column is (*string, omitempty).
+  group_id: string | null
   from_name: string
   from_email: string
   subject: string
@@ -16,7 +22,7 @@ export interface Campaign {
 export interface CreateCampaignInput {
   name: string
   template_id: string
-  target_group_id: string
+  group_id: string
   from_name: string
   from_email: string
   subject: string
@@ -114,11 +120,16 @@ export interface TrainingMatrixReport {
   generated_at: string
 }
 
+// Mirrors vaktaware.TargetGroup. K5-14: there is no target_count on the wire —
+// the field this used to declare made every group report "0 targets" via `?? 0`,
+// including groups with 400 imported addresses. The count now comes from the
+// /targets list the row already fetches when expanded.
 export interface TargetGroup {
   id: string
+  org_id: string
   name: string
   source: string
-  target_count?: number
+  ad_ou?: string
   created_at: string
 }
 

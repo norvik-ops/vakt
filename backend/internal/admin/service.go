@@ -2,7 +2,6 @@ package admin
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/matharnica/vakt/internal/shared/crypto"
 	"github.com/matharnica/vakt/internal/shared/notify"
 )
 
@@ -87,7 +85,13 @@ type Service struct {
 	repo           *Repository
 	modulesEnabled string
 	notifySvc      *notify.Service
-	masterKey      []byte
+	// masterKey is the RAW master key. It stays raw because the internal
+	// backup-config endpoint authenticates with hex(masterKey), and because it
+	// is the only key that opens legacy admin secrets (see secretcrypto.go).
+	masterKey []byte
+	// secretKey is the HKDF-derived sub-key admin secrets are sealed with.
+	// Derived lazily by adminSecretKey(); never used for the bearer token.
+	secretKey []byte
 }
 
 // NewService constructs an admin Service.
@@ -328,11 +332,13 @@ func (s *Service) UpsertOIDCConfig(ctx context.Context, orgID string, input OIDC
 	if len(s.masterKey) == 0 {
 		return fmt.Errorf("oidc config: VAKT_SECRET_KEY not configured; refusing to store client_secret without encryption")
 	}
-	ct, err := crypto.Encrypt(s.masterKey, []byte(input.ClientSecret))
+	// Sealed with the derived admin sub-key (marker enc:adm1:), replacing the
+	// former enc:v1:+base64 wrapper around raw-master ciphertext. Readers go
+	// through openSecret, which still accepts the old wrapper.
+	secretEnc, err := s.sealSecret([]byte(input.ClientSecret))
 	if err != nil {
 		return fmt.Errorf("oidc config: encrypt secret: %w", err)
 	}
-	secretEnc := []byte("enc:v1:" + base64.URLEncoding.EncodeToString(ct))
 	return s.repo.UpsertOrgOIDCConfig(ctx, orgID, input.ProviderURL, input.ClientID, secretEnc, input.Enabled)
 }
 

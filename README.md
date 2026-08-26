@@ -86,8 +86,12 @@ git clone https://github.com/norvik-ops/vakt
 cd vakt
 cp .env.example .env
 
-# Generate a secure secret key (required):
-sed -i 's/VAKT_SECRET_KEY=.*/VAKT_SECRET_KEY='"$(openssl rand -hex 32)"'/' .env
+# Generate the three secrets (all required — .env.example ships them as the
+# literal placeholder ERSETZEN_SIE_DIESEN_WERT, which is printed in this public
+# repository and therefore known to everyone):
+sed -i "s/^VAKT_SECRET_KEY=.*/VAKT_SECRET_KEY=$(openssl rand -hex 32)/" .env
+sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 24)/" .env
+sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -hex 24)/" .env
 
 docker compose up -d
 ```
@@ -151,13 +155,16 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 |---|:---:|:---:|
 | NIS2 | ✅ | ✅ |
 | ISO 27001 | ✅ | ✅ |
-| GDPR Art. 32 (TOM) | ✅ | ✅ |
-| CIS Controls v8 | ✅ | ✅ |
-| KRITIS-DachG | ✅ | ✅ |
-| BSI C5 | ✅ | ✅ |
+| GDPR Art. 32 (TOM) | — | ✅ |
+| CIS Controls v8 | — | ✅ |
+| KRITIS-DachG | — | ✅ |
+| BSI C5 | — | ✅ |
+| ISO 27017 | — | ✅ |
+| ISO 27018 | — | ✅ |
 | BSI IT-Grundschutz | — | ✅ |
 | EU AI Act | — | ✅ |
 | EU CRA | — | ✅ |
+
 
 ### Modules
 
@@ -181,13 +188,12 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 | Feature | Community | Pro |
 |---|:---:|:---:|
 | AI Compliance Advisor | 25 req/month | Unlimited |
-| PDF audit exports | ✅ | ✅ |
-| Advanced PDF (branding, executive summary) | — | ✅ |
-| Evidence versioning | — | ✅ |
-| Custom controls | — | ✅ |
+| Evidence versioning | ✅ | ✅ |
+| Webhook integrations | ✅ | ✅ |
+| LDAP / Active Directory user sync | ✅ | ✅ |
+| PDF audit exports | — | ✅ |
 | SSO / OIDC | — | ✅ |
 | SAML 2.0 | — | ✅ |
-| Webhook integrations | — | ✅ |
 | NIS2 reporting assistant | — | ✅ |
 | Supplier portal | — | ✅ |
 | SCIM provisioning | — | ✅ |

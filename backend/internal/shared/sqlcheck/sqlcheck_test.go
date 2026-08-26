@@ -97,6 +97,48 @@ func TestFromConsts(t *testing.T) {
 	assert.Contains(t, res.Queries[0].SQL, "FROM sr_targets")
 }
 
+// A pass has to arrive with its denominator attached, or "0 failures" says
+// nothing about how much was looked at — the failure mode check_routes.py had
+// when it printed OK over a quarter of the frontend it never parsed. The two
+// oracles have DIFFERENT denominators, so both belong in the line.
+func TestCheckResultSummaryNamesItsDenominators(t *testing.T) {
+	res := sqlcheck.CheckResult{
+		Checked:     1424,
+		Planned:     1420,
+		PlanSkipped: 4,
+		PlanSkipReasons: map[string]int{
+			"not-a-plannable-statement": 3,
+			"prepare-failed":            1,
+		},
+	}
+	s := res.Summary()
+	assert.Contains(t, s, "prepared: 1424")
+	assert.Contains(t, s, "planned: 1420")
+	assert.Contains(t, s, "plan-skipped: 4")
+	assert.Contains(t, s, "not-a-plannable-statement=3", "a skip count without a reason is a shrug")
+	assert.Contains(t, s, "prepare-failed=1")
+}
+
+// A failure has to say WHICH oracle rejected it: "column does not exist" and
+// "no unique or exclusion constraint matching the ON CONFLICT specification"
+// are different defects with different fixes.
+func TestFailureStringNamesTheOracle(t *testing.T) {
+	f := sqlcheck.Failure{
+		Query:  sqlcheck.Query{File: "/a/b/vaktscan.sql.go", Line: 1641, SQL: "INSERT INTO t VALUES ($1)"},
+		Oracle: "EXPLAIN (GENERIC_PLAN)",
+		Err:    assert.AnError,
+	}
+	s := f.String()
+	assert.Contains(t, s, "vaktscan.sql.go:1641")
+	assert.Contains(t, s, "EXPLAIN (GENERIC_PLAN) failed")
+
+	// A Failure that is about the checker itself, not about one statement, has
+	// no file — it must still read as a sentence, not as ".:0".
+	self := sqlcheck.Failure{Oracle: "EXPLAIN (GENERIC_PLAN)", Err: assert.AnError}
+	assert.Contains(t, self.String(), "sqlcheck: EXPLAIN (GENERIC_PLAN) failed")
+	assert.NotContains(t, self.String(), ":0:")
+}
+
 func TestCondense(t *testing.T) {
 	assert.Equal(t, "SELECT a FROM t WHERE x = $1",
 		sqlcheck.Condense("SELECT a\n  FROM t\n  WHERE x = $1"))

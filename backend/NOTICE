@@ -1,0 +1,47 @@
+Vakt
+Copyright (c) 2026 NorvikOps. All rights reserved.
+
+This product is licensed under the Elastic License 2.0 (ELv2).
+See LICENSE file for details.
+
+---
+
+This product includes software developed by third parties.
+The following components are used under their respective open-source licenses:
+
+BACKEND (Go)
+
+  aidanwoods.dev/go-paseto — MIT License
+  github.com/labstack/echo/v4 — MIT License
+  github.com/jackc/pgx/v5 — MIT License
+  github.com/hibiken/asynq — MIT License
+  github.com/redis/go-redis/v9 — BSD 2-Clause License
+  github.com/rs/zerolog — MIT License
+  github.com/go-playground/validator/v10 — MIT License
+  github.com/golang-migrate/migrate/v4 — MIT License
+  github.com/google/uuid — BSD 3-Clause License
+  github.com/spf13/cobra — Apache License 2.0
+  github.com/pquerna/otp — Apache License 2.0
+  github.com/go-pdf/fpdf — MIT License
+  github.com/stretchr/testify — MIT License
+  golang.org/x/crypto — BSD 3-Clause License
+  golang.org/x/time — BSD 3-Clause License
+  github.com/aws/aws-sdk-go-v2 — Apache License 2.0
+  github.com/go-ldap/ldap/v3 — MIT License
+
+FRONTEND (JavaScript/TypeScript)
+
+  react — MIT License
+  react-dom — MIT License
+  react-router-dom — MIT License
+  @tanstack/react-query — MIT License
+  zustand — MIT License
+  tailwindcss — MIT License
+  @radix-ui/* — MIT License
+  lucide-react — ISC License
+  recharts — MIT License
+  vite — MIT License
+  typescript — Apache License 2.0
+
+Full license texts for each dependency are available in their respective
+source repositories.

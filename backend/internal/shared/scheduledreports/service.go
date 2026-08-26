@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/shared/apperr"
+	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/mailhdr"
 )
 
@@ -428,7 +429,7 @@ func (s *Service) buildFindingsCSV(ctx context.Context, orgID string) ([]byte, e
 		if err := rows.Scan(&id, &title, &severity, &status, &assetID, &createdAt); err != nil {
 			continue
 		}
-		_ = w.Write([]string{id, title, severity, status, assetID, createdAt.Format(time.RFC3339)})
+		_ = w.Write(csvsafe.Row([]string{id, title, severity, status, assetID, createdAt.Format(time.RFC3339)}))
 	}
 	w.Flush()
 	if err := rows.Err(); err != nil {

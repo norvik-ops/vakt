@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { readCsrfToken } from '../../../api/client'
 
 // Sprint 22 / S22-7: Live-Progress-Indikator für einen laufenden Scan.
 // Konsumiert GET /api/v1/vaktscan/scans/:id/progress/stream (SSE).
@@ -23,10 +24,9 @@ interface Props {
   onTerminal?: (phase: 'finished' | 'failed') => void
 }
 
-function readCsrfToken(): string | null {
-  const m = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
-  return m ? decodeURIComponent(m[1]) : null
-}
+// readCsrfToken comes from api/client — the private copy that used to live
+// here read only document.cookie and silently lost the in-memory fallback,
+// which is what keeps CSRF working behind a proxy that rewrites Set-Cookie.
 
 export function ScanProgressIndicator({ scanId, onTerminal }: Props) {
   const { t } = useTranslation()

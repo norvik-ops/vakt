@@ -155,13 +155,27 @@ func (h *Handler) ExportControlsXLSX(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_EXPORT_ERROR")
 	}
 
+	// R1-20-A11: die Spalte "Framework" enthielt ctrl.FrameworkID, also eine
+	// UUID statt des Namens, und die Spalte "Owner" ctrl.LastReviewedBy — wer
+	// zuletzt geprueft hat, nicht wer verantwortlich ist. Da alle Zeilen zum
+	// selben Framework gehoeren, genuegt ein Namensabruf. Schlaegt er fehl,
+	// bleibt die UUID stehen (besser als eine leere Spalte) und es wird
+	// protokolliert.
+	frameworkName := frameworkID
+	if fw, fwErr := h.service.GetFramework(ctx, org, frameworkID); fwErr != nil {
+		log.Warn().Err(fwErr).Str("org_id", org).Str("framework_id", frameworkID).
+			Msg("export controls xlsx: Framework-Name nicht aufloesbar — UUID bleibt stehen")
+	} else if fw != nil && fw.Name != "" {
+		frameworkName = fw.Name
+	}
+
 	rows := make([][]string, len(controls))
 	for i, ctrl := range controls {
 		dueDate := ""
 		if ctrl.NextReviewDue != nil {
 			dueDate = ctrl.NextReviewDue.Format(time.DateOnly)
 		}
-		rows[i] = []string{ctrl.Title, ctrl.FrameworkID, ctrl.Status, ctrl.LastReviewedBy, dueDate}
+		rows[i] = []string{ctrl.Title, frameworkName, ctrl.Status, ctrl.Owner, dueDate}
 	}
 
 	data, err := xlsxexport.RenderSimpleTable("Controls", []string{"Title", "Framework", "Status", "Owner", "Due Date"}, rows)

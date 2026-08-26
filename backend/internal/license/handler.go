@@ -33,11 +33,14 @@ type licenseResponse struct {
 }
 
 // Handler serves the /api/v1/license endpoint.
-// mu guards h.lic and h.renewalFailing against concurrent reads and writes (e.g.
-// Activate or the AutoRefresher updating them while Get reads in another goroutine).
+//
+// The licence itself lives in inst (an atomic pointer), not in a field guarded
+// by mu: Activate and the AutoRefresher write it, and the same value has to be
+// visible to the global licence middleware in cmd/api, which runs on requests
+// this handler never sees. mu still guards renewalFailing.
 type Handler struct {
 	mu                 sync.RWMutex
-	lic                *License
+	inst               *Instance
 	db                 *pgxpool.Pool
 	rdb                *redis.Client
 	autoRenewalEnabled bool
@@ -45,7 +48,7 @@ type Handler struct {
 }
 
 // setRenewalFailing records the outcome of the most recent renewal attempt.
-// Called by the AutoRefresher; guarded by the same mutex as h.lic.
+// Called by the AutoRefresher; guarded by h.mu.
 func (h *Handler) setRenewalFailing(failing bool) {
 	h.mu.Lock()
 	h.renewalFailing = failing
@@ -60,9 +63,19 @@ func (h *Handler) RenewalFailing() bool {
 	return h.renewalFailing
 }
 
-// NewHandler creates a Handler bound to the given License.
+// NewHandler creates a Handler bound to a fresh Instance holding lic.
+// Callers that also mount Instance.Middleware() must use NewHandlerForInstance
+// instead, so that an activation updates the licence both places read.
 func NewHandler(lic *License) *Handler {
-	return &Handler{lic: lic}
+	return &Handler{inst: NewInstance(lic)}
+}
+
+// NewHandlerForInstance binds the handler to an existing instance licence.
+func NewHandlerForInstance(inst *Instance) *Handler {
+	if inst == nil {
+		inst = NewInstance(communityLicense())
+	}
+	return &Handler{inst: inst}
 }
 
 // WithDB attaches a database pool so that Activate can persist keys.
@@ -92,12 +105,7 @@ func (h *Handler) Get(c echo.Context) error {
 	// when available so that per-org overrides are reflected.
 	lic, _ := c.Get("license").(*License)
 	if lic == nil {
-		h.mu.RLock()
-		lic = h.lic
-		h.mu.RUnlock()
-	}
-	if lic == nil {
-		lic = communityLicense()
+		lic = h.inst.Get()
 	}
 	features := lic.Features
 	if features == nil {
@@ -188,11 +196,10 @@ func (h *Handler) Activate(c echo.Context) error {
 		}
 	}
 
-	// Update the in-memory license so subsequent requests (within this process) reflect the new tier.
-	// Lock for write to prevent a data race with concurrent Get calls.
-	h.mu.Lock()
-	h.lic = lic
-	h.mu.Unlock()
+	// Update the instance licence so subsequent requests reflect the new tier —
+	// including the routes outside `protected` (SSO login, SCIM, GET /license),
+	// which have no org_id and are served from exactly this value (R1-17-L04).
+	h.inst.Set(lic)
 
 	// Invalidate the Redis cache so DBMiddleware re-reads from the database on
 	// the next request rather than serving a stale Community license for up to 60 s.

@@ -24,8 +24,11 @@ git clone https://github.com/norvik-ops/vakt
 cd vakt
 cp .env.example .env
 
-# Generate a secure secret key (required — never leave this empty):
-sed -i 's/VAKT_SECRET_KEY=.*/VAKT_SECRET_KEY='"$(openssl rand -hex 32)"'/' .env
+# Generate the three secrets (all required — .env.example ships them as the
+# literal placeholder ERSETZEN_SIE_DIESEN_WERT, printed in the public repository):
+sed -i "s/^VAKT_SECRET_KEY=.*/VAKT_SECRET_KEY=$(openssl rand -hex 32)/" .env
+sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 24)/" .env
+sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -hex 24)/" .env
 
 docker compose up -d
 ```

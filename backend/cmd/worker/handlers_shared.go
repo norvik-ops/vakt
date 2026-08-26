@@ -12,7 +12,6 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -31,6 +30,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/nis2wizard"
 	"github.com/matharnica/vakt/internal/shared/notifications"
 	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/redisopt"
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"
 )
@@ -83,14 +83,14 @@ func handleSLAOverdueCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.Handler
 			sem <- struct{}{}
 			g.Go(func() error {
 				defer func() { <-sem }()
-				alertSvc.Fire(gCtx, orgID, alerting.EventFindingSLAOverdue, map[string]any{
+				// FireAndMark setzt die 24-Stunden-Sperre nur nach bestätigter
+				// Zustellung. Vorher stand hier ein bedingungsloses INSERT
+				// direkt hinter einem Fire ohne Rückgabewert — bei kaputtem
+				// Zustellweg 24 Stunden Stille je Lauf, dauerhaft also
+				// Totalausfall der Meldung (ADR-0083).
+				alertSvc.FireAndMark(gCtx, orgID, alerting.EventFindingSLAOverdue, map[string]any{
 					"message": "One or more findings have exceeded their SLA deadline.",
 				})
-				_, _ = pool.Exec(gCtx, `
-					INSERT INTO notification_alert_state (org_id, event_type, last_fired_at)
-					VALUES ($1::uuid, $2, NOW())
-					ON CONFLICT (org_id, event_type) DO UPDATE SET last_fired_at = NOW()
-				`, orgID, alerting.EventFindingSLAOverdue)
 				return nil
 			})
 		}
@@ -223,7 +223,7 @@ func handleProcessScheduledReports(cfg *config.Config, pool *pgxpool.Pool) asynq
 		svc := scheduledreports.NewService(pool, smtpCfg)
 		// Wire the vaktcomply service as the board report provider so that
 		// scheduled reports of type "board_report" can generate a PDF attachment.
-		svc.WithBoardReportProvider(vaktcomply.NewService(pool))
+		svc.WithBoardReportProvider(newComplyService(cfg, pool))
 		if err := svc.ProcessDue(ctx); err != nil {
 			log.Error().Err(err).Msg("scheduled_reports: process_due failed")
 			return err
@@ -249,18 +249,12 @@ func handleErrorBudgetReport(pool *pgxpool.Pool) asynq.HandlerFunc {
 // archived job counts exceed thresholds. No DB required — reads directly from Redis.
 func handleQueueHealthCheck(cfg *config.Config) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		redisOpt := asynq.RedisClientOpt{Addr: "localhost:6379"}
-		if cfg != nil && cfg.RedisUrl != "" {
-			if parsed, err := redis.ParseURL(cfg.RedisUrl); err == nil {
-				redisOpt = asynq.RedisClientOpt{
-					Addr:     parsed.Addr,
-					Password: parsed.Password,
-					DB:       parsed.DB,
-				}
-			}
+		// R1-14b-01: eine Ableitung fuer den ganzen Baum (siehe redisopt).
+		var redisURL string
+		if cfg != nil {
+			redisURL = cfg.RedisUrl
 		}
-
-		inspector := asynq.NewInspector(redisOpt)
+		inspector := asynq.NewInspector(redisopt.AsynqFromURL(redisURL))
 		defer inspector.Close()
 
 		queues, err := inspector.Queues()
@@ -468,16 +462,28 @@ func generateAndSendAIDigest(
 	}
 
 	// Send in-app notification.
-	notify.Send(ctx, pool, orgID, "Dein KI-Compliance-Digest", narrative, "info", "vaktcomply")
+	inAppOK := true
+	if err := notify.Send(ctx, pool, orgID, "Dein KI-Compliance-Digest", narrative, "info", "vaktcomply"); err != nil {
+		inAppOK = false
+		log.Error().Err(err).Str("org_id", orgID).Msg("ai_weekly_digest: In-App-Meldung NICHT geschrieben")
+	}
 
 	// Send email if SMTP is configured.
+	mailOK := false
 	if smtpCfg.Host != "" {
 		if err := emaildigest.SendAIDigestEmail(ctx, pool, smtpCfg, orgID, orgName, narrative); err != nil {
 			log.Warn().Err(err).Str("org_id", orgID).Msg("ai_weekly_digest: email send failed")
+		} else {
+			mailOK = true
 		}
 	}
 
-	log.Info().Str("org_id", orgID).Msg("ai_weekly_digest: sent")
+	// R1-W4A-N1: „sent" wird nicht mehr behauptet. Der Auftrag schlaegt
+	// bewusst NICHT fehl, wenn nur ein Kanal ausfiel — ein Neuversuch wuerde
+	// den teuren KI-Lauf wiederholen, und ueber den anderen Kanal ist der
+	// Digest bereits beim Kunden.
+	log.Info().Str("org_id", orgID).Bool("in_app", inAppOK).Bool("email", mailOK).
+		Msg("ai_weekly_digest: done")
 	return nil
 }
 

@@ -49,7 +49,7 @@ func runExport(t *testing.T, pool *pgxpool.Pool, orgID, modules string) map[stri
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("org_id", orgID)
-	require.NoError(t, dataexport.ExportHandler(pool, modules)(c))
+	require.NoError(t, dataexport.ExportHandler(pool, modules, "0.42.99-test")(c))
 	require.Equal(t, http.StatusOK, rec.Code)
 	return readZipFiles(t, rec.Body.Bytes())
 }
@@ -65,7 +65,7 @@ func TestDataExport_HRAndAwarePII(t *testing.T) {
 	defer cancel()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		imagePostgres,
 		postgres.WithDatabase("vakt_test"),
 		postgres.WithUsername("vakt"),
 		postgres.WithPassword("vakt"),

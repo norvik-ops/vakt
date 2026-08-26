@@ -17,27 +17,33 @@ import { apiFetch } from '../../../api/client'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { EmptyState } from '../../../shared/components/EmptyState'
 
+// K5-07: mirrors vaktcomply.InterestedParty / CreateInterestedPartyInput
+// (backend/internal/modules/vaktcomply/handler_ops.go). The old shape shared not
+// one field name with the backend beyond id/name/category: the "needs" and
+// "monitoring" columns were blank for every row, and every save blanked
+// requirements and concerns. `python3 scripts/check_fe_be_fields.py` (G15) reports
+// the same drift by name when it is run; it is not yet wired into any workflow or
+// make target, so today the guard is InterestedPartiesPage.roundtrip.test.tsx.
 interface InterestedParty {
   id: string
+  org_id: string
   name: string
   category: string
-  description: string
-  needs_and_expectations: string
-  relevant_requirements: string
-  monitoring_frequency: string
-  owner: string
+  requirements?: string
+  concerns?: string
+  review_date?: string | null
+  review_overdue: boolean
+  is_system_default: boolean
   created_at: string
   updated_at: string
 }
 
-interface IPInput {
+interface CreateInterestedPartyInput {
   name: string
   category: string
-  description: string
-  needs_and_expectations: string
-  relevant_requirements: string
-  monitoring_frequency: string
-  owner: string
+  requirements: string
+  concerns: string
+  review_date: string | null
 }
 
 function useInterestedParties() {
@@ -50,8 +56,9 @@ function useInterestedParties() {
 
 function useCreateIP() {
   const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: IPInput) =>
+  // Request type in the generics — see scripts/check_fe_be_fields.py.
+  return useMutation<InterestedParty, Error, CreateInterestedPartyInput>({
+    mutationFn: (input) =>
       apiFetch<InterestedParty>('/vaktcomply/interested-parties', { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['vaktcomply', 'interested-parties'] }); },
   })
@@ -59,8 +66,8 @@ function useCreateIP() {
 
 function useUpdateIP() {
   const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: IPInput }) =>
+  return useMutation<InterestedParty, Error, { id: string; input: CreateInterestedPartyInput }>({
+    mutationFn: ({ id, input }) =>
       apiFetch<InterestedParty>(`/vaktcomply/interested-parties/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['vaktcomply', 'interested-parties'] }); },
   })
@@ -84,15 +91,16 @@ function useSeedDefaults() {
   })
 }
 
-function emptyForm(): IPInput {
+function emptyForm(): CreateInterestedPartyInput {
   return {
     name: '',
-    category: 'external',
-    description: '',
-    needs_and_expectations: '',
-    relevant_requirements: '',
-    monitoring_frequency: 'annually',
-    owner: '',
+    // 'customer', not 'external': the category `oneof` and the
+    // ck_interested_parties CHECK both reject 'external' (as they did
+    // 'internal' and 'regulatory') — the default alone made every create 422.
+    category: 'customer',
+    requirements: '',
+    concerns: '',
+    review_date: null,
   }
 }
 
@@ -104,26 +112,21 @@ export default function InterestedPartiesPage() {
   const deleteMut = useDeleteIP()
   const seedMut = useSeedDefaults()
 
+  // Exactly the eight values the `oneof` tag and the DDL CHECK allow.
   const categoryLabels: Record<string, string> = {
-    internal: t('vaktcomply.interestedParties.categoryInternal'),
-    external: t('vaktcomply.interestedParties.categoryExternal'),
-    regulatory: t('vaktcomply.interestedParties.categoryRegulatory'),
     customer: t('vaktcomply.interestedParties.categoryCustomer'),
+    regulator: t('vaktcomply.interestedParties.categoryRegulatory'),
+    employee: t('vaktcomply.interestedParties.categoryEmployee'),
+    shareholder: t('vaktcomply.interestedParties.categoryShareholder'),
     supplier: t('vaktcomply.interestedParties.categorySupplier'),
+    insurer: t('vaktcomply.interestedParties.categoryInsurer'),
+    it_provider: t('vaktcomply.interestedParties.categoryItProvider'),
     other: t('vaktcomply.interestedParties.categoryOther'),
-  }
-
-  const freqLabels: Record<string, string> = {
-    continuous: t('vaktcomply.interestedParties.freqContinuous'),
-    monthly: t('vaktcomply.interestedParties.freqMonthly'),
-    quarterly: t('vaktcomply.interestedParties.freqQuarterly'),
-    annually: t('vaktcomply.interestedParties.freqAnnually'),
-    as_needed: t('vaktcomply.interestedParties.freqAsNeeded'),
   }
 
   const [dialogMode, setDialogMode] = useState<'create' | 'edit' | null>(null)
   const [editTarget, setEditTarget] = useState<InterestedParty | null>(null)
-  const [form, setForm] = useState<IPInput>(emptyForm())
+  const [form, setForm] = useState<CreateInterestedPartyInput>(emptyForm())
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   function openCreate() {
@@ -136,11 +139,9 @@ export default function InterestedPartiesPage() {
     setForm({
       name: ip.name,
       category: ip.category,
-      description: ip.description,
-      needs_and_expectations: ip.needs_and_expectations,
-      relevant_requirements: ip.relevant_requirements,
-      monitoring_frequency: ip.monitoring_frequency,
-      owner: ip.owner,
+      requirements: ip.requirements ?? '',
+      concerns: ip.concerns ?? '',
+      review_date: ip.review_date ?? null,
     })
     setEditTarget(ip)
     setDialogMode('edit')
@@ -215,7 +216,7 @@ export default function InterestedPartiesPage() {
                 <TableHead>{t('common.name')}</TableHead>
                 <TableHead>{t('vaktcomply.interestedParties.colCategory')}</TableHead>
                 <TableHead>{t('vaktcomply.interestedParties.colNeeds')}</TableHead>
-                <TableHead>{t('vaktcomply.interestedParties.colMonitoring')}</TableHead>
+                <TableHead>{t('vaktcomply.interestedParties.colReviewDate')}</TableHead>
                 <TableHead className="w-20"></TableHead>
               </TableRow>
             </TableHeader>
@@ -224,7 +225,9 @@ export default function InterestedPartiesPage() {
                 <TableRow key={ip.id} className="hover:bg-gray-50">
                   <TableCell>
                     <div className="font-medium text-sm">{ip.name}</div>
-                    {ip.owner && <div className="text-xs text-gray-400">{ip.owner}</div>}
+                    {ip.is_system_default && (
+                      <div className="text-xs text-gray-400">{t('vaktcomply.interestedParties.badgeSystemDefault')}</div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-xs">
@@ -232,10 +235,15 @@ export default function InterestedPartiesPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-gray-600 max-w-xs">
-                    <p className="line-clamp-2">{ip.needs_and_expectations}</p>
+                    <p className="line-clamp-2">{ip.requirements}</p>
                   </TableCell>
                   <TableCell className="text-xs text-gray-500">
-                    {freqLabels[ip.monitoring_frequency] ?? ip.monitoring_frequency}
+                    {ip.review_date ?? '—'}
+                    {ip.review_overdue && (
+                      <span className="ml-1.5 text-destructive font-medium">
+                        {t('vaktcomply.interestedParties.badgeOverdue')}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -280,30 +288,24 @@ export default function InterestedPartiesPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>{t('vaktcomply.interestedParties.labelFrequency')}</Label>
-                <Select value={form.monitoring_frequency} onValueChange={(v) => { setForm(f => ({ ...f, monitoring_frequency: v })); }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(freqLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>{t('vaktcomply.interestedParties.labelReviewDate')}</Label>
+                <Input
+                  type="date"
+                  value={form.review_date ?? ''}
+                  onChange={(e) => { setForm(f => ({ ...f, review_date: e.target.value || null })); }}
+                />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>{t('common.description')}</Label>
-              <Textarea rows={2} value={form.description} onChange={(e) => { setForm(f => ({ ...f, description: e.target.value })); }} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t('vaktcomply.interestedParties.labelNeeds')}</Label>
-              <Textarea rows={3} placeholder={t('vaktcomply.interestedParties.placeholderNeeds')} value={form.needs_and_expectations} onChange={(e) => { setForm(f => ({ ...f, needs_and_expectations: e.target.value })); }} />
-            </div>
+            {/* ck_interested_parties has no description, monitoring_frequency or
+                owner column, and CreateInterestedPartyInput binds none of them —
+                the three inputs that used to be here were discarded on submit. */}
             <div className="space-y-1.5">
               <Label>{t('vaktcomply.interestedParties.labelRequirements')}</Label>
-              <Textarea rows={2} placeholder={t('vaktcomply.interestedParties.placeholderRequirements')} value={form.relevant_requirements} onChange={(e) => { setForm(f => ({ ...f, relevant_requirements: e.target.value })); }} />
+              <Textarea rows={3} placeholder={t('vaktcomply.interestedParties.placeholderRequirements')} value={form.requirements} onChange={(e) => { setForm(f => ({ ...f, requirements: e.target.value })); }} />
             </div>
             <div className="space-y-1.5">
-              <Label>{t('vaktcomply.interestedParties.labelOwner')}</Label>
-              <Input placeholder={t('vaktcomply.interestedParties.placeholderOwner')} value={form.owner} onChange={(e) => { setForm(f => ({ ...f, owner: e.target.value })); }} />
+              <Label>{t('vaktcomply.interestedParties.labelConcerns')}</Label>
+              <Textarea rows={2} placeholder={t('vaktcomply.interestedParties.placeholderConcerns')} value={form.concerns} onChange={(e) => { setForm(f => ({ ...f, concerns: e.target.value })); }} />
             </div>
           </div>
           <DialogFooter>

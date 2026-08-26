@@ -13,17 +13,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/config"
 )
 
-func handleBackupFreshnessCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleBackupFreshnessCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
 			return err
 		}
 
-		svc := vaktcomply.NewService(pool)
+		svc := newComplyService(cfg, pool)
 		var failed, overdueTotal int
 		for _, orgID := range orgIDs {
 			overdue, err := svc.CheckBackupFreshness(ctx, orgID)

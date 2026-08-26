@@ -101,7 +101,8 @@ REDIS_PASSWORD=<dein-redis-passwort>
 | Variable | Pflicht | Standard | Beschreibung |
 |----------|---------|----------|--------------|
 | `VAKT_SECRET_KEY` | Ja | — | 32-Byte Hex-Master-Key für AES-256-GCM-Verschlüsselung aller Secrets in der Datenbank. Generieren: `openssl rand -hex 32`. **Nie nach dem ersten Start ändern.** |
-| `VAKT_ADMIN_ALLOWED_IPS` | — | — (offen) | Komma-separierte CIDRs/IPs, die auf Admin-Endpunkte zugreifen dürfen, z. B. `10.0.0.0/8,192.168.1.0/24`. Leer = alle IPs erlaubt. |
+| `VAKT_ADMIN_ALLOWED_IPS` | — | — (offen) | Komma-separierte CIDRs/IPs, die auf **alle** `/api/v1/admin/*`-Endpunkte zugreifen dürfen, z. B. `10.0.0.0/8,192.168.1.0/24`. Eine nackte IP wird als Einzelhost gewertet (`/32`, IPv6 `/128`). Leer = keine Beschränkung aus dieser Variable. Wird **einmal beim Start** gelesen — eine Änderung wirkt erst nach Neustart der API. Zweiter, unabhängiger Mechanismus mit **derselben** Reichweite: die org-weite Allowlist in der Oberfläche (siehe „IP-Allowlist — Aussperr-Recovery" weiter unten). Beide ersetzen einander nicht; konfigurierte Listen müssen beide passiert werden. Wirksam nur mit korrekt gesetztem `VAKT_TRUSTED_PROXIES`. |
+| `VAKT_SCIM_ALLOWED_IPS` | — | — (offen) | Komma-separierte CIDRs/IPs, die auf `/api/v1/scim/v2/*` zugreifen dürfen. Eine nackte IP wird als Einzelhost gewertet (`/32`, IPv6 `/128`). Leer = keine Beschränkung. SCIM traegt den vollen Nutzer-Lebenszyklus: `PATCH`/`DELETE /Users` sind Deprovisionierung und Rollenzuweisung. Die eigene Bearer-Auth ist fuer einen IdP-Push die richtige Authentifizierung, aber kein Netz-Guard — ein geleaktes SCIM-Token wirkt sonst von jeder Adresse. Hier gehoeren die Ausgangs-Bereiche des eigenen Identitaetsanbieters hinein (Entra ID und Okta veroeffentlichen ihre). Bewusst **nicht** `VAKT_ADMIN_ALLOWED_IPS`: Bueronetz und IdP-Rechenzentrum sind fast disjunkte Adressmengen, die Wiederverwendung wuerde die Admin-Oberflaeche aufmachen, um SCIM hereinzulassen. Ist die Variable gesetzt, laesst sich aber kein Eintrag lesen, ist SCIM **zu** — eine Liste aus Tippfehlern ist keine Erlaubnis. Wird **einmal beim Start** gelesen. Wirksam nur mit korrekt gesetztem `VAKT_TRUSTED_PROXIES`. |
 | `VAKT_CORS_ORIGINS` | **Prod: Ja** | `http://localhost,http://localhost:5173` | Komma-separierte Liste erlaubter Cross-Origin-Quellen, z. B. `https://vakt.meine-firma.de`. **In Produktion zwingend auf die echte Frontend-Domain setzen.** Der Wert `*` (alle Origins) wird zusammen mit Session-Cookies nur im Demo-Modus (`VAKT_DEMO=true`) akzeptiert — im Nicht-Demo-Modus **bricht der Start mit `*` bewusst ab** (Fail-Closed, S87-2). |
 | `VAKT_FORCE_SECURE_COOKIES` | — | `false` | Wenn `true`, tragen alle Session-/CSRF-Cookies das `Secure`-Attribut **unabhängig** von TLS/`X-Forwarded-Proto`. Empfehlung für Produktion hinter einem TLS-terminierenden Reverse-Proxy: `=true` — schützt als hartes Sicherheitsnetz gegen einen fehlkonfigurierten Proxy, der `X-Forwarded-Proto: https` nicht setzt (S87-5, CWE-614). |
 | `VAKT_DOMAIN` | — | `localhost` | Domain für den eingebauten **Caddy**-Frontdoor. Auf die öffentliche Domain setzen (z. B. `vakt.example.com`) → Caddy holt und erneuert automatisch ein Let's-Encrypt-Zertifikat (Ports **80+443** müssen aus dem Internet erreichbar sein). Default `localhost` = HTTPS mit lokal signiertem Cert (Tests). `:80` = nur HTTP (Betrieb hinter eigenem TLS-Terminator). Wird von Caddy/Compose gelesen, nicht vom Backend. |
@@ -419,7 +420,23 @@ VAKT_LICENSE_TOKEN=550e8400-e29b-41d4-a716-446655440000
 
 **Datenschutz-Hinweis zu `VAKT_EPSS_ENABLED`:** **Standardmäßig aus.** Wenn auf `true` gesetzt, reichert Vakt Findings mit EPSS-Scores (Exploit Prediction Scoring System) aus einer externen API an — eine ausgehende Verbindung. Bewusst opt-in, um das No-Phone-Home-Versprechen nicht zu unterlaufen. In Air-Gap-/strikten Egress-Umgebungen auf `false` (Default) belassen.
 
-> **Hinweis:** Die Variablen `VAKT_LICENSE_PRIVATE_KEY`, `VAKT_LEXWARE_API_KEY`, `VAKT_BILLING_BASE_URL`, `VAKT_BILLING_NOTIFY_EMAIL`, `VAKT_BILLING_SMALL_BUSINESS`, `VAKT_BILLING_VAT_ID`, `VAKT_PORTAL_BASE_URL` sowie `VAKT_BILLING_ADMIN_MODE` / `VAKT_BILLING_ADMIN_PORT` / `VAKT_BILLING_ADMIN_CF_TEAM` / `VAKT_BILLING_ADMIN_CF_AUD` sind ausschließlich für den Norvik-eigenen Billing-Dienst — sie gehören **nicht** in die Kunden-Konfiguration.
+> **Hinweis:** Die Variablen `VAKT_LICENSE_PRIVATE_KEY`, `VAKT_LEXWARE_API_KEY`, `VAKT_BILLING_BASE_URL`, `VAKT_BILLING_NOTIFY_EMAIL`, `VAKT_BILLING_CORS_ORIGINS`, `VAKT_BILLING_SMALL_BUSINESS`, `VAKT_BILLING_VAT_ID`, `VAKT_PORTAL_BASE_URL` sowie `VAKT_BILLING_ADMIN_MODE` / `VAKT_BILLING_ADMIN_PORT` / `VAKT_BILLING_ADMIN_CF_TEAM` / `VAKT_BILLING_ADMIN_CF_AUD` sind ausschließlich für den Norvik-eigenen Billing-Dienst — sie gehören **nicht** in die Kunden-Konfiguration.
+
+### Cross-Origin-Freigabe des Bestellformulars (nur Norvik)
+
+| Variable | Default | Bedeutung |
+|---|---|---|
+| `VAKT_BILLING_CORS_ORIGINS` | leer | Komma-getrennte Liste der Ursprünge, die das Bestellformular aus einem Browser absenden dürfen, z. B. `https://vakt.norvikops.de`. Der Produktionswert steht im Compose des Billing-Hosts, **nicht** im Go-Code (der Pfad gehoert zur Norvik-Infrastruktur und ist deshalb hier nicht genannt). |
+
+Marketing-Seite und Billing-API liegen auf verschiedenen Hosts. Der Browser fragt deshalb vor jeder Bestellung mit einer Preflight-Anfrage nach, ob er sie überhaupt abschicken darf — und verwirft sie, wenn die Antwort den eigenen Ursprung nicht nennt. Genau das ist bis zum 2026-08-07 passiert: **jede** über das Formular abgeschickte Bestellung scheiterte im Browser, und zwar so, dass es wie ein Fehler beim Interessenten aussah. Auf unserer Seite entstand dabei keine einzige Logzeile, weil die Anfrage den Handler nie erreichte.
+
+Drei Eigenschaften dieser Einstellung, die man kennen muss:
+
+- **Nur ein Endpunkt nutzt sie**: `POST /api/v1/billing/quote-request` samt zugehörigem `OPTIONS`. Der Freigabe-Link aus der Mail ist eine gewöhnliche Seitennavigation und kennt kein CORS, Lexware-Webhook und Lizenzerneuerung sind Server-zu-Server ohne Browser, und das Kundenportal liefert Seite und Formular unter demselben Host aus.
+- **Leer heißt: niemand kann bestellen.** Der Dienst startet trotzdem — Lizenzerneuerung, Webhook und Portal hängen nicht daran — und protokolliert den Zustand beim Start als Fehler. Jeder abgelehnte Ursprung erhöht zusätzlich den Zähler `vakt_billing_cors_rejected_total` am Metrik-Endpunkt. Ohne ihn wäre ein falsch gesetzter Wert von außen unsichtbar, denn eine im Browser geblockte Bestellung hinterlässt bei uns sonst keine Spur.
+- **`*` wird abgelehnt und der Dienst startet dann nicht.** Dieser Prozess signiert Lizenzschlüssel; eine Pauschalfreigabe darf man nicht versehentlich ausliefern.
+
+Cookies werden bewusst **nicht** erlaubt (`Access-Control-Allow-Credentials` bleibt ungesetzt): Das Formular schickt keine, und der Billing-Dienst kennt überhaupt keine Sitzungscookies — Freigabe-Link und Kundenportal weisen sich über ein Token im Pfad aus.
 
 ### Umsatzsteuer im Billing-Dienst (nur Norvik)
 
@@ -515,6 +532,26 @@ Die folgenden Integrationen werden **pro Organisation** in der Vakt-Oberfläche 
 > sieht die API hinter dem Proxy nur die Proxy-IP). **Bewusste Grenze:** Admin-rollen-Routen auf
 > Nicht-`/admin`-Pfaden (`/trust-center/*`, `/integrations/*`) sind — wie bei `VAKT_ADMIN_ALLOWED_IPS` —
 > nicht IP-beschränkt.
+>
+> **Zwei Mechanismen, dieselbe Reichweite — und diese Reichweite ist `/admin`, nicht „alles, was
+> Admin-Rechte braucht" (Codeaudit v5b, R1-10-V01):** Die org-weite Allowlist (hier) und die
+> instanzweite `VAKT_ADMIN_ALLOWED_IPS` sind unabhängig voneinander und decken beide **alle**
+> `/admin`-Routen — aber **keine** der Admin-Routen außerhalb dieses Pfad-Präfixes. Gemessen am
+> echten Router (2026-07-29, nur GET-Routen, jede Anfrage einzeln abgeschickt): **80** Routen
+> außerhalb `/admin` weisen einen Viewer aus Rollengründen ab, **45** davon auch einen
+> SecurityAnalyst, sind also echt Admin-only — **40** unter `/integrations`, dazu `/auditor` (2)
+> sowie je eine unter `/vaktcomply`, `/vaktvault` und `/settings`; Schreibrouten sind darin nicht
+> gezählt, die echte Zahl liegt also höher. Wer eine Allowlist setzt, schützt damit die
+> Admin-**Oberfläche**, nicht jede Funktion, die Admin-Rechte verlangt.
+> Bis zum Fix galt selbst die `/admin`-Deckung nur für die org-weite Variante: die
+> Env-Variante hing an einzelnen `/admin`-Untergruppen und ließ **11 von 59** Routen durch —
+> darunter Rollenwechsel, MFA-Break-Glass und den Admin-Passwort-Reset-Token. Wer sich allein auf
+> die Env-Variable verließ, hielt Endpunkte für geschützt, die es nicht waren. Beide hängen jetzt
+> an **einem** Punkt und teilen dieselbe Pfad-Bedingung; ein Deckungstest
+> (`backend/cmd/api/admin_ip_allowlist_coverage_test.go`) fordert die Invariante für jede Route
+> ein, statt eine Liste zu pflegen. Unterschied bleibt nur in der Bedienung: die Env-Variable gilt
+> instanzweit und braucht einen Neustart, die org-weite Liste wirkt sofort und nur für ihre
+> Organisation.
 
 Ausführliche Setup-Anleitungen: `docs/wiki/enterprise-sso.md`
 
@@ -544,6 +581,31 @@ docker compose -f docker-compose.yml -f docker-compose.backup.yml --profile back
 ```
 
 Der opt-in `backup`-Service läuft `backup-cron.sh` auf `VAKT_BACKUP_SCHEDULE`.
+
+> **Dieser Service braucht einen Internet-Ausgang — und zwar bei jedem Start.**
+> Das verwendete `postgres:16-alpine`-Image enthält kein `gpg` und kein `openssl`;
+> beide sind für ein verschlüsseltes, signiertes Backup zwingend. Der Service holt
+> sie beim Start per `apk add` von `dl-cdn.alpinelinux.org` nach und hängt dafür am
+> Netzwerk `egress`. Es werden dabei **keine** Daten Ihrer Instanz nach außen
+> gegeben — nur Pakete geladen. (Die Datenspeicher `postgres`, `pgbouncer` und
+> `redis` bleiben ohne Ausgang.)
+>
+> **In einer Air-Gap-Installation (kein Internet-Ausgang) startet dieser Service
+> nicht.** Er beendet sich mit einer Meldung, die genau das erklärt, und wird von
+> `restart: unless-stopped` neu gestartet — es entsteht also eine Neustart-Schleife
+> und **keine** Backups. Nutzen Sie in diesem Fall **Variante B (Host-Cron)**: dort
+> laufen die Werkzeuge auf dem Host, der Container wird nicht gebraucht.
+> Ein eigenes Image mit vorinstallierten Paketen ist geplant.
+>
+> Dasselbe gilt bei einem CDN-Ausfall. Prüfen Sie nach dem Start einmalig
+> `docker compose logs backup` — dort steht `scheduler started: <Zeitplan>`, wenn
+> alles bereit ist.
+>
+> **Evidence-Dateien:** Der Container hat bewusst **keinen** Docker-Zugriff (ein
+> Docker-Socket entspricht Root-Rechten). Er kann das Uploads-Volume deshalb nicht
+> sehen und schreibt ein **reines Datenbank-Archiv** — im Manifest als
+> `"uploads": "unchecked"` vermerkt. Wenn Sie die Evidence-Dateien mit im Archiv
+> brauchen, fahren Sie `scripts/backup.sh` vom Host (Variante B).
 
 **Variante B — Host-Cron:**
 

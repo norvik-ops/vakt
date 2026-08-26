@@ -93,6 +93,10 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	g.POST("/ai/incident-guide", h.IncidentResponseGuide, aiLimit)
 	// Sprint 15 / S15-5: SSE-Streaming-Endpoint fuer AI-Advisor + Documentation.
 	g.POST("/ai/chat/stream", h.ChatStream, aiLimit)
+	// Schreib-Rolle für alle zustandsändernden AI-Routen. Steht hier oben, weil
+	// sowohl die Agent-Routen als auch die Narrative-/Insight-Routen sie brauchen.
+	aiWrite := auth.RequireRole(WriterRoles...)
+
 	// Sprint 18 / S18-3: Agent-Run-Endpoint (Plan/Execute/Reflect, SSE).
 	// S32-2: runMgr für Write-Tool-Approval-Flow (ApproveCard im Frontend).
 	runMgr := &AgentRunManager{}
@@ -103,9 +107,23 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	// initial AgentRun was already accounted for.
 	// Agent run requires the agent_write_tools feature (Pro+).
 	// The endpoint is experimental — callers receive X-Vakt-Status: experimental.
-	g.POST("/ai/agent/run", agentH.AgentRun, aiLimit, license.Require(license.FeatureAgentWriteTools))
-	g.POST("/ai/agent/runs/:run_id/approve", agentH.ApproveRun, license.Require(license.FeatureAgentWriteTools))
-	g.POST("/ai/agent/runs/:run_id/reject", agentH.RejectRun, license.Require(license.FeatureAgentWriteTools))
+	//
+	// R1-SA13-01 (CRITICAL): diese drei Routen liefen ohne jede Rollenprüfung.
+	// Ein Viewer bekam auf /ai/agent/run live eine 200 und der Agent lief an.
+	// Das ist keine Lese-Operation: der Agent plant Handlungen und führt nach
+	// Freigabe Werkzeuge aus — inklusive des Write-Tools add_control_note.
+	// Approve/Reject sind dieselbe Fähigkeit aus der anderen Richtung: wer einen
+	// Lauf freigeben darf, entscheidet über die Ausführung. Der Owner-Check in
+	// AgentRunManager.Decide beantwortet nur "wer", nie "darf diese Rolle".
+	//
+	// aiWrite steht bewusst VOR aiLimit und license.Require: eine Rolle, die den
+	// Endpoint gar nicht benutzen darf, soll weder Quota verbrauchen noch eine
+	// 402 sehen, die einen fehlenden Lizenz-Baustein statt fehlender Rechte
+	// suggeriert. Zusätzlich prüfen die Handler selbst (agent_handler.go) —
+	// Begründung dort.
+	g.POST("/ai/agent/run", agentH.AgentRun, aiWrite, aiLimit, license.Require(license.FeatureAgentWriteTools))
+	g.POST("/ai/agent/runs/:run_id/approve", agentH.ApproveRun, aiWrite, license.Require(license.FeatureAgentWriteTools))
+	g.POST("/ai/agent/runs/:run_id/reject", agentH.RejectRun, aiWrite, license.Require(license.FeatureAgentWriteTools))
 	// Sprint 52 (S52-2): Gap-Explain SSE streaming per control.
 	g.POST("/ai/controls/:id/explain", h.GapExplain, aiLimit)
 	// Sprint 52 (S52-3): Risk narrative generation + persistence.
@@ -113,7 +131,6 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	// unlike the pure-generation routes above (quota/license-gated by design, MA-04)
 	// it is a state-mutating write and must require a writer role. A Viewer must
 	// not be able to overwrite a risk's narrative.
-	aiWrite := auth.RequireRole("Admin", "SecurityAnalyst")
 	g.POST("/ai/risks/:id/narrative", h.RiskNarrative, aiLimit, aiWrite)
 	// Sprint 52 (S52-6): AI Insights list + dismiss.
 	g.GET("/ai/insights", h.ListInsights)

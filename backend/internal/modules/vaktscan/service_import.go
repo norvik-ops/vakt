@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -113,21 +114,36 @@ func (s *Service) ImportSARIF(ctx context.Context, orgID, assetID string, data [
 				rawID = result.Message.Text
 			}
 
+			// Die ruleId trägt bei Trivy, Grype und OSV die Schwachstellen-
+			// kennung, bei Semgrep/CodeQL dagegen eine Regel-Kennung. Nur die
+			// erste Form darf als CVE geschrieben werden — Begründung und Grenze
+			// stehen bei sarifCVEFromRuleID. Wird eine erkannt, bekommt der Fund
+			// den scanner-agnostischen CVE-Schlüssel und wird mit dem Fund eines
+			// anderen Werkzeugs zusammengeführt; `raw_id` bleibt dann NULL
+			// (Repository.UpsertImportedFinding).
+			cveID := sarifCVEFromRuleID(result.RuleID)
+
 			slaDueAt := calcSLADueAt(cfg, severity)
+			scanner := strings.ToLower(toolName)
 
 			f := Finding{
 				OrgID:       orgID,
 				AssetID:     assetID,
+				CVEID:       cveID,
 				Title:       title,
 				Description: description,
 				Severity:    severity,
 				Status:      "open",
-				Scanner:     strings.ToLower(toolName),
-				RawID:       rawID,
-				SLADueAt:    slaDueAt,
+				Scanner:     scanner,
+				// Ohne `sources` wäre die Zusammenführung verlustbehaftet: Die
+				// Spalte `scanner` bleibt beim Erstfinder, nur `sources` sammelt
+				// alle Werkzeuge, die denselben Fund gemeldet haben.
+				Sources:  []string{scanner},
+				RawID:    rawID,
+				SLADueAt: slaDueAt,
 			}
 
-			if _, err := s.repo.UpsertFindingByRawID(ctx, orgID, f); err != nil {
+			if _, err := s.repo.UpsertImportedFinding(ctx, orgID, f); err != nil {
 				return imported, fmt.Errorf("upsert SARIF finding %q: %w", rawID, err)
 			}
 			imported++
@@ -149,6 +165,51 @@ func sarifLevelToSeverity(level string) string {
 	default: // "none" or absent
 		return "info"
 	}
+}
+
+// sarifCVERe erkennt eine CVE-Kennung am ANFANG einer SARIF-ruleId.
+//
+// Die Verankerung mit `^` und die Grenze `(?:$|[^0-9])` tragen die ganze Regel:
+//   - Trivy schreibt die nackte Kennung („CVE-2021-44228"),
+//   - Grype hängt den Paketnamen an („CVE-2021-44228-log4j-core"),
+//   - OSV hängt den Modulpfad an („CVE-2023-45283/golang.org/x/net").
+//
+// Die Ziffernklasse ist absichtlich gierig: „CVE-2021-442280" ist eine
+// fünfstellige laufende Nummer, keine vierstellige mit angehängter 0.
+var sarifCVERe = regexp.MustCompile(`^(CVE-[0-9]{4}-[0-9]{4,})(?:$|[^0-9])`)
+
+// sarifCVEFromRuleID liest die CVE-Kennung aus einer SARIF-ruleId, oder nil.
+//
+// WARUM NICHT JEDE ruleId ALS CVE (R1-RV-01):
+// Die ruleId ist ein werkzeugeigener Bezeichner. Bei Trivy/Grype/OSV ist er eine
+// Schwachstellenkennung, bei Semgrep eine Regel-Kennung
+// („go.lang.security.audit.xss.…"), bei CodeQL ein Regelpfad („go/sql-injection").
+// Würde man alles blind in `cve_id` schreiben, legte der Dedup-Index
+// (org_id, asset_id, cve_id) sämtliche Treffer derselben Semgrep-Regel auf einem
+// Asset zu EINER Zeile zusammen — falsche Deduplizierung ist schlimmer als keine,
+// weil dabei Befunde verschwinden statt bloß doppelt zu stehen.
+//
+// GRENZE, BEWUSST GEZOGEN: Nur CVE, kein GHSA und keine anderen Kennungen
+// (OSV-…, DSA-…, RUSTSEC-…). Zwei Gründe:
+//
+//  1. Die Spalte heißt `cve_id` und wird als CVE weiterverarbeitet — die
+//     EPSS-Anreicherung schickt ihren Inhalt an api.first.org, das ausschließlich
+//     CVE-Kennungen kennt. Eine GHSA dort wäre eine Abfrage ins Leere.
+//  2. Für die Zusammenführung brächte GHSA wenig: Melden zwei Werkzeuge dieselbe
+//     Schwachstelle, nennt in der Regel das eine die CVE und das andere die GHSA.
+//     Dedupliziert würde also nur GHSA-gegen-GHSA — zum Preis einer Spalte, die
+//     dann zwei Kennungsarten mischt. Echte Alias-Auflösung braucht eine eigene
+//     Spalte für Kennungs-Synonyme, nicht diese hier.
+//
+// Folge dieser Grenze: Ein Fund, den beide Werkzeuge nur unter GHSA melden, wird
+// weiterhin nicht scanner-übergreifend zusammengeführt. Er läuft wie bisher über
+// den raw_id-Schlüssel und steht doppelt — sichtbar, nicht verloren.
+func sarifCVEFromRuleID(ruleID string) *string {
+	m := sarifCVERe.FindStringSubmatch(strings.ToUpper(strings.TrimSpace(ruleID)))
+	if m == nil {
+		return nil
+	}
+	return &m[1]
 }
 
 // sarifTruncate truncates s to at most max runes.
@@ -238,7 +299,7 @@ func (s *Service) ImportCycloneDX(ctx context.Context, orgID, assetID string, da
 			SLADueAt:    slaDueAt,
 		}
 
-		if _, err := s.repo.UpsertFindingByRawID(ctx, orgID, f); err != nil {
+		if _, err := s.repo.UpsertImportedFinding(ctx, orgID, f); err != nil {
 			return imported, fmt.Errorf("upsert CycloneDX finding %q: %w", rawID, err)
 		}
 		imported++
@@ -250,7 +311,9 @@ func (s *Service) ImportCycloneDX(ctx context.Context, orgID, assetID string, da
 // Prefers CVSS_31, then CVSS_30, then the first entry. Returns severity and score.
 func extractCDXRating(ratings []cdxRating) (string, float64) {
 	if len(ratings) == 0 {
-		return "medium", 0
+		// Ohne jedes Rating gibt es keine Bewertung. Vorher stand hier `medium` —
+		// eine erfundene Einstufung, die im Auditbericht wie eine echte aussieht.
+		return SeverityUnknown, 0
 	}
 
 	best := ratings[0]
@@ -261,10 +324,17 @@ func extractCDXRating(ratings []cdxRating) (string, float64) {
 		}
 	}
 
-	severity := strings.ToLower(best.Severity)
-	if severity == "" {
-		severity = scoreToSeverity(best.Score)
+	if strings.TrimSpace(best.Severity) == "" {
+		// Keine Textbewertung, aber ein Score — der Score IST die Bewertung und
+		// ist damit die bessere Quelle als „unbewertet".
+		return scoreToSeverity(best.Score), best.Score
 	}
+
+	// CycloneDX kennt `unknown` und `none`, der CHECK auf vb_findings kannte
+	// beides nicht — hier lief derselbe Defekt wie bei Trivy/Nuclei, nur über den
+	// Einzel-Upsert statt über den Stapel. normalizeSeverity ist total, ein
+	// unbekannter Rohwert kippt den Import also nicht mehr (siehe severity.go).
+	severity, _ := normalizeSeverity(best.Severity)
 	return severity, best.Score
 }
 
@@ -331,12 +401,9 @@ func (s *Service) ImportCSV(ctx context.Context, orgID, assetID string, data []b
 			continue
 		}
 
-		severity := strings.ToLower(col("severity"))
-		switch severity {
-		case "critical", "high", "medium", "low", "info":
-		default:
-			severity = "medium"
-		}
+		// Ein nicht deutbarer Wert wird `unknown`, nicht `medium`: Eine erfundene
+		// Einstufung ist im Auditbericht nicht von einer echten zu unterscheiden.
+		severity, _ := normalizeSeverity(col("severity"))
 
 		cveIDStr := col("cve_id")
 		description := col("description")
@@ -374,7 +441,7 @@ func (s *Service) ImportCSV(ctx context.Context, orgID, assetID string, data []b
 			SLADueAt:    slaDueAt,
 		}
 
-		if _, err := s.repo.UpsertFindingByRawID(ctx, orgID, f); err != nil {
+		if _, err := s.repo.UpsertImportedFinding(ctx, orgID, f); err != nil {
 			return imported, fmt.Errorf("upsert CSV finding %q: %w", title, err)
 		}
 		imported++

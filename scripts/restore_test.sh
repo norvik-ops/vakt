@@ -16,8 +16,17 @@ RESTORE_SH="${SCRIPT_DIR}/restore.sh"
 fail() { echo "FAIL: $1" >&2; exit 1; }
 pass() { echo "PASS: $1"; }
 
-TEST_SECRET_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-TEST_PASSPHRASE="correct horse battery staple"
+# Zur Laufzeit erzeugt statt als Literal committet (ESK-7). Ein Zufallswert ist
+# hier sogar strenger als das fruehere feste Literal: Test 2 prueft, dass der
+# Master-Key NIE auf stdout landet (Zeile ~59, `grep -qF`) — ein zufaelliger Wert
+# kann mit unbeteiligter Ausgabe nicht zufaellig kollidieren.
+# Einmal wuerfeln: derselbe Schluessel baut das Archiv (Zeile ~35), signiert es
+# (~44) und wird von restore.sh geprueft (~50, ~74).
+TEST_SECRET_KEY="$(openssl rand -hex 32)"
+# Leerzeichen bewusst beibehalten: die Passphrase wird durch mehrere
+# Quoting-Ebenen gereicht (`-pass "pass:…"`, Env-Var), und ein Wert ohne
+# Leerzeichen wuerde eine kaputte Quotierung nicht mehr auffallen lassen.
+TEST_PASSPHRASE="correct $(openssl rand -hex 8) battery staple"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT

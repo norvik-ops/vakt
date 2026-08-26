@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Download, CheckCircle2, XCircle, RefreshCw, ShieldCheck, AlertTriangle, Pencil } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
-import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
@@ -16,34 +15,49 @@ import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { ExportButton } from '../../../shared/components/ExportButton'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
 
+// K5-01/02/03: these two interfaces are the wire contract, not a wish list. Every
+// field name below IS the `json:` tag of the Go struct that serialises it —
+// policy.SoADedicatedEntry and policy.SoASummary in
+// backend/internal/modules/vaktcomply/policy/repository_soa_dedicated.go. The
+// previous version invented `group`/`title`/`justification_included`/`owner`/
+// `evidence_note`, which made the whole table filter to empty and made every
+// save blank the justification. Keep in step with the Go structs.
+// `python3 scripts/check_fe_be_fields.py` (G15) names this drift when you run it —
+// it is NOT yet wired into ci.yml or `make gates` (both files are held by another
+// branch), so as of this commit nothing runs it for you. Wiring lines: ADR-0080.
 interface SoADedicatedEntry {
   control_ref: string
-  group: string
-  title: string
-  description: string
+  control_name: string
+  control_group: string
   applicable: boolean
-  justification_included: string
-  justification_excluded: string
+  justification?: string
+  exclusion_reason?: string
   implementation_status: string
-  owner: string
-  evidence_note: string
+  manually_set?: boolean
+  ck_control_id?: string | null
+  evidence_reference?: string
+  notes?: string
 }
 
 interface SoADedicatedSummary {
-  total: number
-  applicable: number
-  excluded: number
-  without_exclusion_reason: number
-  version_status: string
-  draft_version: number
-  approved_version: number
+  version: number
+  status: string
+  applicable_count: number
+  excluded_count: number
+  implemented_count: number
+  partial_count: number
+  planned_count: number
+  not_started_count: number
+  implementation_pct: number
 }
 
+// Only the four values the backend accepts: ck_soa_entries.implementation_status
+// CHECK + `validate:"oneof=not_started planned partial implemented"`. The former
+// `in_progress`/`not_applicable` options were rejected with 422.
 const IMPL_STATUS_COLORS: Record<string, string> = {
   implemented: 'bg-green-100 text-green-800',
-  in_progress: 'bg-blue-100 text-blue-800',
+  planned: 'bg-blue-100 text-blue-800',
   not_started: 'bg-gray-100 text-gray-700',
-  not_applicable: 'bg-gray-50 text-gray-400',
   partial: 'bg-yellow-100 text-yellow-800',
 }
 
@@ -78,8 +92,11 @@ function useInitSoA() {
 
 function useUpdateSoAEntry() {
   const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ ref, input }: { ref: string; input: Partial<SoADedicatedEntry> }) =>
+  // Request type in the generics, not only in the mutationFn annotation — an
+  // apiFetch/useQuery/useMutation type argument is where
+  // scripts/check_fe_be_fields.py looks for a wire type.
+  return useMutation<SoADedicatedEntry, Error, { ref: string; input: UpdateSoAEntryInput }>({
+    mutationFn: ({ ref, input }) =>
       apiFetch<SoADedicatedEntry>(`/vaktcomply/soa/entries/${encodeURIComponent(ref)}`, {
         method: 'PUT',
         body: JSON.stringify(input),
@@ -101,13 +118,21 @@ function useApproveSoA() {
   })
 }
 
-interface EditForm {
+// policy.UpdateSoAEntryInput — same name as the Go struct so the gate can pair
+// them. The PUT is a FULL overwrite — the handler
+// writes every one of these columns unconditionally (repository_soa_dedicated.go:
+// UpdateSoAEntry), so a field the dialog does not carry through is a field the
+// save DELETES. `notes` and `ck_control_id` are therefore round-tripped even
+// though the dialog does not edit them.
+interface UpdateSoAEntryInput {
   applicable: boolean
-  justification_included: string
-  justification_excluded: string
+  justification: string
+  exclusion_reason: string
   implementation_status: string
-  owner: string
-  evidence_note: string
+  manually_set: boolean
+  ck_control_id: string | null
+  evidence_reference: string
+  notes: string
 }
 
 export default function SoAPage() {
@@ -120,21 +145,22 @@ export default function SoAPage() {
 
   const [activeGroup, setActiveGroup] = useState<string>('5')
   const [editEntry, setEditEntry] = useState<SoADedicatedEntry | null>(null)
-  const [editForm, setEditForm] = useState<EditForm>({
+  const [editForm, setEditForm] = useState<UpdateSoAEntryInput>({
     applicable: true,
-    justification_included: '',
-    justification_excluded: '',
+    justification: '',
+    exclusion_reason: '',
     implementation_status: 'not_started',
-    owner: '',
-    evidence_note: '',
+    manually_set: true,
+    ck_control_id: null,
+    evidence_reference: '',
+    notes: '',
   })
 
   const IMPL_STATUS_LABELS: Record<string, string> = {
     not_started: t('vaktcomply.soaPage.implNotStarted'),
-    in_progress: t('vaktcomply.soaPage.implInProgress'),
-    implemented: t('vaktcomply.soaPage.implImplemented'),
-    not_applicable: t('vaktcomply.soaPage.implNotApplicable'),
+    planned: t('vaktcomply.soaPage.implPlanned'),
     partial: t('vaktcomply.soaPage.implPartial'),
+    implemented: t('vaktcomply.soaPage.implImplemented'),
   }
 
   const GROUP_LABELS: Record<string, string> = {
@@ -150,11 +176,15 @@ export default function SoAPage() {
     setEditEntry(e)
     setEditForm({
       applicable: e.applicable,
-      justification_included: e.justification_included,
-      justification_excluded: e.justification_excluded,
+      justification: e.justification ?? '',
+      exclusion_reason: e.exclusion_reason ?? '',
       implementation_status: e.implementation_status || 'not_started',
-      owner: e.owner,
-      evidence_note: e.evidence_note,
+      // A save through this dialog IS a manual decision — without this the nightly
+      // evidence sync (SyncSoAImplementationStatus) overwrites the user's status.
+      manually_set: true,
+      ck_control_id: e.ck_control_id ?? null,
+      evidence_reference: e.evidence_reference ?? '',
+      notes: e.notes ?? '',
     })
   }
 
@@ -176,7 +206,18 @@ export default function SoAPage() {
     a.remove()
   }
 
-  const grouped = (entries ?? []).filter(e => e.group === activeGroup)
+  const grouped = (entries ?? []).filter(e => e.control_group === activeGroup)
+
+  // K5-02: policy.SoASummary carries neither a total nor the "excluded without a
+  // documented reason" count — the two numbers this header used to invent. Both
+  // follow from the entry list the page already holds, so deriving them here
+  // keeps the auditor warning (and the approve block) alive instead of rendering
+  // `undefined`. The backend enforces the same rule server-side on approve
+  // (ErrExclusionReasonRequired), so this is a hint, not the guard.
+  const totalEntries = summary ? summary.applicable_count + summary.excluded_count : undefined
+  const withoutExclusionReason = (entries ?? []).filter(
+    e => !e.applicable && !(e.exclusion_reason ?? '').trim(),
+  ).length
 
   if (isLoading) return <div className="p-8"><SkeletonTable rows={8} cols={5} /></div>
 
@@ -230,13 +271,13 @@ export default function SoAPage() {
             label={t('common.word')}
             format="docx"
           />
-          {summary?.version_status === 'draft' && (
+          {summary?.status === 'draft' && (
             <Button
               size="sm"
               onClick={() => { approveMut.mutate(); }}
-              disabled={approveMut.isPending || (summary?.without_exclusion_reason ?? 0) > 0}
+              disabled={approveMut.isPending || withoutExclusionReason > 0}
               className="bg-green-600 hover:bg-green-700 text-white"
-              title={(summary?.without_exclusion_reason ?? 0) > 0 ? t('vaktcomply.soaPage.approveBlockedTitle') : undefined}
+              title={withoutExclusionReason > 0 ? t('vaktcomply.soaPage.approveBlockedTitle') : undefined}
             >
               <CheckCircle2 className="h-4 w-4 mr-1.5" />
               {approveMut.isPending ? t('vaktcomply.soaPage.approvingBtn') : t('vaktcomply.soaPage.approveBtn')}
@@ -248,22 +289,22 @@ export default function SoAPage() {
       {/* Version banner */}
       {summary && (
         <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-sm ${
-          summary.version_status === 'approved'
+          summary.status === 'approved'
             ? 'bg-green-50 border-green-200 text-green-800'
             : 'bg-amber-50 border-amber-200 text-amber-800'
         }`}>
-          {summary.version_status === 'approved'
+          {summary.status === 'approved'
             ? <CheckCircle2 className="h-4 w-4 shrink-0" />
             : <RefreshCw className="h-4 w-4 shrink-0" />}
           <span>
-            {summary.version_status === 'approved'
-              ? t('vaktcomply.soaPage.versionApproved', { version: summary.approved_version })
-              : t('vaktcomply.soaPage.versionDraft', { version: summary.draft_version })}
+            {summary.status === 'approved'
+              ? t('vaktcomply.soaPage.versionApproved', { version: summary.version })
+              : t('vaktcomply.soaPage.versionDraft', { version: summary.version })}
           </span>
-          {(summary?.without_exclusion_reason ?? 0) > 0 && (
+          {withoutExclusionReason > 0 && (
             <span className="ml-auto flex items-center gap-1 text-amber-700">
               <AlertTriangle className="h-4 w-4" />
-              {t('vaktcomply.soaPage.exclusionsWithoutReason', { count: summary.without_exclusion_reason })}
+              {t('vaktcomply.soaPage.exclusionsWithoutReason', { count: withoutExclusionReason })}
             </span>
           )}
         </div>
@@ -272,19 +313,19 @@ export default function SoAPage() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white border rounded-lg p-4">
-          <div className="text-2xl font-bold">{summary?.total ?? 93}</div>
+          <div className="text-2xl font-bold">{totalEntries ?? 93}</div>
           <div className="text-xs text-gray-500 mt-0.5">{t('vaktcomply.soaPage.statTotal')}</div>
         </div>
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="text-2xl font-bold text-green-700">{summary?.applicable ?? 0}</div>
+          <div className="text-2xl font-bold text-green-700">{summary?.applicable_count ?? 0}</div>
           <div className="text-xs text-green-600 mt-0.5">{t('vaktcomply.soaPage.statApplicable')}</div>
         </div>
         <div className="bg-gray-50 border rounded-lg p-4">
-          <div className="text-2xl font-bold text-gray-500">{summary?.excluded ?? 0}</div>
+          <div className="text-2xl font-bold text-gray-500">{summary?.excluded_count ?? 0}</div>
           <div className="text-xs text-gray-500 mt-0.5">{t('vaktcomply.soaPage.statExcluded')}</div>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="text-2xl font-bold text-amber-700">{summary?.without_exclusion_reason ?? 0}</div>
+          <div className="text-2xl font-bold text-amber-700">{withoutExclusionReason}</div>
           <div className="text-xs text-amber-600 mt-0.5">{t('vaktcomply.soaPage.statWithoutReason')}</div>
         </div>
       </div>
@@ -328,12 +369,12 @@ export default function SoAPage() {
               <TableRow key={e.control_ref} className="hover:bg-gray-50">
                 <TableCell className="font-mono text-xs text-gray-500">{e.control_ref}</TableCell>
                 <TableCell>
-                  <div className="text-sm font-medium">{e.title}</div>
-                  {e.applicable && e.justification_included && (
-                    <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{e.justification_included}</div>
+                  <div className="text-sm font-medium">{e.control_name}</div>
+                  {e.applicable && e.justification && (
+                    <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{e.justification}</div>
                   )}
-                  {!e.applicable && e.justification_excluded && (
-                    <div className="text-xs text-gray-400 mt-0.5 line-clamp-1 italic">{e.justification_excluded}</div>
+                  {!e.applicable && e.exclusion_reason && (
+                    <div className="text-xs text-gray-400 mt-0.5 line-clamp-1 italic">{e.exclusion_reason}</div>
                   )}
                 </TableCell>
                 <TableCell>
@@ -364,7 +405,7 @@ export default function SoAPage() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editEntry?.control_ref} — {editEntry?.title}
+              {editEntry?.control_ref} — {editEntry?.control_name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -390,8 +431,8 @@ export default function SoAPage() {
                   <Textarea
                     rows={2}
                     placeholder={t('vaktcomply.soaPage.editPlaceholderJustificationIncluded')}
-                    value={editForm.justification_included}
-                    onChange={(e) => { setEditForm(f => ({ ...f, justification_included: e.target.value })); }}
+                    value={editForm.justification}
+                    onChange={(e) => { setEditForm(f => ({ ...f, justification: e.target.value })); }}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -402,27 +443,24 @@ export default function SoAPage() {
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {Object.entries(IMPL_STATUS_LABELS).filter(([v]) => v !== 'not_applicable').map(([v, l]) => (
+                      {Object.entries(IMPL_STATUS_LABELS).map(([v, l]) => (
                         <SelectItem key={v} value={v}>{l}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.soaPage.editLabelOwner')}</Label>
-                  <Input
-                    placeholder={t('vaktcomply.soaPage.editPlaceholderOwner')}
-                    value={editForm.owner}
-                    onChange={(e) => { setEditForm(f => ({ ...f, owner: e.target.value })); }}
-                  />
-                </div>
+                {/* ck_soa_entries has no owner column and UpdateSoAEntryInput binds
+                    no owner field — the input that used to sit here discarded
+                    whatever was typed into it on every save (K5-03). Removed
+                    rather than silently dropped; an owner column is a migration
+                    and therefore a separate decision. */}
                 <div className="space-y-1.5">
                   <Label>{t('vaktcomply.soaPage.editLabelEvidenceNote')}</Label>
                   <Textarea
                     rows={2}
                     placeholder={t('vaktcomply.soaPage.editPlaceholderEvidenceNote')}
-                    value={editForm.evidence_note}
-                    onChange={(e) => { setEditForm(f => ({ ...f, evidence_note: e.target.value })); }}
+                    value={editForm.evidence_reference}
+                    onChange={(e) => { setEditForm(f => ({ ...f, evidence_reference: e.target.value })); }}
                   />
                 </div>
               </>
@@ -432,8 +470,8 @@ export default function SoAPage() {
                 <Textarea
                   rows={3}
                   placeholder={t('vaktcomply.soaPage.editPlaceholderJustificationExcluded')}
-                  value={editForm.justification_excluded}
-                  onChange={(e) => { setEditForm(f => ({ ...f, justification_excluded: e.target.value })); }}
+                  value={editForm.exclusion_reason}
+                  onChange={(e) => { setEditForm(f => ({ ...f, exclusion_reason: e.target.value })); }}
                 />
               </div>
             )}

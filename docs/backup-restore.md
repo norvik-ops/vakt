@@ -40,8 +40,18 @@ Das Skript:
 ### Backup verifizieren (Dry-Run)
 
 ```bash
-./scripts/backup-verify.sh /backups/vakt/vakt-backup-2026-05-18_020000.tar.gz
+# Die Passphrase ist PFLICHT: backup.sh verschlüsselt den Dump immer, und ohne
+# sie kann backup-verify.sh die Dump-Integrität nicht prüfen. Es bricht dann mit
+# exit 1 ab, statt "verification passed" zu melden — die HMAC-Signatur beweist
+# nur, dass das Archiv unverändert ist, nicht dass der Dump brauchbar ist.
+VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key \
+  ./scripts/backup-verify.sh /backups/vakt/vakt-backup-2026-05-18_020000.tar.gz
 ```
+
+Alternativ `VAKT_BACKUP_PASSPHRASE=<passphrase>` direkt, oder die Zeile
+`VAKT_BACKUP_PASSPHRASE=…` in der `.env` im Arbeitsverzeichnis — das Skript lädt
+sie automatisch. Die Datei-Variante ist vorzuziehen: sie taucht in keiner
+Prozessliste und in keiner Shell-History auf.
 
 Prüft Archiv-Integrität und Dump-Vollständigkeit, ohne die Datenbank zu
 berühren. **Empfohlen: wöchentlich ausführen.**
@@ -67,19 +77,40 @@ docker compose up -d
 
 ## Geplantes Backup (Cron)
 
-Auf dem Produktivserver als `root` oder dem Deploy-Nutzer einrichten
-(`crontab -e`):
+Auf dem Produktivserver als `root` oder dem Deploy-Nutzer einrichten. Zuerst die
+Schlüsseldatei anlegen — ohne sie läuft der Job jede Nacht ins Leere (siehe
+Hinweis unter dem Cron-Block):
 
-```cron
-# Täglich um 02:00 Uhr, Passphrase aus Schlüsseldatei lesen
-0 2 * * * cd /opt/vakt && ./scripts/backup.sh /backups/vakt >> /var/log/vakt-backup.log 2>&1
+```bash
+# Passphrase (min. 12 Zeichen) einmalig hinterlegen, nur für root lesbar
+mkdir -p /etc/vakt
+install -m 600 /dev/null /etc/vakt/backup.key
+printf '%s' 'IHRE-PASSPHRASE' > /etc/vakt/backup.key
 ```
 
-> **Hinweis zum nicht-interaktiven Betrieb:** Das Backup-Skript liest die
-> Passphrase interaktiv. Für vollautomatische Cron-Backups ohne Passphrase-Eingabe
-> legen Sie den `VAKT_SECRET_KEY` als separates verschlüsseltes Geheimnis in
-> Ihrem Secrets-Manager (z.B. HashiCorp Vault, AWS Secrets Manager) ab und
-> passen Sie das Skript an Ihre Infrastruktur an.
+Dann `crontab -e`:
+
+```cron
+# Täglich um 02:00 Uhr. VAKT_BACKUP_PASSPHRASE_FILE ist PFLICHT: backup.sh
+# verschlüsselt den Dump immer und fragt die Passphrase sonst interaktiv ab —
+# ein Cronjob hat aber kein Terminal, das Skript endet dann mit exit 1
+# ("No passphrase provided"). Ohne die Zuweisung entsteht also KEIN Backup.
+0 2 * * * cd /opt/vakt && VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key ./scripts/backup.sh /backups/vakt >> /var/log/vakt-backup.log 2>&1
+
+# Wöchentliche Verifikation des letzten Backups (Sonntag 03:00) — dieselbe
+# Passphrase, aus demselben Grund (backup-verify.sh entschlüsselt den Dump).
+0 3 * * 0 cd /opt/vakt && VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key ./scripts/backup-verify.sh $(ls -t /backups/vakt/vakt-backup-*.tar.gz | head -1) >> /var/log/vakt-backup-verify.log 2>&1
+```
+
+> **Hinweis zum nicht-interaktiven Betrieb:** `backup.sh` fragt die Passphrase
+> nur dann interaktiv ab, wenn es an einem Terminal läuft (`[ -t 0 ]`). Cron,
+> systemd-Timer und der Opt-in-Scheduler aus `docker-compose.backup.yml` haben
+> keins — dort ist `VAKT_BACKUP_PASSPHRASE_FILE` (oder `VAKT_BACKUP_PASSPHRASE`,
+> bzw. die Zeile in der `.env` im Arbeitsverzeichnis) die einzige Quelle. Fehlt
+> sie, bricht das Skript mit exit 1 ab, statt ein unverschlüsseltes oder halbes
+> Archiv zu schreiben. Die Datei-Variante ist vorzuziehen: sie taucht in keiner
+> Prozessliste auf. Prüfbar gehalten von `scripts/backup_doc_calls_test.sh` —
+> die Cron-Zeilen oben werden dort ausgeführt, nicht nur gelesen.
 
 ---
 
@@ -150,7 +181,9 @@ rclone copy /backups/vakt/ minio:vakt-backups/
 |---|---|
 | `scripts/backup.sh [output-dir]` | Vollständiges Backup (DB + Key) |
 | `scripts/restore.sh <backup-file.tar.gz>` | Wiederherstellung |
-| `scripts/backup-verify.sh <backup-file.tar.gz>` | Archiv-Verifikation ohne DB-Eingriff |
+| `scripts/backup-verify.sh <backup-file.tar.gz>` | Archiv-Verifikation ohne DB-Eingriff — **braucht die Passphrase** (`VAKT_BACKUP_PASSPHRASE[_FILE]` oder `.env`), sonst exit 1 |
 
 Alle Skripte lesen `.env` automatisch, wenn die Datei im aktuellen Verzeichnis
-liegt.
+liegt. Steht `VAKT_BACKUP_PASSPHRASE` dort, genügt der nackte Aufruf aus dem
+Vakt-Verzeichnis; ein Cronjob mit eigenem Arbeitsverzeichnis braucht die
+Zuweisung explizit.

@@ -10,6 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/audit"
 )
 
 // Sprint 18 / S18-1 + S18-2: Plan/Execute/Reflect-Agent-Loop.
@@ -404,11 +406,19 @@ func jsonString(v []string) string {
 	return string(b)
 }
 
+// aiAgentActorEmail markiert Agent-Einträge im audit_log als nicht-menschlichen
+// Akteur. Der Wert landet in der user_email-Spalte und geht damit in den
+// Ketten-Hash ein.
+const aiAgentActorEmail = "ai_agent"
+
 // auditAgentStart schreibt einen Audit-Log-Eintrag für den Agent-Run-Start.
 // Sprint 18 S18-5: jeder Agent-Run hinterlässt im audit_log einen actor=
-// ai_agent-Entry mit goal-Excerpt. Vollständige Tool-Call-Audit-Vertiefung
-// in der Tool-Implementierung (jeder Tool.Execute schreibt seinen eigenen
-// Eintrag via audit.Write).
+// ai_agent-Entry mit goal-Excerpt.
+//
+// R1-27-V02/ESK-4: der Eintrag lief früher als roher `INSERT INTO audit_log`
+// und ließ prev_hash/entry_hash damit NULL — die Zeile hing an keiner Kette
+// und war für VerifyOrgChain nicht prüfbar. Der Schreibweg geht deshalb über
+// audit.Write, den einzigen kettenverlängernden Schreiber (ADR-0040).
 func (r *AgentRunner) auditAgentStart(ctx context.Context, req AgentRunRequest, plan string) {
 	if r.db == nil || req.OrgID == "" {
 		return
@@ -421,41 +431,40 @@ func (r *AgentRunner) auditAgentStart(ctx context.Context, req AgentRunRequest, 
 	if len(planExcerpt) > 500 {
 		planExcerpt = planExcerpt[:500] + "…"
 	}
-	details, _ := json.Marshal(map[string]string{
-		"goal":         goalExcerpt,
-		"plan_excerpt": planExcerpt,
-		"actor":        "ai_agent",
+	audit.Write(ctx, r.db, audit.WriteEntry{
+		OrgID:        req.OrgID,
+		UserID:       req.UserID,
+		UserEmail:    aiAgentActorEmail,
+		Action:       "agent_run_start",
+		ResourceType: "ai/agent",
+		Details: map[string]string{
+			"goal":         goalExcerpt,
+			"plan_excerpt": planExcerpt,
+			"actor":        aiAgentActorEmail,
+		},
 	})
-	if _, err := r.db.Exec(ctx, `
-		INSERT INTO audit_log
-		  (org_id, user_id, user_email, action, resource_type, resource_id, details, ip_address)
-		VALUES ($1::uuid, NULLIF($2, '')::uuid, 'ai_agent', 'agent_run_start', 'ai/agent', NULL, $3, NULL)`,
-		req.OrgID, req.UserID, details,
-	); err != nil {
-		log.Warn().Err(err).Str("org_id", req.OrgID).Msg("ai.agent: audit start write failed")
-	}
 }
 
 // auditApprovedToolCall schreibt einen Audit-Log-Eintrag für einen genehmigten
 // Write-Tool-Call. Enthält Tool-Namen und die User-ID der genehmigenden Person.
+// Kettet über audit.Write — siehe auditAgentStart.
 func (r *AgentRunner) auditApprovedToolCall(ctx context.Context, req AgentRunRequest, toolName, approvedByUserID string) {
 	if r.db == nil || req.OrgID == "" {
 		return
 	}
-	details, _ := json.Marshal(map[string]string{
-		"tool":        toolName,
-		"run_id":      req.RunID,
-		"approved_by": approvedByUserID,
-		"actor":       "ai_agent",
+	audit.Write(ctx, r.db, audit.WriteEntry{
+		OrgID:        req.OrgID,
+		UserID:       req.UserID,
+		UserEmail:    aiAgentActorEmail,
+		Action:       "agent_tool_approved",
+		ResourceType: "ai/agent",
+		Details: map[string]string{
+			"tool":        toolName,
+			"run_id":      req.RunID,
+			"approved_by": approvedByUserID,
+			"actor":       aiAgentActorEmail,
+		},
 	})
-	if _, err := r.db.Exec(ctx, `
-		INSERT INTO audit_log
-		  (org_id, user_id, user_email, action, resource_type, resource_id, details, ip_address)
-		VALUES ($1::uuid, NULLIF($2, '')::uuid, 'ai_agent', 'agent_tool_approved', 'ai/agent', NULL, $3, NULL)`,
-		req.OrgID, req.UserID, details,
-	); err != nil {
-		log.Warn().Err(err).Str("org_id", req.OrgID).Str("tool", toolName).Msg("ai.agent: audit tool-approved write failed")
-	}
 }
 
 // storeApprovalRequest persistiert einen Approval-Request in der DB.

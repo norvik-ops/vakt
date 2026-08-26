@@ -35,8 +35,11 @@ Vor dem ersten Produktiv-Start oder nach einem Bare-Metal-Neuaufbau:
 
 - [ ] **Backup-Cron aktiv** — täglicher pg_dump (02:00 Uhr empfohlen):
   ```cron
-  0 2 * * * cd /opt/vakt && ./scripts/backup.sh /backups/vakt >> /var/log/vakt-backup.log 2>&1
+  0 2 * * * cd /opt/vakt && VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key ./scripts/backup.sh /backups/vakt >> /var/log/vakt-backup.log 2>&1
   ```
+  Die Passphrase ist Pflicht: `backup.sh` verschlüsselt den Dump immer und fragt
+  sonst am Terminal nach — im Cron gibt es keins, der Lauf endet dann mit rc=1
+  und ohne Archiv. Datei mit `chmod 600` anlegen.
   Dokumentation: [`docs/operations/backup-restore.md`](backup-restore.md)
 
 - [ ] **Update-Cron konfiguriert** — Watchtower oder manueller Pull-Cron:
@@ -47,8 +50,13 @@ Vor dem ersten Produktiv-Start oder nach einem Bare-Metal-Neuaufbau:
     containrrr/watchtower --interval 86400
 
   # Oder: manueller wöchentlicher Update-Cron
-  # 0 3 * * 0 cd /opt/vakt && docker compose pull && docker compose up -d
+  # 0 3 * * 0 cd /opt/vakt && VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key ./scripts/update.sh >> /var/log/vakt-update.log 2>&1
   ```
+  **Watchtower aktualisiert ausschließlich Images.** `docker-compose.yml`,
+  `Caddyfile` und `scripts/` bleiben dabei auf dem Stand der Erstinstallation —
+  Härtungsänderungen, die dort stecken, kommen nie an. Wer Watchtower nutzt,
+  braucht zusätzlich einen Weg für die Auslieferungs-Dateien (`./scripts/update.sh`
+  bzw. `git pull --ff-only`, siehe [`docs/UPGRADE.md`](../UPGRADE.md)).
 
 - [ ] **Firewall** — Port 80/443 offen, Port 5432/6379 nicht von außen erreichbar
 - [ ] **Redis-Passwort gesetzt** — `VAKT_REDIS_URL` enthält Passwort; `requirepass` in `docker-compose.yml` aktiv
@@ -431,8 +439,16 @@ docker compose logs vakt-api 2>&1 | grep '"latency_ms"' | \
 Vor jedem Upgrade: Backup erstellen.
 
 ```bash
-# Standard-Upgrade
-./scripts/backup.sh /backups/vakt
+# Standard-Upgrade — nimmt die Auslieferungs-Dateien mit
+./scripts/update.sh
+```
+
+Von Hand sind es diese Schritte; Schritt 1 ist der, den ein reines
+`docker compose pull` auslässt:
+
+```bash
+git pull --ff-only                       # docker-compose.yml, Caddyfile, scripts/
+VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key ./scripts/backup.sh /backups/vakt
 docker compose pull
 docker compose run --rm migrate up
 docker compose up -d

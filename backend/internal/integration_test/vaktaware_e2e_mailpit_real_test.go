@@ -57,9 +57,34 @@ func TestVaktaware_E2E_MailpitToClickRate(t *testing.T) {
 	// ── A real mail server ────────────────────────────────────────────────────
 	mp, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        "axllent/mailpit:latest",
+			Image:        imageMailpit,
 			ExposedPorts: []string{"1025/tcp", "8025/tcp"},
-			WaitingFor:   wait.ForListeningPort("8025/tcp").WithStartupTimeout(60 * time.Second),
+			// Readiness has to cover BOTH ports this test uses, and it used to cover
+			// only one: `ForListeningPort("8025/tcp")` — while the very next thing
+			// the test does is dial **1025** over SMTP. That smtpd came up at all
+			// was never asserted. That is the whole reason for the change.
+			//
+			// What the old check did NOT get wrong, contrary to an earlier version
+			// of this comment: `ForListeningPort` is not merely an external dial.
+			// wait/host_port.go does an external dial AND an internalCheck that
+			// shells into the container (`cat /proc/net/tcp* | … || nc -vz … ||
+			// </dev/tcp/…`), and mailpit ships /bin/sh with a readable /proc — so
+			// 8025 really was verified as bound inside the container.
+			//
+			// Net effect of the swap, stated plainly because it is not a pure win:
+			// the 1025 leg GAINS that internal check (it is a ForListeningPort), and
+			// the 8025 leg LOSES it (HTTPStrategy has no internal check — it issues
+			// a real request against the mapped port). For 8025 that trade is worth
+			// it: a bound port that does not yet answer /readyz with 200 is not a
+			// usable API, and an HTTP status cannot be produced by docker-proxy.
+			//
+			// WithDeadline rather than WithStartupTimeout: the latter is deprecated
+			// on MultiStrategy and delegates here anyway. The 60s covers both legs.
+			WaitingFor: wait.ForAll(
+				wait.ForListeningPort("1025/tcp"),
+				wait.ForHTTP("/readyz").WithPort("8025/tcp").
+					WithStatusCodeMatcher(func(status int) bool { return status == http.StatusOK }),
+			).WithDeadline(60 * time.Second),
 		},
 		Started: true,
 	})
@@ -107,8 +132,26 @@ func TestVaktaware_E2E_MailpitToClickRate(t *testing.T) {
 	_, err = pool.Exec(ctx, `UPDATE sr_targets SET is_bounced = false WHERE org_id = $1::uuid`, orgID)
 	require.NoError(t, err)
 
+	// NOTE (R1-INT-02 follow-up, 2026-07-30): this assertion is VACUOUS as far as
+	// delivery goes, and its message used to claim otherwise ("the campaign must go
+	// out over real SMTP"). SendCampaignEmails swallows the SMTP error —
+	// vaktaware/service.go only log.Error()s a non-nil sendErr, then calls
+	// SetCampaignCompleted and returns nil. So a total delivery failure
+	// ("smtp dial: EOF", every mail lost) still returns nil and this line passes;
+	// the test then proceeds to poll Mailpit and fails later, somewhere else.
+	// What actually proves delivery here is the mail being read back out of the
+	// mailbox further down, not this call — so the message now says only what the
+	// call can actually establish. A comment is not enforcement; the string is the
+	// part a future reader sees when it fails.
+	//
+	// Reported as its own finding (swallowed error + campaign stamped 'completed'
+	// + emails_sent counting pre-send events = a plausible-looking zero that flows
+	// into Comply as evidence). Deliberately NOT fixed here: it is a product
+	// defect in vaktaware, not a test-infrastructure one, and this commit owns
+	// test files only.
 	require.NoError(t, svc.SendCampaignEmails(ctx, orgID, campaignID),
-		"the campaign must go out over real SMTP")
+		"SendCampaignEmails must not return an error — note this does NOT prove "+
+			"delivery, it swallows SMTP failures; the mailbox read below is the proof")
 
 	// ── Read the mail back out of the mailbox ─────────────────────────────────
 	mailAPI := "http://" + smtpHost + ":" + apiPort.Port()

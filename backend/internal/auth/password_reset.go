@@ -98,41 +98,84 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email, frontendURL, 
 	return nil
 }
 
-// GeneratePasswordResetLink creates a reset token for the given email and returns the full reset link.
-// Unlike RequestPasswordReset it does not send email — the caller is responsible for delivery.
-// Returns ("", nil) if the email address is not found.
-func (s *Service) GeneratePasswordResetLink(ctx context.Context, email, frontendURL string) (string, error) {
-	var userID string
-	err := s.db.QueryRow(ctx,
-		`SELECT id::text FROM users WHERE email = $1 AND is_active = TRUE`, email,
-	).Scan(&userID)
+// AdminIssuePasswordReset issues a password reset for a user ON BEHALF OF an
+// admin, scoped to that admin's organisation, and delivers the reset link by
+// email. It returns the target user's id (for the audit trail) and whether a
+// reset email was dispatched.
+//
+// SECURITY (R1-24-RT01 / R1-10-V02, cross-org account takeover): users.email is
+// globally UNIQUE, so the previous org-blind lookup (SELECT ... FROM users WHERE
+// email = $1) let any org's Admin mint a reset token for ANY account across the
+// whole platform. The admin route only checks the caller's role in the caller's
+// own org (RequireRole("Admin")), so an org2 admin could issue a reset for the
+// org1 admin and take over the account. The fix scopes the lookup to the
+// caller's org via org_members (the users table has no direct org_id;
+// membership runs through org_members). An org-foreign :email therefore
+// resolves to no row and the caller receives a 404 — no token is minted.
+//
+// The raw token is NEVER returned to the caller. A reset link is a credential:
+// handing it back in the response body is exactly the takeover primitive we are
+// closing. It is delivered by email only. When SMTP is not configured no token
+// is minted at all (nothing could deliver it) and sent=false is reported, so no
+// dangling, undeliverable token is created.
+//
+// NOTE: this is a DIFFERENT path from the public RequestPasswordReset flow.
+// RequestPasswordReset stays deliberately org-blind — a user hitting "forgot my
+// password" does not know their org, so that lookup must resolve by email alone
+// and mail the address named in the request. Only THIS admin-issuance path is
+// org-scoped.
+//
+// Returns targetUserID == "" (with err == nil) when no matching active user
+// exists in the caller's org.
+func (s *Service) AdminIssuePasswordReset(ctx context.Context, email, orgID, frontendURL, smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom string) (targetUserID string, sent bool, err error) {
+	var userID, lang string
+	err = s.db.QueryRow(ctx, `
+		SELECT u.id::text, COALESCE(u.preferred_language, '')
+		FROM users u
+		JOIN org_members om ON om.user_id = u.id
+		WHERE u.email = $1 AND u.is_active = TRUE AND om.org_id = $2::uuid`,
+		email, orgID,
+	).Scan(&userID, &lang)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
+		return "", false, nil
 	}
 	if err != nil {
-		return "", fmt.Errorf("lookup user: %w", err)
+		return "", false, fmt.Errorf("lookup user: %w", err)
+	}
+
+	// No SMTP configured: the user exists in this org (so the caller gets 200,
+	// not 404), but we do not mint an undeliverable token. Actual mail delivery
+	// for the admin path is a documented follow-up story.
+	if smtpHost == "" {
+		return userID, false, nil
 	}
 
 	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return "", fmt.Errorf("generate reset token: %w", err)
+	if _, rerr := rand.Read(raw); rerr != nil {
+		return userID, false, fmt.Errorf("generate reset token: %w", rerr)
 	}
 	rawHex := hex.EncodeToString(raw)
 
 	hash := sha256.Sum256([]byte(rawHex))
 	tokenHash := hex.EncodeToString(hash[:])
 
-	_, err = s.db.Exec(ctx, `
+	if _, ierr := s.db.Exec(ctx, `
 		INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
 		VALUES ($1::uuid, $2, now() + interval '1 hour')`,
 		userID, tokenHash,
-	)
-	if err != nil {
-		return "", fmt.Errorf("insert reset token: %w", err)
+	); ierr != nil {
+		return userID, false, fmt.Errorf("insert reset token: %w", ierr)
 	}
 
+	if lang == "" {
+		lang = "de"
+	}
 	resetLink := frontendURL + "/auth/reset-password?token=" + rawHex
-	return resetLink, nil
+	if serr := sendPasswordResetEmail(smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom, email, resetLink, lang); serr != nil {
+		log.Error().Err(serr).Str("email_redacted", logsafe.RedactEmail(email)).Msg("admin password reset: send email failed")
+		return userID, false, nil
+	}
+	return userID, true, nil
 }
 
 // ResetPassword validates the raw token, updates the user's password, and marks
@@ -210,7 +253,18 @@ func (s *Service) ResetPassword(ctx context.Context, rawToken, newPassword strin
 	// password version counter (S87-6: PG durable source of truth + Redis mirror;
 	// checkPwVersion falls back to PG through a Redis outage). Shared with the
 	// offboarding revocation path (S131-C1).
-	s.bumpPwVersion(ctx, userID)
+	// R1-W7A-N3: bumpPwVersion now reports its outcome. It is deliberately NOT
+	// propagated here — the password has already been changed and committed, so
+	// returning an error would tell the user their reset failed when it did not,
+	// and they would retry with a token that is now marked used. The failure is
+	// logged at ERROR (bumpPwVersionWith logs the cause too). That leaves a real
+	// gap: after a password reset the OLD access tokens can survive up to their
+	// 1 h TTL. Closing it needs the reset flow to retry or to refuse the commit,
+	// which is a different flow than this change owns — reported, not built.
+	if err := s.bumpPwVersion(ctx, userID); err != nil {
+		log.Error().Err(err).Str("user_id", userID).
+			Msg("password reset: pw_version bump not confirmed — access tokens issued before the reset may survive their TTL")
+	}
 
 	// AUTH-002: Revoke all refresh sessions so that an attacker holding a stolen
 	// refresh token cannot call POST /auth/refresh after a password reset and

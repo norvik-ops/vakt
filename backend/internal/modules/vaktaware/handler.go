@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 )
@@ -29,6 +30,42 @@ func NewHandler(service *Service) *Handler {
 
 func errJSON(c echo.Context, code int, msg, errCode string) error {
 	return c.JSON(code, map[string]string{"error": msg, "code": errCode})
+}
+
+// errLookup maps a failed single-resource lookup onto the answer the caller
+// deserves: 404 when the row is not there, 400 when the id could never name a
+// row, 500 only when the database really did fail.
+//
+// Why a shared helper (R1-13-M01): the stats endpoint answered 500 PG_ERROR for
+// a WELL-FORMED but unknown campaign id — that is every caller who follows a
+// stale link, not just one with broken input. The existing repo-wide guard probes
+// parameterised routes with "not-a-uuid", which the UUID middleware rejects
+// before the handler runs, so it could not see this. Each handler that wrote its
+// own mapping got it slightly differently right; one of them got it wrong.
+func errLookup(c echo.Context, err error, resource string) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && (pgErr.Code == "22P02" || pgErr.Code == "22003") {
+		return errJSON(c, http.StatusBadRequest, "invalid "+resource+" id", "SR_BAD_REQUEST")
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errJSON(c, http.StatusNotFound, resource+" not found", "SR_NOT_FOUND")
+	}
+	log.Error().Err(err).Str("resource", resource).Str("id", c.Param("id")).Msg("vaktaware lookup failed")
+	return errJSON(c, http.StatusInternalServerError, "failed to load "+resource, "PG_ERROR")
+}
+
+// errWrite answers a failed write. It exists for one reason (R1-14-D05): a
+// caller-supplied id that is not an id must come back as 400, not as 201 with
+// the field silently dropped and not as a nondescript 500.
+func errWrite(c echo.Context, err error, msg, code string) error {
+	if errors.Is(err, ErrInvalidID) {
+		return errJSON(c, http.StatusBadRequest, err.Error(), "SR_BAD_REQUEST")
+	}
+	if st := apperr.Status(err); st != 0 {
+		return errJSON(c, st, msg, code)
+	}
+	log.Error().Err(err).Str("path", c.Path()).Msg(msg)
+	return errJSON(c, http.StatusInternalServerError, msg, code)
 }
 
 func (h *Handler) audit(c echo.Context, action, resourceType, resourceID, resourceName string) {
@@ -268,7 +305,7 @@ func (h *Handler) CreateCampaign(c echo.Context) error {
 	}
 	campaign, err := h.service.CreateCampaign(c.Request().Context(), orgID, userID, input)
 	if err != nil {
-		return errJSON(c, http.StatusInternalServerError, "failed to create campaign", "PG_ERROR")
+		return errWrite(c, err, "Kampagne konnte nicht erstellt werden", "PG_ERROR")
 	}
 	h.audit(c, "create", "vaktaware/campaign", campaign.ID, campaign.Name)
 	return c.JSON(http.StatusCreated, campaign)
@@ -278,7 +315,7 @@ func (h *Handler) GetCampaign(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	campaign, err := h.service.GetCampaign(c.Request().Context(), orgID, c.Param("id"))
 	if err != nil {
-		return errJSON(c, http.StatusNotFound, "campaign not found", "PG_NOT_FOUND")
+		return errLookup(c, err, "campaign")
 	}
 	return c.JSON(http.StatusOK, campaign)
 }
@@ -308,7 +345,7 @@ func (h *Handler) GetCampaignStats(c echo.Context) error {
 	orgID, _ := c.Get("org_id").(string)
 	stats, err := h.service.GetCampaignStats(c.Request().Context(), orgID, c.Param("id"))
 	if err != nil {
-		return errJSON(c, http.StatusInternalServerError, "failed to get stats", "PG_ERROR")
+		return errLookup(c, err, "campaign")
 	}
 	return c.JSON(http.StatusOK, stats)
 }
@@ -318,15 +355,7 @@ func (h *Handler) ExportCampaignReport(c echo.Context) error {
 	pdfBytes, filename, err := h.service.ExportCampaignReport(c.Request().Context(), orgID, c.Param("id"))
 	if err != nil {
 		// S121-F3 (P4): malformed campaign id → 400, missing campaign → 404, else 500.
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && (pgErr.Code == "22P02" || pgErr.Code == "22003") {
-			return errJSON(c, http.StatusBadRequest, "invalid campaign id", "PG_BAD_REQUEST")
-		}
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errJSON(c, http.StatusNotFound, "campaign not found", "SR_NOT_FOUND")
-		}
-		log.Error().Err(err).Str("campaign_id", c.Param("id")).Msg("export campaign report")
-		return errJSON(c, http.StatusInternalServerError, "failed to generate report", "PG_REPORT_ERROR")
+		return errLookup(c, err, "campaign")
 	}
 	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
 	return c.Blob(http.StatusOK, "application/pdf", pdfBytes)
@@ -400,7 +429,7 @@ func (h *Handler) CreateModule(c echo.Context) error {
 	}
 	m, err := h.service.CreateModule(c.Request().Context(), orgID, userID, input)
 	if err != nil {
-		return errJSON(c, http.StatusInternalServerError, "failed to create module", "PG_ERROR")
+		return errWrite(c, err, "Modul konnte nicht erstellt werden", "PG_ERROR")
 	}
 	h.audit(c, "create", "vaktaware/training-module", m.ID, m.Title)
 	return c.JSON(http.StatusCreated, m)
@@ -578,7 +607,7 @@ func (h *Handler) CreateEnrollmentRule(c echo.Context) error {
 	}
 	rule, err := h.service.CreateEnrollmentRule(c.Request().Context(), orgID, input)
 	if err != nil {
-		return errJSON(c, http.StatusInternalServerError, "failed to create enrollment rule", "SR_ERROR")
+		return errWrite(c, err, "Regel konnte nicht erstellt werden", "SR_ERROR")
 	}
 	h.audit(c, "create", "vaktaware/enrollment-rule", rule.ID, rule.Name)
 	return c.JSON(http.StatusCreated, rule)

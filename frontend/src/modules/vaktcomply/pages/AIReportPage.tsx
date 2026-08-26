@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { ProGate } from '../../../shared/components/ProGate'
 import { AIDisclaimer } from '../../../shared/components/AIDisclaimer'
-import { FeatureLockedError } from '../../../api/client'
+import { apiFetch, FeatureLockedError } from '../../../api/client'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
 const REPORT_TYPES = [
@@ -67,16 +67,13 @@ export default function AIReportPage() {
     setError(null)
     setReport(null)
     try {
-      const res = await fetch('/api/v1/vaktcomply/ai/report', {
+      // apiFetch attaches X-CSRF-Token (R1-18-D4) and already maps 402 to
+      // FeatureLockedError, which ProGate below renders.
+      const data = await apiFetch<{ report?: string }>('/vaktcomply/ai/report', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: selected }),
       })
-      if (res.status === 402) throw new FeatureLockedError('ai-report')
-      if (!res.ok) throw new Error('Generierung fehlgeschlagen')
-      const data = await res.json()
-      setReport(data.report)
+      setReport(data.report ?? '')
     } catch (e: unknown) {
       setError(e)
     } finally {

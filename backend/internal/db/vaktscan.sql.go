@@ -1638,6 +1638,111 @@ func (q *Queries) UpsertSPEOLCache(ctx context.Context, arg UpsertSPEOLCachePara
 	return err
 }
 
+const upsertSPFindingByCVE = `-- name: UpsertSPFindingByCVE :one
+
+INSERT INTO vb_findings
+  (org_id, asset_id, cve_id, title, description, severity,
+   cvss_score, status, scanner, sources, sla_due_at,
+   reopen_count, occurrence_count, last_seen_at)
+VALUES
+  ($1, $2, $3, $4, $5, $6,
+   $7, $8, $9, $10, $11,
+   0, 1, NOW())
+ON CONFLICT (org_id, asset_id, cve_id) WHERE cve_id IS NOT NULL DO UPDATE
+  SET title            = EXCLUDED.title,
+      description      = EXCLUDED.description,
+      severity         = EXCLUDED.severity,
+      cvss_score       = EXCLUDED.cvss_score,
+      sla_due_at       = EXCLUDED.sla_due_at,
+      sources          = (SELECT ARRAY(SELECT DISTINCT unnest(vb_findings.sources || EXCLUDED.sources))),
+      occurrence_count = vb_findings.occurrence_count + 1,
+      last_seen_at     = NOW(),
+      updated_at       = NOW()
+RETURNING id, org_id, asset_id, scan_id, cve_id,
+          title, description, severity,
+          cvss_score, epss_score, epss_percentile, risk_score,
+          status, scanner, raw_id, sources, template_id,
+          assigned_to, justification,
+          reopen_count, occurrence_count,
+          last_seen_at, sla_due_at, created_at, updated_at
+`
+
+type UpsertSPFindingByCVEParams struct {
+	OrgID       string             `json:"org_id"`
+	AssetID     string             `json:"asset_id"`
+	CveID       pgtype.Text        `json:"cve_id"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	Severity    string             `json:"severity"`
+	CvssScore   pgtype.Numeric     `json:"cvss_score"`
+	Status      string             `json:"status"`
+	Scanner     string             `json:"scanner"`
+	Sources     []string           `json:"sources"`
+	SlaDueAt    pgtype.Timestamptz `json:"sla_due_at"`
+}
+
+// ── Findings Upsert (single, by cve_id) ─────────────────────────────────────
+// Schwester von UpsertSPFindingByRawID fuer Funde, die eine CVE tragen.
+// Konfliktschluessel: (org_id, asset_id, cve_id) — der einzige
+// scanner-agnostische Dedup-Schluessel des Schemas. Die Auswahl zwischen beiden
+// Queries trifft Repository.UpsertImportedFinding.
+//
+// `raw_id` fehlt in der Spaltenliste mit Absicht (bleibt NULL): der
+// raw_id-Index laeuft ueber (org_id, raw_id, scanner) OHNE das Asset, zwei
+// partielle Unique-Indexe auf derselben Zeile wuerden sich sonst widersprechen —
+// derselbe Fund auf einem zweiten Asset waere fuer den CVE-Arbiter konfliktfrei
+// und verletzte trotzdem den raw_id-Index (SQLSTATE 23505). Begruendung zum
+// `WHERE cve_id IS NOT NULL` hinter der Konfliktspalten-Liste siehe
+// UpsertSPFindingByRawID darunter (R1-SA26-D01).
+//
+// Rueckgabeform bewusst db.VbFindings wie bei der Schwester-Query, nicht der von
+// sqlc erzeugte eigene Row-Typ: ADR-0078 friert die Go-Typformung ein, das
+// Naht-Gate (scripts/check_sqlc_seam.py) vergleicht ausschliesslich die SQL.
+func (q *Queries) UpsertSPFindingByCVE(ctx context.Context, arg UpsertSPFindingByCVEParams) (VbFindings, error) {
+	row := q.db.QueryRow(ctx, upsertSPFindingByCVE,
+		arg.OrgID,
+		arg.AssetID,
+		arg.CveID,
+		arg.Title,
+		arg.Description,
+		arg.Severity,
+		arg.CvssScore,
+		arg.Status,
+		arg.Scanner,
+		arg.Sources,
+		arg.SlaDueAt,
+	)
+	var i VbFindings
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.AssetID,
+		&i.ScanID,
+		&i.CveID,
+		&i.Title,
+		&i.Description,
+		&i.Severity,
+		&i.CvssScore,
+		&i.EpssScore,
+		&i.EpssPercentile,
+		&i.RiskScore,
+		&i.Status,
+		&i.Scanner,
+		&i.RawID,
+		&i.Sources,
+		&i.TemplateID,
+		&i.AssignedTo,
+		&i.Justification,
+		&i.ReopenCount,
+		&i.OccurrenceCount,
+		&i.LastSeenAt,
+		&i.SlaDueAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const upsertSPFindingByRawID = `-- name: UpsertSPFindingByRawID :one
 
 INSERT INTO vb_findings
@@ -1648,7 +1753,7 @@ VALUES
   ($1, $2, $3, $4, $5, $6,
    $7, $8, $9, $10, $11, $12,
    0, 1, NOW())
-ON CONFLICT (org_id, raw_id, scanner) DO UPDATE
+ON CONFLICT (org_id, raw_id, scanner) WHERE raw_id IS NOT NULL DO UPDATE
   SET title            = EXCLUDED.title,
       description      = EXCLUDED.description,
       severity         = EXCLUDED.severity,
@@ -1682,10 +1787,19 @@ type UpsertSPFindingByRawIDParams struct {
 }
 
 // ── Findings Upsert (single, by raw_id) ─────────────────────────────────────
-// Single-shot INSERT...ON CONFLICT for importer flows (SARIF/CycloneDX/CSV).
+// Single-shot INSERT...ON CONFLICT for importer flows (SARIF/CycloneDX/CSV/Wazuh).
 // Conflict key: (org_id, raw_id, scanner). Multi-row Upserts with conditional
 // dedup keys (cve_id vs template_id) remain procedural in the repo because
 // the conditional INSERT-vs-UPDATE branch isn't expressible in a single sqlc query.
+//
+// Das `WHERE raw_id IS NOT NULL` hinter der Konfliktspalten-Liste ist Pflicht,
+// kein Filter: der einzige passende Unique-Index ist partiell
+// (idx_vb_findings_dedup_rawid, Migration 120). PostgreSQL inferiert einen
+// partiellen Index nur als Arbiter, wenn dessen Praedikat hier wiederholt wird —
+// sonst SQLSTATE 42P10 fuer JEDEN Aufrufer (R1-SA26-D01). PREPARE sieht das
+// nicht, die Inferenz laeuft erst im Planner; Regressionstest deshalb
+// ausfuehrend in internal/modules/vaktscan/upsert_rawid_arbiter_real_test.go.
+// Gleiches Muster wie repository_sbom.go:191/:222 und die Collector-Upserts.
 func (q *Queries) UpsertSPFindingByRawID(ctx context.Context, arg UpsertSPFindingByRawIDParams) (VbFindings, error) {
 	row := q.db.QueryRow(ctx, upsertSPFindingByRawID,
 		arg.OrgID,

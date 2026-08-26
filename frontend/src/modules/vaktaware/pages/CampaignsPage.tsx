@@ -55,7 +55,7 @@ export default function CampaignsPage() {
       {
         name,
         template_id: templateId,
-        target_group_id: groupId,
+        group_id: groupId,
         from_name: fromName,
         from_email: fromEmail,
         subject,

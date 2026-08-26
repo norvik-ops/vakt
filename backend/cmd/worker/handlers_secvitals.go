@@ -71,16 +71,52 @@ func handleAutoEvidence(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 	}
 }
 
+// sourceKeywords ordnet jedem sendenden Modul die Stichworte zu, mit denen die
+// passenden Controls gesucht werden. Gesucht wird gegen ck_controls.title und
+// .domain (FindCKControlsByKeywords) — und der ausgelieferte Control-Katalog
+// ist DEUTSCH.
+//
+// R1-19-W06: der Eintrag fuer vaktvault war rein englisch
+// ("access", "password", "secret", "rotation", "credential") und traf damit
+// keinen einzigen von 338 Controls. Die Secret-Rotation erzeugte nie Evidenz,
+// der Task meldete trotzdem "completed". Die Gegenprobe ueber vaktaware — das
+// hatte mit "schulung"/"bewusstsein" von Anfang an deutsche Stichworte — ergab
+// fuenf Treffer: der Mechanismus als solcher funktioniert.
+//
+// Die englischen Stichworte bleiben stehen: eigene Frameworks und importierte
+// Kataloge (verinice) koennen englische Titel tragen.
+//
+// SourceHR und SourceSecvitals fehlten in der Map ganz. Sie werden hier
+// ergaenzt; beide haben aktuell KEINEN Produzenten (events.IncidentCreated und
+// die HR-Quelle werden von keiner Stelle im Baum verschickt — geprueft), das
+// ist also kein aktiver Defekt, sondern ein vorbereiteter Rueckfall.
+var sourceKeywords = map[string][]string{
+	events.SourceSecreflex: {
+		"training", "awareness", "schulung", "bewusstsein", "sensibilisierung",
+	},
+	events.SourceSecprivacy: {
+		"datenschutz", "privacy", "dsar", "betroffene", "personenbezogen",
+	},
+	events.SourceSecvault: {
+		"access", "password", "secret", "rotation", "credential",
+		"passwort", "zugriff", "zugang", "berechtigung", "schlüssel",
+		"kryptograph", "authentifizierung", "identität", "geheimnis",
+	},
+	events.SourceSecpulse: {
+		"kryptographie", "zertifikat", "tls", "certificate", "pki",
+	},
+	events.SourceHR: {
+		"personal", "mitarbeiter", "onboarding", "offboarding",
+		"beschäftig", "austritt", "einstellung", "hr-sicherheit",
+	},
+	events.SourceSecvitals: {
+		"vorfall", "incident", "meldung", "notfall",
+	},
+}
+
 // handleRecordEvidence records cross-module compliance evidence in SecVitals.
 // Triggered by vaktaware (training), vaktprivacy (DSR), and vaktvault (rotation) events.
-func handleRecordEvidence(pool *pgxpool.Pool) asynq.HandlerFunc {
-	// keywords per source module → relevant SecVitals control domains
-	sourceKeywords := map[string][]string{
-		"vaktaware":   {"training", "awareness", "schulung", "bewusstsein"},
-		"vaktprivacy": {"datenschutz", "privacy", "dsar", "betroffene"},
-		"vaktvault":   {"access", "password", "secret", "rotation", "credential"},
-		"vaktscan":    {"kryptographie", "zertifikat", "tls", "certificate", "pki"},
-	}
+func handleRecordEvidence(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload crossevidence.EvidencePayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
@@ -91,7 +127,7 @@ func handleRecordEvidence(pool *pgxpool.Pool) asynq.HandlerFunc {
 		// Scan→Comply bridge (maps to A.8.8/A.8.9 via ck_scan_evidence_map) rather
 		// than the generic keyword path, so re-scans never duplicate evidence.
 		if payload.ResourceType == events.ResourceTypeFindingCreated {
-			svc := vaktcomply.NewService(pool)
+			svc := newComplyService(cfg, pool)
 			n, err := svc.RecordScanFindingEvidence(ctx, payload.OrgID, payload.ResourceID, payload.Title)
 			if err != nil {
 				log.Warn().Err(err).Str("org_id", payload.OrgID).Msg("crossevidence: scan bridge failed")
@@ -103,16 +139,32 @@ func handleRecordEvidence(pool *pgxpool.Pool) asynq.HandlerFunc {
 
 		keywords := sourceKeywords[payload.Source]
 		if len(keywords) == 0 {
+			// R1-19-W06: eine unbekannte Quelle ist ein Verdrahtungsfehler, kein
+			// Normalfall — sie hat frueher still nichts getan.
+			log.Warn().
+				Str("org_id", payload.OrgID).
+				Str("source", payload.Source).
+				Msg("crossevidence: keine Stichworte fuer diese Quelle hinterlegt — es entsteht KEINE Evidenz")
 			return nil
 		}
 
 		repo := vaktcomply.NewRepository(pool)
 		controls, err := repo.FindControlsByKeywords(ctx, payload.OrgID, keywords)
-		if err != nil || len(controls) == 0 {
-			log.Info().
+		if err != nil {
+			log.Error().Err(err).
 				Str("org_id", payload.OrgID).
 				Str("source", payload.Source).
-				Msg("crossevidence: no matching controls found")
+				Msg("crossevidence: Control-Suche fehlgeschlagen — es entsteht KEINE Evidenz")
+			return nil
+		}
+		if len(controls) == 0 {
+			// Kein Treffer heisst: der Task meldet gleich "completed", ohne dass
+			// eine Evidenz entstanden ist. Genau so blieb R1-19-W06 unentdeckt.
+			log.Warn().
+				Str("org_id", payload.OrgID).
+				Str("source", payload.Source).
+				Strs("keywords", keywords).
+				Msg("crossevidence: kein Control passt zu den Stichworten — es entsteht KEINE Evidenz")
 			return nil
 		}
 
@@ -177,14 +229,26 @@ func handleEvidenceExpiryAlert(pool *pgxpool.Pool) asynq.HandlerFunc {
 						"Evidence für Control '%s' läuft am %s ab und muss erneuert werden.",
 						item.ControlTitle, dateStr,
 					)
-					notify.Send(gCtx, pool, orgID, "Nachweis läuft ab", msg, "warning", "vaktcomply")
+					// R1-W4A-N1: nur ein bestaetigter Versand kommt in
+					// notifiedIDs. Die Auswahlabfrage ist
+					// GetUnnotifiedExpiringEvidence — ein Nachweis, der ohne
+					// zugestellte Meldung als benachrichtigt markiert wird,
+					// taucht nie wieder auf, und der Ablauf des Nachweises
+					// bleibt dauerhaft unbemerkt.
+					if err := notify.Send(gCtx, pool, orgID, "Nachweis läuft ab", msg, "warning", "vaktcomply"); err != nil {
+						log.Error().Err(err).Str("org_id", orgID).Str("evidence_id", item.ID).
+							Msg("evidence_expiry_alert: Meldung NICHT zugestellt — Nachweis bleibt unmarkiert und wird beim naechsten Lauf erneut versucht")
+						continue
+					}
 					notifiedIDs = append(notifiedIDs, item.ID)
 				}
 				// Mark all notified items so we do not re-notify on subsequent runs.
 				if markErr := repo.MarkEvidenceExpiryNotified(gCtx, notifiedIDs); markErr != nil {
 					log.Error().Err(markErr).Str("org_id", orgID).Msg("evidence_expiry_alert: mark notified")
 				}
-				log.Info().Str("org_id", orgID).Int("count", len(notifiedIDs)).Msg("evidence_expiry_alert: sent")
+				log.Info().Str("org_id", orgID).
+					Int("count", len(notifiedIDs)).Int("found", len(items)).
+					Msg("evidence_expiry_alert: sent")
 				return nil
 			})
 		}
@@ -195,14 +259,14 @@ func handleEvidenceExpiryAlert(pool *pgxpool.Pool) asynq.HandlerFunc {
 // handleIncidentDeadlineCheck iterates all organisations and fires in-app notifications
 // for any DORA/NIS2 incident deadline that is overdue and has not yet been reported.
 // Uses errgroup with limit 5 for parallel org processing.
-func handleIncidentDeadlineCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleIncidentDeadlineCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
 			return err
 		}
 
-		svc := vaktcomply.NewService(pool)
+		svc := newComplyService(cfg, pool)
 
 		g, gCtx := errgroup.WithContext(ctx)
 		sem := make(chan struct{}, 5)
@@ -223,7 +287,7 @@ func handleIncidentDeadlineCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 
 // handleCertExpiryCheck sends in-app notifications for supplier certificates expiring within 30 days.
 // Runs daily at 07:00 UTC. Uses errgroup with limit 5 for parallel org processing.
-func handleCertExpiryCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleCertExpiryCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		orgs, err := nonDemoOrgs(ctx, pool)
 		if err != nil {
@@ -241,12 +305,53 @@ func handleCertExpiryCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 			g.Go(func() error {
 				defer func() { <-sem }()
 				items, err := repo.FindExpiringCerts(gCtx, o.id, threshold)
-				if err != nil || len(items) == 0 {
+				if err != nil {
+					log.Error().Err(err).Str("org_id", o.id).
+						Msg("cert_expiry_check: Abfrage fehlgeschlagen — es wird NICHT gewarnt")
 					return nil
 				}
-				msg := fmt.Sprintf("%d Lieferanten-Zertifikate laufen in den nächsten 30 Tagen ab.", len(items))
-				notify.Send(gCtx, pool, o.id, "Lieferanten-Zertifikate laufen ab", msg, "warning", "vaktcomply")
-				log.Info().Str("org_id", o.id).Int("count", len(items)).Msg("cert_expiry_check: sent")
+				if len(items) == 0 {
+					return nil
+				}
+
+				// L3-02: die Abfrage hat keine untere Grenze, liefert also auch
+				// laengst abgelaufene Zertifikate. Der Text sagte fuer alle
+				// "laufen in den naechsten 30 Tagen ab" — ein vor drei Jahren
+				// abgelaufenes Zertifikat meldete sich damit taeglich als
+				// bevorstehend. Abgelaufen und bald ablaufend sind zwei
+				// verschiedene Aussagen und werden getrennt gemeldet.
+				today := time.Now().UTC().Truncate(24 * time.Hour)
+				var expired, upcoming int
+				for _, it := range items {
+					if it.CertExpiryDate.Before(today) {
+						expired++
+					} else {
+						upcoming++
+					}
+				}
+				// R1-W4A-N1: Hier gibt es keine Marke, aber es gab ein
+				// bedingungsloses „sent" im Log. Zugestellt wird gezaehlt,
+				// nicht behauptet.
+				delivered := 0
+				if upcoming > 0 {
+					msg := fmt.Sprintf("%d Lieferanten-Zertifikate laufen in den nächsten 30 Tagen ab.", upcoming)
+					if err := notify.Send(gCtx, pool, o.id, "Lieferanten-Zertifikate laufen ab", msg, "warning", "vaktcomply"); err != nil {
+						log.Error().Err(err).Str("org_id", o.id).Msg("cert_expiry_check: Meldung über ablaufende Zertifikate NICHT zugestellt")
+					} else {
+						delivered++
+					}
+				}
+				if expired > 0 {
+					msg := fmt.Sprintf("%d Lieferanten-Zertifikate sind bereits abgelaufen.", expired)
+					if err := notify.Send(gCtx, pool, o.id, "Lieferanten-Zertifikate abgelaufen", msg, "warning", "vaktcomply"); err != nil {
+						log.Error().Err(err).Str("org_id", o.id).Msg("cert_expiry_check: Meldung über abgelaufene Zertifikate NICHT zugestellt")
+					} else {
+						delivered++
+					}
+				}
+				log.Info().Str("org_id", o.id).
+					Int("expiring", upcoming).Int("expired", expired).Int("delivered", delivered).
+					Msg("cert_expiry_check: done")
 				return nil
 			})
 		}
@@ -255,9 +360,9 @@ func handleCertExpiryCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 }
 
 // handleCCMRunDue runs all enabled CCM checks that are past their interval.
-func handleCCMRunDue(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleCCMRunDue(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		svc := vaktcomply.NewService(pool)
+		svc := newComplyService(cfg, pool)
 		if err := svc.RunDueCCMChecks(ctx); err != nil {
 			log.Error().Err(err).Msg("ccm_run_due: failed")
 			return err
@@ -268,9 +373,9 @@ func handleCCMRunDue(pool *pgxpool.Pool) asynq.HandlerFunc {
 
 // handleScoreSnapshot records daily compliance score snapshots for all organisations.
 // The snapshots power the trend chart on the dashboard.
-func handleScoreSnapshot(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleScoreSnapshot(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
-		svc := vaktcomply.NewService(pool)
+		svc := newComplyService(cfg, pool)
 		if err := svc.RecordScoreSnapshotForAllOrgs(ctx); err != nil {
 			log.Error().Err(err).Msg("score_snapshot: failed")
 			return err
@@ -280,7 +385,7 @@ func handleScoreSnapshot(pool *pgxpool.Pool) asynq.HandlerFunc {
 	}
 }
 
-func handleControlTestCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleControlTestCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		if err := controltests.CheckOverdueControlTests(ctx, pool); err != nil {
 			log.Error().Err(err).Msg("control_test_check: failed")
@@ -292,14 +397,14 @@ func handleControlTestCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
 
 // handleDORADeadlineStatus computes and persists the DORA Ampel-Status for all
 // IKT-DORA incidents across all orgs. Runs every 5 minutes (S37-4).
-func handleDORADeadlineStatus(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleDORADeadlineStatus(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
 			return err
 		}
 
-		svc := vaktcomply.NewService(pool)
+		svc := newComplyService(cfg, pool)
 		g, gCtx := errgroup.WithContext(ctx)
 		sem := make(chan struct{}, 5)
 		for _, orgID := range orgIDs {
@@ -320,14 +425,14 @@ func handleDORADeadlineStatus(pool *pgxpool.Pool) asynq.HandlerFunc {
 // handleNIS2ObligationCheck iterates all organisations and fires in-app/email notifications
 // for NIS2 incidents where the classify-reporting wizard has set obligation = "probably".
 // Runs daily. S39-2.
-func handleNIS2ObligationCheck(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleNIS2ObligationCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
 			return err
 		}
 
-		svc := vaktcomply.NewService(pool)
+		svc := newComplyService(cfg, pool)
 		g, gCtx := errgroup.WithContext(ctx)
 		sem := make(chan struct{}, 5)
 		for _, orgID := range orgIDs {

@@ -12,7 +12,9 @@ import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
-import { useAsset, useTriggerScan, useDeleteAsset } from '../hooks/useAssets'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { useAsset, useTriggerScan, useDeleteAsset, type ScannerName } from '../hooks/useAssets'
+import { useAvailableScanners } from '../hooks/useScannerStatus'
 import { useFindings } from '../hooks/useFindings'
 import type { Asset } from '../types'
 import { cn } from '../../../lib/utils'
@@ -46,6 +48,8 @@ export default function AssetDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const { data: asset, isLoading, error } = useAsset(id ?? '')
   const triggerScan = useTriggerScan(id ?? '')
+  const availableScanners = useAvailableScanners()
+  const [scanner, setScanner] = useState<ScannerName | ''>('')
   const deleteAsset = useDeleteAsset()
   const { data: findingsResponse } = useFindings({ asset_id: id })
   const scanTimerRef = useRef<ReturnType<typeof setTimeout>>()
@@ -56,13 +60,24 @@ export default function AssetDetailPage() {
     if (asset) trackPage(`/vaktscan/assets/${id ?? ''}`, asset.name, '🖥️')
   }, [asset?.id])
 
+  // R1-19-W07: this called mutateAsync() with no argument, and the mutation
+  // posted no body. The handler requires `scanner` (oneof trivy nuclei
+  // openvas), so every click returned 422 — and no user action could have
+  // fixed it, because the page offered no scanner choice at all. The picker
+  // below lists only what /vaktscan/scanner-status reports as installed; the
+  // asset's external_url travels as the target so the worker does not fall
+  // back to scanning the asset's NAME.
   async function handleScan() {
+    if (!scanner) return
     try {
-      await triggerScan.mutateAsync()
+      await triggerScan.mutateAsync({
+        scanner,
+        target_url: asset?.external_url ?? undefined,
+      })
       setScanTriggered(true)
       scanTimerRef.current = setTimeout(() => { setScanTriggered(false); }, 3000)
     } catch {
-      // error handled by isPending/isError states
+      // surfaced by triggerScan.isError below
     }
   }
 
@@ -106,14 +121,31 @@ export default function AssetDetailPage() {
       ]} />
       <PageHeader
         title={asset.name}
-        description={asset.target}
+        description={asset.external_url ?? undefined}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => { navigate('/vaktscan/assets'); }}>
               <ArrowLeft className="w-4 h-4 mr-1" />
               {t('common.back')}
             </Button>
-            <Button onClick={() => { void handleScan() }} disabled={triggerScan.isPending}>
+            <Select
+              value={scanner}
+              onValueChange={(v) => { setScanner(v as ScannerName) }}
+              disabled={availableScanners.length === 0}
+            >
+              <SelectTrigger className="w-40" aria-label={t('vaktscan.assetDetail.scannerLabel')}>
+                <SelectValue placeholder={t('vaktscan.assetDetail.scannerPlaceholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableScanners.map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={() => { void handleScan() }}
+              disabled={triggerScan.isPending || !scanner}
+            >
               {triggerScan.isPending ? (
                 <Spinner size="sm" color="white" className="mr-2" />
               ) : (
@@ -144,6 +176,11 @@ export default function AssetDetailPage() {
         />
       )}
 
+      {availableScanners.length === 0 && (
+        <div className="px-6 pt-4">
+          <p className="text-sm text-secondary">{t('vaktscan.assetDetail.noScanners')}</p>
+        </div>
+      )}
       {triggerScan.isError && (
         <div className="px-6 pt-4">
           <p className="text-sm text-red-600">{t('vaktscan.assetDetail.scanFailed', { msg: triggerScan.error.message })}</p>
@@ -185,7 +222,7 @@ export default function AssetDetailPage() {
                   </div>
                   <div>
                     <dt className="text-secondary font-medium">{t('vaktscan.assetDetail.target')}</dt>
-                    <dd className="mt-1 font-mono text-xs text-primary">{asset.target}</dd>
+                    <dd className="mt-1 font-mono text-xs text-primary">{asset.external_url ?? '—'}</dd>
                   </div>
                   <div>
                     <dt className="text-secondary font-medium">{t('vaktscan.assetDetail.created')}</dt>

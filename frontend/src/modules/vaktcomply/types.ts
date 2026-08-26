@@ -1,9 +1,16 @@
+// K5-15: mirrors policy.Framework. `control_count` was removed — the string
+// appears in exactly zero .go and .sql files, so the "N Kontrollen ·" prefix on
+// the framework card never rendered and the setup wizard's control-count block
+// was dead. A per-framework control count would need a new aggregate on the
+// backend; until then this type claims only what the wire carries.
 export interface Framework {
   id: string
+  org_id: string
   name: string
   version: string
+  is_builtin: boolean
+  readiness_score?: number
   created_at: string
-  control_count?: number
   framework_variant?: 'full' | 'simplified'
   catalog_edition?: string // S82-4: edition from the embedded catalog (e.g. "2023" for BSI Kompendium)
 }
@@ -254,6 +261,14 @@ export interface NIS2ReportabilityCheck {
   causes_significant_disruption: boolean
   affects_third_parties: boolean
   causes_financial_damage: boolean
+}
+
+// Antwort von POST /incidents/{id}/nis2/assess. detected_at ist das
+// discovered_at des Vorfalls, an dem die drei Fristen haengen — der Server gibt
+// es zurueck, damit erkennbar bleibt, ab wann gerechnet wurde.
+export interface NIS2Assessment {
+  is_reportable: boolean
+  detected_at: string
 }
 
 export interface NIS2ReportInput {
@@ -1122,6 +1137,10 @@ export type UpdateDORAThirdPartyInput = CreateDORAThirdPartyInput
 
 // --- BCP / Notfallhandbuch (Migration 156) ---
 
+// ESK-12: rto_hours/rpo_hours/schutzbedarfsklasse/last_tested_at fehlten hier,
+// obwohl die API sie seit Migration 216 immer mitschickt. `null` heisst "fuer
+// diesen Plan noch nicht festgelegt" und wird als solches angezeigt — eine Zahl
+// an dieser Stelle waere eine BSI-200-4-Angabe, die niemand getroffen hat.
 export interface BCPPlan {
   id: string
   org_id: string
@@ -1130,6 +1149,11 @@ export interface BCPPlan {
   version: string
   status: 'draft' | 'active' | 'archived'
   owner: string
+  rto_hours: number | null
+  rpo_hours: number | null
+  schutzbedarfsklasse: 1 | 2 | 3 | null
+  /** Abgeleitet aus den Testeintraegen des Plans — kein Eingabefeld. */
+  last_tested_at: string | null
   created_at: string
   updated_at: string
 }
@@ -1138,7 +1162,11 @@ export interface CreateBCPPlanInput {
   title: string
   scope?: string
   version?: string
+  status?: BCPPlan['status']
   owner?: string
+  rto_hours?: number | null
+  rpo_hours?: number | null
+  schutzbedarfsklasse?: 1 | 2 | 3 | null
 }
 
 export interface UpdateBCPPlanInput {
@@ -1147,6 +1175,9 @@ export interface UpdateBCPPlanInput {
   version?: string
   status?: BCPPlan['status']
   owner?: string
+  rto_hours?: number | null
+  rpo_hours?: number | null
+  schutzbedarfsklasse?: 1 | 2 | 3 | null
 }
 
 export interface BCPTest {
@@ -1668,11 +1699,19 @@ export interface CreateBIAProcessInput {
 
 export type UpdateBIAProcessInput = CreateBIAProcessInput
 
+// K5-08: mirrors bcm.BIASummary (backend/internal/modules/vaktcomply/bcm/models.go).
+// The previous shape (total/high_critical/avg_rto_hours/avg_rpo_hours) shared no
+// field with the backend AND was also what openapi.yaml declared, so generating
+// types from the spec would have reproduced the same fiction. The spec has been
+// corrected in the same commit. There is no average RTO/RPO anywhere in the
+// backend — the aggregate query (sqlc, frozen per ADR-0078) computes the SHORTEST
+// RTO, so that is what the dashboard shows and labels.
 export interface BIASummary {
-  total: number
-  high_critical: number
-  avg_rto_hours: number
-  avg_rpo_hours: number
+  total_processes: number
+  critical_count: number
+  shortest_rto_hours: number
+  /** Go `map[int]int` → JSON object with stringified Schutzbedarfsklasse keys ("1".."3"). */
+  klasse_breakdown: Record<string, number>
 }
 
 export interface RecoveryStep {
@@ -1718,7 +1757,7 @@ export interface EmergencyContact {
   phone: string
   email: string
   escalation_level: 1 | 2 | 3
-  available_247: boolean
+  available_24_7: boolean
   notes: string
   created_at: string
   updated_at: string
@@ -1730,7 +1769,7 @@ export interface CreateEmergencyContactInput {
   phone?: string
   email?: string
   escalation_level?: 1 | 2 | 3
-  available_247?: boolean
+  available_24_7?: boolean
   notes?: string
 }
 

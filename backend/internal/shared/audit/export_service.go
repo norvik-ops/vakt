@@ -11,6 +11,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/csvsafe"
 )
 
 // AuditPackage holds the generated ZIP and metadata.
@@ -120,7 +122,7 @@ func writeControlsCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *z
 		if err := rows.Scan(&id, &framework, &domain, &controlID, &title, &status, &weight); err != nil {
 			continue
 		}
-		_ = w.Write([]string{id, framework, domain, controlID, title, status, fmt.Sprint(weight)})
+		_ = w.Write(csvsafe.Row([]string{id, framework, domain, controlID, title, status, fmt.Sprint(weight)}))
 	}
 	w.Flush()
 	return rows.Err()
@@ -146,7 +148,7 @@ func writeEvidenceCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *z
 		if err := rows.Scan(&controlID, &evType, &title, &source, &createdAt); err != nil {
 			continue
 		}
-		_ = w.Write([]string{controlID, evType, title, source, createdAt.Format("02.01.2006")})
+		_ = w.Write(csvsafe.Row([]string{controlID, evType, title, source, createdAt.Format("02.01.2006")}))
 	}
 	w.Flush()
 	return rows.Err()
@@ -174,7 +176,7 @@ func writeFindingsCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *z
 		if err := rows.Scan(&id, &title, &severity, &status, &cve, &asset, &sla, &createdAt); err != nil {
 			continue
 		}
-		_ = w.Write([]string{id, title, severity, status, cve, asset, sla, createdAt.Format("02.01.2006")})
+		_ = w.Write(csvsafe.Row([]string{id, title, severity, status, cve, asset, sla, createdAt.Format("02.01.2006")}))
 	}
 	w.Flush()
 	return rows.Err()
@@ -200,7 +202,7 @@ func writeRisksCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *zip.
 		if err := rows.Scan(&id, &title, &category, &status, &likelihood, &impact, &score, &treatment); err != nil {
 			continue
 		}
-		_ = w.Write([]string{id, title, category, status, fmt.Sprint(likelihood), fmt.Sprint(impact), fmt.Sprint(score), treatment})
+		_ = w.Write(csvsafe.Row([]string{id, title, category, status, fmt.Sprint(likelihood), fmt.Sprint(impact), fmt.Sprint(score), treatment}))
 	}
 	w.Flush()
 	return rows.Err()
@@ -226,7 +228,7 @@ func writeIncidentsCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *
 		if err := rows.Scan(&id, &title, &severity, &status, &discoveredAt, &createdAt); err != nil {
 			continue
 		}
-		_ = w.Write([]string{id, title, severity, status, discoveredAt, createdAt.Format("02.01.2006")})
+		_ = w.Write(csvsafe.Row([]string{id, title, severity, status, discoveredAt, createdAt.Format("02.01.2006")}))
 	}
 	w.Flush()
 	return rows.Err()
@@ -251,7 +253,7 @@ func writePoliciesCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *z
 		if err := rows.Scan(&id, &title, &category, &status, &version, &owner, &reviewDate); err != nil {
 			continue
 		}
-		_ = w.Write([]string{id, title, category, status, version, owner, reviewDate})
+		_ = w.Write(csvsafe.Row([]string{id, title, category, status, version, owner, reviewDate}))
 	}
 	w.Flush()
 	return rows.Err()

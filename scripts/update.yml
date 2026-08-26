@@ -34,6 +34,11 @@
     force_update: false
     github_repo: norvik-ops/vakt
     update_script: "{{ vakt_dir }}/scripts/update.sh"
+    # R1-06-D00: docker-compose.yml, Caddyfile und scripts/ gehoeren zur
+    # Installation, nicht zu den Images. Auf false setzen nur fuer Instanzen,
+    # die kein git-Checkout sind — dort greifen Haertungsaenderungen aus neuen
+    # Versionen dann NICHT.
+    update_artifacts: true
 
   tasks:
     - name: Check that vakt_dir exists
@@ -96,6 +101,28 @@
         msg: "Pre-update database backup FAILED on {{ inventory_hostname }} — aborting the update. Fix the backup before retrying."
       when: backup_result.rc != 0
 
+    # R1-06-D00: vor den Images die Dateien. Ein `docker compose pull` fasst
+    # docker-compose.yml, Caddyfile und scripts/ nicht an — zwischen v0.42.48 und
+    # v0.42.49 lagen dort 112 bzw. 33 geaenderte Zeilen (Docker-Secrets,
+    # cap_drop, no-new-privileges). Ohne diesen Schritt laufen neue Binaries in
+    # der alten, ungehaerteten Umgebung. Das Skript spult nur vor (--ff-only) und
+    # bricht bei lokalen Aenderungen ab, ohne etwas zu ueberschreiben.
+    - name: Update deployment artifacts (compose, Caddyfile, scripts)
+      ansible.builtin.command:
+        cmd: ./scripts/update-artifacts.sh --dir .
+        chdir: "{{ vakt_dir }}"
+      register: artifacts_result
+      changed_when: "'Artefakte aktualisiert' in artifacts_result.stdout"
+      when: update_artifacts | bool
+
+    - name: Report that deployment artifacts were NOT updated
+      ansible.builtin.debug:
+        msg: >
+          update_artifacts=false auf {{ inventory_hostname }} — docker-compose.yml,
+          Caddyfile und scripts/ bleiben auf dem alten Stand. Haertungs- und
+          Konfigurationsaenderungen dieser Version greifen dort nicht.
+      when: not (update_artifacts | bool)
+
     - name: Pull latest container images
       ansible.builtin.shell: |
         docker compose -f {{ compose_file }} pull api worker
@@ -137,6 +164,19 @@
       args:
         chdir: "{{ vakt_dir }}"
       failed_when: false
+
+    # R1-06-D00, zweite Haelfte: die drei Neustarts oben fahren bewusst
+    # `--no-deps` (rollend, ohne DB/Redis anzufassen). Dadurch bleiben caddy,
+    # postgres, redis und pgbouncer aber auf ihrer ALTEN Konfiguration stehen —
+    # und genau dort steht die Haertung. Dieses `up -d` ohne Dienstliste erzeugt
+    # nur die Container neu, deren Konfiguration sich geaendert hat; api, worker
+    # und frontend sind zu diesem Zeitpunkt schon aktuell und werden nicht
+    # erneut angefasst.
+    - name: Apply changed compose configuration to the remaining services
+      ansible.builtin.shell: |
+        docker compose -f {{ compose_file }} up -d
+      args:
+        chdir: "{{ vakt_dir }}"
 
     - name: Verify deployment health
       ansible.builtin.shell: |

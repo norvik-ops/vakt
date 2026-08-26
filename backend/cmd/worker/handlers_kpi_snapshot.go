@@ -11,20 +11,20 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/config"
 )
 
 // handleISMSKPISnapshot iterates all organisations and computes + persists the
 // daily ISMS KPI snapshot for each. Runs every day at 06:00 UTC (S61-7).
 // Uses errgroup with a concurrency limit of 5 to avoid DB saturation.
-func handleISMSKPISnapshot(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleISMSKPISnapshot(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
 			return err
 		}
 
-		svc := vaktcomply.NewService(pool)
+		svc := newComplyService(cfg, pool)
 
 		g, gCtx := errgroup.WithContext(ctx)
 		sem := make(chan struct{}, 5)

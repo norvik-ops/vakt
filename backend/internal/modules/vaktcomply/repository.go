@@ -93,6 +93,14 @@ func ckOptDatePtr(s *string) pgtype.Date {
 	return pgtype.Date{Time: t, Valid: true}
 }
 
+// ckOptDateFromTimePtr: nil -> invalid; sonst der Kalendertag der Zeit.
+func ckOptDateFromTimePtr(t *time.Time) pgtype.Date {
+	if t == nil || t.IsZero() {
+		return pgtype.Date{}
+	}
+	return pgtype.Date{Time: *t, Valid: true}
+}
+
 // incidentFields holds all columns shared between every Incident-returning
 // sqlc query. ADR-0013: one mapper handles all Row-types.
 type incidentFields struct {

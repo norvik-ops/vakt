@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,13 +65,7 @@ func TestResetPassword_RevokeKeyFormat(t *testing.T) {
 // TestCheckAccountLocked_FailClosedByDefault).
 func TestResetPassword_RevocationNonFatalOnRedisFailure(t *testing.T) {
 	// A go-redis client that always fails with a dial error.
-	failingRedis := redis.NewClient(&redis.Options{
-		Addr:        "127.0.0.1:1", // unbindable port → guaranteed dial error
-		DialTimeout: 100 * time.Millisecond,
-		ReadTimeout: 100 * time.Millisecond,
-		MaxRetries:  -1,
-	})
-	t.Cleanup(func() { _ = failingRedis.Close() })
+	failingRedis := dialFailingRedis(t)
 
 	// Simulate the Redis DEL call that revocation makes.
 	// If this call fails it must not propagate as an error.

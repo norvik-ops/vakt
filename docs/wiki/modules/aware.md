@@ -171,4 +171,4 @@ Kampagnen können als einmalig, monatlich oder quartalsweise konfiguriert werden
 | Job | Auslöser | Beschreibung |
 |-----|----------|--------------|
 | `vaktaware:send_campaign` | Kampagnen-Launch | E-Mails an alle Zielgruppen-Empfänger versenden |
-| `vaktaware:training_reminder` | Täglich | Erinnerung an überfällige Trainings-Zuweisungen |
+| `aware:auto_enrollment` | Phishing-Klick oder neue Person (Anmelderegel) | Betroffene Person automatisch in die hinterlegte Folgekampagne aufnehmen |

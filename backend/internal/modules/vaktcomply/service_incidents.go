@@ -6,6 +6,7 @@ package vaktcomply
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -16,6 +17,68 @@ import (
 
 	"github.com/matharnica/vakt/internal/shared/notify"
 )
+
+// Gründe, aus denen eine Meldefrist-E-Mail nicht zugestellt wurde.
+//
+// R1-19-04: Beide Fälle waren vorher ein wortloses `return` aus einer Closure
+// ohne Rückgabewert. Der Aufrufer schrieb danach unbeirrt „overdue
+// notification sent" ins Log — eine gesetzliche Meldefrist, deren Erinnerung
+// niemanden erreicht, sah im Log aus wie eine zugestellte.
+var (
+	// errNoNotifier: der Dienst wurde ohne Benachrichtigungsdienst gebaut.
+	// Das ist ein Verdrahtungsfehler, kein Betriebszustand — deshalb ein
+	// Fehler und kein stiller Normalfall.
+	errNoNotifier = errors.New("kein Benachrichtigungsdienst verdrahtet")
+	// errNoAdminRecipients: die Organisation hat keine Administrator-Adresse.
+	errNoAdminRecipients = errors.New("keine Administrator-Adresse gefunden")
+)
+
+// deliverAdminEmail stellt eine Nachricht an alle Administratoren einer
+// Organisation zu und meldet, OB das gelungen ist.
+//
+// Rückgabe nil bedeutet: mindestens ein Administrator hat die Nachricht
+// bekommen. Konnte keiner erreicht werden, ist das ein Fehler — der Aufrufer
+// darf daraus keinen Erfolg machen.
+//
+// Eine Teilzustellung (einer von drei scheitert) gilt als Erfolg, wird aber
+// geloggt: Die Erinnerung hat ihr Ziel erreicht, die kaputte Adresse ist ein
+// getrenntes Problem.
+//
+// Die Funktion nimmt den Benachrichtigungsdienst als Parameter statt ihn aus
+// dem Service zu lesen, damit sie ohne Datenbank prüfbar ist.
+func deliverAdminEmail(ctx context.Context, notifSvc notifyService, orgID string, admins []string, subject, body string) error {
+	if notifSvc == nil {
+		return errNoNotifier
+	}
+	if len(admins) == 0 {
+		return errNoAdminRecipients
+	}
+
+	var delivered int
+	var errs []error
+	for _, email := range admins {
+		if err := notifSvc.Notify(ctx, notify.Message{
+			Title:   subject,
+			Body:    body,
+			OrgID:   orgID,
+			Channel: notify.ChannelEmail,
+			Target:  email,
+		}); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", email, err))
+			continue
+		}
+		delivered++
+	}
+
+	if delivered == 0 {
+		return fmt.Errorf("keine Zustellung gelungen: %w", errors.Join(errs...))
+	}
+	if len(errs) > 0 {
+		log.Warn().Errs("fehler", errs).Str("org_id", orgID).Int("zugestellt", delivered).
+			Msg("deadline_check: E-Mail nur teilweise zugestellt")
+	}
+	return nil
+}
 
 // authorityYAMLEntry mirrors one entry in authorities.yaml.
 type authorityYAMLEntry struct {
@@ -199,22 +262,11 @@ func (s *Service) CheckOverdueDeadlines(ctx context.Context, orgID string) error
 	// Fetch admin e-mails once per org run (non-fatal if lookup fails).
 	adminEmails, _ := s.repo.GetAdminEmails(ctx, orgID)
 
-	// sendEmail delivers an e-mail to all admins (non-fatal).
-	sendEmail := func(subject, body string) {
-		if s.notifSvc == nil {
-			return
-		}
-		for _, email := range adminEmails {
-			if err := s.notifSvc.Notify(ctx, notify.Message{
-				Title:   subject,
-				Body:    body,
-				OrgID:   orgID,
-				Channel: notify.ChannelEmail,
-				Target:  email,
-			}); err != nil {
-				log.Warn().Err(err).Str("to", email).Msg("deadline_check: email send failed")
-			}
-		}
+	// sendEmail stellt an alle Administratoren zu und meldet das Ergebnis.
+	// Der Rückgabewert ist der Grund, aus dem der Aufrufer NICHT „sent"
+	// loggen darf (R1-19-04).
+	sendEmail := func(subject, body string) error {
+		return deliverAdminEmail(ctx, s.notifSvc, orgID, adminEmails, subject, body)
 	}
 
 	// Check both DORA and NIS2 incident types.
@@ -258,11 +310,21 @@ func (s *Service) CheckOverdueDeadlines(ctx context.Context, orgID string) error
 						"Die %s-Meldefrist für den Vorfall \"%s\" wurde überschritten und ist noch nicht als gemeldet markiert.",
 						p.label, inc.Title,
 					)
-					notify.Send(ctx, s.db, orgID, notifTitle, body, notifType, "vaktcomply")
+					// Keine Marke — diese Meldung wiederholt sich absichtlich
+					// bei jedem Lauf, bis der Vorfall als gemeldet gilt. Der
+					// Fehler darf trotzdem nicht unsichtbar sein.
+					if err := notify.Send(ctx, s.db, orgID, notifTitle, body, notifType, "vaktcomply"); err != nil {
+						log.Error().Err(err).Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+							Msg("incident_deadline_check: Meldefrist überschritten — In-App-Meldung NICHT geschrieben")
+					}
 					emailSubj := fmt.Sprintf("[Vakt Comply] %s", notifTitle)
-					sendEmail(emailSubj, body)
-					log.Warn().Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
-						Msg("incident_deadline_check: overdue notification sent")
+					if err := sendEmail(emailSubj, body); err != nil {
+						log.Error().Err(err).Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+							Msg("incident_deadline_check: Meldefrist überschritten — E-Mail an die Administratoren NICHT versendet")
+					} else {
+						log.Warn().Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+							Msg("incident_deadline_check: overdue notification sent")
+					}
 				} else if hoursLeft <= 12 && !p.warnAlready {
 					// 12h-before warning — sent exactly once (guarded by notified_warn_* flag).
 					var notifTitle, notifType string
@@ -278,16 +340,38 @@ func (s *Service) CheckOverdueDeadlines(ctx context.Context, orgID string) error
 						"Die %s-Meldefrist für den Vorfall \"%s\" läuft in %.0f Stunden ab.",
 						p.label, inc.Title, hoursLeft,
 					)
-					notify.Send(ctx, s.db, orgID, notifTitle, body, notifType, "vaktcomply")
+					inAppErr := notify.Send(ctx, s.db, orgID, notifTitle, body, notifType, "vaktcomply")
 					emailSubj := fmt.Sprintf("[Vakt Comply] %s", notifTitle)
-					sendEmail(emailSubj, body)
-					// Mark as notified so this warning isn't repeated.
-					if err := s.repo.MarkIncidentWarnNotified(ctx, orgID, inc.ID, p.label); err != nil {
+					mailErr := sendEmail(emailSubj, body)
+					// R1-W4A-N1: Die Marke schliesst jede Wiederholung aus
+					// (die Auswahl prueft notified_warn_*). Hier stand, dass
+					// sie bewusst auch ohne erfolgreichen Versand gesetzt
+					// wird, weil eine Bindung an die E-Mail bei dauerhaft
+					// kaputtem SMTP jede Warnung endlos wiederholen wuerde.
+					// Der Einwand stimmt, die Schlussfolgerung nicht: Die
+					// Marke gehoert an „mindestens EIN Kanal hat zugestellt".
+					// Ein kaputter Mailversand allein wiederholt dann nichts,
+					// weil die In-App-Meldung ankam — aber wenn KEIN Kanal
+					// erreicht wurde, bleibt die Warnung wiederholbar, statt
+					// nach einem einmaligen Ausfall dauerhaft zu verstummen.
+					if inAppErr != nil && mailErr != nil {
+						log.Error().Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+							Msg("incident_deadline_check: 12h-Warnung über KEINEN Kanal zugestellt — Marke bleibt ungesetzt, der naechste Lauf versucht es erneut")
+					} else if err := s.repo.MarkIncidentWarnNotified(ctx, orgID, inc.ID, p.label); err != nil {
 						log.Warn().Err(err).Str("incident_id", inc.ID).Str("deadline", p.label).
 							Msg("incident_deadline_check: failed to mark warn notified")
 					}
-					log.Info().Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
-						Msg("incident_deadline_check: 12h warning sent")
+					if inAppErr != nil {
+						log.Error().Err(inAppErr).Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+							Msg("incident_deadline_check: 12h-Warnung — In-App-Meldung NICHT geschrieben")
+					}
+					if mailErr != nil {
+						log.Error().Err(mailErr).Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+							Msg("incident_deadline_check: 12h-Warnung — E-Mail an die Administratoren NICHT versendet")
+					} else {
+						log.Info().Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+							Msg("incident_deadline_check: 12h warning sent")
+					}
 				}
 			}
 		}
@@ -449,21 +533,10 @@ func (s *Service) CheckNIS2ObligationDeadlines(ctx context.Context, orgID string
 	}
 
 	adminEmails, _ := s.repo.GetAdminEmails(ctx, orgID)
-	sendEmail := func(subject, body string) {
-		if s.notifSvc == nil {
-			return
-		}
-		for _, email := range adminEmails {
-			if err := s.notifSvc.Notify(ctx, notify.Message{
-				Title:   subject,
-				Body:    body,
-				OrgID:   orgID,
-				Channel: notify.ChannelEmail,
-				Target:  email,
-			}); err != nil {
-				log.Warn().Err(err).Str("to", email).Msg("nis2_obligation_check: email send failed")
-			}
-		}
+	// Siehe deliverAdminEmail — der Rückgabewert ist der Grund, aus dem der
+	// Aufrufer NICHT „sent" loggen darf (R1-19-04).
+	sendEmail := func(subject, body string) error {
+		return deliverAdminEmail(ctx, s.notifSvc, orgID, adminEmails, subject, body)
 	}
 
 	type deadlinePair struct {
@@ -491,23 +564,46 @@ func (s *Service) CheckNIS2ObligationDeadlines(ctx context.Context, orgID string
 					"Die %s-Meldefrist für den Vorfall \"%s\" (Meldepflicht wahrscheinlich) ist überschritten und noch nicht als gemeldet markiert.",
 					p.label, inc.Title,
 				)
-				notify.Send(ctx, s.db, orgID, title, body, "nis2_obligation_overdue", "vaktcomply")
-				sendEmail(fmt.Sprintf("[Vakt Comply] %s", title), body)
-				log.Warn().Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
-					Msg("nis2_obligation_check: overdue notification sent")
+				// Keine Marke — wiederholt sich absichtlich bei jedem Lauf.
+				if err := notify.Send(ctx, s.db, orgID, title, body, "nis2_obligation_overdue", "vaktcomply"); err != nil {
+					log.Error().Err(err).Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+						Msg("nis2_obligation_check: Meldefrist überschritten — In-App-Meldung NICHT geschrieben")
+				}
+				if err := sendEmail(fmt.Sprintf("[Vakt Comply] %s", title), body); err != nil {
+					log.Error().Err(err).Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+						Msg("nis2_obligation_check: Meldefrist überschritten — E-Mail an die Administratoren NICHT versendet")
+				} else {
+					log.Warn().Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+						Msg("nis2_obligation_check: overdue notification sent")
+				}
 			} else if hoursLeft <= 12 && !p.warnAlready {
 				title := fmt.Sprintf("NIS2-Meldefrist in %.0fh: %s", hoursLeft, inc.Title)
 				body := fmt.Sprintf(
 					"Die %s-Meldefrist für den Vorfall \"%s\" (Meldepflicht wahrscheinlich) läuft in %.0f Stunden ab.",
 					p.label, inc.Title, hoursLeft,
 				)
-				notify.Send(ctx, s.db, orgID, title, body, "nis2_obligation_warning", "vaktcomply")
-				sendEmail(fmt.Sprintf("[Vakt Comply] %s", title), body)
-				if err := s.repo.MarkIncidentWarnNotified(ctx, orgID, inc.ID, p.label); err != nil {
+				inAppErr := notify.Send(ctx, s.db, orgID, title, body, "nis2_obligation_warning", "vaktcomply")
+				mailErr := sendEmail(fmt.Sprintf("[Vakt Comply] %s", title), body)
+				// R1-W4A-N1: Marke nur, wenn mindestens ein Kanal zugestellt
+				// hat — Begruendung im gleichlautenden Block in
+				// CheckOverdueDeadlines.
+				if inAppErr != nil && mailErr != nil {
+					log.Error().Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+						Msg("nis2_obligation_check: 12h-Warnung über KEINEN Kanal zugestellt — Marke bleibt ungesetzt, der naechste Lauf versucht es erneut")
+				} else if err := s.repo.MarkIncidentWarnNotified(ctx, orgID, inc.ID, p.label); err != nil {
 					log.Warn().Err(err).Str("incident_id", inc.ID).Msg("nis2_obligation_check: failed to mark warn notified")
 				}
-				log.Info().Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
-					Msg("nis2_obligation_check: 12h warning sent")
+				if inAppErr != nil {
+					log.Error().Err(inAppErr).Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+						Msg("nis2_obligation_check: 12h-Warnung — In-App-Meldung NICHT geschrieben")
+				}
+				if mailErr != nil {
+					log.Error().Err(mailErr).Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+						Msg("nis2_obligation_check: 12h-Warnung — E-Mail an die Administratoren NICHT versendet")
+				} else {
+					log.Info().Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", p.label).
+						Msg("nis2_obligation_check: 12h warning sent")
+				}
 			}
 		}
 	}
@@ -654,11 +750,25 @@ func (s *Service) UpdateDORADeadlineStatus(ctx context.Context, orgID string) er
 		}
 
 		// Fire alert when any deadline goes red.
+		//
+		// L3-01: hier stand notify.Send. Dieser Cron laeuft alle fuenf Minuten
+		// (scheduler.go), also 288-mal am Tag; mal drei Fristen sind das 864
+		// identische Meldungen pro Tag und Vorfall. SendOnce meldet je Vorfall
+		// und Frist genau einmal — der Schluessel steht in
+		// user_notifications.module.
 		for key, st := range status {
 			if st == "red" {
 				title := fmt.Sprintf("DORA IKT-Meldefrist überschritten (%s): %s", key, inc.Title)
 				body := fmt.Sprintf("Die DORA-Meldefrist (%s) für Vorfall \"%s\" ist überschritten und noch nicht gemeldet.", key, inc.Title)
-				notify.Send(ctx, s.db, orgID, title, body, "dora_deadline_overdue", "vaktcomply")
+				// Die Entdopplung steckt in SendOnce selbst (Schluessel in
+				// user_notifications.module), nicht in einer Marke — ein
+				// Fehlschlag unterdrueckt hier nichts dauerhaft, der naechste
+				// Lauf in fuenf Minuten versucht es erneut. Trotzdem geloggt.
+				if err := notify.SendOnce(ctx, s.db, orgID, title, body,
+					"dora_deadline_overdue", "dora_deadline:"+inc.ID+":"+key); err != nil {
+					log.Error().Err(err).Str("org_id", orgID).Str("incident_id", inc.ID).Str("deadline", key).
+						Msg("dora_deadline_status: In-App-Meldung NICHT geschrieben")
+				}
 			}
 		}
 	}

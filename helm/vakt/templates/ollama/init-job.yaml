@@ -1,0 +1,57 @@
+{{- if and .Values.ollama.enabled .Values.ollama.initJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "vakt.fullname" . }}-ollama-init
+  labels:
+    {{- include "vakt.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama-init
+  annotations:
+    # Run after StatefulSet is up. helm.sh/hook makes it run on install + upgrade
+    # but ollama pull is idempotent — if the model is already in the volume, the
+    # pull is a no-op (size check only, no re-download).
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "vakt.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ollama-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: pull-model
+          image: "{{ .Values.ollama.image.repository }}:{{ .Values.ollama.image.tag }}"
+          imagePullPolicy: {{ .Values.ollama.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Waiting for ollama service to be reachable..."
+              for i in $(seq 1 30); do
+                if ollama list >/dev/null 2>&1; then
+                  echo "Ollama is up."
+                  break
+                fi
+                echo "  attempt $i/30 — sleeping 10s"
+                sleep 10
+              done
+              MODEL="${VAKT_AI_MODEL:-qwen2.5:7b}"
+              echo "Pre-pulling default model $MODEL (one-time, no-op if already present)..."
+              ollama pull "$MODEL"
+              echo "Model ready."
+          env:
+            - name: OLLAMA_HOST
+              value: "http://{{ include "vakt.fullname" . }}-ollama:11434"
+            - name: VAKT_AI_MODEL
+              value: {{ .Values.ollama.model | quote }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+{{- end }}

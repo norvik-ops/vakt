@@ -3,30 +3,50 @@
 
 package auth
 
-// AUTH-001 regression tests for the refresh-session revocation added to Logout.
+// AUTH-001 / R1-W6A-N1 / R1-W7A-N3 — what logout owes the caller.
 //
-// Security contract: after a successful logout, all refresh sessions for the
-// user MUST be deleted from refresh_sessions (DB) and all corresponding
-// "refresh:<token_hash>" keys MUST be removed from Redis.
+// Security contract: a logout that answers 200 has revoked BOTH halves of the
+// session — the access token (deny-list) and every refresh session of that user
+// (refresh_sessions rows, Redis keys, pw_version bump). A logout that could not
+// do that says so, rather than answering 200 over a session that is still live.
 //
-// Without this fix, an attacker holding a stolen refresh token can call
-// POST /auth/refresh after the victim logs out and receive a new access token —
-// retaining 30-day access even though the victim believes they are logged out.
+// ── Why this file was rewritten ─────────────────────────────────────────────
 //
-// These tests do not require a database or Redis connection. They verify:
-//   - The Redis key format used by RevokeAllSessions matches the key format
-//     used by issueTokenPair (a mismatch means revocation is silently ineffective)
-//   - The revocation is non-fatal: a Redis failure must not abort the logout
-//   - The DB query deletes ALL sessions for the user (SQL contract documented)
-//   - RevokeAllSessions with nil Redis does not panic
+// It used to open with almost exactly that sentence and then check none of it.
+// Five tests, all green, none of which called Logout: two compared
+// refreshRedisKey() against a "refresh:"+hash literal, one asserted that a
+// dead Redis client returns an error (a property of go-redis, not of this
+// codebase), one asserted that RevokeAllSessions errors on a nil pool — and one
+// declared `const expectedSQL = "DELETE FROM refresh_sessions …"` inside the
+// test and then made assertions about that constant. That last one is the
+// clearest case: it would have stayed green if the production query had been
+// deleted outright, because the string it inspected was its own.
+//
+// Meanwhile the defect the header describes sat one call away and untouched:
+// Logout read its subject from c.Get("user_id"), the route is mounted without
+// auth middleware, so the value was always empty and RevokeAllSessions ran
+// never. Five green tests over the exact hole they claimed to guard.
+//
+// What is kept: the key-format agreement between the storage and the revocation
+// path is a genuine invariant with a genuine failure mode (revocation deletes
+// keys nobody stored, silently). It is one test now, not three.
+//
+// What is added: the wiring itself, which is the part that was missing. The
+// full end-to-end proof — log in, log out, then find BOTH tokens dead against a
+// real Postgres and a real Redis — needs both of those and lives in
+// internal/integration_test/logout_revokes_both_tokens_real_test.go.
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	"aidanwoods.dev/go-paseto"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,108 +55,175 @@ import (
 // by RevokeAllSessions match the "refresh:<sha256>" format that issueTokenPair
 // uses when storing refresh tokens.
 //
-// A mismatch (e.g. different prefix, different hash encoding) would mean
-// revocation deletes the wrong keys and stolen refresh tokens survive logout.
+// A mismatch (different prefix, different hash encoding) would mean revocation
+// deletes keys nobody ever wrote while the real ones survive — and it would
+// look identical to a working revocation from the outside.
 func TestLogout_RevokeAllSessions_KeyFormat(t *testing.T) {
-	// Simulate what issueTokenPair stores: key = refreshRedisKey(rawToken).
 	rawToken := "aabbccdd1122334455667788aabbccdd"
-	storeKey := refreshRedisKey(rawToken) // key used by issueTokenPair
 
-	// RevokeAllSessions constructs "refresh:" + token_hash where token_hash
-	// is sha256Hex(rawToken) — the value stored in the refresh_sessions table.
-	hash := sha256Hex(rawToken)
-	revokeKey := "refresh:" + hash
+	storeKey := refreshRedisKey(rawToken)         // what issueTokenPair writes
+	revokeKey := "refresh:" + sha256Hex(rawToken) // what RevokeAllSessions deletes
 
 	assert.Equal(t, storeKey, revokeKey,
 		"revocation key must match the storage key used by issueTokenPair; "+
 			"a mismatch means stolen refresh tokens survive a logout")
-
-	assert.True(t, strings.HasPrefix(revokeKey, "refresh:"),
-		"revoke key must use 'refresh:' prefix")
-	assert.Len(t, hash, 64,
+	assert.Len(t, sha256Hex(rawToken), 64,
 		"token_hash must be a 64-char hex-encoded SHA-256 digest")
 }
 
-// TestLogout_RevokeAllSessions_NilDBReturnsError verifies that RevokeAllSessions
-// returns a descriptive error (not a panic) when the Service has a nil DB pool.
+// newLogoutTestHandler builds a Handler whose Service carries a real Paseto key
+// but no database — deliberately. A nil pool makes RevokeAllSessions fail, and
+// the point of these tests is what Logout DOES with that failure. Before the
+// fix it did nothing at all, because it never got that far.
+func newLogoutTestHandler(t *testing.T) (*Handler, paseto.V4SymmetricKey) {
+	t.Helper()
+	key := paseto.NewV4SymmetricKey()
+	return &Handler{service: &Service{key: key, redis: dialFailingRedis(t)}}, key
+}
+
+func postLogout(t *testing.T, h *Handler, token string) *httptest.ResponseRecorder {
+	t.Helper()
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	rec := httptest.NewRecorder()
+	// No auth middleware — this is the production mount (api.Group("/auth", …)),
+	// and reproducing it is the whole point: with middleware in the chain the
+	// bug under test cannot occur.
+	require.NoError(t, h.Logout(e.NewContext(req, rec)))
+	return rec
+}
+
+// TestLogout_ReachesSessionRevocationWithoutAuthMiddleware is the regression
+// guard for R1-W6A-N1. It pins the wiring, not the outcome: on a mount with no
+// auth middleware, Logout must still identify the subject and attempt the
+// session revocation.
 //
-// A nil DB is the common test setup and also a degenerate but recoverable
-// production state. The caller (Logout handler) treats the error as non-fatal
-// so this path must not crash the process.
-func TestLogout_RevokeAllSessions_NilDBReturnsError(t *testing.T) {
+// The proof that it got there is the failure itself. The Service has a nil DB,
+// so RevokeAllSessions cannot succeed, so a handler that reached it must answer
+// LOGOUT_REVOCATION_FAILED. The old handler skipped the whole block (empty
+// user_id) and answered 200 — which is exactly what this test would have caught.
+func TestLogout_ReachesSessionRevocationWithoutAuthMiddleware(t *testing.T) {
+	h, key := newLogoutTestHandler(t)
+	token, err := IssueAccessToken(key, Claims{
+		UserID: "11111111-1111-1111-1111-111111111111",
+		OrgID:  "22222222-2222-2222-2222-222222222222",
+		Roles:  []string{"Admin"},
+	})
+	require.NoError(t, err)
+
+	rec := postLogout(t, h, token)
+
+	require.NotEqual(t, http.StatusOK, rec.Code,
+		"a logout that could revoke neither the token nor the sessions must not answer 200")
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+
+	var body map[string]string
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, "LOGOUT_REVOCATION_FAILED", body["code"],
+		"the session revocation must be attempted on the public mount — an empty "+
+			"subject used to skip it silently and answer 'logged out'")
+}
+
+// TestLogout_ExpiredTokenStillIdentifiesItsSubject covers the case the public
+// mount exists for. The access token lives an hour, the refresh session thirty
+// days, so the ordinary logout — someone returning to an idle tab — presents an
+// EXPIRED token over a live session. If expiry blocked subject resolution, the
+// long-lived session would survive precisely the logout that matters most.
+func TestLogout_ExpiredTokenStillIdentifiesItsSubject(t *testing.T) {
+	key := paseto.NewV4SymmetricKey()
+	const userID = "33333333-3333-3333-3333-333333333333"
+
+	expired, err := IssueAccessTokenWithTTL(key, Claims{UserID: userID, OrgID: "org"}, -time.Hour)
+	require.NoError(t, err)
+
+	// The strict parser refuses it — that is correct and must stay correct.
+	_, strictErr := ParseAccessToken(key, expired)
+	require.Error(t, strictErr, "an expired token must never authorise anything")
+
+	// The revocation parser still names the subject whose sessions to destroy.
+	subject, err := ParseTokenSubjectForRevocation(key, expired)
+	require.NoError(t, err, "an expired token must still be able to end its own session")
+	assert.Equal(t, userID, subject)
+}
+
+// TestLogout_ForgedTokenIsRefusedNotConfirmed guards the other edge: a token
+// this server did not mint names no session, so there is nothing to revoke.
+// Answering "logged out" would claim work that never happened.
+func TestLogout_ForgedTokenIsRefusedNotConfirmed(t *testing.T) {
+	h, _ := newLogoutTestHandler(t)
+
+	// Authentic-looking, minted under a different key.
+	foreign, err := IssueAccessToken(paseto.NewV4SymmetricKey(), Claims{
+		UserID: "44444444-4444-4444-4444-444444444444", OrgID: "org",
+	})
+	require.NoError(t, err)
+
+	rec := postLogout(t, h, foreign)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code,
+		"a token from a foreign key must not be answered as a completed logout")
+	var body map[string]string
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, "AUTH_INVALID_TOKEN", body["code"])
+}
+
+// TestLogout_ClearsCookiesEvenWhenRevocationFails pins the ordering trap:
+// SetCookie only stages a header, and the first c.JSON flushes them. Clearing
+// the cookies in a defer would compile, read as careful, and drop both
+// Set-Cookie lines on every response.
+//
+// The local teardown is deliberately unconditional — a browser that asked to
+// leave should stop presenting the token even when the server could not revoke
+// it. The 503 carries the rest of the truth.
+func TestLogout_ClearsCookiesEvenWhenRevocationFails(t *testing.T) {
+	h, key := newLogoutTestHandler(t)
+	token, err := IssueAccessToken(key, Claims{
+		UserID: "55555555-5555-5555-5555-555555555555", OrgID: "org",
+	})
+	require.NoError(t, err)
+
+	rec := postLogout(t, h, token)
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+
+	cookies := strings.Join(rec.Header().Values("Set-Cookie"), " | ")
+	assert.Contains(t, cookies, "access_token=",
+		"the access_token cookie must be expired even on the failure path")
+	assert.True(t,
+		strings.Contains(strings.ToLower(cookies), "max-age=0"),
+		"cookie must be expired immediately; got: %s", cookies)
+}
+
+// TestRevokeToken_ErrorsWhenNoSinkAcceptsIt is the regression guard for
+// R1-W7A-N3. RevokeToken writes to two sinks and used to `return nil`
+// unconditionally, so the logout handler could not distinguish a persisted
+// revocation from a lost one — and answered 200 for both.
+//
+// Here neither sink can accept it: Redis is unreachable and no PG fallback is
+// wired. The token stays valid for the rest of its hour, and that must be
+// reported, not logged.
+func TestRevokeToken_ErrorsWhenNoSinkAcceptsIt(t *testing.T) {
+	svc := &Service{redis: dialFailingRedis(t), denyFall: nil}
+
+	err := svc.RevokeToken(context.Background(), "some-raw-token")
+
+	require.Error(t, err, "a revocation that reached neither Redis nor the PG fallback is not a success")
+	assert.Contains(t, err.Error(), "no sink accepted",
+		"the error must say what actually failed, not just that something did")
+}
+
+// TestRevokeAllSessions_NilDBReturnsError keeps the one useful assertion from
+// the old file: a degenerate wiring must produce an error, not a panic. It
+// matters more now, because the Logout handler turns that error into a 503
+// instead of discarding it.
+func TestRevokeAllSessions_NilDBReturnsError(t *testing.T) {
 	svc := &Service{redis: nil, db: nil}
 
 	err := svc.RevokeAllSessions(context.Background(), "00000000-0000-0000-0000-000000000001")
-	require.Error(t, err, "nil DB must return error")
+
+	require.Error(t, err, "nil DB must return an error")
 	assert.Contains(t, err.Error(), "revoke sessions",
 		"error message must identify the failing operation")
-}
-
-// TestLogout_RevokeAllSessions_NonFatalOnRedisFailure verifies that a Redis
-// outage during session revocation does NOT cause RevokeAllSessions to return
-// an error. The DB deletion is the authoritative revocation; Redis is
-// belt-and-suspenders for low-latency enforcement.
-//
-// This test uses the same "failing redis" technique as
-// TestCheckAccountLocked_FailClosedByDefault.
-func TestLogout_RevokeAllSessions_NonFatalOnRedisFailure(t *testing.T) {
-	failingRedis := redis.NewClient(&redis.Options{
-		Addr:        "127.0.0.1:1", // unbindable port → guaranteed dial error
-		DialTimeout: 100 * time.Millisecond,
-		ReadTimeout: 100 * time.Millisecond,
-		MaxRetries:  -1,
-	})
-	t.Cleanup(func() { _ = failingRedis.Close() })
-
-	// Simulate the best-effort Redis DEL call that RevokeAllSessions makes
-	// after collecting token hashes from the DB.
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	defer cancel()
-
-	keys := []string{"refresh:aabbccdd1122334455667788aabbccddaabbccdd1122334455667788aabbccdd"}
-	err := failingRedis.Del(ctx, keys...).Err()
-
-	// Redis returns an error — but production code ignores it (best-effort).
-	// This test documents the error IS non-nil (the ignore path is reachable)
-	// and must not be of type context.DeadlineExceeded.
-	require.Error(t, err, "Redis Del should fail on unreachable host")
-	assert.NotEqual(t, context.DeadlineExceeded, err,
-		"Redis should fail with a dial error, not context timeout")
-}
-
-// TestLogout_RevokeAllSessions_SessionRevokeSQL documents the SQL contract for
-// RevokeAllSessions. The query MUST:
-//   - Target the refresh_sessions table
-//   - Filter by user_id (ALL sessions for that user, not just one)
-//   - RETURN the token_hash so Redis keys can be derived and deleted
-//
-// A regression that narrows the WHERE clause (e.g. a single session ID or a
-// single token hash) would leave other sessions alive and allow an attacker
-// holding a stolen refresh token to re-authenticate after the victim logs out.
-func TestLogout_RevokeAllSessions_SessionRevokeSQL(t *testing.T) {
-	// The SQL used in RevokeAllSessions — kept here as a living contract test.
-	// If the query changes, this test must be updated with justification.
-	// orgid-lint: global — scoped by user_id (global users table); see service.go RevokeAllSessions
-	const expectedSQL = `DELETE FROM refresh_sessions WHERE user_id = $1::uuid RETURNING token_hash`
-
-	assert.Contains(t, expectedSQL, "DELETE FROM refresh_sessions",
-		"must delete from refresh_sessions, not update or soft-delete")
-	assert.Contains(t, expectedSQL, "user_id = $1::uuid",
-		"must scope deletion to the specific user")
-	assert.NotContains(t, expectedSQL, "AND id =",
-		"must NOT restrict to a single session ID — all user sessions must be revoked")
-	assert.NotContains(t, expectedSQL, "AND token_hash =",
-		"must NOT restrict to a single token_hash — all user sessions must be revoked")
-	assert.Contains(t, expectedSQL, "RETURNING token_hash",
-		"must return token_hash so the caller can remove keys from Redis")
-}
-
-// TestLogout_RevokeAllSessions_RefreshKeyPrefixConsistency verifies that the
-// "refresh:" prefix is consistent between the storage path (issueTokenPair →
-// refreshRedisKey) and the revocation path (RevokeAllSessions, which constructs
-// "refresh:"+hash directly). Any prefix drift makes revocation silently ineffective.
-func TestLogout_RevokeAllSessions_RefreshKeyPrefixConsistency(t *testing.T) {
-	sample := refreshRedisKey("any-token-value")
-	assert.True(t, strings.HasPrefix(sample, "refresh:"),
-		"refreshRedisKey must use 'refresh:' prefix — RevokeAllSessions uses the same literal")
 }

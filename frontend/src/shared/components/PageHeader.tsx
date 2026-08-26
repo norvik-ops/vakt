@@ -4,7 +4,8 @@ interface PageHeaderProps {
   title: string
   description?: string
   actions?: React.ReactNode
-  tier?: 'pro' | 'enterprise'
+  /** Siehe DemoTierHint: es gibt genau ein bezahltes Tier. */
+  tier?: 'pro'
 }
 
 // Uses <header> (implicit role="banner") for proper landmark semantics (WCAG 1.3.1).
@@ -14,7 +15,7 @@ export function PageHeader({ title, description, actions, tier }: PageHeaderProp
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-[20px] font-bold text-primary leading-tight">{title}</h1>
-          {tier && <DemoTierHint tier={tier} />}
+          {tier && <DemoTierHint />}
         </div>
         {description && <p className="mt-1 text-[12px] text-secondary">{description}</p>}
       </div>

@@ -12,20 +12,20 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/config"
 )
 
 // handleBCMEvidenceSync creates/updates DER.4 evidence entries for all orgs
 // based on current BIA, WAP, and emergency contact data.
 // Runs daily at 07:00 UTC (S86-4).
-func handleBCMEvidenceSync(pool *pgxpool.Pool) asynq.HandlerFunc {
+func handleBCMEvidenceSync(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		orgIDs, err := nonDemoOrgIDs(ctx, pool)
 		if err != nil {
 			return err
 		}
 
-		svc := vaktcomply.NewService(pool)
+		svc := newComplyService(cfg, pool)
 		var failed int
 		for _, orgID := range orgIDs {
 			if err := svc.SyncBCMEvidence(ctx, orgID); err != nil {

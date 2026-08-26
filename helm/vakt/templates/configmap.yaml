@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vakt.fullname" . }}-config
+  labels:
+    {{- include "vakt.labels" . | nindent 4 }}
+data:
+  VAKT_MODULES_ENABLED: {{ .Values.api.env.VAKT_MODULES_ENABLED | quote }}
+  VAKT_LOG_LEVEL: {{ .Values.api.env.VAKT_LOG_LEVEL | quote }}
+  VAKT_WORKER_CONCURRENCY: {{ .Values.worker.concurrency | quote }}
+  # S90-6: per-pod DB pool size. Total = VAKT_DB_MAX_CONNS × replicas; keep below
+  # Postgres max_connections. Use PgBouncer (transaction mode) for replicas ≥ 2.
+  VAKT_DB_MAX_CONNS: {{ .Values.api.env.VAKT_DB_MAX_CONNS | default "25" | quote }}
+  # AI Copilot — Community-Feature seit v0.6.x.
+  #
+  # Provider folgt dem Chart: Wenn wir einen Ollama-Pod hochfahren, soll die API ihn
+  # auch benutzen. Hier stand fest "disabled" — das Chart zog also einen Ollama-Pod
+  # samt Modell hoch und liess die API die KI abgeschaltet lassen. Reines Totgewicht,
+  # und ein Widerspruch zum Backend-Default (config.go: "ollama").
+  VAKT_AI_PROVIDER: {{ .Values.api.env.VAKT_AI_PROVIDER | default (ternary "ollama" "disabled" .Values.ollama.enabled) | quote }}
+  #
+  # Das Modell kommt aus ollama.model — derselben Stelle, aus der der Init-Job es
+  # zieht. Vorher waren es ZWEI unabhaengige Knoepfe: der Init-Job zog
+  # .Values.ollama.model, die API bekam .Values.api.env.VAKT_AI_MODEL mit einem
+  # eigenen Fallback. Wer ollama.model umstellte, liess ein Modell ziehen, nach dem
+  # die API nie fragte — jede KI-Anfrage lief gegen ein Modell, das es nicht gab.
+  VAKT_AI_MODEL: {{ .Values.api.env.VAKT_AI_MODEL | default .Values.ollama.model | default "qwen2.5:7b" | quote }}
+  {{- if .Values.ollama.enabled }}
+  # Wenn der mitgelieferte Ollama-Service aktiv ist, wird BASE_URL automatisch
+  # auf den ClusterIP-Endpoint gesetzt. Override durch api.env.VAKT_AI_BASE_URL
+  # ist möglich (z.B. für externen Mistral-EU-Endpoint mit ollama.enabled=false).
+  VAKT_AI_BASE_URL: {{ .Values.api.env.VAKT_AI_BASE_URL | default (printf "http://%s-ollama:11434/v1" (include "vakt.fullname" .)) | quote }}
+  {{- else if .Values.api.env.VAKT_AI_BASE_URL }}
+  VAKT_AI_BASE_URL: {{ .Values.api.env.VAKT_AI_BASE_URL | quote }}
+  {{- end }}

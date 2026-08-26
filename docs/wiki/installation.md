@@ -34,16 +34,23 @@ cd vakt
 cp .env.example .env
 ```
 
-Dann den Master-Key setzen — einmalig, **nicht mehr ändern nach dem ersten Start**:
+Dann die drei Geheimnisse setzen. Alle drei stehen in `.env.example` auf dem
+Platzhalter `ERSETZEN_SIE_DIESEN_WERT` — der ist im öffentlichen Repository
+abgedruckt und damit allgemein bekannt. Der Master-Key wird einmalig gesetzt und
+**nach dem ersten Start nicht mehr geändert**:
 
 ```bash
-sed -i 's/VAKT_SECRET_KEY=.*/VAKT_SECRET_KEY='"$(openssl rand -hex 32)"'/' .env
+sed -i "s/^VAKT_SECRET_KEY=.*/VAKT_SECRET_KEY=$(openssl rand -hex 32)/" .env
+sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 24)/" .env
+sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -hex 24)/" .env
 ```
 
 Oder manuell in `.env` eintragen:
 
 ```env
 VAKT_SECRET_KEY=<Ausgabe von: openssl rand -hex 32>
+POSTGRES_PASSWORD=<Ausgabe von: openssl rand -hex 24>
+REDIS_PASSWORD=<Ausgabe von: openssl rand -hex 24>
 ```
 
 ### 3. Starten
@@ -213,7 +220,7 @@ Vakt prüft nicht automatisch auf neue Versionen. Wenn du informiert werden möc
 
 **Option 1 — In-App-Banner:** Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich die [GitHub Releases API](https://github.com/norvik-ops/vakt/releases) und zeigt Administratoren einen Hinweis-Banner in der Oberfläche. Es werden dabei keine Daten gesendet.
 
-**Option 2 — Watchtower:** Für automatische Container-Updates siehe die [Deployment-Dokumentation](../setup.md).
+**Option 2 — Watchtower:** Für automatische Container-Updates siehe die [Deployment-Dokumentation](../setup.md). **Watchtower aktualisiert ausschließlich Images** — `docker-compose.yml`, `Caddyfile` und `scripts/` bleiben auf dem Stand deiner Installation und müssen zusätzlich nachgezogen werden (`./scripts/update.sh` oder `git pull --ff-only`).
 
 Datenbankmigrationen laufen über den `migrate`-Container, der in `docker-compose.yml` als Abhängigkeit vor `api` und `worker` eingetragen ist. Der Container startet, migriert und beendet sich — `docker compose up -d` reicht:
 
@@ -230,14 +237,18 @@ docker compose up -d
 
 ## Kubernetes (Helm)
 
-Ein Helm Chart liegt unter `helm/vakt/`. Grundlegender Aufruf:
+Ein Helm Chart liegt unter `helm/vakt/`. Ein veröffentlichtes Chart-Repository
+gibt es nicht — installiert wird aus dem Arbeitsverzeichnis, nach einmaligem
+Auflösen der PostgreSQL-/Redis-Subcharts:
 
 ```bash
+helm dependency update ./helm/vakt
+
 helm install vakt ./helm/vakt \
-  --set secret.key=$(openssl rand -hex 32) \
-  --set postgresql.postgresqlPassword=sicher \
+  --set secrets.secretKey=$(openssl rand -hex 32) \
+  --set postgresql.auth.password=$(openssl rand -hex 24) \
   --set ingress.enabled=true \
-  --set ingress.hostname=vakt.meine-firma.de
+  --set ingress.host=vakt.meine-firma.de
 ```
 
 ---

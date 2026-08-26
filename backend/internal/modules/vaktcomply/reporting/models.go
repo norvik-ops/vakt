@@ -82,9 +82,14 @@ type KPIDashboard struct {
 
 // NIS2IncidentRow is a minimal incident view used for NIS2 deadline checking.
 type NIS2IncidentRow struct {
-	ID                          string
-	OrgID                       string
-	Title                       string
+	ID    string
+	OrgID string
+	Title string
+	// DiscoveredAt is when the org became aware of the incident. It is the legal
+	// anchor for every NIS2 Art. 23(4) deadline — never time.Now(). Populated by
+	// GetNIS2Incident; ListNIS2OpenIncidents leaves it zero, because the deadline
+	// sweep reads the stored due dates, not the anchor.
+	DiscoveredAt                time.Time
 	Status                      string
 	NIS2Reportable              *bool
 	NIS2ReportingStage          *string

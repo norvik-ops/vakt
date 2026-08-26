@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 )
 
 // metricsTokenAuth enforces Bearer token auth when VAKT_METRICS_TOKEN is set.
@@ -82,13 +83,18 @@ func isAllowedMetricsIP(raw string) bool {
 
 // RegisterOptions carries optional configuration for the metrics endpoint.
 type RegisterOptions struct {
-	// RedisAddr is the host:port of the Redis server used for queue-depth metrics.
-	// Leave empty to skip queue-depth metrics.
-	RedisAddr string
-	// RedisPassword is the Redis AUTH password. Required when Redis runs with
-	// --requirepass (the shipped compose default), otherwise queue-depth and
-	// Asynq metrics fail silently with NOAUTH (S121-C3 / I1).
-	RedisPassword string
+	// Redis holds the parsed connection options used for queue-depth and
+	// per-task Asynq metrics. Leave nil to skip both.
+	//
+	// This used to be two strings (RedisAddr, RedisPassword). The password had
+	// to be added because Redis runs with --requirepass in the shipped compose
+	// default and both metrics families otherwise failed silently with NOAUTH
+	// (S121-C3 / I1). R1-14b-01 replaced the pair with the full options,
+	// because the database number cannot pass through two strings at all: both
+	// clients below read DB 0 while the worker wrote to DB N, so
+	// vakt_queue_depth and vakt_asynq_jobs_* reported an empty, healthy-looking
+	// queue that nobody was serving.
+	Redis *redis.Options
 	// MetricsToken is the Bearer token required to access /metrics.
 	// When empty, only the IP allowlist applies.
 	MetricsToken string
@@ -100,9 +106,8 @@ type RegisterOptions struct {
 // RegisterWithOptions mounts the /metrics endpoint with extended options.
 func RegisterWithOptions(e *echo.Echo, db *pgxpool.Pool, opts RegisterOptions) {
 	h := NewHandler(db)
-	if opts.RedisAddr != "" {
-		h.WithRedisAddr(opts.RedisAddr)
-		h.WithRedisPassword(opts.RedisPassword)
+	if opts.Redis != nil && opts.Redis.Addr != "" {
+		h.WithRedis(opts.Redis)
 	}
 	tokenMiddleware := func(next echo.HandlerFunc) echo.HandlerFunc {
 		return metricsTokenAuth(opts.MetricsToken, next)

@@ -127,10 +127,10 @@ export default function BCMDashboardPage() {
                 <ActivitySquare className="w-3.5 h-3.5" />
                 <TermTooltip term="BIA" glossaryKey="BIA">{t('bcm.dashboard.biaProcesses')}</TermTooltip>
               </div>
-              <p className="text-2xl font-bold">{summary?.total ?? '—'}</p>
-              {(summary?.high_critical ?? 0) > 0 && (
+              <p className="text-2xl font-bold">{summary?.total_processes ?? '—'}</p>
+              {(summary?.critical_count ?? 0) > 0 && (
                 <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs w-fit" variant="outline">
-                  {summary?.high_critical} {t('bcm.dashboard.highCritical')}
+                  {summary?.critical_count} {t('bcm.dashboard.highCritical')}
                 </Badge>
               )}
             </CardContent>
@@ -139,10 +139,10 @@ export default function BCMDashboardPage() {
             <CardContent className="pt-5 flex flex-col gap-1">
               <div className="flex items-center gap-2 text-muted-foreground text-xs">
                 <Clock className="w-3.5 h-3.5" />
-                {t('bcm.dashboard.avgRto')}
+                {t('bcm.dashboard.shortestRto')}
               </div>
               <p className="text-2xl font-bold">
-                {summary?.avg_rto_hours != null ? `${summary.avg_rto_hours}h` : '—'}
+                {summary?.shortest_rto_hours != null ? `${summary.shortest_rto_hours}h` : '—'}
               </p>
             </CardContent>
           </Card>

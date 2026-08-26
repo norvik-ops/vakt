@@ -504,6 +504,12 @@ type SaveAnswersInput struct {
 type ReviewAnswerInput struct {
 	ReviewStatus string `json:"review_status" validate:"required,oneof=accepted needs_rework"`
 	ReworkNote   string `json:"rework_note"`
+	// L1-04: ck_supplier_answers.cert_expiry_date hatte keinen Schreiber, die
+	// Warnung vor ablaufenden Lieferanten-Zertifikaten konnte deshalb nie
+	// ausloesen. Gesetzt wird das Datum bei der Pruefung — dort hat ein Mensch
+	// das hochgeladene Zertifikat vor sich. Weglassen laesst einen bereits
+	// erfassten Wert stehen.
+	CertExpiryDate *time.Time `json:"cert_expiry_date"`
 }
 
 // AnswerWithQuestion holds a supplier answer joined with its question and control info.

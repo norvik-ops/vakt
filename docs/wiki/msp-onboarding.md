@@ -76,7 +76,14 @@ cd vakt-kunde-a
 
 # .env befüllen (aus Vorlage)
 cp .env.example .env
-# vim .env  ← Pflichtfelder ausfüllen
+
+# Die drei Geheimnisse erzeugen. In der Vorlage stehen sie auf dem Platzhalter
+# ERSETZEN_SIE_DIESEN_WERT — der ist im öffentlichen Repository abgedruckt. Pro
+# Mandant eigene Werte, niemals dieselben über mehrere Kunden hinweg.
+sed -i "s/^VAKT_SECRET_KEY=.*/VAKT_SECRET_KEY=$(openssl rand -hex 32)/" .env
+sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 24)/" .env
+sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -hex 24)/" .env
+# vim .env  ← restliche Pflichtfelder (VAKT_DOMAIN, Mail) ausfüllen
 
 # Starten
 docker compose up -d
@@ -129,13 +136,22 @@ Jede Kunden-Instanz benötigt einen eigenen Pro-License-Key. License-Keys sind n
 zwischen Instanzen teilbar.
 
 - **Community-Edition:** Kein License-Key erforderlich. Funktionsumfang eingeschränkt
-  (kein SCIM/SIEM, keine White-Label-Reports, kein OIDC/OAuth2-SSO).
+  (kein SCIM/SIEM, kein SSO über OIDC/OAuth2 oder SAML, kein Audit-PDF-Export,
+  kein BSI-IT-Grundschutz-Workflow, kein Lieferantenportal).
 - **Pro-Edition:** License-Key über das Vakt-Reseller-Programm beziehen. Der Key wird
   in `VAKT_LICENSE_KEY` eingetragen und beim Start validiert (offline-fähig via
   signiertes Token).
 
-License-Keys werden pro Instanz ausgestellt und sind an die Domain der Instanz gebunden.
-Bei Domain-Änderungen neuen Key beantragen.
+License-Keys werden pro Instanz ausgestellt.
+
+> **Hinweis (2026-08-08):** Hier stand bis heute zusätzlich, Keys seien „an die Domain der
+> Instanz gebunden" und bei Domain-Änderungen müsse ein neuer Key beantragt werden. **Das
+> trifft technisch nicht zu.** Die signierte Nutzlast eines Keys enthält Stufe, Merkmale,
+> Organisationsname, Ausstell- und Ablaufdatum sowie das Renewal-Token — kein Domain-Feld
+> (`payload` in `backend/internal/license/license.go`). Ein Domain-Wechsel macht einen Key
+> also nicht ungültig; MSPs haben auf diese Aussage hin unnötig Keys nachbestellt. Dass ein
+> Key nur für eine Instanz gedacht ist, bleibt eine **vertragliche** Zusage, keine technisch
+> erzwungene — eine Bindung durchzusetzen wäre eine Produktentscheidung.
 
 ---
 
@@ -143,21 +159,19 @@ Bei Domain-Änderungen neuen Key beantragen.
 
 ### Organisations-Logo
 
-Im Admin-Bereich unter **Einstellungen → Organisation → Erscheinungsbild** kann das
-Kunden-Logo hochgeladen werden. Das Logo erscheint in der Navigationsleiste und in
-PDF-Exporten.
+Im Admin-Bereich unter **Einstellungen → Organisation → Erscheinungsbild** kann eine
+Logo-URL hinterlegt werden (`organizations.logo_url`). Verwendet wird sie im **Trust Center**,
+der öffentlich teilbaren Compliance-Seite der Organisation.
 
 Format: PNG oder SVG, empfohlen 200×60 px, transparent.
 
-### White-Label-PDF-Export (Pro)
-
-Mit einer Pro-Lizenz können PDF-Reports (Compliance-Berichte, Audit-Nachweise, Assessment-Reports)
-mit dem Kunden-Logo und einem konfigurierbaren Fußzeilentext versehen werden. Konfiguration
-im Admin-Bereich unter **Einstellungen → Berichte**.
-
-Das Vakt-Logo und der Vakt-Produktname bleiben in der Standard-Edition sichtbar.
-White-Labeling ist ausschließlich für den MSP-Einsatz im Rahmen der Pro-Lizenz vorgesehen
-und nicht für den Weiterverkauf als eigenständiges Produkt (ELv2-Lizenz).
+> **Hinweis (2026-08-08):** Hier stand bis heute ein Abschnitt, der einen gebrandeten
+> PDF-Export als Pro-Merkmal auswies: PDF-Reports ließen sich angeblich mit Kunden-Logo und eigenem Fußzeilentext versehen —
+> konfigurierbar unter „Einstellungen → Berichte". **Diese Funktion gibt es nicht.** Kein
+> PDF-Renderer im Backend liest `logo_url`, es existiert weder ein Branding-Feld im PDF-Layout
+> noch die genannte Einstellungsseite. Ein MSP kann sich darauf also nicht verlassen; PDF-Exporte
+> tragen in jeder Edition das Vakt-Layout. Ob White-Labeling gebaut wird, ist eine offene
+> Produktentscheidung — bis dahin darf es in keinem Angebot zugesagt werden.
 
 ---
 
@@ -167,6 +181,10 @@ und nicht für den Weiterverkauf als eigenständiges Produkt (ELv2-Lizenz).
 
 ```bash
 # Aktuelles Verzeichnis: vakt-kunde-a/
+# Schritt 1 holt docker-compose.yml, Caddyfile und scripts/ — sie gehören zur
+# Instanz, nicht zu den Images (siehe docs/UPGRADE.md). ./scripts/update.sh
+# macht alle drei Schritte in einem.
+git pull --ff-only
 docker compose pull
 docker compose up -d
 
@@ -178,9 +196,14 @@ curl -s http://localhost/health | jq .version
 
 ### Helm (Kubernetes)
 
+Das Chart liegt im Repository unter `helm/vakt/`; ein veröffentlichtes
+Chart-Repository gibt es nicht. Also: neuen Stand ziehen, dann aus dem
+Arbeitsverzeichnis upgraden.
+
 ```bash
-helm repo update
-helm upgrade vakt vakt/vakt \
+git pull
+helm dependency update ./helm/vakt
+helm upgrade vakt ./helm/vakt \
   --namespace vakt-kunde-a \
   --values values-kunde-a.yaml
 ```
@@ -272,6 +295,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 86400 --cleanup vakt-api vakt-worker
 ```
+
+> **Watchtower aktualisiert ausschließlich Images.** `docker-compose.yml`,
+> `Caddyfile` und `scripts/` der Kundeninstanz bleiben dabei auf dem Stand der
+> Erstinstallation — Härtungsänderungen aus neuen Versionen greifen dort nicht.
+> Plane für diese Dateien einen eigenen Weg ein (`./scripts/update.sh` bzw.
+> `git pull --ff-only` je Instanz, siehe [`docs/UPGRADE.md`](../UPGRADE.md)).
 
 Watchtower prüft täglich auf neue Images und aktualisiert automatisch. Nur empfehlenswert
 für Patch-Updates (gleiche Minor-Version). Vor Major-Version-Updates immer manuell prüfen

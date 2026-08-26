@@ -6,22 +6,113 @@ Vakt verwendet semantische Versionierung (SemVer). Datenbankmigrationen laufen a
 
 ## Standard-Upgrade (Docker Compose)
 
-1. **Backup erstellen** (zwingend vor jedem Upgrade):
-   ```bash
-   make backup
-   ```
-   Das Backup enthält: PostgreSQL-Dump + verschlüsselter Encryption-Key-Hinweis.
+```bash
+cd /opt/vakt          # das Verzeichnis, in dem docker-compose.yml liegt
+./scripts/update.sh
+```
 
-2. **Neue Images ziehen:**
+Das Skript führt die sechs Schritte unten in dieser Reihenfolge aus und bricht
+ab, sobald einer davon nicht durchgeht — es meldet nie einen Erfolg, den es
+nicht hat. Wer die Schritte einzeln fahren will, findet sie hier:
+
+1. **Backup erstellen** (zwingend vor jedem Upgrade, und zwingend als **erster**
+   Schritt):
    ```bash
-   docker compose pull
+   ./scripts/backup.sh ./backups
+   ```
+   Das Archiv enthält den PostgreSQL-Dump, die Evidence-Dateien aus dem
+   Uploads-Volume und den verschlüsselten `VAKT_SECRET_KEY`.
+   `update.sh` prüft danach, dass das Archiv wirklich existiert, groß genug ist,
+   den Dump enthält und signiert ist — ein Exit-Code allein nimmt kein Backup ab.
+   > **Warum zuerst:** bis 2026-08-02 stand dieser Schritt an zweiter Stelle,
+   > hinter der Umstellung der Auslieferungs-Dateien. Scheiterte das Backup —
+   > Datenbank nicht erreichbar, Platte voll, `gpg` fehlt —, stand die
+   > Installation danach gemischt da: neue `docker-compose.yml`, alte Container,
+   > keine Sicherung. Ein halb umgestellter Stand, der sich für heil hält, ist
+   > auf Backup-Terrain der teuerste Fehler. Deshalb wird jetzt zuerst gesichert
+   > und erst danach umgestellt.
+
+2. **Auslieferungs-Dateien aktualisieren.** `docker-compose.yml`, `Caddyfile`,
+   `scripts/` und `Makefile` sind Teil der Installation, nicht der Images. Ein
+   `docker compose pull` fasst sie nicht an.
+   ```bash
+   git pull --ff-only          # bzw. ./scripts/update-artifacts.sh
+   ```
+   > **Warum das kein Nebenschritt ist:** zwischen zwei Versionen liegen in
+   > diesen Dateien regelmäßig sicherheitsrelevante Änderungen — zwischen
+   > v0.42.48 und v0.42.49 zum Beispiel 112 Zeilen in `docker-compose.yml`
+   > (Umstellung auf Docker-Secrets, `cap_drop`, `no-new-privileges`) und 33 in
+   > der `Caddyfile`. Wer nur neue Images zieht, betreibt neue Binaries in der
+   > alten Umgebung: die Passwörter stehen dann weiter im Klartext in
+   > `docker inspect`, und der Frontdoor läuft ohne abgelegte Capabilities.
+   > Deine `.env` wird dabei **nie** verändert (sie ist git-ignoriert) — neue
+   > Pflichtvariablen aus `.env.example` meldet `update.sh` namentlich.
+   > Bricht das Upgrade nach diesem Schritt ab, sagt `update.sh` ausdrücklich,
+   > dass der Stand jetzt gemischt ist, und nennt den Rückweg.
+
+3. **Neue Images ziehen:**
+   ```bash
+   docker compose pull api worker frontend vakt-scanners
    ```
 
-3. **Dienste neu starten:**
+4. **Migrationen ausführen:**
+   ```bash
+   docker compose run --rm migrate
+   ```
+
+5. **Dienste neu starten:**
    ```bash
    docker compose up -d
    ```
-   Der `migrate`-Service läuft automatisch vor der API und führt ausstehende Migrationen aus.
+   Ohne Dienstliste und ohne `--no-deps`: Compose erzeugt genau die Container
+   neu, deren Konfiguration sich geändert hat. Eine Beschränkung auf
+   `api worker frontend` würde die Änderungen an `caddy`, `postgres`, `redis`
+   und `pgbouncer` genau dort liegen lassen, wo die Härtung steht.
+
+6. **Verify:**
+   ```bash
+   docker compose ps
+   curl http://localhost/health
+   ```
+
+### Installation ohne git-Checkout
+
+`update.sh` holt die Auslieferungs-Dateien per `git merge --ff-only` aus dem
+Repository — das setzt voraus, dass das Installationsverzeichnis ein
+`git clone` ist (so beschreibt es der Schnellstart in `docs/setup.md`). Ist es
+kopiert oder entpackt worden, bricht der Schritt ab und verändert nichts. Dann
+gibt es zwei Wege:
+
+* **Empfohlen — einmalig zu einem Checkout machen:** das Verzeichnis sichern,
+  daneben `git clone https://github.com/norvik-ops/vakt` auf die installierte
+  Version auschecken, `.env` und eigene Anpassungen übernehmen, dann weiter wie
+  oben. Ab da trägt jedes Update die Dateien selbst mit.
+* **Übergehen:** `./scripts/update.sh --skip-artifacts` zieht nur Images. Die
+  Compose-/Caddy-/Skript-Dateien bleiben dann auf dem alten Stand, und das
+  Skript sagt das am Ende ausdrücklich. Sicherheitsänderungen in diesen Dateien
+  greifen so **nicht**.
+
+Dasselbe gilt, wenn du mitgelieferte Dateien lokal geändert hast: `update.sh`
+listet sie auf und bricht ab, statt sie zu überschreiben. Übernimm sie mit
+`git commit -am '…'` (dann spult der Merge darüber) oder verwirf sie gezielt.
+
+### Einmalige Nachholung für bestehende Installationen
+
+Ob deine Installation den Schritt schon kennt, sagt dir:
+
+```bash
+grep -c update-artifacts scripts/update.sh    # 0 = kennt ihn noch nicht
+```
+
+Ist die Antwort `0`, bringt das nächste Update die neuen Auslieferungs-Dateien
+noch nicht mit — dieses eine Mal von Hand:
+
+```bash
+cd /opt/vakt
+git status                # lokale Änderungen? -> erst committen oder sichern
+git pull --ff-only
+./scripts/update.sh       # ab hier trägt das Skript den Schritt selbst
+```
 
 ## Wichtige Verhaltensänderungen
 
@@ -60,9 +151,15 @@ Ab v0.42.35 gilt für Konten **mit** aktiviertem TOTP ein **zweistufiger Login**
 
 ## Kubernetes / Helm-Upgrade
 
+Das Chart liegt im Repository unter `helm/vakt/`. Es gibt **kein veröffentlichtes
+Chart-Repository** — `helm repo add`/`helm repo update` haben hier nichts zu holen.
+Upgrade heißt deshalb: neuen Stand auschecken, dann aus dem Arbeitsverzeichnis
+installieren.
+
 ```bash
-helm repo update
-helm upgrade vakt vakt/vakt --namespace vakt --values values.yaml
+git pull                              # neuen Chart-Stand holen
+helm dependency update ./helm/vakt    # PostgreSQL/Redis-Subcharts auflösen
+helm upgrade vakt ./helm/vakt --namespace vakt --values values.yaml
 ```
 
 Helm führt den migrate-Job vor dem API-Rollout aus (init-Container-Pattern).

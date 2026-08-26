@@ -238,7 +238,8 @@
       "high": "Hoog",
       "medium": "Gemiddeld",
       "low": "Laag",
-      "info": "Info"
+      "info": "Info",
+      "unknown": "Niet beoordeeld"
     },
     "status": {
       "open": "Open",
@@ -252,6 +253,10 @@
       "notFound": "Asset niet gevonden",
       "startScan": "Scan starten",
       "scanStarted": "Scan gestart.",
+      "scanFailed": "Scan kon niet worden gestart: {{msg}}",
+      "scannerLabel": "Scanner",
+      "scannerPlaceholder": "Scanner kiezen",
+      "noScanners": "Op deze instantie is geen scanner geïnstalleerd.",
       "assetDetails": "Asset-details",
       "criticality": "Kritikaliteit",
       "target": "Doel",
@@ -534,7 +539,9 @@
       "disableConfirm": "Wilt u {{name}} echt verwijderen? Alle bijbehorende beheersmaatregelen en bewijsmateriaal worden definitief verwijderd.",
       "disabling": "Verwijderen…",
       "confirmDisable": "Ja, deactiveren",
-      "frameworkStatusDraft": "Concept — verwacht eind 2026"
+      "frameworkStatusDraft": "Concept — verwacht eind 2026",
+      "frameworkStatusNotOffered": "Niet aangeboden",
+      "frameworkStatusNotOfferedHint": "Dit raamwerk wordt momenteel niet aangeboden en kan niet worden geactiveerd."
     },
     "controlDetailPage": {
       "addEvidence": "Bewijsmateriaal toevoegen",
@@ -1127,7 +1134,15 @@
       "labelSeverity": "Ernst",
       "labelFindingDesc": "Beschrijving",
       "placeholderFindingDesc": "Details over de bevinding …",
-      "findingSubmitBtn": "Bevinding aanmaken"
+      "findingSubmitBtn": "Bevinding aanmaken",
+      "typeComplianceCheck": "Compliancecontrole",
+      "typeProcessAudit": "Procesaudit",
+      "summaryPlannedThisYear": "Gepland (jaar)",
+      "summaryOverdueCapas": "Achterstallige CAPAs",
+      "labelScope": "Auditomvang *",
+      "placeholderScope": "Welke gebieden, locaties en processen dekt deze audit?",
+      "labelAuditReport": "Auditrapport *",
+      "placeholderAuditReport": "Resultaten, bevindingen en conclusies van de audit (minimaal 10 tekens) …"
     },
     "soaPage": {
       "subtitle": "Bijlage A — Toepasselijkheid van alle 93 maatregelen (Clausule 6.1.3)",
@@ -1156,6 +1171,7 @@
       "groupA7": "A.7 Fysieke maatregelen",
       "groupA8": "A.8 Technologische maatregelen",
       "implNotStarted": "Niet gestart",
+      "implPlanned": "Gepland",
       "implInProgress": "In uitvoering",
       "implImplemented": "Geïmplementeerd",
       "implNotApplicable": "Niet van toepassing",
@@ -1238,7 +1254,17 @@
       "freqMonthly": "Maandelijks",
       "freqQuarterly": "Kwartaalsgewijs",
       "freqAnnually": "Jaarlijks",
-      "freqAsNeeded": "Naar behoefte"
+      "freqAsNeeded": "Naar behoefte",
+      "categoryEmployee": "Medewerkers",
+      "categoryShareholder": "Aandeelhouders",
+      "categoryInsurer": "Verzekeraars",
+      "categoryItProvider": "IT-dienstverleners",
+      "colReviewDate": "Volgende beoordeling",
+      "badgeOverdue": "achterstallig",
+      "badgeSystemDefault": "Standaardvermelding",
+      "labelReviewDate": "Volgende beoordeling",
+      "labelConcerns": "Zorgen en verwachtingen",
+      "placeholderConcerns": "Wat verwacht deze partij van het ISMS?"
     },
     "incidentDetail": {
       "notFound": "Incident niet gevonden.",
@@ -2053,6 +2079,7 @@
       "resolveCompleted": "Voltooid",
       "resolveRejected": "Afgewezen",
       "resolveExtended": "Verlengd",
+      "resolveErasureNotExecuted": "Een verwijderingsverzoek kan pas als \"Voltooid\" worden afgesloten nadat de verwijdering op grond van art. 17 AVG daadwerkelijk is uitgevoerd. Gebruik eerst de knop \"Verwijdering\" bij het verzoek; daarna kan het worden afgesloten.",
       "resolveLabelExtensionReason": "Reden voor verlenging",
       "resolveLabelNotes": "Afsluitende notitie",
       "resolveBtn": "Afsluiten",
@@ -2381,11 +2408,11 @@
     "moduleVaktprivacyDesc": "AVG-documentatie (VVT, DPIA, AVV, datalekken)",
     "licenseAutoRenewal": "Automatische verlenging actief",
     "licenseValidUntil": "Geldig tot {{date}}",
-    "licenseProComingSoon": "Vakt Pro — binnenkort beschikbaar",
-    "licenseProFeature1": "Rollen: Admin, Analist, Viewer, Auditor",
+    "licenseProComingSoon": "Vakt Pro bestellen",
+    "licenseProFeature1": "BSI IT-Grundschutz — modellering, Grundschutz-check, cockpit",
     "licenseProFeature2": "Gedetailleerde modulemachtigingen per gebruiker",
-    "licenseProFeature3": "TISAX, DORA, EU AI Act, CRA",
-    "licenseProFeature4": "AI-adviseur, Audit-PDF export, SSO, API-toegang",
+    "licenseProFeature3": "EU AI Act, CRA, AVG TOM, CIS, KRITIS, BSI C5",
+    "licenseProFeature4": "Audit-PDF-export, SSO, SCIM, SIEM, API-toegang",
     "siemTitle": "SIEM-integratie",
     "siemProTitle": "Pro-functie",
     "siemProDesc": "Stuur auditlogvermeldingen automatisch door naar Splunk, Elasticsearch of een generieke webhook. Beschikbaar met Vakt Pro.",
@@ -2527,7 +2554,9 @@
     "creating": "Aanmaken…",
     "createUser": "Gebruiker aanmaken",
     "userCreated": "Gebruiker succesvol aangemaakt",
-    "deleted": "Verwijderd"
+    "deleted": "Verwijderd",
+    "roleAuditorReadOnly": "AuditorReadOnly — Alleen lezen, voor externe auditors",
+    "roleInternalAuditor": "InternalAuditor — Audits afsluiten en directiebeoordelingen goedkeuren (functiescheiding)"
   },
   "accountSettingsPage": {
     "title": "Accountinstellingen",
@@ -2713,8 +2742,9 @@
     "passwordStrengthWeak": "Zwak",
     "passwordStrengthMedium": "Gemiddeld",
     "passwordStrengthStrong": "Sterk",
-    "mfaPrompt": "Voer de 6-cijferige code uit je authenticator-app in om het aanmelden te voltooien.",
+    "mfaPrompt": "Voer de code uit je authenticator-app in om het aanmelden te voltooien.",
     "mfaCodeLabel": "Authenticatiecode",
+    "mfaBackupHint": "Geen toegang tot de app? Voer dan een van je back-upcodes in (formaat ABCD-1234).",
     "mfaVerify": "Verifiëren",
     "mfaBack": "Terug naar aanmelden",
     "mfaInvalidCode": "Ongeldige of verlopen code"
@@ -2943,7 +2973,9 @@
     "team": {
       "roleAdmin": "Admin",
       "roleEditor": "Editor",
-      "roleViewer": "Kijker"
+      "roleViewer": "Kijker",
+      "roleAuditorReadOnly": "AuditorReadOnly",
+      "roleInternalAuditor": "InternalAuditor"
     }
   },
   "admin": {
@@ -3039,9 +3071,9 @@
     },
     "pro": {
       "title": "Vakt Pro",
-      "description": "Deze functie is niet beschikbaar in de Community-editie. Vakt Pro bevat TISAX, DORA, EU AI Act, NIS2-meldingsassistent, Audit PDF-export, SSO, API-sleutels, granulaire modulerechten en meer.",
+      "description": "Deze functie is niet beschikbaar in de Community-editie. Vakt Pro bevat BSI IT-Grundschutz, EU AI Act, CRA, AVG TOM, CIS, NIS2-meldingsassistent, Audit PDF-export, SSO, API-sleutels, granulaire modulerechten en meer.",
       "cta": "Nu upgraden →",
-      "featureList": "TISAX · DORA · EU AI Act · NIS2-assistent · Audit PDF · SSO · API-sleutels",
+      "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · NIS2-assistent · Audit PDF · SSO · API-sleutels",
       "demoHint": "Pro"
     }
   },
@@ -3277,6 +3309,9 @@
     "version": "Versie",
     "owner": "Verantwoordelijke",
     "ownerPlaceholder": "bijv. IT-manager",
+    "notSet": "niet vastgelegd",
+    "lastTested": "Laatst getest",
+    "statusLabel": "Status",
     "deleteConfirm": "Dit plan verwijderen?",
     "loadError": "Fout bij het laden van BCP-plannen.",
     "emptyTitle": "Geen BCP-plannen",
@@ -3496,6 +3531,10 @@
     "csvHeaderAction": "Actie",
     "csvHeaderResource": "Resource",
     "csvHeaderDetails": "Details",
+    "csvHeaderIp": "IP-adres",
+    "exporting": "Exporteren …",
+    "exportTruncated": "Export beperkt tot {{exported}} van {{total}} vermeldingen.",
+    "exportFailed": "Export mislukt",
     "filterEmail": "E-Mail filtern…",
     "totalEventsPlural": "{{count}} Ereignisse gesamt",
     "csvHeaders": {
@@ -4163,6 +4202,7 @@
       "biaProcesses": "BIA-processen",
       "highCritical": "hoog/kritiek",
       "avgRto": "Gem. RTO",
+      "shortestRto": "Kortste RTO",
       "recoveryPlans": "Herstelplannen",
       "tested": "getest",
       "emergencyContacts": "Noodcontacten",

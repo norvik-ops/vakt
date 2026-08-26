@@ -33,14 +33,18 @@ const TISAX_CONTROL: Control = {
 
 const TISAX_FRAMEWORK: Framework = {
   id: 'fw-tisax',
+  org_id: 'org-1',
   name: 'TISAX',
+  is_builtin: true,
   version: '2023',
   created_at: '2024-01-01T00:00:00Z',
 }
 
 const ISO_FRAMEWORK: Framework = {
   id: 'fw-iso',
+  org_id: 'org-1',
   name: 'ISO 27001',
+  is_builtin: true,
   version: '2022',
   created_at: '2024-01-01T00:00:00Z',
 }

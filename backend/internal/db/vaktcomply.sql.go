@@ -16,6 +16,14 @@ import (
 const addCKCollectorEvidence = `-- name: AddCKCollectorEvidence :one
 INSERT INTO ck_evidence (control_id, org_id, title, source, collector_data, uploaded_by)
 VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (org_id, control_id, source, title)
+  WHERE control_id IS NOT NULL
+    AND source <> 'manual'
+    AND auto_source_type IS NULL
+DO UPDATE SET
+  collector_data = EXCLUDED.collector_data,
+  uploaded_by    = COALESCE(EXCLUDED.uploaded_by, ck_evidence.uploaded_by),
+  updated_at     = NOW()
 RETURNING id, control_id, org_id, title, description, source,
           file_path, file_size, status, version,
           expires_at, expiry_notified_at, created_at, updated_at
@@ -361,6 +369,47 @@ func (q *Queries) CountCKControls(ctx context.Context, arg CountCKControlsParams
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const listCKFrameworkReadinessRows = `-- name: ListCKFrameworkReadinessRows :many
+SELECT c.framework_id,
+       c.not_applicable,
+       COALESCE(c.manual_status, '')::text AS manual_status,
+       COUNT(e.id) FILTER (WHERE e.status IN ('approved', 'pending'))::int AS evidence_count
+FROM ck_controls c
+LEFT JOIN ck_evidence e ON e.control_id = c.id AND e.org_id = c.org_id
+WHERE c.org_id = $1
+GROUP BY c.id, c.framework_id, c.not_applicable, c.manual_status
+`
+
+type ListCKFrameworkReadinessRowsRow struct {
+	FrameworkID   string `json:"framework_id"`
+	NotApplicable bool   `json:"not_applicable"`
+	ManualStatus  string `json:"manual_status"`
+	EvidenceCount int32  `json:"evidence_count"`
+}
+
+// R1-18-D3: eine Zeile je Control der gesamten Organisation, mit den drei
+// Angaben, aus denen policy.ResolveStatus den wirksamen Zustand ableitet.
+// Org-weit statt je Framework, damit ListFrameworks nicht in ein N+1 laeuft.
+func (q *Queries) ListCKFrameworkReadinessRows(ctx context.Context, orgID string) ([]ListCKFrameworkReadinessRowsRow, error) {
+	rows, err := q.db.Query(ctx, listCKFrameworkReadinessRows, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKFrameworkReadinessRowsRow{}
+	for rows.Next() {
+		var i ListCKFrameworkReadinessRowsRow
+		if err := rows.Scan(&i.FrameworkID, &i.NotApplicable, &i.ManualStatus, &i.EvidenceCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const countCKEvidenceByControl = `-- name: CountCKEvidenceByControl :many
@@ -7783,7 +7832,11 @@ func (q *Queries) SeedCKGlobalControlMapping(ctx context.Context, arg SeedCKGlob
 const seedCKMeasure = `-- name: SeedCKMeasure :exec
 INSERT INTO ck_control_measures (control_id, org_id, title, description, difficulty, step_order, is_builtin)
 VALUES ($1, $2, $3, $4, $5, $6, TRUE)
-ON CONFLICT DO NOTHING
+ON CONFLICT (org_id, control_id, title) WHERE is_builtin
+DO UPDATE SET
+  description = EXCLUDED.description,
+  difficulty  = EXCLUDED.difficulty,
+  step_order  = EXCLUDED.step_order
 `
 
 type SeedCKMeasureParams struct {
@@ -7795,8 +7848,10 @@ type SeedCKMeasureParams struct {
 	StepOrder   int32  `json:"step_order"`
 }
 
-// Idempotent (ON CONFLICT DO NOTHING). Aufrufer iteriert die Liste; jedes
-// Measure wird als is_builtin=TRUE eingefügt.
+// Idempotent je (org_id, control_id, title). Aufrufer iteriert die Liste;
+// jedes Measure wird als is_builtin=TRUE eingefügt. Bis Migration 257 stand
+// hier ein ON CONFLICT DO NOTHING ohne Arbiter auf einer Tabelle ohne
+// Unique-Constraint — es griff nie (R1-06-D07).
 func (q *Queries) SeedCKMeasure(ctx context.Context, arg SeedCKMeasureParams) error {
 	_, err := q.db.Exec(ctx, seedCKMeasure,
 		arg.ControlID,
@@ -8099,7 +8154,9 @@ func (q *Queries) UpdateCKAccessReviewItem(ctx context.Context, arg UpdateCKAcce
 
 const updateCKAnswerReview = `-- name: UpdateCKAnswerReview :execrows
 UPDATE ck_supplier_answers
-SET review_status = $1, rework_note = NULLIF($2::text, '')
+SET review_status    = $1,
+    rework_note      = NULLIF($2::text, ''),
+    cert_expiry_date = COALESCE($6::date, cert_expiry_date)
 WHERE ck_supplier_answers.id = $3
   AND assessment_id = $4
   AND assessment_id IN (
@@ -8108,11 +8165,12 @@ WHERE ck_supplier_answers.id = $3
 `
 
 type UpdateCKAnswerReviewParams struct {
-	ReviewStatus pgtype.Text `json:"review_status"`
-	Column2      string      `json:"column_2"`
-	ID           string      `json:"id"`
-	AssessmentID string      `json:"assessment_id"`
-	OrgID        string      `json:"org_id"`
+	ReviewStatus   pgtype.Text `json:"review_status"`
+	Column2        string      `json:"column_2"`
+	ID             string      `json:"id"`
+	AssessmentID   string      `json:"assessment_id"`
+	OrgID          string      `json:"org_id"`
+	CertExpiryDate pgtype.Date `json:"cert_expiry_date"`
 }
 
 // org_id wird via JOIN auf assessments validiert (ck_supplier_answers hat
@@ -8126,6 +8184,7 @@ func (q *Queries) UpdateCKAnswerReview(ctx context.Context, arg UpdateCKAnswerRe
 		arg.ID,
 		arg.AssessmentID,
 		arg.OrgID,
+		arg.CertExpiryDate,
 	)
 	if err != nil {
 		return 0, err
@@ -9570,32 +9629,9 @@ func (q *Queries) ListCKSoAEntries(ctx context.Context, orgID string) ([]ListCKS
 	return items, nil
 }
 
-const updateCKSoAApplicability = `-- name: UpdateCKSoAApplicability :exec
-UPDATE ck_controls
-SET soa_applicable        = $1,
-    soa_justification_yes = $2,
-    soa_justification_no  = $3
-WHERE id = $4::uuid AND org_id = $5::uuid
-`
-
-type UpdateCKSoAApplicabilityParams struct {
-	Applicable bool        `json:"applicable"`
-	JustYes    pgtype.Text `json:"just_yes"`
-	JustNo     pgtype.Text `json:"just_no"`
-	ID         string      `json:"id"`
-	OrgID      string      `json:"org_id"`
-}
-
-func (q *Queries) UpdateCKSoAApplicability(ctx context.Context, arg UpdateCKSoAApplicabilityParams) error {
-	_, err := q.db.Exec(ctx, updateCKSoAApplicability,
-		arg.Applicable,
-		arg.JustYes,
-		arg.JustNo,
-		arg.ID,
-		arg.OrgID,
-	)
-	return err
-}
+// R1-20-02: updateCKSoAApplicability entfernt — Begruendung in
+// db/queries/vaktcomply.sql. Ohne Aufrufer, und sie schrieb die seit
+// Migration 264 generierte Spalte soa_applicable.
 
 // ── Org Member Role (S25-3) ──────────────────────────────────────────────────
 
@@ -10106,8 +10142,13 @@ SELECT
     COUNT(accepted_at)::int                AS accepted,
     (COUNT(*) - COUNT(accepted_at))::int   AS pending
 FROM ck_policy_acceptance_requests
-WHERE campaign_id = $1::uuid
+WHERE campaign_id = $1::uuid AND org_id = $2::uuid
 `
+
+type GetCKPolicyAcceptanceCampaignStatsParams struct {
+	CampaignID string `json:"campaign_id"`
+	OrgID      string `json:"org_id"`
+}
 
 type GetCKPolicyAcceptanceCampaignStatsRow struct {
 	Total    int32 `json:"total"`
@@ -10115,8 +10156,8 @@ type GetCKPolicyAcceptanceCampaignStatsRow struct {
 	Pending  int32 `json:"pending"`
 }
 
-func (q *Queries) GetCKPolicyAcceptanceCampaignStats(ctx context.Context, campaignID string) (GetCKPolicyAcceptanceCampaignStatsRow, error) {
-	row := q.db.QueryRow(ctx, getCKPolicyAcceptanceCampaignStats, campaignID)
+func (q *Queries) GetCKPolicyAcceptanceCampaignStats(ctx context.Context, arg GetCKPolicyAcceptanceCampaignStatsParams) (GetCKPolicyAcceptanceCampaignStatsRow, error) {
+	row := q.db.QueryRow(ctx, getCKPolicyAcceptanceCampaignStats, arg.CampaignID, arg.OrgID)
 	var i GetCKPolicyAcceptanceCampaignStatsRow
 	err := row.Scan(&i.Total, &i.Accepted, &i.Pending)
 	return i, err
@@ -10127,9 +10168,14 @@ SELECT id::text, campaign_id::text, recipient_email,
        COALESCE(recipient_name, '') AS recipient_name,
        accepted_at, sent_at, created_at
 FROM ck_policy_acceptance_requests
-WHERE campaign_id = $1::uuid
+WHERE campaign_id = $1::uuid AND org_id = $2::uuid
 ORDER BY created_at ASC
 `
+
+type ListCKPolicyAcceptanceRequestsParams struct {
+	CampaignID string `json:"campaign_id"`
+	OrgID      string `json:"org_id"`
+}
 
 type ListCKPolicyAcceptanceRequestsRow struct {
 	ID             string             `json:"id"`
@@ -10141,8 +10187,8 @@ type ListCKPolicyAcceptanceRequestsRow struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
-func (q *Queries) ListCKPolicyAcceptanceRequests(ctx context.Context, campaignID string) ([]ListCKPolicyAcceptanceRequestsRow, error) {
-	rows, err := q.db.Query(ctx, listCKPolicyAcceptanceRequests, campaignID)
+func (q *Queries) ListCKPolicyAcceptanceRequests(ctx context.Context, arg ListCKPolicyAcceptanceRequestsParams) ([]ListCKPolicyAcceptanceRequestsRow, error) {
+	rows, err := q.db.Query(ctx, listCKPolicyAcceptanceRequests, arg.CampaignID, arg.OrgID)
 	if err != nil {
 		return nil, err
 	}
@@ -10583,31 +10629,60 @@ func (q *Queries) InsertCKCIEvidence(ctx context.Context, arg InsertCKCIEvidence
 // ── S60: BCP / Notfallhandbuch ────────────────────────────────────────────────
 
 const createCKBCPPlan = `-- name: CreateCKBCPPlan :one
-INSERT INTO ck_bcp_plans (org_id, title, scope, version, status, owner)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, org_id, title, scope, version, status, owner, created_at, updated_at
+
+INSERT INTO ck_bcp_plans (org_id, title, scope, version, status, owner,
+                          rto_hours, rpo_hours, schutzbedarfsklasse)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, org_id, title, scope, version, status, owner, created_at, updated_at, rto_hours, rpo_hours, schutzbedarfsklasse, last_tested_at
 `
 
 type CreateCKBCPPlanParams struct {
-	OrgID   string `json:"org_id"`
-	Title   string `json:"title"`
-	Scope   string `json:"scope"`
-	Version string `json:"version"`
-	Status  string `json:"status"`
-	Owner   string `json:"owner"`
+	OrgID               string      `json:"org_id"`
+	Title               string      `json:"title"`
+	Scope               string      `json:"scope"`
+	Version             string      `json:"version"`
+	Status              string      `json:"status"`
+	Owner               string      `json:"owner"`
+	RtoHours            pgtype.Int4 `json:"rto_hours"`
+	RpoHours            pgtype.Int4 `json:"rpo_hours"`
+	Schutzbedarfsklasse pgtype.Int4 `json:"schutzbedarfsklasse"`
 }
 
 func (q *Queries) CreateCKBCPPlan(ctx context.Context, arg CreateCKBCPPlanParams) (CkBcpPlans, error) {
 	row := q.db.QueryRow(ctx, createCKBCPPlan,
-		arg.OrgID, arg.Title, arg.Scope, arg.Version, arg.Status, arg.Owner)
+		arg.OrgID,
+		arg.Title,
+		arg.Scope,
+		arg.Version,
+		arg.Status,
+		arg.Owner,
+		arg.RtoHours,
+		arg.RpoHours,
+		arg.Schutzbedarfsklasse,
+	)
 	var i CkBcpPlans
-	err := row.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Version, &i.Status, &i.Owner, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Title,
+		&i.Scope,
+		&i.Version,
+		&i.Status,
+		&i.Owner,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RtoHours,
+		&i.RpoHours,
+		&i.Schutzbedarfsklasse,
+		&i.LastTestedAt,
+	)
 	return i, err
 }
 
 const listCKBCPPlans = `-- name: ListCKBCPPlans :many
-SELECT id, org_id, title, scope, version, status, owner, created_at, updated_at FROM ck_bcp_plans
-WHERE org_id = $1 ORDER BY created_at DESC
+SELECT id, org_id, title, scope, version, status, owner, created_at, updated_at, rto_hours, rpo_hours, schutzbedarfsklasse, last_tested_at FROM ck_bcp_plans
+WHERE org_id = $1
+ORDER BY created_at DESC
 `
 
 func (q *Queries) ListCKBCPPlans(ctx context.Context, orgID string) ([]CkBcpPlans, error) {
@@ -10619,16 +10694,33 @@ func (q *Queries) ListCKBCPPlans(ctx context.Context, orgID string) ([]CkBcpPlan
 	items := []CkBcpPlans{}
 	for rows.Next() {
 		var i CkBcpPlans
-		if err := rows.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Version, &i.Status, &i.Owner, &i.CreatedAt, &i.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.Title,
+			&i.Scope,
+			&i.Version,
+			&i.Status,
+			&i.Owner,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.RtoHours,
+			&i.RpoHours,
+			&i.Schutzbedarfsklasse,
+			&i.LastTestedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getCKBCPPlan = `-- name: GetCKBCPPlan :one
-SELECT id, org_id, title, scope, version, status, owner, created_at, updated_at FROM ck_bcp_plans
+SELECT id, org_id, title, scope, version, status, owner, created_at, updated_at, rto_hours, rpo_hours, schutzbedarfsklasse, last_tested_at FROM ck_bcp_plans
 WHERE id = $1 AND org_id = $2
 `
 
@@ -10640,31 +10732,106 @@ type GetCKBCPPlanParams struct {
 func (q *Queries) GetCKBCPPlan(ctx context.Context, arg GetCKBCPPlanParams) (CkBcpPlans, error) {
 	row := q.db.QueryRow(ctx, getCKBCPPlan, arg.ID, arg.OrgID)
 	var i CkBcpPlans
-	err := row.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Version, &i.Status, &i.Owner, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Title,
+		&i.Scope,
+		&i.Version,
+		&i.Status,
+		&i.Owner,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RtoHours,
+		&i.RpoHours,
+		&i.Schutzbedarfsklasse,
+		&i.LastTestedAt,
+	)
+	return i, err
+}
+
+const getCKBCPPlanForUpdate = `-- name: GetCKBCPPlanForUpdate :one
+SELECT id, org_id, title, scope, version, status, owner, created_at, updated_at, rto_hours, rpo_hours, schutzbedarfsklasse, last_tested_at FROM ck_bcp_plans
+WHERE id = $1 AND org_id = $2
+FOR UPDATE
+`
+
+type GetCKBCPPlanForUpdateParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+func (q *Queries) GetCKBCPPlanForUpdate(ctx context.Context, arg GetCKBCPPlanForUpdateParams) (CkBcpPlans, error) {
+	row := q.db.QueryRow(ctx, getCKBCPPlanForUpdate, arg.ID, arg.OrgID)
+	var i CkBcpPlans
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Title,
+		&i.Scope,
+		&i.Version,
+		&i.Status,
+		&i.Owner,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RtoHours,
+		&i.RpoHours,
+		&i.Schutzbedarfsklasse,
+		&i.LastTestedAt,
+	)
 	return i, err
 }
 
 const updateCKBCPPlan = `-- name: UpdateCKBCPPlan :one
 UPDATE ck_bcp_plans
-SET title = $3, scope = $4, version = $5, status = $6, owner = $7, updated_at = NOW()
+SET title = $3, scope = $4, version = $5, status = $6, owner = $7,
+    rto_hours = $8, rpo_hours = $9, schutzbedarfsklasse = $10, updated_at = NOW()
 WHERE id = $1 AND org_id = $2
-RETURNING id, org_id, title, scope, version, status, owner, created_at, updated_at
+RETURNING id, org_id, title, scope, version, status, owner, created_at, updated_at, rto_hours, rpo_hours, schutzbedarfsklasse, last_tested_at
 `
 
 type UpdateCKBCPPlanParams struct {
-	ID      string `json:"id"`
-	OrgID   string `json:"org_id"`
-	Title   string `json:"title"`
-	Scope   string `json:"scope"`
-	Version string `json:"version"`
-	Status  string `json:"status"`
-	Owner   string `json:"owner"`
+	ID                  string      `json:"id"`
+	OrgID               string      `json:"org_id"`
+	Title               string      `json:"title"`
+	Scope               string      `json:"scope"`
+	Version             string      `json:"version"`
+	Status              string      `json:"status"`
+	Owner               string      `json:"owner"`
+	RtoHours            pgtype.Int4 `json:"rto_hours"`
+	RpoHours            pgtype.Int4 `json:"rpo_hours"`
+	Schutzbedarfsklasse pgtype.Int4 `json:"schutzbedarfsklasse"`
 }
 
 func (q *Queries) UpdateCKBCPPlan(ctx context.Context, arg UpdateCKBCPPlanParams) (CkBcpPlans, error) {
-	row := q.db.QueryRow(ctx, updateCKBCPPlan, arg.ID, arg.OrgID, arg.Title, arg.Scope, arg.Version, arg.Status, arg.Owner)
+	row := q.db.QueryRow(ctx, updateCKBCPPlan,
+		arg.ID,
+		arg.OrgID,
+		arg.Title,
+		arg.Scope,
+		arg.Version,
+		arg.Status,
+		arg.Owner,
+		arg.RtoHours,
+		arg.RpoHours,
+		arg.Schutzbedarfsklasse,
+	)
 	var i CkBcpPlans
-	err := row.Scan(&i.ID, &i.OrgID, &i.Title, &i.Scope, &i.Version, &i.Status, &i.Owner, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Title,
+		&i.Scope,
+		&i.Version,
+		&i.Status,
+		&i.Owner,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RtoHours,
+		&i.RpoHours,
+		&i.Schutzbedarfsklasse,
+		&i.LastTestedAt,
+	)
 	return i, err
 }
 
@@ -10752,12 +10919,39 @@ func (q *Queries) GetLatestCKBCPTest(ctx context.Context, arg GetLatestCKBCPTest
 	return i, err
 }
 
+const refreshCKBCPPlanLastTested = `-- name: RefreshCKBCPPlanLastTested :exec
+UPDATE ck_bcp_plans
+SET last_tested_at = (
+        SELECT MAX(t.test_date) FROM ck_bcp_tests t
+        WHERE t.plan_id = ck_bcp_plans.id AND t.org_id = ck_bcp_plans.org_id
+    )
+WHERE ck_bcp_plans.id = $1 AND ck_bcp_plans.org_id = $2
+`
+
+type RefreshCKBCPPlanLastTestedParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+// ESK-12: last_tested_at ist eine ABLEITUNG aus ck_bcp_tests, kein Eingabefeld.
+// Als freies Feld koennte jemand ein Testdatum behaupten, zu dem kein Testeintrag
+// existiert — in Audit-Evidenz genau die Aussage ohne Messung dahinter, die dieser
+// Befund beanstandet. Als MAX ueber die tatsaechlichen Eintraege kann das Feld nur
+// behaupten, was auch als Datensatz belegt ist, und faellt beim Loeschen des
+// letzten Tests von selbst zurueck. Alle Ergebnisse zaehlen: ein fehlgeschlagener
+// Test IST ein durchgefuehrter Test.
+func (q *Queries) RefreshCKBCPPlanLastTested(ctx context.Context, arg RefreshCKBCPPlanLastTestedParams) error {
+	_, err := q.db.Exec(ctx, refreshCKBCPPlanLastTested, arg.ID, arg.OrgID)
+	return err
+}
+
 // ── S60: Schutzbedarfsfeststellung ────────────────────────────────────────────
 
 const createCKProtectionNeedAssessment = `-- name: CreateCKProtectionNeedAssessment :one
+
 INSERT INTO ck_protection_need_assessments (org_id, name, object_type, object_name)
 VALUES ($1, $2, $3, $4)
-RETURNING id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at
+RETURNING id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at, vb_asset_id
 `
 
 type CreateCKProtectionNeedAssessmentParams struct {
@@ -10768,17 +10962,36 @@ type CreateCKProtectionNeedAssessmentParams struct {
 }
 
 func (q *Queries) CreateCKProtectionNeedAssessment(ctx context.Context, arg CreateCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error) {
-	row := q.db.QueryRow(ctx, createCKProtectionNeedAssessment, arg.OrgID, arg.Name, arg.ObjectType, arg.ObjectName)
+	row := q.db.QueryRow(ctx, createCKProtectionNeedAssessment,
+		arg.OrgID,
+		arg.Name,
+		arg.ObjectType,
+		arg.ObjectName,
+	)
 	var i CkProtectionNeedAssessments
-	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.ObjectType, &i.ObjectName,
-		&i.Confidentiality, &i.Integrity, &i.Availability, &i.Overall,
-		&i.Status, &i.FinalizedAt, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Name,
+		&i.ObjectType,
+		&i.ObjectName,
+		&i.Confidentiality,
+		&i.Integrity,
+		&i.Availability,
+		&i.Overall,
+		&i.Status,
+		&i.FinalizedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VbAssetID,
+	)
 	return i, err
 }
 
 const listCKProtectionNeedAssessments = `-- name: ListCKProtectionNeedAssessments :many
-SELECT id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at
-FROM ck_protection_need_assessments WHERE org_id = $1 ORDER BY created_at DESC
+SELECT id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at, vb_asset_id FROM ck_protection_need_assessments
+WHERE org_id = $1
+ORDER BY created_at DESC
 `
 
 func (q *Queries) ListCKProtectionNeedAssessments(ctx context.Context, orgID string) ([]CkProtectionNeedAssessments, error) {
@@ -10790,19 +11003,35 @@ func (q *Queries) ListCKProtectionNeedAssessments(ctx context.Context, orgID str
 	items := []CkProtectionNeedAssessments{}
 	for rows.Next() {
 		var i CkProtectionNeedAssessments
-		if err := rows.Scan(&i.ID, &i.OrgID, &i.Name, &i.ObjectType, &i.ObjectName,
-			&i.Confidentiality, &i.Integrity, &i.Availability, &i.Overall,
-			&i.Status, &i.FinalizedAt, &i.CreatedAt, &i.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.Name,
+			&i.ObjectType,
+			&i.ObjectName,
+			&i.Confidentiality,
+			&i.Integrity,
+			&i.Availability,
+			&i.Overall,
+			&i.Status,
+			&i.FinalizedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.VbAssetID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getCKProtectionNeedAssessment = `-- name: GetCKProtectionNeedAssessment :one
-SELECT id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at
-FROM ck_protection_need_assessments WHERE id = $1 AND org_id = $2
+SELECT id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at, vb_asset_id FROM ck_protection_need_assessments
+WHERE id = $1 AND org_id = $2
 `
 
 type GetCKProtectionNeedAssessmentParams struct {
@@ -10813,9 +11042,22 @@ type GetCKProtectionNeedAssessmentParams struct {
 func (q *Queries) GetCKProtectionNeedAssessment(ctx context.Context, arg GetCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error) {
 	row := q.db.QueryRow(ctx, getCKProtectionNeedAssessment, arg.ID, arg.OrgID)
 	var i CkProtectionNeedAssessments
-	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.ObjectType, &i.ObjectName,
-		&i.Confidentiality, &i.Integrity, &i.Availability, &i.Overall,
-		&i.Status, &i.FinalizedAt, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Name,
+		&i.ObjectType,
+		&i.ObjectName,
+		&i.Confidentiality,
+		&i.Integrity,
+		&i.Availability,
+		&i.Overall,
+		&i.Status,
+		&i.FinalizedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VbAssetID,
+	)
 	return i, err
 }
 
@@ -10823,7 +11065,7 @@ const updateCKProtectionNeedAssessment = `-- name: UpdateCKProtectionNeedAssessm
 UPDATE ck_protection_need_assessments
 SET confidentiality = $3, integrity = $4, availability = $5, overall = $6, updated_at = NOW()
 WHERE id = $1 AND org_id = $2
-RETURNING id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at
+RETURNING id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at, vb_asset_id
 `
 
 type UpdateCKProtectionNeedAssessmentParams struct {
@@ -10837,11 +11079,30 @@ type UpdateCKProtectionNeedAssessmentParams struct {
 
 func (q *Queries) UpdateCKProtectionNeedAssessment(ctx context.Context, arg UpdateCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error) {
 	row := q.db.QueryRow(ctx, updateCKProtectionNeedAssessment,
-		arg.ID, arg.OrgID, arg.Confidentiality, arg.Integrity, arg.Availability, arg.Overall)
+		arg.ID,
+		arg.OrgID,
+		arg.Confidentiality,
+		arg.Integrity,
+		arg.Availability,
+		arg.Overall,
+	)
 	var i CkProtectionNeedAssessments
-	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.ObjectType, &i.ObjectName,
-		&i.Confidentiality, &i.Integrity, &i.Availability, &i.Overall,
-		&i.Status, &i.FinalizedAt, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Name,
+		&i.ObjectType,
+		&i.ObjectName,
+		&i.Confidentiality,
+		&i.Integrity,
+		&i.Availability,
+		&i.Overall,
+		&i.Status,
+		&i.FinalizedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VbAssetID,
+	)
 	return i, err
 }
 
@@ -10849,7 +11110,7 @@ const finalizeCKProtectionNeedAssessment = `-- name: FinalizeCKProtectionNeedAss
 UPDATE ck_protection_need_assessments
 SET status = 'finalized', finalized_at = NOW(), updated_at = NOW()
 WHERE id = $1 AND org_id = $2
-RETURNING id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at
+RETURNING id, org_id, name, object_type, object_name, confidentiality, integrity, availability, overall, status, finalized_at, created_at, updated_at, vb_asset_id
 `
 
 type FinalizeCKProtectionNeedAssessmentParams struct {
@@ -10860,9 +11121,22 @@ type FinalizeCKProtectionNeedAssessmentParams struct {
 func (q *Queries) FinalizeCKProtectionNeedAssessment(ctx context.Context, arg FinalizeCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error) {
 	row := q.db.QueryRow(ctx, finalizeCKProtectionNeedAssessment, arg.ID, arg.OrgID)
 	var i CkProtectionNeedAssessments
-	err := row.Scan(&i.ID, &i.OrgID, &i.Name, &i.ObjectType, &i.ObjectName,
-		&i.Confidentiality, &i.Integrity, &i.Availability, &i.Overall,
-		&i.Status, &i.FinalizedAt, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Name,
+		&i.ObjectType,
+		&i.ObjectName,
+		&i.Confidentiality,
+		&i.Integrity,
+		&i.Availability,
+		&i.Overall,
+		&i.Status,
+		&i.FinalizedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VbAssetID,
+	)
 	return i, err
 }
 

@@ -181,7 +181,7 @@ func (h *Handler) CreateComment(c echo.Context) error {
 	if userName == "" {
 		userName = userID
 	}
-	notify.Send(
+	if err := notify.Send(
 		c.Request().Context(),
 		h.db,
 		orgID,
@@ -189,7 +189,10 @@ func (h *Handler) CreateComment(c echo.Context) error {
 		fmt.Sprintf("%s hat einen Kommentar hinterlassen", userName),
 		"comment_added",
 		module,
-	)
+	); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Str("comment_id", cmt.ID).
+			Msg("Kommentar gespeichert, aber die Meldung darüber wurde NICHT geschrieben")
+	}
 
 	// Parse @mentions and send targeted notifications.
 	mentionRe := regexp.MustCompile(`@(\S+)`)
@@ -228,7 +231,7 @@ func (h *Handler) CreateComment(c echo.Context) error {
 				}
 				seen[uid] = struct{}{}
 				body := cmt.AuthorName + " hat Sie in einem Kommentar erwähnt"
-				notify.Send(
+				if err := notify.Send(
 					c.Request().Context(),
 					h.db,
 					orgID,
@@ -236,7 +239,10 @@ func (h *Handler) CreateComment(c echo.Context) error {
 					body,
 					"mention",
 					module,
-				)
+				); err != nil {
+					log.Warn().Err(err).Str("org_id", orgID).Str("mentioned_user_id", uid).
+						Msg("Erwähnung NICHT zugestellt")
+				}
 			}
 		}()
 	}

@@ -1,0 +1,30 @@
+apiVersion: v2
+name: vakt
+description: Vakt — self-hosted Security & Compliance Platform
+type: application
+version: 0.42.49
+appVersion: "0.42.49"
+# Das Chart geht seit 2026-08-02 in den Public Mirror (R1-04-L08). Damit zeigen
+# diese beiden Felder nicht mehr auf das private Repo (github.com/Matharnica/vakt-app,
+# fuer einen Kunden ein 404), sondern auf das Repo, das er tatsaechlich geklont hat.
+home: https://github.com/norvik-ops/vakt
+sources:
+  - https://github.com/norvik-ops/vakt
+# `dora` stand hier bis 2026-08-02. DORA ist seit 2026-07-06 aus dem Angebot — der
+# Docs-Guard in scripts/build-public-mirror.sh haelt den Begriff aus den Public-Docs
+# heraus, greift aber nur auf *.md. Ein Chart, das DORA als Keyword fuehrt, bewirbt
+# dasselbe ausgemusterte Feature, nur in YAML.
+keywords:
+  - security
+  - compliance
+  - nis2
+  - iso27001
+dependencies:
+  - name: postgresql
+    version: "15.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "19.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

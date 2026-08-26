@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Shield, ChevronRight, ChevronLeft, AlertTriangle, CheckCircle2, Download } from 'lucide-react'
 import { Spinner } from '../components/Spinner'
 import { useAuthStore } from '../shared/stores/auth'
+import { apiFetch } from '../api/client'
 
 // Sprint 19 / S19-4 + S19-5: Public-Wizard-Page für NIS2-Self-Assessment.
 // Lebt unter /nis2-check (kein Layout-Wrapper, eigenes leichtgewichtiges
@@ -232,24 +233,25 @@ function ResultView({ result, isAuthenticated }: { result: ResultResponse; isAut
     setPdfLoading(true)
     setPdfError(null)
     try {
-      const resp = await fetch(
-        `/api/v1/vaktcomply/nis2-assessment/pdf?token=${encodeURIComponent(result.token)}`,
+      // POST /vaktcomply/nis2-assessment/pdf is mounted on `protected`
+      // (nis2wizard.RegisterAuthenticated), so it sits behind CSRFMiddleware —
+      // without the header it 403s for every logged-in user, and the button is
+      // only rendered when isAuthenticated (R1-18-D4). apiFetch now returns
+      // application/pdf as a Blob, so the central path carries the header
+      // instead of a ninth hand-rolled copy.
+      const blob = await apiFetch<Blob>(
+        `/vaktcomply/nis2-assessment/pdf?token=${encodeURIComponent(result.token)}`,
         { method: 'POST' },
       )
-      if (!resp.ok) {
-        const body = await resp.json().catch(() => ({}))
-        setPdfError((body as { error?: string }).error ?? 'PDF-Export fehlgeschlagen')
-        return
-      }
-      const blob = await resp.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = 'nis2-assessment.pdf'
       a.click()
       URL.revokeObjectURL(url)
-    } catch {
-      setPdfError('PDF-Export fehlgeschlagen')
+    } catch (e) {
+      // apiFetch throws with the server's message on a non-ok response.
+      setPdfError(e instanceof Error ? e.message : 'PDF-Export fehlgeschlagen')
     } finally {
       setPdfLoading(false)
     }

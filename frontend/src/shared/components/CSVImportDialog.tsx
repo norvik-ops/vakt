@@ -9,13 +9,18 @@ import {
   DialogFooter,
 } from '../../components/ui/dialog'
 import { Progress } from '../../components/ui/progress'
+import { apiFetch } from '../../api/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface CSVImportDialogProps {
   open: boolean
   onClose: () => void
-  /** Backend endpoint, e.g. "/api/v1/vaktscan/findings/import/csv" */
+  /**
+   * Backend path relative to the API base, e.g. "/vaktscan/findings/import/csv".
+   * Passed to apiFetch, which prepends /api/v1 and attaches the CSRF and
+   * session headers — do NOT include the /api/v1 prefix here.
+   */
   endpoint: string
   entityLabel: string
   /** Column names for template generation and header validation */
@@ -175,33 +180,26 @@ export function CSVImportDialog({
     const formData = new FormData()
     formData.append('file', file)
 
+    // Simulate progress since fetch doesn't support upload progress natively.
+    // Declared outside the try so the finally below always clears it — a failed
+    // upload used to leave the interval running for the life of the page.
+    const timer = setInterval(() => {
+      setUploadProgress((p) => Math.min(p + 15, 85))
+    }, 200)
+
     try {
-      // Simulate progress since fetch doesn't support upload progress natively
-      const timer = setInterval(() => {
-        setUploadProgress((p) => Math.min(p + 15, 85))
-      }, 200)
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      })
-
-      clearInterval(timer)
-      setUploadProgress(100)
-
-      const body = (await res.json().catch(() => ({}))) as {
+      const body = await apiFetch<{
         imported?: number
         inserted?: number
         skipped?: number
         errored?: number
         errors?: string[]
-        error?: string
-      }
+      }>(endpoint, {
+        method: 'POST',
+        body: formData,
+      })
 
-      if (!res.ok) {
-        throw new Error(body.error ?? `HTTP ${String(res.status)}`)
-      }
+      setUploadProgress(100)
 
       setResult({
         imported: body.imported ?? body.inserted ?? 0,
@@ -220,6 +218,7 @@ export function CSVImportDialog({
       })
       setStep('result')
     } finally {
+      clearInterval(timer)
       setIsUploading(false)
     }
   }

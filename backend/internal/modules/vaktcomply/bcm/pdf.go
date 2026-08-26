@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 )
 
 // GenerateBCMHandbuchPDF renders the 7-section Notfallhandbuch PDF for the org.
@@ -33,7 +34,7 @@ func (s *Service) GenerateBCMHandbuchPDF(ctx context.Context, orgID string) ([]b
 		}
 	}
 
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(20, 20, 20)
 	pdf.AddPage()
 

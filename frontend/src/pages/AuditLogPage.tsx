@@ -18,8 +18,9 @@ import {
 import { Skeleton } from '../components/ui/skeleton'
 import { useAuthStore } from '../shared/stores/auth'
 import { ErrorState } from '../shared/components/ErrorState'
-import { useAuditLog, type AuditLogEntry } from '../hooks/useAuditLog'
+import { useAuditLog, fetchAllAuditLogEntries, type AuditLogEntry } from '../hooks/useAuditLog'
 import { useFormatDate } from '../shared/hooks/useFormatDate'
+import { toast } from '../shared/hooks/useToast'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,18 @@ function escapeCsvCell(value: string): string {
 }
 
 function exportCsv(entries: AuditLogEntry[], formatDateTime: (v: string) => string, t: (key: string) => string) {
-  const headers = [t('auditLog.csvHeaderTimestamp'), t('auditLog.csvHeaderUser'), t('auditLog.csvHeaderAction'), t('auditLog.csvHeaderResource'), t('auditLog.csvHeaderDetails')]
+  // Six columns are written per row, so six are named. The header list used to
+  // stop at five while the rows carried an IP as well — every IP in the file
+  // sat under no heading at all, and a reader counting columns would have
+  // mapped it to nothing.
+  const headers = [
+    t('auditLog.csvHeaderTimestamp'),
+    t('auditLog.csvHeaderUser'),
+    t('auditLog.csvHeaderAction'),
+    t('auditLog.csvHeaderResource'),
+    t('auditLog.csvHeaderDetails'),
+    t('auditLog.csvHeaderIp'),
+  ]
   const rows = entries.map((e) => [
     formatDateTime(e.created_at),
     e.user_email ?? e.user_id ?? 'System',
@@ -135,18 +147,51 @@ export default function AuditLogPage() {
 
   const offset = page * PAGE_SIZE
 
-  const { data, isLoading, isError, refetch, isFetching } = useAuditLog({
-    limit:     PAGE_SIZE,
-    offset,
+  // Everything except limit/offset — the export needs the same filters without
+  // the page window, so they are named once instead of being restated there.
+  const activeFilters = {
     from:      fromDate ? dateToRFC3339Start(fromDate) : undefined,
     to:        toDate   ? dateToRFC3339End(toDate)     : undefined,
     userEmail: userFilter.trim() || undefined,
     action:    actionFilter !== 'all' ? actionFilter : undefined,
+  }
+
+  const { data, isLoading, isError, refetch, isFetching } = useAuditLog({
+    ...activeFilters,
+    limit:  PAGE_SIZE,
+    offset,
   })
 
   const entries = data?.entries ?? []
   const total   = data?.total   ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const [exporting, setExporting] = useState(false)
+
+  // R1-20-A7: this used to serialise `entries` — the 25 rows the table was
+  // holding — and call it an export of the audit log. On an 81-entry log the
+  // file contained 25 with nothing to say so. An auditor taking it as evidence
+  // gets a third of the record and no reason to doubt the rest.
+  //
+  // The export now re-runs the CURRENT filters against the server and walks
+  // every page, so the file matches what the user is looking at rather than
+  // what happens to be paged in. If the safety cap ever bites, the user is
+  // told — a truncated export must never look like a complete one.
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const all = await fetchAllAuditLogEntries(activeFilters)
+      if (all.entries.length === 0) return
+      exportCsv(all.entries, formatDateTime, t)
+      if (!all.complete) {
+        toast(t('auditLog.exportTruncated', { exported: all.entries.length, total: all.total }), 'info')
+      }
+    } catch (err) {
+      toast(`${t('auditLog.exportFailed')}: ${err instanceof Error ? err.message : ''}`, 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   function resetFilters() {
     setFilters({ fromDate: '', toDate: '', userFilter: '', actionFilter: 'all' })
@@ -195,12 +240,12 @@ export default function AuditLogPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { if (entries.length > 0) exportCsv(entries, formatDateTime, t) }}
-              disabled={entries.length === 0}
+              onClick={() => { void handleExport() }}
+              disabled={total === 0 || exporting}
               className="h-8 text-xs"
             >
               <Download className="w-3.5 h-3.5 mr-1.5" />
-              {t('auditLog.exportCsv')}
+              {exporting ? t('auditLog.exporting') : t('auditLog.exportCsv')}
             </Button>
           </div>
         }

@@ -4,7 +4,6 @@
 package audit
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -12,30 +11,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestApproveManagementReview_NonAdminRejected verifies that non-admin roles
-// cannot approve a management review — the guard fires before any DB access.
-func TestApproveManagementReview_NonAdminRejected(t *testing.T) {
-	svc := &Service{repo: nil} // repo never reached; guard fires first
-	_, err := svc.ApproveManagementReview(context.Background(), "org1", "rev1", "user1", "member")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "only admin can approve")
-}
-
-// TestApproveManagementReview_AnalystRejected confirms SecurityAnalyst also cannot approve.
-func TestApproveManagementReview_AnalystRejected(t *testing.T) {
-	svc := &Service{repo: nil}
-	_, err := svc.ApproveManagementReview(context.Background(), "org1", "rev1", "user1", "SecurityAnalyst")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "only admin can approve")
-}
-
-// TestApproveManagementReview_EmptyRoleRejected confirms empty role also cannot approve.
-func TestApproveManagementReview_EmptyRoleRejected(t *testing.T) {
-	svc := &Service{repo: nil}
-	_, err := svc.ApproveManagementReview(context.Background(), "org1", "rev1", "user1", "")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "only admin can approve")
-}
+// Die drei frueheren Tests dieser Stelle
+// (TestApproveManagementReview_NonAdminRejected / _AnalystRejected /
+// _EmptyRoleRejected) sind mit R1-W7C-N1 entfallen. Sie riefen die
+// Rollenpruefung direkt auf dem Service auf und reichten die Rolle als Argument
+// mit — genau deshalb waren sie gruen, waehrend die Pruefung in der laufenden
+// Anwendung immer denselben leeren Wert sah und jede Freigabe ablehnte. Ein
+// Test, der seine Eingabe selbst mitbringt, kann eine kaputte Naht nicht sehen.
+//
+// Wer freigeben darf, steht jetzt an genau einer Stelle (der Route) und wird
+// dort geprueft: TestManagementReviewApprovalIsInternalAuditorOnly im Paket
+// vaktcomply (Rollenmatrix aus ADR-0055) und der Integrationstest
+// vaktcomply_freigabe_real_test.go gegen echtes Postgres.
 
 // TestManagementReviewOverdue_NoReviews verifies that isOverdue=true when no review exists.
 // Tests the pure overdue logic from GetLastManagementReviewDate (nil result path).

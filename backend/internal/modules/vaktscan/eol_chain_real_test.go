@@ -39,7 +39,7 @@ func TestEnqueueEOLCheck_LandsOnConsumedQueue(t *testing.T) {
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        "redis:7-alpine",
+			Image:        "redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2",
 			ExposedPorts: []string{"6379/tcp"},
 			WaitingFor:   tcwait.ForListeningPort("6379/tcp").WithStartupTimeout(60 * time.Second),
 		},

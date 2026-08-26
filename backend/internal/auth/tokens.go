@@ -128,6 +128,50 @@ func IssueRefreshToken() (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
+// ParseTokenSubjectForRevocation returns the user_id carried by an authentic
+// Paseto v4 local token WITHOUT requiring that the token still be usable.
+//
+// R1-W6A-N1. It exists for exactly one caller — the logout handler — because
+// POST /auth/logout is mounted on the PUBLIC auth group (cmd/api/routes.go:
+// `api.Group("/auth", authRateLimiter)`), deliberately: a session whose access
+// token has already expired must still be able to end itself. Without auth
+// middleware nothing populates c.Get("user_id"), so the handler has to derive
+// the subject from the token it was handed.
+//
+// Two relaxations against ParseAccessToken, both bounded and both load-bearing:
+//
+//   - Expiry is not enforced (NewParserWithoutExpiryCheck). This is the whole
+//     point. The access token lives 1 h and the refresh session 30 days, so the
+//     ordinary logout — someone returning to an idle tab — presents an EXPIRED
+//     access token while the long-lived session is very much alive. A parser
+//     that insisted on validity would refuse the subject in precisely the case
+//     the revocation exists for.
+//   - An mfa_pending token is accepted. It is authentic and names its own
+//     subject; revoking that user's sessions is a safe superset of doing
+//     nothing. ParseAccessToken must keep rejecting it (it is not authorisation
+//     material) — here nothing is authorised, only destroyed.
+//
+// What is NOT relaxed is authenticity: ParseV4Local decrypts and verifies the
+// AEAD tag with the server's own symmetric key, so a forged or tampered token
+// still fails. The returned user_id is therefore a value this server minted.
+//
+// The residual risk is bounded and accepted: whoever holds an authentic
+// expired token can log that user out everywhere (a nuisance, not a
+// disclosure). The same holder of a NON-expired token can already do it, and
+// the action reveals nothing and grants nothing — it only revokes.
+func ParseTokenSubjectForRevocation(key paseto.V4SymmetricKey, tokenStr string) (string, error) {
+	parser := paseto.NewParserWithoutExpiryCheck()
+	token, err := parser.ParseV4Local(key, tokenStr, nil)
+	if err != nil {
+		return "", fmt.Errorf("parse token for revocation: %w", err)
+	}
+	userID, err := token.GetString("user_id")
+	if err != nil || userID == "" {
+		return "", fmt.Errorf("token carries no user_id claim")
+	}
+	return userID, nil
+}
+
 // ParseAccessToken validates the Paseto v4 local token and returns the embedded Claims.
 // Returns an error if the token is malformed, tampered, or expired.
 func ParseAccessToken(key paseto.V4SymmetricKey, tokenStr string) (*Claims, error) {

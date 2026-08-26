@@ -206,9 +206,16 @@ func (r *Repository) UpdateSoAApplicability(ctx context.Context, orgID, controlI
 	// Raw Exec (not the generated :exec) so the CommandTag is available: PATCH
 	// /soa/:control_id returned 204 for a non-existent control while its sibling
 	// PATCH /controls/:id/soa (same operation) correctly returned 404 (R-H18/S131-A1).
+	//
+	// R1-20-02: schreibt not_applicable, nicht soa_applicable. Beide Spalten
+	// bedeuteten dasselbe (invers) und wurden von verschiedenen Pfaden
+	// geschrieben — die SoA-CSV las die eine, die SoA-PDF die andere, beide
+	// unter dem Alias `applicable`. Seit Migration 264 ist soa_applicable aus
+	// not_applicable abgeleitet (GENERATED ALWAYS, ADR-0082); ein
+	// Schreibversuch darauf scheitert jetzt hart. Quelle ist not_applicable.
 	tag, err := r.db.Exec(ctx, `
 		UPDATE ck_controls
-		SET soa_applicable        = $1,
+		SET not_applicable        = NOT $1,
 		    soa_justification_yes = NULLIF($2,''),
 		    soa_justification_no  = NULLIF($3,'')
 		WHERE id = $4::uuid AND org_id = $5::uuid`,

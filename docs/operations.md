@@ -31,40 +31,67 @@ Sprint 15 / S15-15: diese Übersicht ergänzt die Detail-Sektionen weiter unten.
 
 ### Backup erstellen
 
-Das beiliegende Skript sichert die PostgreSQL-Datenbank und (optional) den
-Upload-Ordner. Es verschlüsselt das Archiv mit AES-256 und einer selbst
-gewählten Passphrase.
+Das beiliegende Skript sichert die PostgreSQL-Datenbank **und** das
+Uploads-Volume (Evidence-Dateien). Es verschlüsselt den Dump mit GPG (AES-256)
+und signiert das Archiv per HMAC-SHA256.
+
+> **Korrigiert 2026-07-30 (ESK-7).** Hier stand ein Aufruf mit den Schaltern
+> `--db-url`, `--upload-dir`, `--output-dir` und `--passphrase`. **Diese Schalter
+> existieren nicht** — `backup.sh` liest seine Konfiguration aus der Umgebung und
+> nimmt genau **ein** Argument: das Zielverzeichnis. Der dokumentierte Befehl hätte
+> `--db-url` still als Zielverzeichnis interpretiert und alles Übrige ignoriert.
+
+Konfiguration kommt aus der Umgebung (oder aus `.env` im Arbeitsverzeichnis):
 
 ```bash
-# Tägliches vollständiges Backup
-bash scripts/backup.sh \
-  --db-url "postgres://vakt:PASSWORT@localhost:5432/vakt" \
-  --upload-dir /var/vakt/uploads \
-  --output-dir /mnt/backup/vakt \
-  --passphrase "$(cat /etc/vakt/backup.key)"
+# Tägliches vollständiges Backup — das EINZIGE Argument ist das Zielverzeichnis.
+VAKT_DB_URL="postgres://vakt:PASSWORT@localhost:5432/vakt" \
+VAKT_SECRET_KEY="$(cat /etc/vakt/secret.key)" \
+VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key \
+  bash scripts/backup.sh /mnt/backup/vakt
 ```
 
-Backups landen standardmäßig in `/mnt/backup/vakt/` als
-`vakt-backup-YYYY-MM-DD.tar.gz.enc`.
+Ergebnis sind zwei Dateien in `/mnt/backup/vakt/`:
+`vakt-backup-YYYY-MM-DD_HH-MM-SS.tar.gz` und die zugehörige `.tar.gz.sig`.
+Ohne die `.sig` verweigert `restore.sh` die Wiederherstellung.
 
-**Empfohlener Zeitplan:** Täglich um 02:00 Uhr per Cron, Aufbewahrung 30 Tage.
+**Datenbank-Zugriff:** Steht Postgres im Compose-Stack, ist es vom Host aus
+**nicht** erreichbar (`db-net` ist `internal: true`, kein veröffentlichter Port).
+`backup.sh` erkennt das und führt `pg_dump` im DB-Container aus. Bei einer
+externen/managed Datenbank nutzt es das Host-Binary. Erzwingen lässt sich das mit
+`VAKT_BACKUP_PG_MODE=container|host`.
+
+**Empfohlener Zeitplan:** Täglich um 02:00 Uhr, Aufbewahrung 30 Tage — am besten
+über den Wrapper `scripts/backup-cron.sh` (erstellen → verifizieren → optional
+off-site → rotieren) statt direkt über `backup.sh`:
 
 ```cron
-0 2 * * *  root  bash /opt/vakt/scripts/backup.sh ... >> /var/log/vakt-backup.log 2>&1
+0 2 * * *  root  cd /opt/vakt && VAKT_BACKUP_DIR=/mnt/backup/vakt bash scripts/backup-cron.sh run >> /var/log/vakt-backup.log 2>&1
 ```
+
+Alternativ gibt es einen Opt-in-Container, der den Zeitplan selbst fährt
+(`--profile backup`). **Der braucht einen Internet-Ausgang bei jedem Start** —
+er lädt `gpg`/`openssl` nach, die im Basis-Image fehlen — und läuft in einer
+**Air-Gap-Installation nicht**. Dort ist der Host-Cron oben der richtige Weg.
+Begründung und Details in
+[Konfiguration → Automatische Backups](wiki/configuration.md#automatische-backups-s89-4).
 
 ### Wiederherstellung testen (Dry-Run)
 
+> **Ebenfalls korrigiert 2026-07-30 (ESK-7):** `restore.sh` kennt kein
+> `--backup-file` und kein `--passphrase`. Das Archiv ist ein **Positionsargument**,
+> die Passphrase kommt aus der Umgebung. `--dry-run` gibt es wirklich.
+
 ```bash
-bash scripts/restore.sh \
-  --backup-file /mnt/backup/vakt/vakt-backup-2026-05-17.tar.gz.enc \
-  --passphrase "$(cat /etc/vakt/backup.key)" \
-  --dry-run
+VAKT_SECRET_KEY="$(cat /etc/vakt/secret.key)" \
+VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key \
+  bash scripts/restore.sh /mnt/backup/vakt/vakt-backup-2026-05-17_02-00-00.tar.gz --dry-run
 ```
 
-`--dry-run` entpackt und entschlüsselt das Archiv, spielt aber nichts in die
-Datenbank ein. Regelmäßiger Dry-Run-Test (empfohlen: wöchentlich) stellt
-sicher, dass das Backup lesbar und vollständig ist.
+`--dry-run` prüft die HMAC-Signatur, entpackt das Archiv und entschlüsselt den
+Schlüssel, spielt aber nichts in die Datenbank ein. Regelmäßiger Dry-Run-Test
+(empfohlen: wöchentlich) stellt sicher, dass das Backup lesbar und vollständig
+ist. Die `.tar.gz.sig` muss neben dem Archiv liegen.
 
 ### Wiederherstellung auf neuem Server
 
@@ -72,13 +99,16 @@ sicher, dass das Backup lesbar und vollständig ist.
 2. `.env`-Datei mit identischen Werten (`VAKT_SECRET_KEY`, `POSTGRES_PASSWORD`,
    usw.) übertragen.
 3. Backup-Datei auf den neuen Server kopieren.
-4. Wiederherstellung ausführen:
+4. Stack starten, damit die Datenbank läuft: `docker compose up -d postgres`
+5. Wiederherstellung ausführen (Archiv **und** `.sig` müssen beide vorliegen):
    ```bash
-   bash scripts/restore.sh \
-     --backup-file /path/to/vakt-backup-YYYY-MM-DD.tar.gz.enc \
-     --passphrase "$(cat /etc/vakt/backup.key)"
+   VAKT_SECRET_KEY="$(cat /etc/vakt/secret.key)" \
+   VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key \
+     bash scripts/restore.sh /path/to/vakt-backup-YYYY-MM-DD_HH-MM-SS.tar.gz
    ```
-5. Stack starten: `docker compose up -d`
+   Die Evidence-Dateien werden **vor** der Datenbank zurückgespielt, damit ein
+   Abbruch beim Datenbank-Schritt sie nicht verliert.
+6. Restlichen Stack starten: `docker compose up -d`
 
 ---
 
@@ -87,10 +117,24 @@ sicher, dass das Backup lesbar und vollständig ist.
 ### Normales Upgrade (rolling)
 
 ```bash
-# 1. Neue Images ziehen
+cd /opt/vakt
+./scripts/update.sh
+```
+
+Von Hand sind es diese Schritte:
+
+```bash
+# 1. Auslieferungs-Dateien holen (docker-compose.yml, Caddyfile, scripts/).
+#    Ein `docker compose pull` fasst sie NICHT an — Härtungen und Konfigurations-
+#    änderungen stecken aber genau dort. Details: docs/UPGRADE.md.
+git pull --ff-only
+
+# 2. Neue Images ziehen
 docker compose pull
 
-# 2. Container neu starten (kurze Downtime ~10 s)
+# 3. Container neu starten (kurze Downtime ~10 s)
+#    Ohne Dienstliste: Compose erzeugt genau die Container neu, deren
+#    Konfiguration sich in Schritt 1 geändert hat.
 docker compose up -d
 ```
 

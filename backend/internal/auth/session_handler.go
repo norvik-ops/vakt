@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
@@ -140,15 +142,57 @@ func (h *SessionHandler) RevokeAllOtherSessions(c echo.Context) error {
 	}
 	defer dbRows.Close()
 	for dbRows.Next() {
-		var h string
-		if scanErr := dbRows.Scan(&h); scanErr == nil {
-			rows = append(rows, "refresh:"+h)
+		var hash string
+		if scanErr := dbRows.Scan(&hash); scanErr == nil {
+			rows = append(rows, "refresh:"+hash)
 		}
 	}
+	// R1-21-A06: the enumeration used to run unchecked. A failure part-way
+	// through leaves the DELETE committed but only SOME refresh keys removed from
+	// Redis, and the caller was told "other sessions revoked" all the same — the
+	// success-for-work-not-done shape. The rows are gone either way (the DELETE
+	// ran), so the honest answer is to say the cleanup was incomplete.
+	if err := dbRows.Err(); err != nil {
+		log.Error().Err(err).Str("user_id", userID).Msg("revoke sessions: enumerating revoked tokens failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "sessions were removed but their tokens could not all be invalidated — please retry",
+			"code":  "AUTH_REVOKE_INCOMPLETE",
+		})
+	}
+	dbRows.Close()
 
 	// Remove from Redis in bulk.
 	if h.redis != nil && len(rows) > 0 {
 		_ = h.redis.Del(c.Request().Context(), rows...)
+	}
+
+	// The panic-button path — no X-Vakt-Session-Id, so EVERY session including
+	// the caller's own was just deleted. Deleting refresh rows alone leaves the
+	// access tokens already handed out valid for the rest of their hour: they are
+	// stateless Paseto, and only a pw_version bump makes the middleware reject
+	// them. Someone who clicks "revoke everything" has to be rid of the access,
+	// not of the ability to renew it (R1-21-A06).
+	//
+	// Deliberately NOT done on the "all others" path above: pw_version is
+	// per-user, so bumping it there would invalidate the caller's own access
+	// token too, and the frontend answers a 401 with a hard logout (no refresh
+	// retry — api/client.ts). That half of the finding needs a per-session claim
+	// in the token and is reported, not silently claimed.
+	//
+	// R1-W7A-N3: the bump reports its outcome now. On the panic-button path a
+	// failed bump means the thing the button promises did not happen — the
+	// access tokens are still good — so this answers 503 rather than the usual
+	// "revoked". The refresh rows above ARE gone either way, which is why the
+	// message says the revocation is incomplete rather than that it failed.
+	if currentSessionID == "" {
+		if err := bumpPwVersionWith(c.Request().Context(), h.db, h.redis, userID); err != nil {
+			log.Error().Err(err).Str("user_id", userID).
+				Msg("revoke all sessions: pw_version bump not confirmed — access tokens still valid")
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"error": "sessions were removed but the access tokens could not be invalidated — please try again",
+				"code":  "SESSION_REVOCATION_INCOMPLETE",
+			})
+		}
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "other sessions revoked"})

@@ -233,10 +233,12 @@ WHERE id = $1 AND org_id = $2;
 -- is done as an explicit find-then-insert-or-update instead of ON CONFLICT.
 
 -- name: FindSRAssignmentByTarget :one
-SELECT id, org_id, module_id, target_id, department, due_date,
-       is_overdue, created_at
-FROM sr_assignments
-WHERE org_id = $1 AND module_id = $2 AND target_id = $3::uuid
+SELECT a.id, a.org_id, a.module_id, a.target_id, a.department, a.due_date,
+       (a.due_date < NOW()
+        AND NOT EXISTS (SELECT 1 FROM sr_completions sc WHERE sc.assignment_id = a.id)) AS is_overdue,
+       a.created_at
+FROM sr_assignments a
+WHERE a.org_id = $1 AND a.module_id = $2 AND a.target_id = $3::uuid
 LIMIT 1;
 
 -- name: InsertSRAssignment :one
@@ -246,26 +248,33 @@ VALUES ($1, $2,
         sqlc.narg('department')::text,
         $3)
 RETURNING id, org_id, module_id, target_id, department, due_date,
-          is_overdue, created_at;
+          (due_date < NOW()) AS is_overdue, created_at;
 
 -- name: UpdateSRAssignmentDueDate :one
-UPDATE sr_assignments SET due_date = GREATEST($2, due_date)
-WHERE id = $1
-RETURNING id, org_id, module_id, target_id, department, due_date,
-          is_overdue, created_at;
+UPDATE sr_assignments a SET due_date = GREATEST($2, a.due_date)
+WHERE a.id = $1
+RETURNING a.id, a.org_id, a.module_id, a.target_id, a.department, a.due_date,
+          (a.due_date < NOW()
+           AND NOT EXISTS (SELECT 1 FROM sr_completions sc
+                            WHERE sc.assignment_id = a.id)) AS is_overdue,
+          a.created_at;
 
 -- name: GetSRAssignment :one
-SELECT id, org_id, module_id, target_id, department, due_date,
-       is_overdue, created_at
-FROM sr_assignments
-WHERE id = $1 AND org_id = $2;
+SELECT a.id, a.org_id, a.module_id, a.target_id, a.department, a.due_date,
+       (a.due_date < NOW()
+        AND NOT EXISTS (SELECT 1 FROM sr_completions sc WHERE sc.assignment_id = a.id)) AS is_overdue,
+       a.created_at
+FROM sr_assignments a
+WHERE a.id = $1 AND a.org_id = $2;
 
 -- name: ListSRAssignments :many
-SELECT id, org_id, module_id, target_id, department, due_date,
-       is_overdue, created_at
-FROM sr_assignments
-WHERE org_id = $1
-ORDER BY due_date
+SELECT a.id, a.org_id, a.module_id, a.target_id, a.department, a.due_date,
+       (a.due_date < NOW()
+        AND NOT EXISTS (SELECT 1 FROM sr_completions sc WHERE sc.assignment_id = a.id)) AS is_overdue,
+       a.created_at
+FROM sr_assignments a
+WHERE a.org_id = $1
+ORDER BY a.due_date
 LIMIT 500;
 
 -- name: ListSRAssignmentsByModule :many
@@ -282,17 +291,27 @@ WHERE a.org_id = $1 AND a.module_id = $2
 ORDER BY a.created_at DESC
 LIMIT 500;
 
+-- L1-05: „ueberfaellig" wird abgeleitet, nicht gespeichert. Die Spalte
+-- sr_assignments.is_overdue schrieb kein Codepfad je — kein UPDATE, kein Job —,
+-- also lieferte diese Abfrage IMMER die leere Liste, auch bei 60 Tagen
+-- Ueberschreitung. Ein abgeleiteter Wert kann nicht veralten.
 -- name: ListSROverdueAssignments :many
-SELECT id, org_id, module_id, target_id, department, due_date,
-       is_overdue, created_at
-FROM sr_assignments
-WHERE org_id = $1 AND is_overdue = TRUE
-ORDER BY due_date
+SELECT a.id, a.org_id, a.module_id, a.target_id, a.department, a.due_date,
+       (a.due_date < NOW()
+        AND NOT EXISTS (SELECT 1 FROM sr_completions sc WHERE sc.assignment_id = a.id)) AS is_overdue,
+       a.created_at
+FROM sr_assignments a
+WHERE a.org_id = $1
+  AND a.due_date < NOW()
+  AND NOT EXISTS (SELECT 1 FROM sr_completions sc WHERE sc.assignment_id = a.id)
+ORDER BY a.due_date
 LIMIT 500;
 
 -- name: ListSRCompletedAssignments :many
 SELECT a.id, a.org_id, a.module_id, a.target_id, a.department, a.due_date,
-       a.is_overdue, a.created_at
+       (a.due_date < NOW()
+        AND NOT EXISTS (SELECT 1 FROM sr_completions sc WHERE sc.assignment_id = a.id)) AS is_overdue,
+       a.created_at
 FROM sr_assignments a
 WHERE a.org_id = $1
   AND a.id IN (SELECT assignment_id FROM sr_completions)

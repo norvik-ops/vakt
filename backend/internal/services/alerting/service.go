@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -37,12 +38,24 @@ type SMTPConfig struct {
 	From string
 }
 
+// defaultDispatchBudget bounds one Fire fan-out end to end. It was the
+// timeout of the old fire-and-forget dispatch goroutine and stays the same
+// number now that Fire blocks on its own fan-out (ADR-0083).
+const defaultDispatchBudget = 30 * time.Second
+
+// dispatchGrace is the belt-and-braces margin on top of the budget. Every
+// delivery path is context-aware and must finish within the budget; the grace
+// only covers a path that ignores its context, so that a stuck channel can
+// never pin the caller forever.
+const dispatchGrace = 5 * time.Second
+
 // Service handles all alerting business logic.
 type Service struct {
-	repo      *Repository
-	masterKey []byte
-	client    *http.Client
-	smtp      SMTPConfig
+	repo           *Repository
+	masterKey      []byte
+	client         *http.Client
+	smtp           SMTPConfig
+	dispatchBudget time.Duration
 }
 
 // NewService creates a new alerting Service.
@@ -55,9 +68,20 @@ func NewService(db *pgxpool.Pool, masterKey []byte, smtp SMTPConfig) *Service {
 		// after the URL was validated at save. allowPrivate=true keeps legitimate
 		// on-prem webhook receivers working (self-hosted product) while still
 		// closing the rebinding TOCTOU.
-		client: httputil.GuardedClient(10*time.Second, true),
-		smtp:   smtp,
+		client:         httputil.GuardedClient(10*time.Second, true),
+		smtp:           smtp,
+		dispatchBudget: defaultDispatchBudget,
 	}
+}
+
+// WithDispatchBudget overrides how long one Fire fan-out may take. Tests use it
+// to keep a deliberately unreachable channel from burning the full 30 seconds.
+// A value of zero or less keeps the default.
+func (s *Service) WithDispatchBudget(d time.Duration) *Service {
+	if d > 0 {
+		s.dispatchBudget = d
+	}
+	return s
 }
 
 // encrypt encrypts plaintext with AES-256-GCM. The 12-byte nonce is prepended to the ciphertext.
@@ -193,7 +217,7 @@ func (s *Service) TestChannel(ctx context.Context, orgID, id string) error {
 
 	if raw.Type == "email" {
 		to := strings.TrimSpace(string(urlBytes))
-		return s.sendEmail(to, "Vakt Test Alert", "Dies ist eine Test-Benachrichtigung von Vakt.")
+		return s.sendEmailCtx(ctx, to, "Vakt Test Alert", "Dies ist eine Test-Benachrichtigung von Vakt.")
 	}
 
 	testPayload := map[string]any{"text": "Vakt test alert"}
@@ -216,158 +240,283 @@ func (s *Service) TestChannel(ctx context.Context, orgID, id string) error {
 	return nil
 }
 
-// Fire dispatches an event to all enabled channels subscribed to that event.
-// It is fire-and-forget: it returns immediately and delivers in a background
-// goroutine. Deliveries are bounded to 10 concurrent goroutines and the whole
-// dispatch times out after 30 seconds. Delivery failures are non-fatal.
-func (s *Service) Fire(ctx context.Context, orgID, event string, payload map[string]any) {
+// FireResult reports what one Fire dispatch actually achieved. It exists so a
+// caller can tell "nobody was told" apart from "somebody was told" — the old
+// Fire returned nothing at all, so every caller had to assume success
+// (ADR-0083).
+type FireResult struct {
+	// Channels is how many enabled channels were subscribed to the event.
+	Channels int
+	// Sent is how many of them accepted the message inside the dispatch budget.
+	Sent int
+	// Failed is how many refused it, errored, or ran out of budget.
+	Failed int
+	// TimedOut reports that the fan-out was still running when the hard wait
+	// guard expired. Channels unaccounted for at that moment count as neither
+	// sent nor failed, so Sent stays honest.
+	TimedOut bool
+	// LookupErr is set when the channel list could not be read at all. No
+	// delivery was attempted in that case.
+	LookupErr error
+}
+
+// Delivered reports whether at least one channel accepted the message.
+//
+// Deliberately not "no error occurred": an org with zero configured channels
+// produces no error and no delivery, and must not count as delivered — nobody
+// was told. Callers that suppress repeat alerts hang their suppression mark on
+// this, so it has to mean "somebody received it", nothing weaker.
+func (r FireResult) Delivered() bool { return r.Sent > 0 }
+
+// Fire dispatches an event to all enabled channels subscribed to that event and
+// reports whether anything got through.
+//
+// It blocks until every channel has finished or the dispatch budget (30 s by
+// default) runs out, whichever comes first — a hard wait guard on top of that
+// makes sure a channel that ignores its context can never pin the caller.
+// Deliveries run concurrently, bounded to 10 at a time. Individual delivery
+// failures are non-fatal and are recorded in alert_delivery_log.
+func (s *Service) Fire(ctx context.Context, orgID, event string, payload map[string]any) FireResult {
 	channels, err := s.repo.GetEnabledChannelsForEvent(ctx, orgID, event)
 	if err != nil {
 		log.Error().Err(err).Str("event", event).Str("org_id", orgID).Msg("alerting: get channels failed")
-		return
+		return FireResult{LookupErr: err}
+	}
+	res := FireResult{Channels: len(channels)}
+	if len(channels) == 0 {
+		// No subscriber is not an error, but it is also not a delivery.
+		log.Warn().Str("event", event).Str("org_id", orgID).
+			Msg("alerting: no enabled channel subscribed — event not delivered to anyone")
+		return res
 	}
 
 	body, _ := json.Marshal(payload)
 
-	// ADR-0018: outer dispatch + per-channel delivery laufen über safego.Run.
-	// Parent-Context wird durchgereicht, der 30 s-Timeout wird über
-	// context.WithoutCancel(ctx) gehängt — so überlebt das Fan-out einen
-	// Request-Cancel UND respektiert weiterhin shutdown-Signale, falls der
-	// Aufrufer einen lifecycle-Context übergibt.
-	safego.Run(ctx, "alerting.fanout.dispatch", func(parent context.Context) error {
-		fireCtx, cancel := context.WithTimeout(context.WithoutCancel(parent), 30*time.Second)
-		defer cancel()
+	budget := s.dispatchBudget
+	if budget <= 0 {
+		budget = defaultDispatchBudget
+	}
 
-		var wg sync.WaitGroup
-		sem := make(chan struct{}, 10) // max 10 concurrent deliveries
+	// ADR-0018: die Zustellungen laufen über safego.Run. Der Parent-Context
+	// wird durchgereicht, das Zeitlimit hängt an context.WithoutCancel(ctx) —
+	// so überlebt das Auffächern einen Request-Cancel und der Aufrufer bekommt
+	// trotzdem ein Ergebnis, statt es an einem abgebrochenen Request zu
+	// verlieren.
+	fireCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), budget)
+	defer cancel()
 
-		for _, ch := range channels {
-			ch := ch // capture loop var
-			wg.Add(1)
-			sem <- struct{}{}
-			safego.Run(fireCtx, "alerting.fanout.deliver", func(c context.Context) error {
-				defer wg.Done()
-				defer func() { <-sem }()
+	var sent, failed atomic.Int64
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 10) // max 10 concurrent deliveries
 
-				urlBytes, err := s.decrypt(ch.URLEncrypted)
-				if err != nil {
-					log.Error().Err(err).Str("channel_id", ch.ID).Msg("alerting: decrypt url failed")
-					status := "failed"
-					_ = s.repo.LogDelivery(fireCtx, orgID, &ch.ID, event, status, nil, payload)
-					return nil
-				}
+	for _, ch := range channels {
+		ch := ch // capture loop var
+		wg.Add(1)
+		sem <- struct{}{}
+		safego.Run(fireCtx, "alerting.fanout.deliver", func(c context.Context) error {
+			defer wg.Done()
+			defer func() { <-sem }()
 
-				// Email channels: deliver via SMTP instead of HTTP.
-				if ch.Type == "email" {
-					to := strings.TrimSpace(string(urlBytes))
-					subject := "Vakt Alert: " + formatEventText(event, payload)
-					lines := []string{formatEventText(event, payload), ""}
-					for k, v := range payload {
-						lines = append(lines, fmt.Sprintf("%s: %v", k, v))
-					}
-					emailBody := strings.Join(lines, "\r\n")
-					err := s.sendEmail(to, subject, emailBody)
-					st := "sent"
-					if err != nil {
-						log.Error().Err(err).Str("channel_id", ch.ID).Msg("alerting: email delivery failed")
-						st = "failed"
-					}
-					_ = s.repo.LogDelivery(fireCtx, orgID, &ch.ID, event, st, nil, payload)
-					return nil
-				}
-
-				// Format payload according to channel type.
-				var bodyBytes []byte
-				switch ch.Type {
-				case "slack":
-					text := formatEventText(event, payload)
-					slackBody := map[string]any{
-						"text": text,
-						"attachments": []map[string]any{{
-							"color":  severityColor(event),
-							"fields": payloadToFields(payload),
-							"footer": "Vakt",
-							"ts":     time.Now().Unix(),
-						}},
-					}
-					bodyBytes, _ = json.Marshal(slackBody)
-				case "teams":
-					text := formatEventText(event, payload)
-					teamsBody := map[string]any{
-						"@type":      "MessageCard",
-						"@context":   "http://schema.org/extensions",
-						"summary":    text,
-						"themeColor": severityColor(event),
-						"title":      "Vakt Alert",
-						"sections": []map[string]any{{
-							"activityTitle":    text,
-							"activitySubtitle": "Event: " + event,
-							"facts":            payloadToFacts(payload),
-						}},
-					}
-					bodyBytes, _ = json.Marshal(teamsBody)
-				default:
-					// webhook: keep original generic format
-					bodyBytes = body
-				}
-
-				var responseCode *int
-				status := "sent"
-				var lastErr error
-				delays := []time.Duration{0, time.Second, 2 * time.Second, 4 * time.Second}
-			retry:
-				for attempt, delay := range delays {
-					if delay > 0 {
-						select {
-						case <-fireCtx.Done():
-							lastErr = fireCtx.Err()
-							break retry
-						case <-time.After(delay):
-						}
-					}
-					reqRetry, err := http.NewRequestWithContext(fireCtx, http.MethodPost, string(urlBytes), bytes.NewReader(bodyBytes))
-					if err != nil {
-						lastErr = err
-						break
-					}
-					reqRetry.Header.Set("Content-Type", "application/json")
-					reqRetry.Header.Set("X-Vakt-Event", event)
-					if len(ch.HmacSecretEncrypted) > 0 {
-						if secretBytes, decErr := s.decrypt(ch.HmacSecretEncrypted); decErr == nil {
-							mac := hmac.New(sha256.New, secretBytes)
-							mac.Write(bodyBytes)
-							reqRetry.Header.Set("X-Vakt-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
-						}
-					}
-					resp, doErr := s.client.Do(reqRetry)
-					if doErr != nil {
-						lastErr = doErr
-						log.Warn().Err(doErr).Int("attempt", attempt+1).Str("channel_id", ch.ID).Msg("alerting: delivery attempt failed")
-						continue
-					}
-					code := resp.StatusCode
-					_ = resp.Body.Close()
-					if code >= 200 && code < 300 {
-						responseCode = &code
-						lastErr = nil
-						break
-					}
-					lastErr = fmt.Errorf("non-2xx: %d", code)
-					responseCode = &code
-					log.Warn().Int("status", code).Int("attempt", attempt+1).Str("channel_id", ch.ID).Msg("alerting: non-2xx response")
-				}
-				if lastErr != nil {
-					log.Error().Err(lastErr).Str("channel_id", ch.ID).Str("event", event).Msg("alerting: delivery failed after retries")
-					status = "failed"
-				}
-				_ = s.repo.LogDelivery(fireCtx, orgID, &ch.ID, event, status, responseCode, payload)
+			urlBytes, err := s.decrypt(ch.URLEncrypted)
+			if err != nil {
+				log.Error().Err(err).Str("channel_id", ch.ID).Msg("alerting: decrypt url failed")
+				status := "failed"
+				failed.Add(1)
+				_ = s.repo.LogDelivery(fireCtx, orgID, &ch.ID, event, status, nil, payload)
 				return nil
-			})
-		}
+			}
 
+			// Email channels: deliver via SMTP instead of HTTP.
+			if ch.Type == "email" {
+				to := strings.TrimSpace(string(urlBytes))
+				subject := "Vakt Alert: " + formatEventText(event, payload)
+				lines := []string{formatEventText(event, payload), ""}
+				for k, v := range payload {
+					lines = append(lines, fmt.Sprintf("%s: %v", k, v))
+				}
+				emailBody := strings.Join(lines, "\r\n")
+				err := s.sendEmailCtx(fireCtx, to, subject, emailBody)
+				st := "sent"
+				if err != nil {
+					log.Error().Err(err).Str("channel_id", ch.ID).Msg("alerting: email delivery failed")
+					st = "failed"
+					failed.Add(1)
+				} else {
+					sent.Add(1)
+				}
+				_ = s.repo.LogDelivery(fireCtx, orgID, &ch.ID, event, st, nil, payload)
+				return nil
+			}
+
+			// Format payload according to channel type.
+			var bodyBytes []byte
+			switch ch.Type {
+			case "slack":
+				text := formatEventText(event, payload)
+				bodyBytes, _ = json.Marshal(slackMessage{
+					Text: text,
+					Attachments: []slackAttachment{{
+						Color:  severityColor(event),
+						Fields: payloadToFields(payload),
+						Footer: "Vakt",
+						TS:     time.Now().Unix(),
+					}},
+				})
+			case "teams":
+				text := formatEventText(event, payload)
+				teamsBody := map[string]any{
+					"@type":      "MessageCard",
+					"@context":   "http://schema.org/extensions",
+					"summary":    text,
+					"themeColor": severityColor(event),
+					"title":      "Vakt Alert",
+					"sections": []map[string]any{{
+						"activityTitle":    text,
+						"activitySubtitle": "Event: " + event,
+						"facts":            payloadToFacts(payload),
+					}},
+				}
+				bodyBytes, _ = json.Marshal(teamsBody)
+			default:
+				// webhook: keep original generic format
+				bodyBytes = body
+			}
+
+			var responseCode *int
+			status := "sent"
+			var lastErr error
+			delays := []time.Duration{0, time.Second, 2 * time.Second, 4 * time.Second}
+		retry:
+			for attempt, delay := range delays {
+				if delay > 0 {
+					select {
+					case <-fireCtx.Done():
+						lastErr = fireCtx.Err()
+						break retry
+					case <-time.After(delay):
+					}
+				}
+				reqRetry, err := http.NewRequestWithContext(fireCtx, http.MethodPost, string(urlBytes), bytes.NewReader(bodyBytes))
+				if err != nil {
+					lastErr = err
+					break
+				}
+				reqRetry.Header.Set("Content-Type", "application/json")
+				reqRetry.Header.Set("X-Vakt-Event", event)
+				if len(ch.HmacSecretEncrypted) > 0 {
+					if secretBytes, decErr := s.decrypt(ch.HmacSecretEncrypted); decErr == nil {
+						mac := hmac.New(sha256.New, secretBytes)
+						mac.Write(bodyBytes)
+						reqRetry.Header.Set("X-Vakt-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
+					}
+				}
+				resp, doErr := s.client.Do(reqRetry)
+				if doErr != nil {
+					lastErr = doErr
+					log.Warn().Err(doErr).Int("attempt", attempt+1).Str("channel_id", ch.ID).Msg("alerting: delivery attempt failed")
+					continue
+				}
+				code := resp.StatusCode
+				_ = resp.Body.Close()
+				if code >= 200 && code < 300 {
+					responseCode = &code
+					lastErr = nil
+					break
+				}
+				lastErr = fmt.Errorf("non-2xx: %d", code)
+				responseCode = &code
+				log.Warn().Int("status", code).Int("attempt", attempt+1).Str("channel_id", ch.ID).Msg("alerting: non-2xx response")
+			}
+			if lastErr != nil {
+				log.Error().Err(lastErr).Str("channel_id", ch.ID).Str("event", event).Msg("alerting: delivery failed after retries")
+				status = "failed"
+				failed.Add(1)
+			} else {
+				sent.Add(1)
+			}
+			_ = s.repo.LogDelivery(fireCtx, orgID, &ch.ID, event, status, responseCode, payload)
+			return nil
+		})
+	}
+
+	// Harte Wartegrenze. Jeder Zustellpfad hängt am fireCtx und ist damit
+	// schon durch das Zeitlimit begrenzt; die Grenze hier greift nur, falls
+	// ein Pfad seinen Context ignoriert. Ein Cronjob darf an einem hängenden
+	// Mailserver nicht seinen Worker blockieren — deshalb warten wir nie
+	// unbegrenzt, sondern geben zurück, was bis dahin bestätigt ist.
+	done := make(chan struct{})
+	safego.Run(fireCtx, "alerting.fanout.wait", func(context.Context) error {
 		wg.Wait()
+		close(done)
 		return nil
 	})
+
+	timer := time.NewTimer(budget + dispatchGrace)
+	defer timer.Stop()
+	select {
+	case <-done:
+	case <-timer.C:
+		res.TimedOut = true
+		log.Error().Str("event", event).Str("org_id", orgID).Dur("budget", budget).
+			Msg("alerting: fan-out exceeded its wait guard — result reported from confirmed deliveries only")
+	}
+
+	res.Sent = int(sent.Load())
+	res.Failed = int(failed.Load())
+	if !res.Delivered() {
+		log.Error().Str("event", event).Str("org_id", orgID).
+			Int("channels", res.Channels).Int("failed", res.Failed).Bool("timed_out", res.TimedOut).
+			Msg("alerting: event reached no channel")
+	}
+	return res
+}
+
+// FireAndMark dispatches the event and records the repeat-suppression mark in
+// notification_alert_state only if at least one channel accepted it.
+//
+// The three daily cron checks (SLA overdue, AVV expired, DSR overdue) used to
+// set that mark unconditionally right after the old fire-and-forget Fire
+// returned — which it did before anything had been delivered. A broken mail
+// server or webhook therefore bought 24 hours of silence per event, and with a
+// permanent delivery fault the alert never came back at all (ADR-0083).
+func (s *Service) FireAndMark(ctx context.Context, orgID, event string, payload map[string]any) FireResult {
+	res := s.Fire(ctx, orgID, event, payload)
+	if !res.Delivered() {
+		log.Warn().Str("event", event).Str("org_id", orgID).
+			Msg("alerting: suppression mark NOT set — the next cron run will try again")
+		return res
+	}
+	if err := s.repo.MarkFired(ctx, orgID, event); err != nil {
+		// Der Alarm ist raus; nur die Sperre fehlt. Der nächste Lauf meldet
+		// dasselbe Ereignis erneut — laut statt still, die sichere Richtung.
+		log.Error().Err(err).Str("event", event).Str("org_id", orgID).
+			Msg("alerting: could not record suppression mark")
+	}
+	return res
+}
+
+// sendEmailCtx bounds sendEmail by ctx.
+//
+// net/smtp honours no context: smtp.SendMail against a mail server that accepts
+// the TCP connection and then stops answering blocks forever. That was
+// tolerable while Fire was fire-and-forget (it only leaked a goroutine); now
+// that the caller waits for the result, an unbounded send would pin a cron
+// worker. The send itself is left alone — reimplementing dial/STARTTLS to get a
+// deadline would risk the mail path for no gain here. The goroutine may outlive
+// this call; the buffered channel keeps it from blocking on a receiver that
+// already gave up.
+func (s *Service) sendEmailCtx(ctx context.Context, to, subject, body string) error {
+	done := make(chan error, 1)
+	safego.Run(ctx, "alerting.smtp.send", func(context.Context) error {
+		done <- s.sendEmail(to, subject, body)
+		return nil
+	})
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("smtp delivery exceeded the dispatch budget: %w", ctx.Err())
+	}
 }
 
 // sendEmail sends a plain-text alert email via the configured SMTP server.
@@ -442,17 +591,38 @@ func severityColor(event string) string {
 	}
 }
 
+// slackField is one key/value row inside a Slack attachment.
+type slackField struct {
+	Title string `json:"title"`
+	Value string `json:"value"`
+	Short bool   `json:"short"`
+}
+
+// slackAttachment is the coloured block Slack renders under the message text.
+type slackAttachment struct {
+	Color  string       `json:"color"`
+	Fields []slackField `json:"fields"`
+	Footer string       `json:"footer"`
+	TS     int64        `json:"ts"`
+}
+
+// slackMessage is the body posted to a Slack incoming webhook.
+type slackMessage struct {
+	Text        string            `json:"text"`
+	Attachments []slackAttachment `json:"attachments"`
+}
+
 // payloadToFields converts a payload map to Slack attachment fields.
-func payloadToFields(payload map[string]any) []map[string]any {
-	var fields []map[string]any
+func payloadToFields(payload map[string]any) []slackField {
+	var fields []slackField
 	for k, v := range payload {
 		if k == "message" {
 			continue
 		}
-		fields = append(fields, map[string]any{
-			"title": k,
-			"value": fmt.Sprint(v),
-			"short": true,
+		fields = append(fields, slackField{
+			Title: k,
+			Value: fmt.Sprint(v),
+			Short: true,
 		})
 	}
 	return fields

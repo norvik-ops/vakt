@@ -1,0 +1,67 @@
+{{- if .Values.ollama.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "vakt.fullname" . }}-ollama
+  labels:
+    {{- include "vakt.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+spec:
+  serviceName: {{ include "vakt.fullname" . }}-ollama
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "vakt.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ollama
+  template:
+    metadata:
+      labels:
+        {{- include "vakt.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ollama
+    spec:
+      # Ollama needs to write to /root/.ollama and /tmp; we relax the chart-wide
+      # restricted-profile defaults slightly (root inside container is fine because
+      # the persistent volume is owned by ollama-init).
+      securityContext:
+        runAsNonRoot: false
+      containers:
+        - name: ollama
+          image: "{{ .Values.ollama.image.repository }}:{{ .Values.ollama.image.tag }}"
+          imagePullPolicy: {{ .Values.ollama.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 11434
+              protocol: TCP
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:11434"
+          resources:
+            {{- toYaml .Values.ollama.resources | nindent 12 }}
+          volumeMounts:
+            - name: models
+              mountPath: /root/.ollama
+          readinessProbe:
+            exec:
+              command: ["ollama", "list"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 11434
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: models
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.ollama.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.ollama.persistence.size }}
+{{- end }}

@@ -2,7 +2,6 @@ package vaktcomply
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -376,6 +375,7 @@ type NIS2ReportInput = reporting.NIS2ReportInput
 type NIS2ReportStatus = reporting.NIS2ReportStatus
 type NIS2Deadlines = reporting.NIS2Deadlines
 type NIS2StageReport = reporting.NIS2StageReport
+type NIS2Assessment = reporting.NIS2Assessment
 type AuthorityContact = reporting.AuthorityContact
 
 func (s *Service) CalculateAndStoreKPIs(ctx context.Context, orgID string) error {
@@ -390,8 +390,10 @@ func (s *Service) GetKPIDashboard(ctx context.Context, orgID string) (KPIDashboa
 // ── NIS2 Art.23 forwarders ────────────────────────────────────────────────────
 
 // MarkIncidentReportable marks an incident as NIS2-meldepflichtig and sets the three deadlines.
-func (s *Service) MarkIncidentReportable(ctx context.Context, orgID string, incidentID uuid.UUID, detectedAt time.Time, check NIS2ReportabilityCheck) error {
-	return s.Reporting.MarkIncidentReportable(ctx, orgID, incidentID, detectedAt, check)
+// The deadline anchor is derived from the incident's discovered_at inside the
+// service — it is deliberately not a parameter, see reporting.MarkIncidentReportable.
+func (s *Service) MarkIncidentReportable(ctx context.Context, orgID string, incidentID uuid.UUID, check NIS2ReportabilityCheck) (*NIS2Assessment, error) {
+	return s.Reporting.MarkIncidentReportable(ctx, orgID, incidentID, check)
 }
 
 // SubmitNIS2Stage saves report content for a stage and marks it submitted.

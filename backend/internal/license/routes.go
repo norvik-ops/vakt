@@ -21,8 +21,8 @@ import (
 // an optional DB pool for key persistence, and an optional Redis client for
 // cache invalidation on activation.
 // Returns the Handler so the caller can configure auto-renewal.
-func RegisterRoutes(api *echo.Group, lic *License, authMW echo.MiddlewareFunc, db *pgxpool.Pool, rdb ...*redis.Client) *Handler {
-	h := NewHandler(lic)
+func RegisterRoutes(api *echo.Group, inst *Instance, authMW echo.MiddlewareFunc, db *pgxpool.Pool, rdb ...*redis.Client) *Handler {
+	h := NewHandlerForInstance(inst)
 	if db != nil {
 		h = h.WithDB(db)
 	}
@@ -40,8 +40,16 @@ func RegisterRoutes(api *echo.Group, lic *License, authMW echo.MiddlewareFunc, d
 		},
 	))
 
-	// GET /api/v1/license — returns current license status (requires auth)
-	api.GET("/license", h.Get, authMW)
+	// GET /api/v1/license — returns current license status (requires auth).
+	//
+	// DBMiddleware runs AFTER authMW (Echo applies route middleware left to
+	// right), so org_id is on the context when it looks up license_keys. Without
+	// it this route sits on the bare `api` group and only ever saw the instance
+	// license — an org that activated its own key was told "community" while its
+	// Pro routes worked, and four frontend consumers hid the Pro UI on that answer
+	// (R1-17-L05, R1-07-B02).
+	licenseCtx := DBMiddleware(db, inst, rdb...)
+	api.GET("/license", h.Get, authMW, licenseCtx)
 	// POST /api/v1/license/activate — validate and persist a Pro key (requires auth
 	// + CSRF + Admin role + rate limit). This route is mounted on the bare `api`
 	// group (not `protected` in cmd/api/routes.go), so it does not inherit

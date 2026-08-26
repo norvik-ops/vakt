@@ -29,6 +29,28 @@
 # Curated ALLOWLIST entries are frontend calls that legitimately have no
 # routes.go registration (dynamic dispatch, non-apiFetch endpoints, etc.) or
 # whose registration is invisible to the same-file resolver (see above).
+#
+# K2-08 (2026-07-30) — the ALLOWLIST had no stale detection.
+# Every entry asserted "this is a matcher blind spot, NOT a real gap", and
+# nothing ever re-checked that claim. Measured: deleting
+# `g.DELETE("", h.RevokeAllOtherSessions)` from internal/auth/session_routes.go —
+# the backend half of the "log out all other sessions" button
+# (frontend/src/pages/SessionsPage.tsx) — left this gate at rc=0. The entry
+# ("DELETE", "/auth/sessions") swallowed it. An exception that nobody rechecks
+# stops being an exception and becomes a hole nobody can see, which is exactly
+# what R1-03-G03 was about through a different mechanism.
+#
+# Each entry now carries EVIDENCE: the file(s) and pattern(s) that make the
+# claim true. The gate verifies all of them on every run, in BOTH directions:
+#   * evidence gone  -> the route really is missing now, and the FE call is a
+#                       real gap that this entry was hiding. FAIL.
+#   * entry unused   -> no frontend call needs it any more (the call was fixed,
+#                       moved or deleted). The exception outlived its reason.
+#                       FAIL, with the entry named for deletion.
+# Two entries also carried drifting line-number comments (session_routes.go:17 ->
+# really :18, github/handler.go:31 -> really :30). Line numbers in a comment are
+# a claim nothing checks; the evidence patterns below are checked, so the line
+# numbers are gone.
 
 import re
 import sys
@@ -40,27 +62,103 @@ FRONTEND = ROOT / "frontend" / "src"
 
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 
-# (method, normalized-path) pairs the frontend may call without a matching
-# routes.go literal. Each entry is a matcher blind spot, NOT a real gap.
+# (method, normalized-path) -> (why it is a matcher blind spot, [evidence]).
+#
+# EVIDENCE is a list of (repo-relative file, regex). ALL of them must still match
+# for the entry to be honoured. That is what turns "trust me, the route exists"
+# into a checked statement — see the K2-08 note above.
+#
+# Group roots need TWO pieces: the handler registering `.METHOD("")` and
+# cmd/api/routes.go mounting the group under its prefix. Either one disappearing
+# breaks the route, and either one disappearing must break this entry.
+_WEBHOOKS = "backend/internal/shared/platform/webhooks/handler.go"
+_ROUTES = "backend/cmd/api/routes.go"
+
 ALLOWLIST = {
     # Cross-file group roots: registered as `.METHOD("")` on a group whose prefix
     # is set in cmd/api/routes.go (e.g. protected.Group("/webhooks")). The static
     # resolver only follows group prefixes within one file, so the root path is
     # invisible here even though the route exists.
-    ("GET", "/webhooks"),
-    ("POST", "/webhooks"),
-    ("GET", "/audit-log"),
-    ("POST", "/setup"),
+    ("GET", "/webhooks"): (
+        "group root, prefix set in cmd/api/routes.go",
+        [(_WEBHOOKS, r'g\.GET\(""'), (_ROUTES, r'Group\("/webhooks"\)')],
+    ),
+    ("POST", "/webhooks"): (
+        "group root, prefix set in cmd/api/routes.go",
+        [(_WEBHOOKS, r'g\.POST\(""'), (_ROUTES, r'Group\("/webhooks"\)')],
+    ),
+    ("GET", "/audit-log"): (
+        "group root, prefix set in cmd/api/routes.go",
+        [("backend/internal/shared/audit/handler_query.go", r'g\.GET\(""'),
+         (_ROUTES, r'Group\("/audit-log"\)')],
+    ),
+    ("POST", "/setup"): (
+        "group root, prefix set in cmd/api/routes.go",
+        [("backend/internal/shared/setup/handler.go", r'g\.POST\(""'),
+         (_ROUTES, r'Group\("/setup"')],
+    ),
     # Dynamically-constructed backend routes: vaktcomply registers collab-tasks
     # per entity via `g.GET("/"+entity+"/:id/collab-tasks", ...)` in a loop, so the
     # full literal never appears as a single string the parser can read.
-    ("GET", "/vaktcomply/:p/:p/collab-tasks"),
-    ("POST", "/vaktcomply/:p/:p/collab-tasks"),
-    ("DELETE", "/webhooks/:p"),  # internal/shared/platform/webhooks/handler.go:37
-    ("PUT", "/webhooks/:p"),  # internal/shared/platform/webhooks/handler.go:36
-    ("DELETE", "/integrations/github/:p"),  # platform/integrations/github/handler.go:31
-    ("DELETE", "/auth/sessions"),  # internal/auth/session_routes.go:17 (RevokeAllOtherSessions)
+    ("GET", "/vaktcomply/:p/:p/collab-tasks"): (
+        "registered in a per-entity loop, no single literal to read",
+        [("backend/internal/modules/vaktcomply/routes.go",
+          r'g\.GET\("/"\+entity\+"/:id/collab-tasks"')],
+    ),
+    ("POST", "/vaktcomply/:p/:p/collab-tasks"): (
+        "registered in a per-entity loop, no single literal to read",
+        [("backend/internal/modules/vaktcomply/routes.go",
+          r'g\.POST\("/"\+entity\+"/:id/collab-tasks"')],
+    ),
+    ("DELETE", "/webhooks/:p"): (
+        "bare `/:id` on a cross-file group (G-02 never lets a bare wildcard cover)",
+        [(_WEBHOOKS, r'g\.DELETE\("/:id"'), (_ROUTES, r'Group\("/webhooks"\)')],
+    ),
+    ("PUT", "/webhooks/:p"): (
+        "bare `/:id` on a cross-file group",
+        [(_WEBHOOKS, r'g\.PUT\("/:id"'), (_ROUTES, r'Group\("/webhooks"\)')],
+    ),
+    ("DELETE", "/integrations/github/:p"): (
+        "bare `/:id` on a cross-file group",
+        [("backend/internal/shared/platform/integrations/github/handler.go",
+          r'g\.DELETE\("/:id"')],
+    ),
+    ("DELETE", "/auth/sessions"): (
+        "RevokeAllOtherSessions on a bare group root — the "
+        "'log out all other sessions' button in SessionsPage.tsx",
+        [("backend/internal/auth/session_routes.go",
+          r'g\.DELETE\(""\s*,\s*h\.RevokeAllOtherSessions')],
+    ),
 }
+
+USED_ALLOWLIST = set()
+
+
+def check_allowlist_evidence():
+    """Every ALLOWLIST entry must still be able to prove its own claim.
+
+    Returns a list of problems. This is the half K2-08 was missing: without it
+    an entry keeps excusing a frontend call long after the backend route it
+    pointed at is gone."""
+    problems = []
+    for key, (reason, evidence) in sorted(ALLOWLIST.items()):
+        method, path = key
+        for rel, pattern in evidence:
+            f = ROOT / rel
+            if not f.is_file():
+                problems.append(
+                    f"{method:6} {path} — ALLOWLIST evidence file {rel} does not "
+                    f"exist any more. The entry claims: {reason}."
+                )
+                continue
+            if not re.search(pattern, f.read_text(encoding="utf-8", errors="replace")):
+                problems.append(
+                    f"{method:6} {path} — ALLOWLIST evidence NOT FOUND: {rel} no "
+                    f"longer matches /{pattern}/. The entry claims: {reason}. Either "
+                    f"the route moved (update the evidence) or it is GONE, in which "
+                    f"case this frontend call is a real gap that the entry was hiding."
+                )
+    return problems
 
 
 def norm(path: str) -> str:
@@ -303,16 +401,40 @@ def main():
     missing = []
     for method, path in sorted(fe):
         if (method, path) in ALLOWLIST:
+            USED_ALLOWLIST.add((method, path))
             continue
         if not suffix_covered(path, be.get(method, set())):
             missing.append((method, path))
 
     # endpoint= props: existence under ANY method (method is component-specific).
     for path in sorted(fe_path_only):
-        if ("*", path) in ALLOWLIST or ("GET", path) in ALLOWLIST:
+        hit = next((k for k in (("*", path), ("GET", path)) if k in ALLOWLIST), None)
+        if hit:
+            USED_ALLOWLIST.add(hit)
             continue
         if not suffix_covered(path, any_method_paths):
             missing.append(("(any)", path))
+
+    # K2-08: the ALLOWLIST has to survive the same scrutiny as the routes.
+    allowlist_problems = check_allowlist_evidence()
+    stale = sorted(set(ALLOWLIST) - USED_ALLOWLIST)
+    for method, path in stale:
+        allowlist_problems.append(
+            f"{method:6} {path} — STALE ALLOWLIST entry: no frontend call needs it "
+            f"any more (the call was fixed, moved or deleted). Remove it, or the "
+            f"next call that lands on this (method, path) is excused for free."
+        )
+
+    if allowlist_problems:
+        print("FE→BE route reconciliation FAILED — the ALLOWLIST no longer holds:")
+        for p in allowlist_problems:
+            print(f"  {p}")
+        print(
+            f"\n{len(ALLOWLIST)} allowlist entries, {len(allowlist_problems)} "
+            "problem(s). Each entry claims a matcher blind spot rather than a real "
+            "gap; that claim is re-checked here on every run, in both directions."
+        )
+        sys.exit(1)
 
     if missing:
         print("FE→BE route reconciliation FAILED — frontend calls with no matching backend route:")
@@ -333,6 +455,8 @@ def main():
     skipped = len(SKIPPED)
     print(f"OK — {len(fe)} method-checked calls (apiFetch + raw fetch) and "
           f"{len(fe_path_only)} endpoint= paths all matched a backend route.")
+    print(f"allowlisted:{len(USED_ALLOWLIST)}/{len(ALLOWLIST)} "
+          f"(every entry's backend registration re-verified, 0 stale)")
     print(f"skipped:{skipped}")
     if skipped:
         print("::warning::check_routes.py — "

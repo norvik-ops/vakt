@@ -3,11 +3,17 @@
 
 WARUM DIESES GATE EXISTIERT
 ---------------------------
-`sqlc generate` schlaegt lokal auf `main` fehl (vorbestehender Schema-Drift in
-`db/queries/vaktcomply.sql`, Spalte `updated_at` — dokumentiert in CLAUDE.md und
-in docs/adr/0078-sqlc-hand-maintained-einfrieren.md). Solange das so ist, sind
-die generierten Dateien `backend/internal/db/*.sql.go` und vor allem das
-`Querier`-Interface in `querier.go` **hand-gepflegt**: Wer eine neue Query
+> Hinweis (2026-07-30, ESK-6): Hier stand bis heute „`sqlc generate` schlaegt
+> lokal auf `main` fehl (vorbestehender Schema-Drift, Spalte `updated_at`)".
+> Das ist FALSCH und war es beim Schreiben schon: der Drift wurde am 2026-07-11
+> mit dem S121-Live-Sweep behoben (Commit 1d39bb6), `sqlc generate` laeuft
+> seither mit Exit 0 — nachgemessen. Der Freeze bleibt, aber aus dem WIRKLICHEN
+> Grund: eine Vollregeneration formt 126 Aufrufstellen in 8 Paketen um
+> (+6307/-3923 Zeilen), sammtlich Go-Typformung, ohne einen einzigen belegten
+> Laufzeitdefekt zu beheben. Siehe ADR-0078 (Abschnitt „KORREKTUR").
+
+`backend/internal/db/*.sql.go` und vor allem das `Querier`-Interface in
+`querier.go` sind **bewusst hand-gepflegt** (ADR-0078): Wer eine neue Query
 haelt, schreibt den Go-Code von Hand. Genau da driftet es — vor S133 fehlten 21
 konkrete `*Queries`-Methoden (der ganze S86-BCM-Block: BIA/Recovery/Emergency)
 im `Querier`-Interface. `go build` faengt das NICHT: Ein fehlender
@@ -45,9 +51,16 @@ Dieses Gate vergleicht ausschliesslich `internal/db/*.sql.go` gegen
 zugehoerige `func (q *Queries) X` ist fuer dieses Gate vollstaendig unsichtbar —
 die direkte Entsprechung der „Handler ohne Route"-Klasse, die dieses Repo
 viermal getroffen hat. Wer eine Query hinzufuegt, muss den Go-Code weiterhin von
-Hand nachziehen (`sqlc generate` ist auf `main` kaputt, siehe ADR-0078); dass er
-es getan hat, prueft hier niemand. Das PREPARE-Gate G5 (internal/rawsqlcov)
-faengt die andere Richtung — SQL, das gegen das echte Schema nicht praepariert.
+Hand nachziehen (bewusst, ADR-0078); dass er es getan hat, prueft hier niemand.
+Das PREPARE-Gate G5 (internal/rawsqlcov) faengt die andere Richtung — SQL, das
+gegen das echte Schema nicht praepariert.
+
+> Hinweis (2026-07-30, ESK-6): Diese Blindstelle ist inzwischen GESCHLOSSEN —
+> `scripts/check_sqlc_seam.py` prueft die Naht `db/queries/*.sql` <->
+> `internal/db/*.sql.go` (Namens-/Verb-Deckung plus SQL-Vergleich mit
+> `sqlc generate` als Orakel in einem tempdir). Beim Bau gefunden: 12 von 491
+> Queries gedriftet. Dieses Gate bleibt dennoch eigenstaendig — es prueft die
+> Querier-Deckung, die das Naht-Gate nicht anschaut, und laeuft ohne Docker.
 
 NENNER / NICHT-VAKUAER
 ----------------------

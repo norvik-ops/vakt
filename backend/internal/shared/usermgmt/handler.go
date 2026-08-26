@@ -62,6 +62,16 @@ func (h *Handler) UpdateUserRole(c echo.Context) error {
 
 	if err := h.svc.UpdateUserRole(c.Request().Context(), orgID, userID, in.Role); err != nil {
 		log.Warn().Err(err).Str("user_id", userID).Msg("update user role")
+		// The last-admin guard gets its own answer. Everything else stays masked
+		// (the service wraps pgx errors, and those must not reach a client), but
+		// masking THIS one told the operator only that "something" failed — the
+		// same complaint ESK-13 raises about a bare "forbidden".
+		if errors.Is(err, ErrLastAdmin) {
+			return errResp(c, http.StatusBadRequest,
+				"Das ist die letzte Person mit der Rolle „Admin\" in dieser Organisation. "+
+					"Vergib die Rolle zuerst an jemand anderen — sonst kann niemand mehr Rollen ändern.",
+				"USERMGMT_LAST_ADMIN")
+		}
 		return errResp(c, http.StatusBadRequest, "Rolle konnte nicht aktualisiert werden", "USERMGMT_ROLE_UPDATE_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -82,6 +92,12 @@ func (h *Handler) RemoveUser(c echo.Context) error {
 
 	if err := h.svc.RemoveUser(c.Request().Context(), orgID, userID); err != nil {
 		log.Warn().Err(err).Str("user_id", userID).Msg("remove user")
+		if errors.Is(err, ErrLastAdmin) {
+			return errResp(c, http.StatusBadRequest,
+				"Das ist die letzte Person mit der Rolle „Admin\" in dieser Organisation. "+
+					"Vergib die Rolle zuerst an jemand anderen — sonst kann niemand mehr Rollen ändern.",
+				"USERMGMT_LAST_ADMIN")
+		}
 		return errResp(c, http.StatusBadRequest, "Benutzer konnte nicht entfernt werden", "USERMGMT_REMOVE_FAILED")
 	}
 	return c.NoContent(http.StatusNoContent)

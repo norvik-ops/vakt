@@ -2,6 +2,7 @@ package scim
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -53,6 +54,27 @@ type SCIMGroupMember struct {
 	Display string `json:"display"`
 }
 
+// ErrNoApplicableOps is returned when a PATCH carried no operation this
+// implementation could apply — an empty Operations array, or only paths it does
+// not support. The alternative is answering 200 for a change that did not
+// happen (R1-14-D07).
+var ErrNoApplicableOps = errors.New("scim: no supported operation in this PATCH")
+
+// ErrLastAdmin is returned when deprovisioning would remove the organisation's
+// last Admin membership.
+var ErrLastAdmin = errors.New("scim: refusing to deprovision the last admin of this organisation")
+
+// ErrUserNameTaken is returned when a provisioning request collides with
+// another account's userName or email.
+var ErrUserNameTaken = errors.New("scim: userName or email already belongs to another account")
+
+// isUniqueViolation reports whether err is a Postgres unique-constraint
+// violation (SQLSTATE 23505).
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
 // SessionRevoker revokes all active sessions for a user. Implemented by auth.Service.
 type SessionRevoker interface {
 	RevokeAllSessions(ctx context.Context, userID string) error
@@ -78,25 +100,34 @@ func (s *Service) WithSessionRevoker(r SessionRevoker) *Service {
 
 // ─── User operations ──────────────────────────────────────────────────────────
 
+// userColumns is the SELECT list every user read shares. scim_user_name falls
+// back to email: locally created accounts have no SCIM login name, and before
+// R1-14-D08 the email column WAS the login name.
+const userColumns = `u.id::text, u.email,
+		       COALESCE(NULLIF(u.scim_user_name, ''), u.email),
+		       COALESCE(u.display_name, ''),
+		       u.is_active,
+		       COALESCE(u.scim_external_id, ''),
+		       u.created_at, u.updated_at`
+
 // ListUsers returns org-scoped SCIM users, with optional filter by userName or email.
 // Only the first "userName eq <value>" clause is evaluated (minimal SCIM filter DSL).
 func (s *Service) ListUsers(ctx context.Context, orgID, filter string) ([]SCIMUser, error) {
 	baseQuery := `
-		SELECT u.id::text, u.email,
-		       COALESCE(u.display_name, ''),
-		       u.is_active,
-		       COALESCE(u.scim_external_id, ''),
-		       u.created_at, u.updated_at
+		SELECT ` + userColumns + `
 		FROM users u
 		JOIN org_members om ON om.user_id = u.id
 		WHERE om.org_id = $1::uuid`
 
 	args := []any{orgID}
 
-	// Minimal SCIM filter: "userName eq <value>"
+	// Minimal SCIM filter: "userName eq <value>". It has to match the login
+	// name the IdP knows, which since R1-14-D08 is its own column — matching on
+	// email alone made an account with a separate mail address invisible to the
+	// filter, and the IdP then provisioned it a second time.
 	if f := parseEqFilter(filter, "userName"); f != "" {
 		args = append(args, f)
-		baseQuery += fmt.Sprintf(" AND u.email = $%d", len(args))
+		baseQuery += fmt.Sprintf(" AND (u.scim_user_name = $%d OR (u.scim_user_name IS NULL AND u.email = $%d))", len(args), len(args))
 	}
 	baseQuery += " ORDER BY u.created_at ASC"
 
@@ -113,21 +144,16 @@ func (s *Service) ListUsers(ctx context.Context, orgID, filter string) ([]SCIMUs
 func (s *Service) GetUser(ctx context.Context, orgID, userID string) (*SCIMUser, error) {
 	var u SCIMUser
 	err := s.db.QueryRow(ctx, `
-		SELECT u.id::text, u.email,
-		       COALESCE(u.display_name, ''),
-		       u.is_active,
-		       COALESCE(u.scim_external_id, ''),
-		       u.created_at, u.updated_at
+		SELECT `+userColumns+`
 		FROM users u
 		JOIN org_members om ON om.user_id = u.id
 		WHERE om.org_id = $1::uuid AND u.id = $2::uuid`,
 		orgID, userID,
-	).Scan(&u.ID, &u.Email, &u.DisplayName, &u.Active, &u.ExternalID,
+	).Scan(&u.ID, &u.Email, &u.UserName, &u.DisplayName, &u.Active, &u.ExternalID,
 		&u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
-	u.UserName = u.Email
 	return &u, nil
 }
 
@@ -149,25 +175,65 @@ func (s *Service) CreateUser(ctx context.Context, orgID string, u SCIMUser) (*SC
 		displayName = strings.TrimSpace(u.FirstName + " " + u.LastName)
 	}
 
+	// R1-14-D08: userName and email are two different things. The IdP finds its
+	// user again by userName; the person receives mail at email. Storing the
+	// former in the latter sent every Vakt mail to a login name.
+	userName := u.UserName
+	if userName == "" {
+		userName = u.Email
+	}
+	email := u.Email
+	if email == "" {
+		email = userName
+	}
+
+	// The account this sync is about: the userName is the IdP's key, so it wins.
+	// An existing local account with the same address is the fallback — that is
+	// the "an admin created them by hand last week" case, and adopting it is
+	// what keeps the sync from tripping over the users.email UNIQUE index.
 	var userID string
-	// role is set to 'viewer' explicitly (V24-a): SCIM-provisioned users get the
-	// Viewer org_members role below, so users.role — read by usermgmt.requireAdmin —
-	// must match. On re-provisioning (ON CONFLICT) role is left untouched: an admin
-	// may have promoted the user in-app since the last SCIM sync, and IdP-side role
-	// data is not part of this minimal SCIM core.
-	err = tx.QueryRow(ctx, `
-		INSERT INTO users (email, display_name, is_active, scim_external_id, scim_provisioned, role)
-		VALUES ($1, NULLIF($2,''), $3, NULLIF($4,''), TRUE, 'viewer')
-		ON CONFLICT (email) DO UPDATE
-		    SET display_name     = COALESCE(NULLIF($2,''), users.display_name),
-		        is_active        = $3,
-		        scim_external_id = COALESCE(NULLIF($4,''), users.scim_external_id),
-		        scim_provisioned = TRUE,
-		        updated_at       = NOW()
-		RETURNING id::text`,
-		u.Email, displayName, u.Active, u.ExternalID,
+	lookupErr := tx.QueryRow(ctx, `
+		SELECT id::text FROM users
+		 WHERE scim_user_name = $1 OR email = $2
+		 ORDER BY (scim_user_name = $1) DESC
+		 LIMIT 1`,
+		userName, email,
 	).Scan(&userID)
+	if lookupErr != nil && !errors.Is(lookupErr, pgx.ErrNoRows) {
+		err = lookupErr
+		return nil, fmt.Errorf("look up user: %w", err)
+	}
+
+	// role is set to 'viewer' explicitly (V24-a): SCIM-provisioned users get the
+	// Viewer org_members role below, so users.role must match. On re-provisioning
+	// role is left untouched: an admin may have promoted the user in-app since the
+	// last SCIM sync, and IdP-side role data is not part of this minimal SCIM core.
+	if errors.Is(lookupErr, pgx.ErrNoRows) {
+		err = tx.QueryRow(ctx, `
+			INSERT INTO users (email, scim_user_name, display_name, is_active, scim_external_id, scim_provisioned, role)
+			VALUES ($1, $2, NULLIF($3,''), $4, NULLIF($5,''), TRUE, 'viewer')
+			RETURNING id::text`,
+			email, userName, displayName, u.Active, u.ExternalID,
+		).Scan(&userID)
+	} else {
+		err = tx.QueryRow(ctx, `
+			UPDATE users
+			   SET email            = $1,
+			       scim_user_name   = $2,
+			       display_name     = COALESCE(NULLIF($3,''), users.display_name),
+			       is_active        = $4,
+			       scim_external_id = COALESCE(NULLIF($5,''), users.scim_external_id),
+			       scim_provisioned = TRUE,
+			       updated_at       = NOW()
+			 WHERE id = $6::uuid
+			RETURNING id::text`,
+			email, userName, displayName, u.Active, u.ExternalID, userID,
+		).Scan(&userID)
+	}
 	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrUserNameTaken
+		}
 		return nil, fmt.Errorf("upsert user: %w", err)
 	}
 
@@ -185,6 +251,13 @@ func (s *Service) CreateUser(ctx context.Context, orgID string, u SCIMUser) (*SC
 		return nil, fmt.Errorf("commit: %w", err)
 	}
 
+	// A POST against an existing userName is an upsert, and it carries active —
+	// so this route can deactivate too, and then owes the same revocation as the
+	// others (R1-14cA-02).
+	if !u.Active {
+		s.revokeSessions(ctx, userID)
+	}
+
 	return s.GetUser(ctx, orgID, userID)
 }
 
@@ -195,9 +268,19 @@ func (s *Service) ReplaceUser(ctx context.Context, orgID, userID string, u SCIMU
 		displayName = strings.TrimSpace(u.FirstName + " " + u.LastName)
 	}
 
+	userName := u.UserName
+	if userName == "" {
+		userName = u.Email
+	}
+	email := u.Email
+	if email == "" {
+		email = userName
+	}
+
 	tag, err := s.db.Exec(ctx, `
 		UPDATE users
 		   SET email            = $3,
+		       scim_user_name   = $7,
 		       display_name     = NULLIF($4,''),
 		       is_active        = $5,
 		       scim_external_id = NULLIF($6,''),
@@ -206,25 +289,66 @@ func (s *Service) ReplaceUser(ctx context.Context, orgID, userID string, u SCIMU
 		WHERE users.id = $2::uuid
 		  AND om.user_id = users.id
 		  AND om.org_id  = $1::uuid`,
-		orgID, userID, u.Email, displayName, u.Active, u.ExternalID,
+		orgID, userID, email, displayName, u.Active, u.ExternalID, userName,
 	)
 	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrUserNameTaken
+		}
 		return nil, fmt.Errorf("replace user: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return nil, pgx.ErrNoRows
 	}
+
+	// R1-14cA-02 / R1-24-RT03: this is the deactivation path Entra ID and Okta
+	// actually use — PATCH goes through here too. Before this, only DELETE
+	// revoked, so an offboarded user answered 200 on active=false and kept
+	// writing with the access token they already held (measured live, DB effect).
+	//
+	// The condition is the resulting state, not the transition: a repeat sync of
+	// an account that was deactivated before this fix still cleans up its
+	// sessions, and a revocation on an already-disabled account costs nothing
+	// they could lose.
+	if !u.Active {
+		s.revokeSessions(ctx, userID)
+	}
 	return s.GetUser(ctx, orgID, userID)
 }
 
+// revokeSessions ends every active session of the user and invalidates the
+// access token they are currently holding.
+//
+// The access token is stateless, so deleting refresh sessions alone would leave
+// it valid for the rest of its TTL — auth.RevokeAllSessions bumps pw_version,
+// which is what makes the middleware reject it on the next request. Failures are
+// logged, not returned: the account is already deactivated at this point, and
+// answering the IdP with an error would make it retry a change that has happened.
+func (s *Service) revokeSessions(ctx context.Context, userID string) {
+	if s.sessionRevoker == nil {
+		return
+	}
+	if err := s.sessionRevoker.RevokeAllSessions(ctx, userID); err != nil {
+		log.Warn().Err(err).Str("user_id", userID).Msg("scim: session revocation failed after deactivation")
+	}
+}
+
 // PatchUser applies SCIM PATCH operations to a user.
-// Only "replace" op on "active", "displayName", "userName", and "externalId" is supported.
+// Only "replace" op on "active", "displayName", "userName", "emails" and
+// "externalId" is supported.
+//
+// R1-14-D07: an operation this implementation does not understand is skipped —
+// and when EVERY operation is skipped, nothing happened. Answering 200 to that
+// tells the IdP a change took effect that did not; for a disable operation that
+// means an offboarding record certifying a lock-out that never occurred.
+// ErrNoApplicableOps says so instead.
 func (s *Service) PatchUser(ctx context.Context, orgID, userID string, ops []PatchOp) (*SCIMUser, error) {
 	existing, err := s.GetUser(ctx, orgID, userID)
 	if err != nil {
 		return nil, err
 	}
 
+	applied := 0
 	for _, op := range ops {
 		if !strings.EqualFold(op.Op, "replace") {
 			continue // only replace is supported
@@ -233,28 +357,51 @@ func (s *Service) PatchUser(ctx context.Context, orgID, userID string, ops []Pat
 		case "active":
 			if b, ok := op.Value.(bool); ok {
 				existing.Active = b
+				applied++
 			}
 		case "displayname":
 			if v, ok := op.Value.(string); ok {
 				existing.DisplayName = v
+				applied++
 			}
-		case "username", "emails[type eq \"work\"].value":
+		case "username":
+			// The IdP's key for this account — not the mail address (R1-14-D08).
+			if v, ok := op.Value.(string); ok {
+				existing.UserName = v
+				applied++
+			}
+		case "emails[type eq \"work\"].value", "emails.value", "emails":
 			if v, ok := op.Value.(string); ok {
 				existing.Email = v
-				existing.UserName = v
+				applied++
 			}
 		case "externalid":
 			if v, ok := op.Value.(string); ok {
 				existing.ExternalID = v
+				applied++
 			}
 		}
+	}
+	if applied == 0 {
+		return nil, ErrNoApplicableOps
 	}
 
 	return s.ReplaceUser(ctx, orgID, userID, *existing)
 }
 
-// DeactivateUser soft-deletes a SCIM-provisioned user from the org.
-// The user row is set is_active=false; the org_members row is removed.
+// DeactivateUser deprovisions a user from the org: the org_members row is
+// removed and the user account is set is_active=false.
+//
+// R1-14cA-12: the UPDATE carried "AND scim_provisioned = TRUE", so an account
+// created in the app stayed active while the route still answered 204. The IdP
+// recorded a successful deprovisioning for an access that remained open. Where
+// the account came from is not a reason to ignore an offboarding — the SCIM
+// token belongs to the customer's own IdP, and the customer asked for this.
+//
+// It refuses one case: the last remaining Admin of the organisation. A routine
+// sync must not be able to leave the customer with an ISMS nobody can
+// administer (the state W5-OPS-01 describes). ErrLastAdmin says so, and nothing
+// is written.
 func (s *Service) DeactivateUser(ctx context.Context, orgID, userID string) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -266,6 +413,41 @@ func (s *Service) DeactivateUser(ctx context.Context, orgID, userID string) erro
 		}
 	}()
 
+	// Last-admin guard. org_members is the authoritative role source since
+	// migration 253 — users.role authorises nothing — so the count is taken
+	// there. FOR UPDATE on the membership rows keeps two concurrent syncs from
+	// each seeing the other's admin and removing both.
+	var remainingAdmins int
+	err = tx.QueryRow(ctx, `
+		SELECT count(*) FROM (
+			SELECT om.user_id
+			  FROM org_members om
+			  JOIN roles r ON r.id = om.role_id
+			 WHERE om.org_id = $1::uuid
+			   AND r.name = 'Admin'
+			   AND om.user_id <> $2::uuid
+			 FOR UPDATE
+		) AS others`,
+		orgID, userID).Scan(&remainingAdmins)
+	if err != nil {
+		return fmt.Errorf("count remaining admins: %w", err)
+	}
+
+	var isAdmin bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM org_members om
+			  JOIN roles r ON r.id = om.role_id
+			 WHERE om.org_id = $1::uuid AND om.user_id = $2::uuid AND r.name = 'Admin')`,
+		orgID, userID).Scan(&isAdmin)
+	if err != nil {
+		return fmt.Errorf("check admin membership: %w", err)
+	}
+	if isAdmin && remainingAdmins == 0 {
+		err = ErrLastAdmin
+		return err
+	}
+
 	// Remove from org.
 	_, err = tx.Exec(ctx, `
 		DELETE FROM org_members WHERE org_id = $1::uuid AND user_id = $2::uuid`,
@@ -274,10 +456,10 @@ func (s *Service) DeactivateUser(ctx context.Context, orgID, userID string) erro
 		return fmt.Errorf("remove org member: %w", err)
 	}
 
-	// Deactivate the user account (soft-delete for SCIM-provisioned users).
+	// Deactivate the account itself.
 	_, err = tx.Exec(ctx, `
 		UPDATE users SET is_active = FALSE, updated_at = NOW()
-		 WHERE id = $1::uuid AND scim_provisioned = TRUE`,
+		 WHERE id = $1::uuid`,
 		userID)
 	if err != nil {
 		return fmt.Errorf("deactivate user: %w", err)
@@ -288,11 +470,7 @@ func (s *Service) DeactivateUser(ctx context.Context, orgID, userID string) erro
 	}
 	log.Info().Str("org_id", orgID).Str("user_id", userID).Msg("scim: user deactivated")
 	// Revoke active sessions so deprovisioned users lose access immediately (AUTH-007).
-	if s.sessionRevoker != nil {
-		if rErr := s.sessionRevoker.RevokeAllSessions(ctx, userID); rErr != nil {
-			log.Warn().Err(rErr).Str("user_id", userID).Msg("scim: session revocation failed after deactivation")
-		}
-	}
+	s.revokeSessions(ctx, userID)
 	return nil
 }
 
@@ -466,17 +644,22 @@ func (s *Service) PatchGroup(ctx context.Context, orgID, groupID string, ops []P
 		}
 	}()
 
+	// Same accounting as PatchUser (R1-14-D07): a group PATCH that applied
+	// nothing must not report success either.
+	applied := 0
 	for _, op := range ops {
 		switch strings.ToLower(op.Op) {
 		case "replace":
 			if strings.EqualFold(op.Path, "displayName") {
 				if v, ok := op.Value.(string); ok {
 					existing.DisplayName = v
+					applied++
 				}
 			}
 		case "add":
 			if strings.EqualFold(op.Path, "members") {
 				members := parseMemberValues(op.Value)
+				applied += len(members)
 				for _, uid := range members {
 					if _, err = tx.Exec(ctx, `
 						INSERT INTO scim_group_members (group_id, user_id)
@@ -490,6 +673,7 @@ func (s *Service) PatchGroup(ctx context.Context, orgID, groupID string, ops []P
 		case "remove":
 			if strings.EqualFold(op.Path, "members") {
 				members := parseMemberValues(op.Value)
+				applied += len(members)
 				for _, uid := range members {
 					if _, err = tx.Exec(ctx, `
 						DELETE FROM scim_group_members
@@ -501,6 +685,10 @@ func (s *Service) PatchGroup(ctx context.Context, orgID, groupID string, ops []P
 				}
 			}
 		}
+	}
+	if applied == 0 {
+		err = ErrNoApplicableOps
+		return nil, err
 	}
 
 	if _, err = tx.Exec(ctx, `

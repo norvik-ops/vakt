@@ -196,9 +196,24 @@ watchtower:
 
 > Nur für nicht-kritische Instanzen oder wenn du den Update-Pfad getestet hast.
 
+> **Watchtower aktualisiert ausschließlich Images.** `docker-compose.yml`,
+> `Caddyfile` und `scripts/` bleiben dabei auf dem Stand deiner Erstinstallation
+> — Härtungs- und Konfigurationsänderungen aus neuen Versionen greifen also
+> nicht. Wer Watchtower nutzt, braucht zusätzlich einen Weg für diese Dateien:
+> `./scripts/update.sh` bzw. `git pull --ff-only` (siehe
+> [`docs/UPGRADE.md`](UPGRADE.md)).
+
 ### Manuelle Updates
 
 ```bash
+./scripts/update.sh
+```
+
+Von Hand — Schritt 1 ist der, den ein reines `docker compose pull` auslässt:
+
+```bash
+git pull --ff-only     # docker-compose.yml, Caddyfile, scripts/ gehören zur
+                       # Installation, nicht zu den Images
 docker compose pull
 docker compose up -d
 ```
@@ -213,7 +228,17 @@ Hier ist beschrieben, was zu tun ist, wenn ein neues Feature oder eine neue Vers
 
 ### Automatisch (wenn Watchtower läuft)
 
-Watchtower holt nächtlich neue Images von GHCR, startet betroffene Container neu und der `migrate`-Service läuft dabei automatisch zuerst. Es ist nichts weiter zu tun — nur die Logs gelegentlich prüfen:
+Watchtower holt nächtlich neue Images von GHCR, startet betroffene Container neu und der `migrate`-Service läuft dabei automatisch zuerst.
+
+> **Watchtower aktualisiert ausschließlich Images.** `docker-compose.yml`, `Caddyfile`
+> und `scripts/` bleiben auf dem Stand deiner Installation. Zwischen v0.42.48 und
+> v0.42.49 lagen allein in der Compose-Datei 112 geänderte Zeilen — die Umstellung auf
+> Docker-Secrets, `cap_drop` und `no-new-privileges`. Härtungen, die dort stecken,
+> erreichen eine Watchtower-Installation nie. Es ist also **nicht** nichts zu tun:
+> hole die Auslieferungs-Dateien zusätzlich nach, entweder mit `./scripts/update.sh`
+> (das macht beides) oder von Hand mit `git pull --ff-only`.
+
+Danach die Logs prüfen:
 
 ```bash
 docker compose logs migrate
@@ -273,10 +298,13 @@ docker compose ps
 
 2. CI baut neue Docker-Images und veröffentlicht sie auf GHCR.
 
-3. Auf dem Live-Server übernimmt **Watchtower automatisch** — oder manuell:
+3. Auf dem Live-Server holt **Watchtower** die neuen Images automatisch — aber nur die
+   Images. **Watchtower aktualisiert ausschließlich Images**; `docker-compose.yml`,
+   `Caddyfile` und `scripts/` bleiben stehen. Vollständig ist deshalb:
    ```bash
-   docker compose pull && docker compose up -d
+   git pull --ff-only && docker compose pull && docker compose up -d
    ```
+   oder in einem Schritt `./scripts/update.sh`.
 
 4. `migrate` läuft automatisch beim Neustart — keine manuelle Migration nötig.
 
@@ -416,14 +444,35 @@ Für Produktionsmonitoring empfehlen wir **Grafana + Prometheus**. Eine fertige 
 
 ## 12. Kubernetes (Helm)
 
+Das Chart liegt im Repository unter `helm/vakt/`. Ein veröffentlichtes
+Chart-Repository gibt es nicht — installiert wird aus dem Arbeitsverzeichnis.
+Die PostgreSQL- und Redis-Subcharts müssen einmal aufgelöst werden:
+
 ```bash
+helm dependency update ./helm/vakt
+
 helm install vakt ./helm/vakt \
-  --set secret.key=$(openssl rand -hex 32) \
-  --set database.url=postgres://vakt:pass@postgres:5432/vakt?sslmode=disable \
-  --set redis.url=redis://redis:6379
+  --set secrets.secretKey=$(openssl rand -hex 32) \
+  --set postgresql.auth.password=$(openssl rand -hex 24)
 ```
 
-Alle verfügbaren Helm-Werte sind in `helm/vakt/values.yaml` dokumentiert.
+Der Chart bringt PostgreSQL und Redis als Subcharts mit (`postgresql.enabled`,
+`redis.enabled`, beide Default `true`) und baut die Verbindungs-URLs selbst.
+Wer eine **externe** Datenbank betreibt, schaltet die Subcharts ab und setzt die
+URLs direkt:
+
+```bash
+helm install vakt ./helm/vakt \
+  --set secrets.secretKey=$(openssl rand -hex 32) \
+  --set postgresql.enabled=false \
+  --set redis.enabled=false \
+  --set secrets.dbUrl=postgres://vakt:PASSWORT@postgres:5432/vakt?sslmode=require \
+  --set secrets.redisUrl=redis://redis:6379
+```
+
+`postgresql.auth.password` steht in der Vorlage auf `MUST_BE_OVERRIDDEN`; der
+Install-Hook des Charts bricht bei diesem Wert ab. Alle verfügbaren Helm-Werte
+sind in `helm/vakt/values.yaml` dokumentiert.
 
 ---
 

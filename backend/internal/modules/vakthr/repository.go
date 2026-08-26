@@ -616,7 +616,8 @@ func (r *Repository) ListMoverEvents(ctx context.Context, orgID string) ([]Mover
 	}
 	defer rows.Close()
 
-	var out []MoverEvent
+	// R1-18-D1: initialise non-nil so an empty result serialises as [] not null.
+	out := make([]MoverEvent, 0)
 	for rows.Next() {
 		var ev MoverEvent
 		var completedAt *time.Time
@@ -714,7 +715,8 @@ func (r *Repository) ListMoverTemplates(ctx context.Context, orgID string) ([]Mo
 	}
 	defer rows.Close()
 
-	var out []MoverTemplate
+	// R1-18-D1: initialise non-nil so an empty result serialises as [] not null.
+	out := make([]MoverTemplate, 0)
 	for rows.Next() {
 		var t MoverTemplate
 		if err := rows.Scan(&t.ID, &t.OrgID, &t.Name, &t.FromRoleHint, &t.ToRoleHint, &t.IsDefault, &t.CreatedAt); err != nil {

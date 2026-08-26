@@ -166,7 +166,10 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
       { label: label.trim(), expires_in_days: days },
       {
         onSuccess: (data) => {
-          setCreatedUrl(data.auditor_url)
+          // `auditor_url` is optional in the contract, so a response without
+          // it must keep the dialog on its form rather than showing an empty
+          // "here is your link" panel with nothing to copy.
+          setCreatedUrl(data.auditor_url ?? null)
           setLabel('')
           setExpiresInDays('30')
         },

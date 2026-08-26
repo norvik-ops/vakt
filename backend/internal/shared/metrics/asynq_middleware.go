@@ -21,10 +21,32 @@ import (
 
 const (
 	asynqMetricPrefix = "metric:asynq:"
-	// TTL on counters — long enough that a 30s Prometheus scrape never misses,
-	// short enough that a worker that goes idle for a week doesn't keep
-	// stale data forever.
-	asynqMetricTTL = 7 * 24 * time.Hour
+	// R1-19-02: `count` und `duration_ms_sum` tragen bewusst KEINE Ablauffrist
+	// mehr.
+	//
+	// Vorher liefen beide nach sieben Tagen ab. Für einen kumulativen Zähler
+	// ist das kein Aufräumen, sondern Datenverlust: Die Zeitreihe
+	// `vakt_asynq_jobs_total{result="err"}` verschwand aus /metrics, sobald
+	// sieben Tage lang nichts fehlgeschlagen war. Auf eine Zeitreihe, die es
+	// nicht gibt, kann kein Alarm auswerten — und Fehler sind selten, der
+	// Verfall traf also ausgerechnet den Zähler, auf den es ankommt.
+	//
+	// Die alte Begründung („ein Worker, der eine Woche stillsteht, soll keine
+	// alten Daten behalten") trägt bei einem Zähler nicht: Ob ein Wert frisch
+	// ist, leitet Prometheus aus dem Verlauf ab (`rate()`), nicht aus dem
+	// Verfall des Schlüssels. Die Zahl der Schlüssel ist durch die Menge der
+	// Task-Typen im Code begrenzt und wächst nicht mit der Laufzeit.
+	//
+	// Bestehende Schlüssel in einer laufenden Redis-Instanz tragen noch die
+	// alte Frist. Deshalb steht in der Pipeline ein ausdrückliches PERSIST
+	// statt eines weggelassenen EXPIRE: Ein weggelassenes EXPIRE würde die
+	// vorhandene Frist stehen lassen, der Zähler wäre beim nächsten Ablauf
+	// erneut weg. PERSIST nimmt sie beim ersten Lauf aktiv weg.
+	//
+	// `duration_ms_max` behält eine Frist: Das ist ein Momentanwert, und ein
+	// Höchstwert von vor Monaten führt in die Irre. Sein Fehlen schadet
+	// dagegen nichts — darauf alarmiert niemand.
+	asynqMaxMetricTTL = 90 * 24 * time.Hour
 )
 
 // AsynqInstrumentingMiddleware records every task execution into Redis:
@@ -66,11 +88,12 @@ func recordAsynqMetric(ctx context.Context, rdb *redis.Client, taskType, result 
 	keySum := fmt.Sprintf("%sduration_ms_sum:%s:%s", asynqMetricPrefix, taskType, result)
 	keyMax := fmt.Sprintf("%sduration_ms_max:%s:%s", asynqMetricPrefix, taskType, result)
 
+	// Kein Expire auf keyCount/keySum — siehe asynqMaxMetricTTL oben.
 	pipe := rdb.Pipeline()
 	pipe.Incr(mCtx, keyCount)
 	pipe.IncrBy(mCtx, keySum, durationMs)
-	pipe.Expire(mCtx, keyCount, asynqMetricTTL)
-	pipe.Expire(mCtx, keySum, asynqMetricTTL)
+	pipe.Persist(mCtx, keyCount)
+	pipe.Persist(mCtx, keySum)
 	if _, err := pipe.Exec(mCtx); err != nil {
 		log.Warn().Err(err).Str("task", taskType).Msg("asynq metric: pipeline failed")
 		return
@@ -83,7 +106,7 @@ func recordAsynqMetric(ctx context.Context, rdb *redis.Client, taskType, result 
 	var current int64
 	_, _ = fmt.Sscanf(currentStr, "%d", &current)
 	if durationMs > current {
-		if err := rdb.Set(mCtx, keyMax, durationMs, asynqMetricTTL).Err(); err != nil {
+		if err := rdb.Set(mCtx, keyMax, durationMs, asynqMaxMetricTTL).Err(); err != nil {
 			log.Warn().Err(err).Str("task", taskType).Msg("asynq metric: max update failed")
 		}
 	}

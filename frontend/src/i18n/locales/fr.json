@@ -238,7 +238,8 @@
       "high": "Élevée",
       "medium": "Moyenne",
       "low": "Faible",
-      "info": "Information"
+      "info": "Information",
+      "unknown": "Non évaluée"
     },
     "status": {
       "open": "Ouvert",
@@ -252,6 +253,10 @@
       "notFound": "Asset introuvable",
       "startScan": "Lancer le scan",
       "scanStarted": "Scan lancé.",
+      "scanFailed": "Impossible de démarrer l'analyse : {{msg}}",
+      "scannerLabel": "Scanner",
+      "scannerPlaceholder": "Choisir un scanner",
+      "noScanners": "Aucun scanner n'est installé sur cette instance.",
       "assetDetails": "Détails de l'asset",
       "criticality": "Criticité",
       "target": "Cible",
@@ -534,7 +539,9 @@
       "disableConfirm": "Voulez-vous vraiment supprimer {{name}} ? Tous les contrôles et preuves associés seront définitivement supprimés.",
       "disabling": "Suppression…",
       "confirmDisable": "Oui, désactiver",
-      "frameworkStatusDraft": "Brouillon — attendu fin 2026"
+      "frameworkStatusDraft": "Brouillon — attendu fin 2026",
+      "frameworkStatusNotOffered": "Non proposé",
+      "frameworkStatusNotOfferedHint": "Ce référentiel n'est actuellement pas proposé et ne peut pas être activé."
     },
     "controlDetailPage": {
       "addEvidence": "Ajouter des preuves",
@@ -1127,7 +1134,15 @@
       "labelSeverity": "Sévérité",
       "labelFindingDesc": "Description",
       "placeholderFindingDesc": "Détails sur la constatation …",
-      "findingSubmitBtn": "Ajouter la constatation"
+      "findingSubmitBtn": "Ajouter la constatation",
+      "typeComplianceCheck": "Contrôle de conformité",
+      "typeProcessAudit": "Audit de processus",
+      "summaryPlannedThisYear": "Planifiés (année)",
+      "summaryOverdueCapas": "CAPA en retard",
+      "labelScope": "Périmètre de l'audit *",
+      "placeholderScope": "Quels domaines, sites et processus cet audit couvre-t-il ?",
+      "labelAuditReport": "Rapport d'audit *",
+      "placeholderAuditReport": "Résultats, constats et conclusions de l'audit (10 caractères minimum) …"
     },
     "soaPage": {
       "subtitle": "Annexe A — Applicabilité des 93 mesures (Clause 6.1.3)",
@@ -1156,6 +1171,7 @@
       "groupA7": "A.7 Mesures physiques",
       "groupA8": "A.8 Mesures technologiques",
       "implNotStarted": "Non commencé",
+      "implPlanned": "Planifié",
       "implInProgress": "En cours",
       "implImplemented": "Mis en œuvre",
       "implNotApplicable": "Non applicable",
@@ -1238,7 +1254,17 @@
       "freqMonthly": "Mensuel",
       "freqQuarterly": "Trimestriel",
       "freqAnnually": "Annuellement",
-      "freqAsNeeded": "Selon les besoins"
+      "freqAsNeeded": "Selon les besoins",
+      "categoryEmployee": "Salariés",
+      "categoryShareholder": "Actionnaires",
+      "categoryInsurer": "Assureurs",
+      "categoryItProvider": "Prestataires informatiques",
+      "colReviewDate": "Prochaine revue",
+      "badgeOverdue": "en retard",
+      "badgeSystemDefault": "Entrée par défaut",
+      "labelReviewDate": "Prochaine revue",
+      "labelConcerns": "Préoccupations et attentes",
+      "placeholderConcerns": "Qu'attend cette partie du SMSI ?"
     },
     "incidentDetail": {
       "notFound": "Incident introuvable.",
@@ -2053,6 +2079,7 @@
       "resolveCompleted": "Traité",
       "resolveRejected": "Rejeté",
       "resolveExtended": "Prolongé",
+      "resolveErasureNotExecuted": "Une demande de suppression ne peut être clôturée comme « Traité » qu'une fois la suppression au titre de l'art. 17 RGPD réellement effectuée. Utilisez d'abord le bouton « Suppression » sur la demande ; elle pourra ensuite être clôturée.",
       "resolveLabelExtensionReason": "Motif de prolongation",
       "resolveLabelNotes": "Note de clôture",
       "resolveBtn": "Clôturer",
@@ -2381,11 +2408,11 @@
     "moduleVaktprivacyDesc": "Documentation RGPD (RdT, AIPD, DPA, violations)",
     "licenseAutoRenewal": "Renouvellement automatique actif",
     "licenseValidUntil": "Valide jusqu'au {{date}}",
-    "licenseProComingSoon": "Vakt Pro — bientôt disponible",
-    "licenseProFeature1": "Rôles : Admin, Analyste, Lecteur, Auditeur",
+    "licenseProComingSoon": "Commander Vakt Pro",
+    "licenseProFeature1": "BSI IT-Grundschutz — modélisation, contrôle Grundschutz, cockpit",
     "licenseProFeature2": "Permissions granulaires par module et par utilisateur",
-    "licenseProFeature3": "TISAX, DORA, EU AI Act, CRA",
-    "licenseProFeature4": "Conseiller IA, export PDF d'audit, SSO, accès API",
+    "licenseProFeature3": "EU AI Act, CRA, RGPD TOM, CIS, KRITIS, BSI C5",
+    "licenseProFeature4": "Export PDF d'audit, SSO, SCIM, SIEM, accès API",
     "siemTitle": "Intégration SIEM",
     "siemProTitle": "Fonctionnalité Pro",
     "siemProDesc": "Transférez automatiquement les entrées du journal d'audit vers Splunk, Elasticsearch ou un webhook générique. Disponible avec Vakt Pro.",
@@ -2527,7 +2554,9 @@
     "creating": "Création…",
     "createUser": "Créer l'utilisateur",
     "userCreated": "Utilisateur créé avec succès",
-    "deleted": "Supprimé"
+    "deleted": "Supprimé",
+    "roleAuditorReadOnly": "AuditorReadOnly — Lecture seule, pour les auditeurs externes",
+    "roleInternalAuditor": "InternalAuditor — Clôturer les audits et approuver les revues de direction (séparation des tâches)"
   },
   "accountSettingsPage": {
     "title": "Paramètres du compte",
@@ -2713,8 +2742,9 @@
     "passwordStrengthWeak": "Faible",
     "passwordStrengthMedium": "Moyen",
     "passwordStrengthStrong": "Fort",
-    "mfaPrompt": "Saisissez le code à 6 chiffres de votre application d'authentification pour terminer la connexion.",
+    "mfaPrompt": "Saisissez le code de votre application d'authentification pour terminer la connexion.",
     "mfaCodeLabel": "Code d'authentification",
+    "mfaBackupHint": "Pas d'accès à l'application ? Saisissez plutôt l'un de vos codes de secours (format ABCD-1234).",
     "mfaVerify": "Vérifier",
     "mfaBack": "Retour à la connexion",
     "mfaInvalidCode": "Code invalide ou expiré"
@@ -2943,7 +2973,9 @@
     "team": {
       "roleAdmin": "Admin",
       "roleEditor": "Éditeur",
-      "roleViewer": "Observateur"
+      "roleViewer": "Observateur",
+      "roleAuditorReadOnly": "AuditorReadOnly",
+      "roleInternalAuditor": "InternalAuditor"
     }
   },
   "admin": {
@@ -3039,9 +3071,9 @@
     },
     "pro": {
       "title": "Vakt Pro",
-      "description": "Cette fonctionnalité n'est pas disponible dans l'édition Community. Vakt Pro inclut TISAX, DORA, EU AI Act, assistant de notification NIS2, export PDF d'audit, SSO, clés API, permissions de modules granulaires et plus encore.",
+      "description": "Cette fonctionnalité n'est pas disponible dans l'édition Community. Vakt Pro inclut BSI IT-Grundschutz, EU AI Act, CRA, RGPD TOM, CIS, assistant de notification NIS2, export PDF d'audit, SSO, clés API, permissions de modules granulaires et plus encore.",
       "cta": "Passer à Pro →",
-      "featureList": "TISAX · DORA · EU AI Act · Assistant NIS2 · PDF audit · SSO · Clés API",
+      "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · Assistant NIS2 · PDF audit · SSO · Clés API",
       "demoHint": "Pro"
     }
   },
@@ -3277,6 +3309,9 @@
     "version": "Version",
     "owner": "Responsable",
     "ownerPlaceholder": "ex. Responsable IT",
+    "notSet": "non défini",
+    "lastTested": "Dernier test",
+    "statusLabel": "Statut",
     "deleteConfirm": "Supprimer ce plan ?",
     "loadError": "Erreur lors du chargement des plans BCP.",
     "emptyTitle": "Aucun plan BCP",
@@ -3503,6 +3538,10 @@
     "csvHeaderAction": "Action",
     "csvHeaderResource": "Type de ressource",
     "csvHeaderDetails": "Détails",
+    "csvHeaderIp": "Adresse IP",
+    "exporting": "Export en cours …",
+    "exportTruncated": "Export limité à {{exported}} entrées sur {{total}}.",
+    "exportFailed": "Échec de l'export",
     "csvHeaders": {
       "timestamp": "Horodatage",
       "user": "Utilisateur",
@@ -4163,6 +4202,7 @@
       "biaProcesses": "Processus BIA",
       "highCritical": "élevé/critique",
       "avgRto": "RTO moy.",
+      "shortestRto": "RTO la plus courte",
       "recoveryPlans": "Plans de reprise",
       "tested": "testé",
       "emergencyContacts": "Contacts d'urgence",

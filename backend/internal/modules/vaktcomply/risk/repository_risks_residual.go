@@ -5,8 +5,10 @@ package risk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matharnica/vakt/internal/shared/apperr"
 )
@@ -39,18 +41,36 @@ func (r *Repository) UpdateRiskResidualFields(ctx context.Context, orgID, id str
 }
 
 // AcceptRisk records a formal risk acceptance with justification text and the accepting user.
-// It requires the risk to already have treatment_status = 'accepted'; otherwise an error is returned.
+// It requires the risk register status to already be 'accepted'; otherwise ErrRiskNotMarkedAccepted
+// is returned and the caller answers 409.
+//
+// R1-14c-12: this precondition used to read treatment_status and demand the value
+// 'accepted'. That value exists in neither the input validation (oneof=pending
+// in_progress implemented verified) nor the CHECK constraint on the column, so the
+// precondition was unreachable by every path including a manual UPDATE — the fully
+// wired acceptance dialog answered 409 forever and formal risk acceptance, a record
+// an auditor asks for under ISO 27001 6.1.3/8.3 and BSI-Grundschutz, could not be
+// produced at all. treatment_status tracks how far the treatment plan got
+// (pending → in_progress → implemented → verified); it is a progress axis with no
+// room for a decision. The decision lives in the register status
+// (open | mitigated | accepted | closed), which does allow 'accepted' and which the
+// frontend already uses to gate this very dialog.
 func (r *Repository) AcceptRisk(ctx context.Context, orgID, id, userID, justification string) error {
-	var treatmentStatus pgtype.Text
+	var status pgtype.Text
 	err := r.db.QueryRow(ctx,
-		`SELECT treatment_status FROM ck_risks WHERE id = $1 AND org_id = $2`,
+		`SELECT status FROM ck_risks WHERE id = $1 AND org_id = $2`,
 		id, orgID,
-	).Scan(&treatmentStatus)
+	).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Without this the caller cannot tell "no such risk" from a real failure and
+		// answers 500 for a mistyped id.
+		return fmt.Errorf("risk %w", ErrNotFound)
+	}
 	if err != nil {
 		return fmt.Errorf("get risk for acceptance check: %w", err)
 	}
-	if !treatmentStatus.Valid || treatmentStatus.String != "accepted" {
-		return fmt.Errorf("risk must have treatment_status=accepted before formal acceptance")
+	if !status.Valid || status.String != "accepted" {
+		return fmt.Errorf("%w (current status: %q)", ErrRiskNotMarkedAccepted, status.String)
 	}
 
 	var acceptedByUUID pgtype.UUID

@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	bsi "github.com/matharnica/vakt/internal/modules/vaktcomply/bsi"
+	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/rs/zerolog/log"
 )
 
@@ -530,7 +531,14 @@ func buildGapReportCSV(r bsi.BSIGapReport) string {
 	return b.String()
 }
 
+// csvEscape quotet fuer das CSV-FORMAT (Komma, Anfuehrungszeichen,
+// Zeilenumbruch) UND entschaerft vorher fuehrende Formelzeichen.
+//
+// R1-24-D03: bis hierher tat die Funktion nur das erste. Die Zeichen, die das
+// Format braucht, sind nicht die, die Excel oder LibreOffice zur Auswertung
+// bringen — `=`, `+`, `-`, `@` gehen unbeschadet durch jede CSV-Quotung.
 func csvEscape(s string) string {
+	s = csvsafe.Cell(s)
 	if strings.ContainsAny(s, `",`+"\n") {
 		return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
 	}

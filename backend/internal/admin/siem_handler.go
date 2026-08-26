@@ -2,6 +2,7 @@ package admin
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/artifact"
 )
 
 // siemExportEntry is the read model for a single audit log row used in SIEM exports.
@@ -158,16 +161,14 @@ func (h *SIEMHandler) ExportCEF(c echo.Context) error {
 	date := time.Now().UTC().Format("2006-01-02")
 	filename := fmt.Sprintf("vakt-audit-%s.cef", date)
 
-	c.Response().Header().Set("Content-Type", "text/plain; charset=utf-8")
-	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-	c.Response().WriteHeader(http.StatusOK)
-
-	w := c.Response().Writer
-	for _, e := range entries {
-		fmt.Fprintln(w, toCEFLine(e))
-	}
-
-	return nil
+	return artifact.Stream(c, "text/plain; charset=utf-8", filename, func(w io.Writer) error {
+		for _, e := range entries {
+			if _, err := fmt.Fprintln(w, toCEFLine(e)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // toSyslogLine converts one siemExportEntry to a syslog-compatible RFC 5424 line.
@@ -230,14 +231,12 @@ func (h *SIEMHandler) ExportSyslog(c echo.Context) error {
 	date := time.Now().UTC().Format("2006-01-02")
 	filename := fmt.Sprintf("vakt-audit-%s.syslog", date)
 
-	c.Response().Header().Set("Content-Type", "text/plain; charset=utf-8")
-	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-	c.Response().WriteHeader(http.StatusOK)
-
-	w := c.Response().Writer
-	for _, e := range entries {
-		fmt.Fprintln(w, toSyslogLine(e))
-	}
-
-	return nil
+	return artifact.Stream(c, "text/plain; charset=utf-8", filename, func(w io.Writer) error {
+		for _, e := range entries {
+			if _, err := fmt.Fprintln(w, toSyslogLine(e)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

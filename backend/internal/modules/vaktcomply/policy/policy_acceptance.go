@@ -318,14 +318,15 @@ func (s *Service) ListCampaigns(ctx context.Context, orgID, policyID string) ([]
 	return s.repo.ListAcceptanceCampaigns(ctx, orgID, policyID)
 }
 
-// GetCampaignStats returns acceptance statistics for a campaign.
-func (s *Service) GetCampaignStats(ctx context.Context, campaignID string) (*CampaignStats, error) {
-	return s.repo.GetCampaignStats(ctx, campaignID)
+// GetCampaignStats returns acceptance statistics for a campaign, scoped to orgID.
+func (s *Service) GetCampaignStats(ctx context.Context, orgID, campaignID string) (*CampaignStats, error) {
+	return s.repo.GetCampaignStats(ctx, orgID, campaignID)
 }
 
-// ListCampaignRequests returns all individual acceptance requests for a campaign.
-func (s *Service) ListCampaignRequests(ctx context.Context, campaignID string) ([]PolicyAcceptanceRequest, error) {
-	return s.repo.ListAcceptanceRequests(ctx, campaignID)
+// ListCampaignRequests returns all individual acceptance requests for a campaign,
+// scoped to orgID.
+func (s *Service) ListCampaignRequests(ctx context.Context, orgID, campaignID string) ([]PolicyAcceptanceRequest, error) {
+	return s.repo.ListAcceptanceRequests(ctx, orgID, campaignID)
 }
 
 // AcceptPolicy records an acceptance for the given token and creates evidence in SecVitals.
@@ -516,8 +517,13 @@ func (r *Repository) MarkAcceptanceRequestSent(ctx context.Context, requestID st
 }
 
 // GetCampaignStats returns total / accepted / pending counts for a campaign.
-func (r *Repository) GetCampaignStats(ctx context.Context, campaignID string) (*CampaignStats, error) {
-	row, err := r.q.GetCKPolicyAcceptanceCampaignStats(ctx, campaignID)
+// orgID scopes the query so a caller cannot read another org's campaign stats
+// by supplying a foreign campaign_id (R1-16-V1).
+func (r *Repository) GetCampaignStats(ctx context.Context, orgID, campaignID string) (*CampaignStats, error) {
+	row, err := r.q.GetCKPolicyAcceptanceCampaignStats(ctx, db.GetCKPolicyAcceptanceCampaignStatsParams{
+		CampaignID: campaignID,
+		OrgID:      orgID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("get campaign stats: %w", err)
 	}
@@ -529,8 +535,13 @@ func (r *Repository) GetCampaignStats(ctx context.Context, campaignID string) (*
 }
 
 // ListAcceptanceRequests returns all requests for a campaign.
-func (r *Repository) ListAcceptanceRequests(ctx context.Context, campaignID string) ([]PolicyAcceptanceRequest, error) {
-	rows, err := r.q.ListCKPolicyAcceptanceRequests(ctx, campaignID)
+// orgID scopes the query so a caller cannot read another org's recipient PII by
+// supplying a foreign campaign_id (R1-24-RT02).
+func (r *Repository) ListAcceptanceRequests(ctx context.Context, orgID, campaignID string) ([]PolicyAcceptanceRequest, error) {
+	rows, err := r.q.ListCKPolicyAcceptanceRequests(ctx, db.ListCKPolicyAcceptanceRequestsParams{
+		CampaignID: campaignID,
+		OrgID:      orgID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list acceptance requests: %w", err)
 	}

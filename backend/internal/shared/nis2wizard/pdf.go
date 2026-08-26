@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 )
 
 const (
@@ -43,7 +44,7 @@ func RenderAssessmentPDF(orgName string, run *Run) ([]byte, error) {
 	}
 
 	now := time.Now().UTC()
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(pdfMarginL, pdfMarginT, pdfMarginR)
 	pdf.SetAutoPageBreak(true, pdfMarginB+5)
 

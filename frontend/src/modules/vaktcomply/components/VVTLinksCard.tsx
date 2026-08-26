@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { FileText, Plus, X } from 'lucide-react'
-import { apiFetch } from '../../../api/client'
+import { fetchAllPaginated } from '../../../api/fetchAllPages'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import {
@@ -11,7 +11,6 @@ import {
 import { useControlVVTLinks, useLinkVVT, useUnlinkVVT } from '../hooks/useVVTLinks'
 
 interface VVTEntry { id: string; name: string }
-interface VVTListResponse { data?: VVTEntry[] }
 
 // VVTLinksCard shows the VVT (processing activities) linked to a control and lets
 // the user add/remove links. The VVT picker reads from the Vakt Privacy API
@@ -23,12 +22,15 @@ export function VVTLinksCard({ controlId }: { controlId: string }) {
   const unlink = useUnlinkVVT(controlId)
   const [selected, setSelected] = useState('')
 
-  const { data: vvtResp } = useQuery<VVTListResponse>({
+  // ?limit=200 used to sit here and looked like "fetch them all". The offset
+  // paginator caps at 100 and DISCARDS an over-large limit instead of clamping
+  // it (shared/pagination/pagination.go:39-41), so the picker silently offered
+  // the first 25 activities and hid the rest — with nothing on screen to say so.
+  const { data: vvts = [] } = useQuery<VVTEntry[]>({
     queryKey: ['vaktprivacy', 'vvt', 'all-for-link'],
-    queryFn: () => apiFetch<VVTListResponse>('/vaktprivacy/vvt?page=1&limit=200'),
+    queryFn: async () => (await fetchAllPaginated<VVTEntry>('/vaktprivacy/vvt')).items,
     staleTime: 60_000,
   })
-  const vvts = vvtResp?.data ?? []
   const linkedIds = new Set(links.map((l) => l.vvt_id))
   const available = vvts.filter((v) => !linkedIds.has(v.id))
 

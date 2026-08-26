@@ -101,9 +101,10 @@ func TestAuditLog_VerifierStillWorksAfterPartitioning(t *testing.T) {
 		})
 	}
 
-	bad, err := audit.VerifyOrgChain(ctx, pool, orgID)
+	res, err := audit.VerifyOrgChain(ctx, pool, orgID)
 	require.NoError(t, err)
-	assert.Empty(t, bad, "chain over partitioned audit_log must verify clean")
+	assert.Equal(t, audit.ChainIntact, res.Status,
+		"chain over partitioned audit_log must verify clean — got %+v", res)
 }
 
 // TestAuditLog_LegacyViewStillCompatible: the audit_logs view that
@@ -132,7 +133,7 @@ func bootPartitionedPostgres(t *testing.T) (*pgxpool.Pool, string, func()) {
 	defer cancel()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		imagePostgres,
 		postgres.WithDatabase("vakt_test"),
 		postgres.WithUsername("vakt"),
 		postgres.WithPassword("vakt"),

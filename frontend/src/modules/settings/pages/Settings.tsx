@@ -461,8 +461,10 @@ function LicenseSection() {
                 </li>
               ))}
             </ul>
+            {/* Icon war ein Clock ("demnächst verfügbar") — Pro ist seit dem Direktverkauf
+                bestellbar, ein Uhr-Symbol behauptet das Gegenteil. */}
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand">
-              <Clock className="w-3.5 h-3.5" />
+              <ArrowUpCircle className="w-3.5 h-3.5" />
               {t('settingsPage.licenseProComingSoon')}
             </span>
           </div>

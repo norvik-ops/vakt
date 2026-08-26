@@ -36,6 +36,47 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* ── R1-18-D9: scroll lock behind modals ────────────────────────────────────
+   Every Radix overlay (Dialog, Sheet, Select, Popover …) locks background
+   scrolling through react-remove-scroll, which does two things: it sets the
+   attribute `data-scroll-locked` on <body>, and it INJECTS A <style> ELEMENT
+   carrying the rules keyed on that attribute.
+
+   The attribute always lands. The <style> element never does: our CSP sets
+   `style-src-elem 'self'` (frontend/security-headers.inc:36,
+   backend/cmd/api/middleware.go:61, infra/server/nginx.conf:15), which blocks
+   an injected stylesheet. So on every page the body was marked as locked and
+   nothing acted on the mark — the page behind the modal kept scrolling.
+
+   The rules therefore live here instead, in the bundled stylesheet, which is
+   same-origin and so is exactly what 'self' permits. This is deliberately NOT
+   solved by relaxing the CSP to 'unsafe-inline': that would re-open inline
+   <style> injection across all 123 pages to fix background scrolling, which is
+   a bad trade, and the CSP files are outside this change's ownership anyway.
+
+   `scrollbar-gutter: stable` reserves the scrollbar track permanently. Without
+   it, hiding the overflow removes the scrollbar and the whole page jumps
+   sideways by its width the moment a modal opens — that jump is what
+   react-remove-scroll's padding maths compensates for, and that maths needs a
+   width measured at runtime, which CSS cannot do. Reserving the gutter up
+   front avoids needing the measurement at all. On platforms with overlay
+   scrollbars (macOS, iOS, Android) the track is zero-width and this is a
+   no-op.
+
+   NOT MEASURED IN A BROWSER — no browser was reachable in this environment,
+   and jsdom applies no stylesheets. What is verified is that these rules are
+   in the bundled sheet and keyed on the attribute the library actually sets
+   (see index.css.scrolllock.test.ts). Whether the background stops scrolling
+   is a claim about a real browser and is left to be confirmed there. */
+html {
+  scrollbar-gutter: stable;
+}
+
+body[data-scroll-locked] {
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+}
+
 /* ── WCAG 2.4.7: Visible focus indicators for all interactive elements ── */
 :focus-visible {
   outline: 2px solid #4f46e5;

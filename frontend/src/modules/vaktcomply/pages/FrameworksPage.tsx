@@ -25,7 +25,18 @@ const FRAMEWORK_CATALOGUE: Array<{
   category: string
   controls: string
   color: string
+  /** Der Standard selbst ist noch ein Entwurf (Publikation steht aus). */
   draft?: boolean
+  /**
+   * Der Standard ist fertig, aber Vakt verkauft ihn nicht — kein ausgestellter
+   * Lizenzschlüssel trägt das zugehörige Feature (features.UnsoldFeatures).
+   *
+   * Eigenes Kennzeichen statt `draft`, weil `draft` „Entwurf — erwartet Ende
+   * 2026" beschriftet. Für TISAX (VDA ISA 6.0, veröffentlicht), DORA (seit
+   * Januar 2025 in Kraft) und ISO/IEC 42001:2023 wäre das schlicht unwahr — die
+   * Karte hätte eine falsche Tatsache behauptet, um einen Knopf abzuschalten.
+   */
+  notOffered?: boolean
 }> = [
   {
     key: 'NIS2',
@@ -62,9 +73,9 @@ const FRAMEWORK_CATALOGUE: Array<{
     category: 'EU-Recht / Finanz',
     controls: '15 Controls (Kap. II–V)',
     color: 'text-orange-500',
-    // Aus dem Angebot genommen (v0.42.20), Backend gated auf draft-Status
-    // (plugins.go builtinAvailable) — gleicher Grund wie bei TISAX.
-    draft: true,
+    // Aus dem Angebot genommen (v0.42.20). Seit 2026-08-08 trägt zusätzlich
+    // kein ausgestellter Schlüssel mehr das Feature (features.UnsoldFeatures).
+    notOffered: true,
   },
   {
     key: 'EUAIACT',
@@ -83,10 +94,10 @@ const FRAMEWORK_CATALOGUE: Array<{
     category: 'Automotive',
     controls: '39 Controls (Kap. 1–15)',
     color: 'text-red-500',
-    // Aus dem Angebot genommen (v0.42.20), Backend gated auf draft-Status
-    // (plugins.go builtinAvailable) — Katalog-Eintrag muss das spiegeln, sonst
-    // zeigt der Button "Aktivieren" obwohl das Backend jede Aktivierung ablehnt.
-    draft: true,
+    // Aus dem Angebot genommen (v0.42.20) — Katalog-Eintrag muss das spiegeln,
+    // sonst zeigt der Button "Aktivieren", obwohl das Backend jede Aktivierung
+    // ablehnt (Backend führt TISAX zusätzlich als draft in plugins.go).
+    notOffered: true,
   },
   {
     key: 'ISO42001',
@@ -96,6 +107,11 @@ const FRAMEWORK_CATALOGUE: Array<{
     category: 'International / KI',
     controls: '16 Controls',
     color: 'text-cyan-500',
+    // Bis 2026-08-08 hing ISO 42001 an einem Tier, den kein Signierpfad
+    // ausstellen konnte: JEDE Aktivierung lief ins 402, während der Katalog
+    // einen aktiven Knopf zeigte. Der Tier ist weg, ISO 42001 bleibt unverkauft
+    // und damit gegated (features.UnsoldFeatures).
+    notOffered: true,
   },
   // S131-G5 (R-M08/V08-E): ISO 27017/27018 sind FeatureMultiFramework-gegatete
   // Pro-Frameworks, die serverseitig (plugins.go) existieren, aber im hartkodierten
@@ -235,7 +251,7 @@ function EnabledFrameworkCard({ framework, onDelete, onSwitchVariant }: {
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between text-sm text-secondary">
-          <span>{framework.control_count != null ? `${framework.control_count} ${t('vaktcomply.controlDetailPage.controlsCount')} · ` : ''}{t('vaktcomply.controlDetailPage.activatedOn')} {enabledDate}</span>
+          <span>{t('vaktcomply.controlDetailPage.activatedOn')} {enabledDate}</span>
           <div className="flex items-center gap-1">
             <ExportButton
               endpoint={`/api/v1/vaktcomply/controls/export/xlsx?framework_id=${framework.id}`}
@@ -282,7 +298,6 @@ export default function FrameworksPage() {
     id: string
     name: string
     description?: string
-    controlCount?: number
   } | null>(null)
   const { data: frameworks, isLoading, isError } = useFrameworks()
   const enableFramework = useEnableFramework()
@@ -314,7 +329,6 @@ export default function FrameworksPage() {
             id: activatedFramework.id,
             name: activatedFramework.name,
             description: catalogueEntry?.description,
-            controlCount: activatedFramework.control_count ?? undefined,
           })
         }
       },
@@ -331,7 +345,6 @@ export default function FrameworksPage() {
             id: activatedFramework.id,
             name: activatedFramework.name,
             description: catalogueEntry?.description,
-            controlCount: activatedFramework.control_count ?? undefined,
           })
         }
       },
@@ -440,6 +453,7 @@ export default function FrameworksPage() {
                         <Badge variant="secondary" className="text-[10px]">{fw.category}</Badge>
                         {alreadyEnabled && <Badge variant="success" className="text-[10px]">{t('vaktcomply.frameworksPage.activated')}</Badge>}
                         {fw.draft && <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/40">{t('vaktcomply.frameworksPage.frameworkStatusDraft')}</Badge>}
+                        {fw.notOffered && <Badge variant="outline" className="text-[10px] text-secondary border-border">{t('vaktcomply.frameworksPage.frameworkStatusNotOffered')}</Badge>}
                       </div>
                       <p className="text-xs text-secondary mt-0.5">{fw.fullName}</p>
                     </div>
@@ -476,11 +490,13 @@ export default function FrameworksPage() {
                           </Button>
                         )}
                       </div>
-                    ) : fw.draft ? (
+                    ) : fw.draft || fw.notOffered ? (
                       <Button
                         size="sm"
                         disabled
-                        title={t('vaktcomply.frameworksPage.frameworkStatusDraft')}
+                        title={fw.notOffered
+                          ? t('vaktcomply.frameworksPage.frameworkStatusNotOfferedHint')
+                          : t('vaktcomply.frameworksPage.frameworkStatusDraft')}
                       >
                         <Plus className="w-3.5 h-3.5 mr-1" />
                         {t('vaktcomply.frameworksPage.activate')}

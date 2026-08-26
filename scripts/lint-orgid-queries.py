@@ -17,28 +17,17 @@ from pathlib import Path
 # Queries that are intentionally global (no org_id filter needed).
 # Key: "<filename>:<query_name>" — add a comment explaining why it's safe.
 ALLOWLIST = {
-    # User lookup by token/email during auth — users are not org-scoped in the
-    # users table; membership is stored in org_members.
-    "user_permissions.sql:GetUserByEmail": "global users table, no org_id column",
-    "user_permissions.sql:GetUserByID": "global users table, no org_id column",
-    "user_permissions.sql:GetUserByExternalID": "global users table, no org_id column",
-    "user_permissions.sql:CreateUser": "INSERT sets org via org_members, not users",
-    "user_permissions.sql:UpdateUser": "global users update (password/profile)",
-    "user_permissions.sql:UpdateUserPassword": "global user password update",
-    "user_permissions.sql:ListUsers": "admin-only global listing with RBAC guard in handler",
-    "user_permissions.sql:GetOrgBySlug": "org lookup by slug is always global",
-    "user_permissions.sql:GetOrgByID": "org lookup by id is always global",
-    "user_permissions.sql:CreateOrg": "INSERT creates the org — no pre-existing org_id",
-    "user_permissions.sql:UpdateOrg": "org update by primary key only",
-    "user_permissions.sql:ListOrgs": "super-admin only: lists all orgs",
-    "user_permissions.sql:GetOrgMember": "lookup by composite key (org_id passed as param)",
-    "user_permissions.sql:CreateOrgMember": "INSERT sets org_id",
-    "user_permissions.sql:DeleteOrgMember": "composite key includes org_id as param",
-    "user_permissions.sql:ListOrgMembers": "org_id passed as param $1",
-    "user_permissions.sql:GetRoleByName": "roles are global (not per-org)",
-    "user_permissions.sql:GetRoleByID": "roles are global (not per-org)",
-    "user_permissions.sql:ListRoles": "roles are global (not per-org)",
-    "user_permissions.sql:CreateRole": "roles are global INSERT",
+    # HINWEIS (R1-SA03-05, 2026-08-06): Hier standen 20 Einträge für
+    # `user_permissions.sql:{GetUserByEmail,GetUserByID,CreateUser,ListUsers,
+    # GetOrgBySlug,CreateOrg,ListOrgs,GetOrgMember,GetRoleByName,ListRoles,
+    # CreateRole,…}`. Keine dieser Queries existiert in backend/db/queries —
+    # `user_permissions.sql` enthält seit dem initialen Monorepo-Commit (3f0a661)
+    # genau drei Queries, alle zu user_module_permissions. Die Einträge waren also
+    # nie greifend: sie prüften nichts, standen aber als vorab erteilte Ausnahme
+    # bereit, falls jemand später einen dieser Namen anlegt — und hätten ihn dann
+    # ungeprüft durchgelassen. Entfernt; der neue Stale-Check unten hält die Liste
+    # ab jetzt gegenstandsbezogen. (Die Go-Seite dieser Zugriffe ist hand-gepflegtes
+    # sqlc in internal/db und wird von Pass 1 ohnehin nie gelesen.)
 
     # ── vaktaware ─────────────────────────────────────────────────────────────
     # sr_targets.group_id is a FK into sr_target_groups (which has org_id);
@@ -101,9 +90,10 @@ ALLOWLIST = {
     "vaktcomply.sql:GetCKPolicyTemplateByID": "global policy template catalogue; not per-org",
     # Policy acceptance flow: UPDATE by PK after system sends email (system-internal step).
     "vaktcomply.sql:MarkCKPolicyAcceptanceRequestSent": "system marks email-sent status by PK; called immediately after sending — no user input",
-    # SELECT/list policy acceptance requests by campaign_id; caller holds org-verified campaign.
-    "vaktcomply.sql:GetCKPolicyAcceptanceCampaignStats": "scoped by campaign_id FK; caller verifies campaign org ownership",
-    "vaktcomply.sql:ListCKPolicyAcceptanceRequests": "scoped by campaign_id FK; caller verifies campaign org ownership",
+    # NOTE: GetCKPolicyAcceptanceCampaignStats + ListCKPolicyAcceptanceRequests were
+    # removed from this allowlist — the "caller verifies campaign org ownership"
+    # rationale had NO such caller (R1-16-V1 / R1-24-RT02, CROSS_ORG_LEAK). Both
+    # queries now carry an explicit `AND org_id = $2::uuid` predicate.
     # Public accept-portal: employee clicks token link, no org context; request UUID is the auth.
     "vaktcomply.sql:RecordCKPolicyAcceptance": "public token-based accept endpoint; request PK is the auth token",
 
@@ -270,6 +260,283 @@ def build_join_tenant_re(table_names) -> re.Pattern:
 GO_LINT_SKIP_RE = re.compile(r'orgid-lint:\s*global', re.IGNORECASE)
 # Inline opt-out for an unscoped JOIN: // orgid-lint: join-ok — <reason>
 GO_LINT_JOIN_OK_RE = re.compile(r'orgid-lint:\s*join-ok', re.IGNORECASE)
+# Both kinds in one pass, so a comment can be located and classified once.
+GO_LINT_ANY_RE = re.compile(r'orgid-lint:\s*(global|join-ok)', re.IGNORECASE)
+
+
+# ── R1-SA03-05: die Unterdrückung hängt am STATEMENT, nicht an Zeilennähe ────
+#
+# Vorher stand hier:
+#     preceding = lines[start_line - 4:start_line]
+#     skip_global = ... or GO_LINT_SKIP_RE.search(preceding)
+# Ein `// orgid-lint: global` exemptierte damit JEDES SQL-Literal, das in den
+# folgenden drei Zeilen begann — also auch das org-pflichtige Statement, das
+# zufällig neben dem berechtigt globalen stand. Reproduziert: ein Kommentar,
+# zwei unterdrückte Queries. Gemessen am Stand 0389470 deckten 3 von 91
+# Unterdrückungen mehr als ein Statement (2× cmd/rotate-key/rotate.go, 1× ein
+# Test) — heute alle drei zu Recht, der Defekt war also latent. Latent ist auf
+# der einzigen Mandanten-Isolationsprüfung nach ADR-0042 trotzdem zu viel.
+#
+# Neue Bindung, zwei Fälle:
+#
+#   * TRAILING-Kommentar (links davon steht Code) gilt NUR für Literale auf
+#     derselben Zeile — die übliche `//nolint`-Semantik. Muster im Repo:
+#     usermgmt/role_update_boundary_test.go, wo jede Tabellenzeile ihr eigenes
+#     Opt-out trägt und die Zeile darunter es NICHT erben darf.
+#
+#   * STANDALONE-Kommentar (allein auf seiner Zeile) gilt für genau EIN
+#     Statement: das erste ihm folgende, das überhaupt ein prüfpflichtiges
+#     SQL-Literal enthält. Statementgrenzen kommen aus Gos automatischer
+#     Semikolon-Einfügung (ASI), ausgewertet auf der Klammertiefe des
+#     Kommentars. Die Suche endet spätestens, wenn die Tiefe unter die des
+#     Kommentars fällt (der umschließende Block ist verlassen).
+#
+# Bewusst NICHT enger: ein Standalone-Kommentar innerhalb eines Composite-
+# Literals deckt dessen Elemente mit, weil sie EIN Go-Statement sind —
+# `rotateColumnByServiceKey(..., columnRotation{SelectSQL: `…`, UpdateSQL: `…`})`
+# in cmd/rotate-key/rotate.go ist genau das. Diese Mehrfachdeckung ist damit
+# syntaktisch begrenzt statt an einer Zeilenzahl, und sie wird ausgewiesen
+# (`multi_stmt_suppressions` in der NENNER-Zeile) statt still zu bleiben.
+#
+# Zwischenschritte: zwischen Kommentar und Statement dürfen Statements ohne
+# prüfpflichtiges SQL-Literal liegen (`var tokenHash string` vor dem QueryRow —
+# im Repo mehrfach so geschrieben). Höchstens MAX_SKIPPED_STMTS Stück, damit
+# ein verwaister Kommentar nicht beliebig weit nach unten greift und dort eine
+# fremde Query exemptiert. Gemessener Bedarf auf der Baseline: genau 4
+# (shared/account/account.go:97 — Kommentar, dann Struct-Kopf, zwei Feldzeilen
+# und der Kopf des Composite-Literals, bevor die erste Query kommt). Bewusst
+# ohne Reserve: greift die Grenze einmal zu früh, meldet das Gate den Kommentar
+# NAMENTLICH als stale, und der Fix ist, ihn an sein Statement zu setzen — ein
+# lautes Rot mit Fundstelle ist hier besser als stille Reichweite.
+MAX_SKIPPED_STMTS = 4
+
+# Ein Zeilenumbruch beendet in Go ein Statement, wenn das letzte Zeichen der
+# Zeile ein Bezeichner/Literal/schließende Klammer ist (Spec: "Semicolons").
+_ASI_TERMINALS = set(")]}\"'`+-")
+
+
+def _asi_terminates(ch: str) -> bool:
+    return ch.isalnum() or ch == "_" or ch in _ASI_TERMINALS
+
+
+class GoSource:
+    """
+    Ein Durchlauf über eine .go-Datei: Backtick-Literale, Klammertiefe und
+    Statementgrenzen. Bewusst kein Go-Parser — nur so viel Zustandsautomat, wie
+    für die Frage „gehören diese beiden Literale zum selben Statement?" nötig
+    ist. Was er nicht lesen kann, zählt er (siehe `unparsed`), statt es still
+    zu überspringen.
+    """
+
+    def __init__(self, text: str):
+        self.text = text
+        self.line_starts = [0] + [m.end() for m in re.finditer(r'\n', text)]
+        self.raw_spans: list[tuple[int, int]] = []   # (offset of `, offset after closing `)
+        self._ev_off: list[int] = []                 # Klammer-Ereignisse
+        self._ev_depth: list[int] = []
+        self.breaks: list[tuple[int, int]] = []      # (offset des \n, Tiefe dort)
+        self.block_opens: list[tuple[int, int]] = []  # (offset des {, Tiefe davor)
+        self._scan()
+        # Ein `{`, nach dem auf der Zeile nur noch Weißraum/Kommentar steht,
+        # öffnet einen Block (`if … {`, `func … {`, `for … {`) — dort ist der
+        # Statement-KOPF zu Ende. Ein `{` mit Inhalt dahinter gehört zu einem
+        # einzeiligen Composite-Literal und trennt nichts.
+        eol = re.compile(r'^[ \t]*(//.*)?$')
+        self.block_opens = [
+            (off, d) for off, d in self.block_opens
+            if eol.match(self.text[off + 1:self._line_end(off)])
+        ]
+
+    def _scan(self) -> None:
+        text = self.text
+        n = len(text)
+        i = 0
+        depth = 0
+        last_code = None   # letztes Code-Zeichen der laufenden Zeile
+
+        def newline(off: int) -> None:
+            nonlocal last_code
+            if last_code is not None and _asi_terminates(last_code):
+                self.breaks.append((off, depth))
+            last_code = None
+
+        while i < n:
+            c = text[i]
+            if c == '/' and i + 1 < n and text[i + 1] == '/':
+                i += 2
+                while i < n and text[i] != '\n':
+                    i += 1
+                continue                      # ASI wertet den Zeilenumbruch aus
+            if c == '/' and i + 1 < n and text[i + 1] == '*':
+                i += 2
+                while i + 1 < n and not (text[i] == '*' and text[i + 1] == '/'):
+                    if text[i] == '\n':
+                        newline(i)
+                    i += 1
+                i += 2
+                continue
+            if c == '`':
+                start = i
+                i += 1
+                while i < n and text[i] != '`':
+                    i += 1
+                i += 1                        # schließenden Backtick überspringen
+                self.raw_spans.append((start, i))
+                last_code = '`'
+                continue
+            if c in '"\'':
+                quote = c
+                i += 1
+                while i < n and text[i] != quote:
+                    if text[i] == '\\':
+                        i += 1
+                    if text[i] == '\n':       # unterminiert — Zeile beenden
+                        break
+                    i += 1
+                i += 1
+                last_code = quote
+                continue
+            if c in '([{':
+                if c == '{':
+                    self.block_opens.append((i, depth))
+                depth += 1
+                self._ev_off.append(i)
+                self._ev_depth.append(depth)
+                last_code = c
+                i += 1
+                continue
+            if c in ')]}':
+                depth -= 1
+                self._ev_off.append(i)
+                self._ev_depth.append(depth)
+                last_code = c
+                i += 1
+                continue
+            if c == '\n':
+                newline(i)
+                i += 1
+                continue
+            if not c.isspace():
+                last_code = c
+            i += 1
+
+    def line_of(self, off: int) -> int:
+        from bisect import bisect_right
+        return bisect_right(self.line_starts, off)
+
+    def _line_end(self, off: int) -> int:
+        nl = self.text.find('\n', off)
+        return len(self.text) if nl < 0 else nl
+
+    def line_text(self, lineno: int) -> str:
+        from bisect import bisect_right  # noqa: F401  (Symmetrie zu line_of)
+        start = self.line_starts[lineno - 1]
+        end = self.line_starts[lineno] if lineno < len(self.line_starts) else len(self.text)
+        return self.text[start:end].rstrip('\n')
+
+    def depth_at(self, off: int) -> int:
+        from bisect import bisect_left
+        idx = bisect_left(self._ev_off, off)
+        return self._ev_depth[idx - 1] if idx > 0 else 0
+
+    def block_end(self, off: int, d0: int) -> int:
+        """Erster Offset nach `off`, an dem die Tiefe unter `d0` fällt."""
+        from bisect import bisect_right
+        idx = bisect_right(self._ev_off, off)
+        while idx < len(self._ev_off):
+            if self._ev_depth[idx] < d0:
+                return self._ev_off[idx]
+            idx += 1
+        return len(self.text)
+
+    def in_raw_string(self, off: int) -> bool:
+        return any(s < off < e for s, e in self.raw_spans)
+
+
+def find_suppressions(src: GoSource):
+    """
+    Alle `orgid-lint:`-Opt-outs einer Datei.
+
+    Rückgabe: (Liste von Dicts, Zahl der nicht zuordenbaren Treffer).
+    Ein Treffer, der nicht in einem `//`-Kommentar steht (Block-Kommentar,
+    String, generierter Text), wird gezählt statt still verworfen.
+    """
+    found = []
+    unparsed = 0
+    for m in GO_LINT_ANY_RE.finditer(src.text):
+        off = m.start()
+        if src.in_raw_string(off):
+            continue                       # Fließtext in einem SQL-/Doku-Literal
+        lineno = src.line_of(off)
+        line_start = src.line_starts[lineno - 1]
+        marker = src.text.rfind('//', line_start, off)
+        if marker < 0:
+            unparsed += 1
+            continue
+        found.append({
+            "kind": m.group(1).lower(),
+            "offset": marker,
+            "line": lineno,
+            "standalone": src.text[line_start:marker].strip() == "",
+            "text": src.line_text(lineno).strip(),
+            "used": False,
+            "covers": 0,
+        })
+    return found, unparsed
+
+
+def governed_literals(src: GoSource, comment, sql_spans: list[tuple[int, int]]) -> list[int]:
+    """
+    Die SQL-Literale, für die dieses Opt-out gilt — an das Statement gebunden.
+
+    `sql_spans` sind die (start, end) aller Backtick-Literale der Datei, die
+    überhaupt nach SQL aussehen (leading_dml != None), aufsteigend sortiert.
+    Die Zuordnung läuft bewusst über ALLE SQL-Literale, nicht nur die
+    prüfpflichtigen: sonst spränge ein Kommentar über die Query, für die er
+    geschrieben wurde (etwa auf eine Katalogtabelle ohne org_id), hinweg zur
+    nächsten org-pflichtigen Query — und exemptierte ausgerechnet die.
+    Der Aufrufer schneidet das Ergebnis mit seiner Prüfmenge.
+    """
+    if not comment["standalone"]:
+        # Trailing-Kommentar (`//nolint`-Semantik): nur das Literal, das auf
+        # seiner Zeile steht — ein mehrzeiliges Literal zählt mit, solange die
+        # Kommentarzeile in seiner Spanne liegt. Die Zeile DARUNTER erbt nichts;
+        # genau das war R1-SA03-05 (role_update_boundary_test.go:157 → :158).
+        line = comment["line"]
+        return [s for s, e in sql_spans
+                if src.line_of(s) <= line <= src.line_of(max(s, e - 1))]
+
+    off = comment["offset"]
+    d0 = src.depth_at(off)
+    stop = src.block_end(off, d0)
+
+    # Statementgrenzen aus Gos ASI, auf der Tiefe des Kommentars UND eine
+    # Ebene tiefer. Das `+ 1` ist nicht kosmetisch: steht der Kommentar vor
+    # einer Deklaration oder einem `if`, öffnet die nächste Zeile einen Block,
+    # und ohne die tiefere Ebene liefe die Region bis zum Blockende — ein
+    # Kommentar über einer Funktion deckte dann deren GANZEN Rumpf
+    # (vaktaware/repository.go:1105 deckte so das Statement in Zeile 1143 mit).
+    # Innerhalb eines Composite-Literals gibt es diese Grenzen nicht, weil die
+    # Zeilen dort auf `,` enden und Go dort kein Semikolon einfügt — genau
+    # deshalb bleiben dessen Elemente EIN Statement.
+    bounds = [b for b, d in src.breaks if off < b < stop and d <= d0 + 1]
+    # Ein Block-`{` auf der Tiefe des Kommentars beendet den Statement-KOPF:
+    # ohne diese Grenze deckte ein Kommentar vor `if _, err := db.Exec(ctx,
+    # `…`); err != nil {` auch noch das erste Statement IM Rumpf (live gegen
+    # eine Kopie des Baums nachgestellt, cmd/rotate-key/rotate.go:113).
+    bounds += [b for b, d in src.block_opens if off < b < stop and d <= d0]
+    bounds = sorted(set(bounds))
+    bounds.append(stop)
+
+    lower = off
+    for skipped, upper in enumerate(bounds):
+        hits = [s for s, _e in sql_spans if lower < s < upper]
+        if hits:
+            return hits          # erstes Statement mit SQL — und nur dieses
+        if skipped >= MAX_SKIPPED_STMTS:
+            return []
+        lower = upper
+    return []
 
 
 def unscoped_joins(sql: str, join_re: re.Pattern) -> list[str]:
@@ -313,78 +580,109 @@ def scan_go_raw_sql(go_dir: Path, tenant_re: re.Pattern, join_re: re.Pattern):
     tenant_re/join_re are schema-derived (see derive_tenant_tables, G-01) —
     every table with an org_id column, not just the 6 module prefixes.
 
-    Returns list of (file, approx_line, snippet, dml, detail) violation tuples.
+    Opt-outs (`// orgid-lint: global|join-ok`) sind an das Statement gebunden,
+    nicht an eine Zeilendistanz — siehe governed_literals (R1-SA03-05). Ein
+    Opt-out, das kein prüfpflichtiges Statement mehr trifft, ist STALE und wird
+    als Verletzung gemeldet: eine Ausnahme ohne Gegenstand ist eine offene Tür,
+    die niemand mehr sieht (K2-08).
+
+    Returns (violations, checked, suppressed, stats).
     """
     violations = []
-    skipped = 0
+    suppressed = 0
     total = 0
+    stats = {
+        "comments": 0,          # gefundene orgid-lint-Kommentare
+        "stale": [],            # Kommentare, die auf gar kein SQL-Statement zeigen
+        "redundant": 0,         # zeigen auf SQL, das ohnehin nicht prüfpflichtig ist
+        "multi": [],            # Kommentare, die mehr als ein Literal decken
+        "unparsed": 0,          # orgid-lint-Treffer außerhalb eines //-Kommentars
+        "unreadable": [],       # .go-Dateien, die nicht gelesen werden konnten
+    }
+
+    def rel(p: Path) -> str:
+        return str(p.relative_to(go_dir.parent.parent
+                                 if go_dir.name != "backend" else go_dir.parent))
 
     for go_file in sorted(go_dir.rglob("*.go")):
         # Skip generated sqlc files — they are covered by the SQL scanner.
         if go_file.name.endswith(".sql.go") or "internal/db/" in str(go_file):
             continue
 
-        text = go_file.read_text(errors="replace")
-        lines = text.splitlines()
+        try:
+            text = go_file.read_text(errors="replace")
+        except OSError as exc:
+            stats["unreadable"].append(f"{rel(go_file)} ({exc.strerror})")
+            continue
 
-        # Extract backtick string spans with their starting line number.
-        i = 0
-        while i < len(text):
-            if text[i] != '`':
-                i += 1
-                continue
-            start = i
-            start_line = text[:start].count('\n') + 1
-            i += 1
-            while i < len(text) and text[i] != '`':
-                i += 1
-            snippet = text[start + 1:i]
-            i += 1  # skip closing backtick
+        src = GoSource(text)
 
-            # Only care about strings that look like SQL touching tenant tables.
-            if not tenant_re.search(snippet):
-                continue
+        # Alle SQL-artigen Backtick-Literale — Zuordnungsziel für die Opt-outs.
+        sql_spans = []
+        eligible = {}                      # offset -> (start_line, snippet, dml)
+        for start, end in src.raw_spans:
+            snippet = text[start + 1:end - 1]
             dml = leading_dml(snippet)
-            if dml not in NEEDS_FILTER:
-                continue
+            if dml is None:
+                continue                   # kein SQL: Regex, JSON, Template …
+            sql_spans.append((start, end))
+            # Prüfpflichtig: Tenant-Tabelle + SELECT/UPDATE/DELETE.
+            if dml in NEEDS_FILTER and tenant_re.search(snippet):
+                eligible[start] = (src.line_of(start), snippet, dml)
 
-            total += 1
+        comments, unparsed = find_suppressions(src)
+        stats["comments"] += len(comments)
+        stats["unparsed"] += unparsed
 
-            # Check for inline skip comment on the line that opens the backtick.
-            context_line = lines[start_line - 1] if start_line <= len(lines) else ""
-            # Also check a few lines before the backtick for a preceding comment.
-            preceding = "\n".join(lines[max(0, start_line - 4):start_line])
-            skip_global = GO_LINT_SKIP_RE.search(context_line) or GO_LINT_SKIP_RE.search(preceding)
-            skip_join = GO_LINT_JOIN_OK_RE.search(context_line) or GO_LINT_JOIN_OK_RE.search(preceding)
+        skip_global = set()
+        skip_join = set()
+        for c in comments:
+            covered = governed_literals(src, c, sql_spans)
+            hit = [o for o in covered if o in eligible]
+            c["used"] = bool(covered)
+            c["covers"] = len(hit)
+            target = skip_global if c["kind"] == "global" else skip_join
+            target.update(hit)
+            if not covered:
+                # Kein einziges SQL-Statement in Reichweite: die Query, für die
+                # dieses Opt-out geschrieben wurde, gibt es nicht mehr.
+                stats["stale"].append(f"{rel(go_file)}:{c['line']}  {c['text'][:110]}")
+            elif not hit:
+                # Zeigt auf SQL, das ohnehin nicht prüfpflichtig ist (Katalog-
+                # tabelle ohne org_id, INSERT). Überflüssig, aber nicht blind —
+                # deshalb gezählt, nicht rot.
+                stats["redundant"] += 1
+            elif len(hit) > 1:
+                stats["multi"].append(
+                    f"{rel(go_file)}:{c['line']} deckt {len(hit)} Literale "
+                    f"(Zeilen {', '.join(str(eligible[o][0]) for o in hit)}) — "
+                    f"ein Go-Statement")
 
-            if skip_global:
+        for start, (start_line, snippet, dml) in sorted(eligible.items()):
+            if start in skip_global:
                 # A suppressed statement was NOT checked. Counting it in `total`
                 # and reporting skipped=0 is the class this gate exists to kill
                 # (a gate that reports OK for work it did not do), so it moves
                 # from the checked column into the skipped one.
-                total -= 1
-                skipped += 1
+                suppressed += 1
                 continue
 
+            total += 1
             short = snippet.strip().splitlines()[0][:120]
 
             # Check 1: query body must contain org_id.
             if not has_org_id(snippet):
-                violations.append((str(go_file.relative_to(go_dir.parent.parent
-                                       if go_dir.name != "backend" else go_dir.parent)),
-                                    start_line, short, dml, "missing org_id in query body"))
+                violations.append((rel(go_file), start_line, short, dml,
+                                   "missing org_id in query body"))
                 continue  # don't double-report
 
             # Check 2: every JOIN on a tenant table must scope org_id in ON clause.
-            if not skip_join:
-                bad_joins = unscoped_joins(snippet, join_re)
-                for join_clause in bad_joins:
-                    violations.append((str(go_file.relative_to(go_dir.parent.parent
-                                           if go_dir.name != "backend" else go_dir.parent)),
-                                        start_line, join_clause, dml,
-                                        "JOIN on tenant table without org_id in ON clause (S78-2 pattern)"))
+            if start not in skip_join:
+                for join_clause in unscoped_joins(snippet, join_re):
+                    violations.append((rel(go_file), start_line, join_clause, dml,
+                                       "JOIN on tenant table without org_id in ON clause (S78-2 pattern)"))
 
-    return violations, total, skipped
+    return violations, total, suppressed, stats
 
 
 def main():
@@ -424,22 +722,43 @@ def main():
 
     violations = []
     total = 0
+    seen_keys = set()
+    allowlist_used = set()
 
     # ── Pass 1: sqlc query files ─────────────────────────────────────────────
     for sql_file in sorted(query_dir.glob("*.sql")):
         content = sql_file.read_text()
         for qname, _qtype, body in parse_queries(content):
             total += 1
+            key = f"{sql_file.name}:{qname}"
+            seen_keys.add(key)
             dml = leading_dml(body)
             if dml not in NEEDS_FILTER:
                 continue
 
-            key = f"{sql_file.name}:{qname}"
             if key in ALLOWLIST:
+                allowlist_used.add(key)
                 continue
 
             if not has_org_id(body):
                 violations.append((sql_file.name, qname, dml, None))
+
+    # Stale-Prüfung Pass 1 (R1-SA03-05): ein ALLOWLIST-Eintrag, dessen Query es
+    # in --query-dir nicht (mehr) gibt, ist eine vorab erteilte Ausnahme ohne
+    # Gegenstand. Sie prüft nichts, sie steht nur bereit, falls jemand später
+    # denselben Namen wieder anlegt — und dann greift sie ungeprüft. Dieselbe
+    # Klasse wie ein verwaister // orgid-lint-Kommentar, deshalb hier genauso rot.
+    #
+    # Geprüft wird nur gegen Dateien, die es in --query-dir tatsächlich gibt:
+    # zeigt der Lauf auf einen fremden Baum (Test-Fixture, Teil-Checkout), ist
+    # ein Eintrag nicht stale, sondern UNPRÜFBAR. Der Unterschied wird gezählt
+    # und ausgewiesen — ein Gate, das bei gesundem Repo rot wird, wird
+    # abgeschaltet statt gefixt.
+    seen_files = {p.name for p in query_dir.glob("*.sql")}
+    stale_allowlist = sorted(k for k in ALLOWLIST
+                             if k not in seen_keys and k.split(":", 1)[0] in seen_files)
+    unverifiable_allowlist = sorted(k for k in ALLOWLIST
+                                    if k.split(":", 1)[0] not in seen_files)
 
     if violations:
         print(f"\norg_id query lint: {len(violations)} violation(s) found\n")
@@ -461,6 +780,22 @@ def main():
               "Check --query-dir and the *.sql glob.", file=sys.stderr)
         sys.exit(2)
 
+    print(f"NENNER (sqlc): queries={total} | allowlist={len(ALLOWLIST)} "
+          f"(greifend={len(allowlist_used)}, "
+          f"gegenstandslos={len(ALLOWLIST) - len(allowlist_used) - len(stale_allowlist) - len(unverifiable_allowlist)}, "
+          f"unpruefbar={len(unverifiable_allowlist)}) "
+          f"| allowlist_stale={len(stale_allowlist)}")
+    if stale_allowlist:
+        print(f"\norg_id query lint: {len(stale_allowlist)} STALE ALLOWLIST-Eintrag/Einträge\n")
+        print("  Diese Einträge nennen eine Query, die es in "
+              f"{query_dir} nicht gibt. Eine Ausnahme ohne Gegenstand prüft nichts")
+        print("  und greift ungeprüft, sobald jemand denselben Namen wieder anlegt.")
+        print("  Fix: Eintrag aus ALLOWLIST in scripts/lint-orgid-queries.py entfernen.\n")
+        for key in stale_allowlist:
+            print(f"  STALE  {key}")
+        print()
+        sys.exit(1)
+
     # ── Pass 2: raw Go backtick SQL (opt-in via --raw-sql) ───────────────────
     if args.raw_sql:
         go_dir = Path(args.go_dir)
@@ -469,10 +804,34 @@ def main():
             sys.exit(1)
         tenant_re = build_tenant_table_re(tenant_tables)
         join_re = build_join_tenant_re(tenant_tables)
-        raw_violations, raw_total, raw_skipped = scan_go_raw_sql(go_dir, tenant_re, join_re)
+        raw_violations, raw_total, raw_skipped, stats = scan_go_raw_sql(go_dir, tenant_re, join_re)
         total += raw_total
         print(f"NENNER: tenant_tables={len(tenant_tables)} (schema-derived from "
-              f"{migrations_dir}, org_id column) | raw_sql_checked={raw_total} | skipped={raw_skipped}")
+              f"{migrations_dir}, org_id column) | raw_sql_checked={raw_total} | skipped={raw_skipped}"
+              f" | suppressions={raw_skipped} aus {stats['comments']} Kommentar(en)"
+              f" | multi_stmt_suppressions={len(stats['multi'])}"
+              f" | redundant={stats['redundant']} | stale={len(stats['stale'])}"
+              f" | unparsed={stats['unparsed']} | unreadable={len(stats['unreadable'])}")
+        for line in stats["multi"]:
+            # Mehrfachdeckung ist erlaubt (ein Go-Statement), aber nie still:
+            # genau ihre Unsichtbarkeit war der Defekt R1-SA03-05.
+            print(f"  MULTI  {line}")
+        for line in stats["unreadable"]:
+            print(f"  UNREADABLE  {line}")
+        if stats["unparsed"]:
+            print(f"  HINWEIS: {stats['unparsed']} orgid-lint-Treffer stehen nicht in einem "
+                  "//-Kommentar und wurden keinem Statement zugeordnet.")
+        if stats["stale"]:
+            print(f"\norg_id query lint (raw SQL): {len(stats['stale'])} STALE Opt-out(s)\n")
+            print("  Diese `// orgid-lint:`-Kommentare treffen kein prüfpflichtiges SQL-Statement")
+            print("  mehr — die Query, für die sie einmal geschrieben wurden, ist weg oder")
+            print("  umgebaut. Eine Ausnahme ohne Gegenstand ist eine offene Tür, die niemand")
+            print("  mehr sieht: der nächste, der dort eine Query einfügt, ist ungeprüft.")
+            print("  Fix: Kommentar entfernen oder direkt an sein Statement setzen.\n")
+            for line in stats["stale"]:
+                print(f"  STALE  {line}")
+            print()
+            sys.exit(1)
         if raw_violations:
             print(f"\norg_id query lint (raw SQL): {len(raw_violations)} violation(s) found\n")
             print("  Backtick SQL in .go files references multi-tenant tables without org_id.")

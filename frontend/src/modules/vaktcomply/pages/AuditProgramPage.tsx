@@ -14,37 +14,51 @@ import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { EmptyState } from '../../../shared/components/EmptyState'
 
+// K5-04/05/06: mirrors of audit.AuditProgramAudit / audit.AuditFinding /
+// audit.AuditProgramSummary (backend/internal/modules/vaktcomply/audit/models.go).
+// The previous shapes were invented end to end — `scheduled_date`,
+// `lead_auditor`, `overall_rating`, `total_audits`, `major_nc_count` exist
+// nowhere in the backend, which left four of five tiles blank and made every
+// create and every complete fail with 422. `python3 scripts/check_fe_be_fields.py`
+// (G15) reports the same drift by name when it is run; it is not yet wired into
+// any workflow or make target, so today the guard is this file's contract test.
 interface AuditProgramAudit {
   id: string
-  plan_id: string
+  org_id: string
+  audit_plan_id?: string | null
   title: string
   audit_type: string
-  scheduled_date: string
-  completed_date: string
-  lead_auditor: string
+  scope: string
+  methodology: string
+  planned_date: string
+  actual_date?: string | null
+  lead_auditor_id?: string | null
+  auditor_ids: string[]
+  supplier_id?: string | null
   status: string
-  summary: string
-  overall_rating: string
+  audit_report?: string
+  findings_count: number
   created_at: string
+  updated_at: string
 }
 
 interface AuditFinding {
   id: string
+  org_id: string
   audit_id: string
   title: string
   description: string
   severity: string
-  status: string
-  capa_id: string
+  affected_control_id?: string | null
+  capa_id?: string | null
   created_at: string
 }
 
 interface AuditProgramSummary {
-  total_plans: number
-  total_audits: number
-  completed_audits: number
+  audits_planned_this_year: number
+  audits_completed: number
   open_findings: number
-  major_nc_count: number
+  overdue_capas_from_audits: number
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -61,7 +75,7 @@ const SEVERITY_COLORS: Record<string, string> = {
   major_nc: 'bg-red-100 text-red-700',
   minor_nc: 'bg-orange-100 text-orange-700',
   observation: 'bg-yellow-100 text-yellow-700',
-  opportunity: 'bg-blue-100 text-blue-700',
+  ofi: 'bg-blue-100 text-blue-700',
 }
 
 function useAuditSummary() {
@@ -91,8 +105,11 @@ function useAuditFindings(auditId: string | null) {
 
 function useCreateAudit() {
   const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: Partial<AuditProgramAudit>) =>
+  // The request type is spelled out in the generics on purpose: an apiFetch /
+  // useQuery / useMutation type argument is where check_fe_be_fields.py looks for
+  // a wire type. Hidden in the mutationFn's parameter annotation it is invisible.
+  return useMutation<AuditProgramAudit, Error, CreateAuditProgramAuditInput>({
+    mutationFn: (input) =>
       apiFetch<AuditProgramAudit>('/vaktcomply/audit-program', { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['vaktcomply', 'audit-program'] })
@@ -103,8 +120,8 @@ function useCreateAudit() {
 
 function useCompleteAudit() {
   const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: { summary?: string; overall_rating?: string; completed_date?: string } }) =>
+  return useMutation<AuditProgramAudit, Error, { id: string; input: CompleteAuditInput }>({
+    mutationFn: ({ id, input }) =>
       // S121-C5 (C1): backend registers this as PATCH; POST returned 404.
       apiFetch<AuditProgramAudit>(`/vaktcomply/audit-program/${id}/complete`, { method: 'PATCH', body: JSON.stringify(input) }),
     onSuccess: () => {
@@ -126,18 +143,25 @@ function useCreateFinding() {
   })
 }
 
-interface AuditForm {
+// Named after the Go struct it mirrors, not after the dialog it feeds: that is
+// what lets scripts/check_fe_be_fields.py pair the two and check the fields.
+// audit.CreateAuditProgramAuditInput. `scope` and `planned_date` are
+// `validate:"required"` — the form used to send neither, so POST was a
+// guaranteed 422. `methodology` is deliberately omitted: it is optional and the
+// repository substitutes 'combined' for the empty string.
+interface CreateAuditProgramAuditInput {
   title: string
   audit_type: string
-  scheduled_date: string
-  lead_auditor: string
-  plan_id: string
+  scope: string
+  planned_date: string
 }
 
-interface CompleteForm {
-  summary: string
-  overall_rating: string
-  completed_date: string
+// audit.CompleteAuditInput: audit_report (min 10) + actual_date, both
+// required. There is no overall_rating column in ck_audit_program_audits, so the
+// rating select that used to sit in this dialog was discarded on every submit.
+interface CompleteAuditInput {
+  audit_report: string
+  actual_date: string
 }
 
 interface FindingForm {
@@ -159,28 +183,34 @@ export default function AuditProgramPage() {
   const createFindingMut = useCreateFinding()
 
   const [createOpen, setCreateOpen] = useState(false)
-  const [auditForm, setAuditForm] = useState<AuditForm>({ title: '', audit_type: 'internal', scheduled_date: '', lead_auditor: '', plan_id: '' })
+  const [auditForm, setAuditForm] = useState<CreateAuditProgramAuditInput>({ title: '', audit_type: 'isms_internal', scope: '', planned_date: '' })
   const [completeTarget, setCompleteTarget] = useState<AuditProgramAudit | null>(null)
-  const [completeForm, setCompleteForm] = useState<CompleteForm>({ summary: '', overall_rating: 'satisfactory', completed_date: new Date().toISOString().slice(0, 10) })
+  const [completeForm, setCompleteForm] = useState<CompleteAuditInput>({ audit_report: '', actual_date: new Date().toISOString().slice(0, 10) })
   const [findingTarget, setFindingTarget] = useState<AuditProgramAudit | null>(null)
   const [findingForm, setFindingForm] = useState<FindingForm>({ title: '', description: '', severity: 'observation' })
   const [expandedAudit, setExpandedAudit] = useState<string | null>(null)
 
   const { data: findings = [] } = useAuditFindings(expandedAudit)
 
+  // Exactly the four values ck_audit_program_audits.audit_type allows (and that
+  // CreateAuditProgramAuditInput's `oneof` accepts). The five labels that used to
+  // be offered here — internal/external/certification/supplier/follow_up — were
+  // all outside the oneof, so no selection could ever be created.
   const AUDIT_TYPE_LABELS: Record<string, string> = {
-    internal: t('vaktcomply.auditProgram.typeInternal'),
-    external: t('vaktcomply.auditProgram.typeExternal'),
-    certification: t('vaktcomply.auditProgram.typeCertification'),
-    supplier: t('vaktcomply.auditProgram.typeSupplier'),
-    follow_up: t('vaktcomply.auditProgram.typeFollowUp'),
+    isms_internal: t('vaktcomply.auditProgram.typeInternal'),
+    compliance_check: t('vaktcomply.auditProgram.typeComplianceCheck'),
+    supplier_audit: t('vaktcomply.auditProgram.typeSupplier'),
+    process_audit: t('vaktcomply.auditProgram.typeProcessAudit'),
   }
 
+  // `ofi` (opportunity for improvement), not `opportunity` —
+  // CreateAuditFindingInput validates `oneof=major_nc minor_nc observation ofi`
+  // and the DDL CHECK matches.
   const SEVERITY_LABELS: Record<string, string> = {
     major_nc: t('vaktcomply.auditProgram.severityMajorNC'),
     minor_nc: t('vaktcomply.auditProgram.severityMinorNC'),
     observation: t('vaktcomply.auditProgram.severityObservation'),
-    opportunity: t('vaktcomply.auditProgram.severityOpportunity'),
+    ofi: t('vaktcomply.auditProgram.severityOpportunity'),
   }
 
   function handleCreateAudit() {
@@ -221,15 +251,17 @@ export default function AuditProgramPage() {
         </Button>
       </div>
 
-      {/* Summary */}
+      {/* Summary — four tiles, one per field audit.AuditProgramSummary actually
+          emits. There is no major-NC and no plan-period count in that struct; the
+          two tiles that used to claim them rendered `undefined`, and the red
+          major-NC warning could never fire. */}
       {summary && (
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {[
-            { label: t('vaktcomply.auditProgram.summaryTotal'), value: summary.total_audits },
-            { label: t('vaktcomply.auditProgram.summaryCompleted'), value: summary.completed_audits, cls: 'text-green-700' },
+            { label: t('vaktcomply.auditProgram.summaryPlannedThisYear'), value: summary.audits_planned_this_year },
+            { label: t('vaktcomply.auditProgram.summaryCompleted'), value: summary.audits_completed, cls: 'text-green-700' },
             { label: t('vaktcomply.auditProgram.summaryOpenFindings'), value: summary.open_findings, cls: summary.open_findings > 0 ? 'text-amber-700' : '' },
-            { label: t('vaktcomply.auditProgram.summaryMajorNC'), value: summary.major_nc_count, cls: summary.major_nc_count > 0 ? 'text-red-600' : '' },
-            { label: t('vaktcomply.auditProgram.summaryPlanPeriods'), value: summary.total_plans },
+            { label: t('vaktcomply.auditProgram.summaryOverdueCapas'), value: summary.overdue_capas_from_audits, cls: summary.overdue_capas_from_audits > 0 ? 'text-red-600' : '' },
           ].map(({ label, value, cls = '' }) => (
             <div key={label} className="bg-white border rounded-lg p-3 text-center">
               <div className={`text-xl font-bold ${cls}`}>{value}</div>
@@ -263,8 +295,7 @@ export default function AuditProgramPage() {
                       <CardTitle className="text-sm font-semibold truncate">{audit.title}</CardTitle>
                       <p className="text-xs text-gray-500 mt-0.5">
                         {AUDIT_TYPE_LABELS[audit.audit_type] ?? audit.audit_type}
-                        {audit.lead_auditor && ` · ${audit.lead_auditor}`}
-                        {audit.scheduled_date && ` · ${audit.scheduled_date}`}
+                        {audit.planned_date && ` · ${audit.planned_date}`}
                       </p>
                     </div>
                   </div>
@@ -280,7 +311,7 @@ export default function AuditProgramPage() {
                         </Button>
                         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
                           setCompleteTarget(audit)
-                          setCompleteForm({ summary: '', overall_rating: 'satisfactory', completed_date: new Date().toISOString().slice(0, 10) })
+                          setCompleteForm({ audit_report: '', actual_date: new Date().toISOString().slice(0, 10) })
                         }}>
                           <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                           {t('vaktcomply.auditProgram.completeBtn')}
@@ -298,8 +329,8 @@ export default function AuditProgramPage() {
               </CardHeader>
               {expandedAudit === audit.id && (
                 <CardContent className="pt-0 px-4 pb-4">
-                  {audit.summary && (
-                    <p className="text-sm text-gray-600 mb-3">{audit.summary}</p>
+                  {audit.audit_report && (
+                    <p className="text-sm text-gray-600 mb-3">{audit.audit_report}</p>
                   )}
                   {findings.length === 0 ? (
                     <p className="text-xs text-gray-400 italic">{t('vaktcomply.auditProgram.noFindings')}</p>
@@ -347,17 +378,25 @@ export default function AuditProgramPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{t('vaktcomply.auditProgram.labelScheduledDate')}</Label>
-                <Input type="date" value={auditForm.scheduled_date} onChange={(e) => { setAuditForm(f => ({ ...f, scheduled_date: e.target.value })); }} />
+                <Input type="date" value={auditForm.planned_date} onChange={(e) => { setAuditForm(f => ({ ...f, planned_date: e.target.value })); }} />
               </div>
             </div>
+            {/* `scope` is validate:"required,max=5000" — the dialog never had this
+                field, which is why every create returned 422. */}
             <div className="space-y-1.5">
-              <Label>{t('vaktcomply.auditProgram.labelLeadAuditor')}</Label>
-              <Input placeholder={t('vaktcomply.auditProgram.placeholderAuditor')} value={auditForm.lead_auditor} onChange={(e) => { setAuditForm(f => ({ ...f, lead_auditor: e.target.value })); }} />
+              <Label>{t('vaktcomply.auditProgram.labelScope')}</Label>
+              <Textarea rows={3} placeholder={t('vaktcomply.auditProgram.placeholderScope')} value={auditForm.scope} onChange={(e) => { setAuditForm(f => ({ ...f, scope: e.target.value })); }} />
             </div>
+            {/* The former free-text "lead auditor" input had no backend home:
+                lead_auditor_id is a UUID FK to users(id), not a name. Dropped
+                rather than posting a name into a uuid column. */}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setCreateOpen(false); }}>{t('common.cancel')}</Button>
-            <Button onClick={handleCreateAudit} disabled={!auditForm.title.trim() || createMut.isPending}>
+            <Button
+              onClick={handleCreateAudit}
+              disabled={!auditForm.title.trim() || !auditForm.scope.trim() || !auditForm.planned_date || createMut.isPending}
+            >
               {createMut.isPending ? t('vaktcomply.auditProgram.savingBtn') : t('vaktcomply.auditProgram.createSubmitBtn')}
             </Button>
           </DialogFooter>
@@ -371,28 +410,21 @@ export default function AuditProgramPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label>{t('vaktcomply.auditProgram.labelCompletedDate')}</Label>
-              <Input type="date" value={completeForm.completed_date} onChange={(e) => { setCompleteForm(f => ({ ...f, completed_date: e.target.value })); }} />
+              <Input type="date" value={completeForm.actual_date} onChange={(e) => { setCompleteForm(f => ({ ...f, actual_date: e.target.value })); }} />
             </div>
+            {/* CompleteAuditInput has no rating field — the select that used to be
+                here was silently dropped. audit_report is validate:"min=10". */}
             <div className="space-y-1.5">
-              <Label>{t('vaktcomply.auditProgram.labelOverallRating')}</Label>
-              <Select value={completeForm.overall_rating} onValueChange={(v) => { setCompleteForm(f => ({ ...f, overall_rating: v })); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="satisfactory">{t('vaktcomply.auditProgram.ratingSatisfactory')}</SelectItem>
-                  <SelectItem value="minor_issues">{t('vaktcomply.auditProgram.ratingMinorIssues')}</SelectItem>
-                  <SelectItem value="major_issues">{t('vaktcomply.auditProgram.ratingMajorIssues')}</SelectItem>
-                  <SelectItem value="critical">{t('vaktcomply.auditProgram.ratingCritical')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t('vaktcomply.auditProgram.labelSummary')}</Label>
-              <Textarea rows={3} placeholder={t('vaktcomply.auditProgram.placeholderSummary')} value={completeForm.summary} onChange={(e) => { setCompleteForm(f => ({ ...f, summary: e.target.value })); }} />
+              <Label>{t('vaktcomply.auditProgram.labelAuditReport')}</Label>
+              <Textarea rows={4} placeholder={t('vaktcomply.auditProgram.placeholderAuditReport')} value={completeForm.audit_report} onChange={(e) => { setCompleteForm(f => ({ ...f, audit_report: e.target.value })); }} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setCompleteTarget(null); }}>{t('common.cancel')}</Button>
-            <Button onClick={handleComplete} disabled={completeMut.isPending}>
+            <Button
+              onClick={handleComplete}
+              disabled={completeForm.audit_report.trim().length < 10 || !completeForm.actual_date || completeMut.isPending}
+            >
               {completeMut.isPending ? t('vaktcomply.auditProgram.savingBtn') : t('vaktcomply.auditProgram.completeSubmitBtn')}
             </Button>
           </DialogFooter>

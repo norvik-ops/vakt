@@ -1,0 +1,46 @@
+{{- if .Values.migrateJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "vakt.fullname" . }}-migrate-{{ .Release.Revision }}
+  labels:
+    {{- include "vakt.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    # Run schema migrations before any API or worker pods are updated.
+    # hook-weight "-5" ensures this job precedes other pre-upgrade hooks.
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "vakt.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.api.repository }}:{{ include "vakt.ownImageTag" (dict "repository" .Values.image.api.repository "tag" (.Values.image.api.tag | default .Chart.AppVersion)) }}"
+          imagePullPolicy: {{ .Values.image.api.pullPolicy }}
+          command: ["/migrate"]
+          env:
+            - name: VAKT_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vakt.fullname" . }}-secrets
+                  key: VAKT_DB_URL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+{{- end }}

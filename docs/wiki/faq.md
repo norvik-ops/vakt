@@ -6,11 +6,12 @@
 
 ### Kostet Vakt etwas?
 
-Vakt gibt es in zwei Editionen:
+Vakt gibt es in zwei frei bestellbaren Editionen — Community und Pro:
 
 **Community Edition (CE)** — kostenlos, für immer. Alle 6 Module in der Basis nutzbar (inkl. KI-Berater lokal via Ollama, NIS2 & ISO 27001, VVT/AVV/DSR, Secrets-Speicher, On-/Offboarding). Kein Ablaufdatum, keine Kreditkarte, keine Registrierung. Einzige Voraussetzung: eigener Server.
 
-**Pro** — 299 €/Monat oder 2.990 €/Jahr, jeweils netto\*. Schaltet spezialisierte Frameworks und erweiterte Workflows frei: BSI IT-Grundschutz (Modellierung, Grundschutz-Check, 200-3-Risiken, Cockpit, Berichte), EU AI Act, CRA, Audit-PDF-Export, NIS2-Meldungsassistent, Lieferantenportal, erweiterte Scan-/Aware-/Vault-/Privacy-Workflows (Reports & Importe, Phishing-Kampagnen, Secret-Rotation & Access Reviews, DPIA & TIA), SSO (OIDC/SAML), SCIM-Provisionierung, SIEM-Export, granulare Berechtigungen und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
+**Pro** — 299 €/Monat oder 2.990 €/Jahr, jeweils netto\*. Schaltet spezialisierte Frameworks und erweiterte Workflows frei: BSI IT-Grundschutz (Modellierung, Grundschutz-Check, 200-3-Risiken, Cockpit, Berichte), EU AI Act, CRA, DSGVO-TOM, CIS Controls v8, KRITIS-DachG, BSI C5, ISO 27017/27018, Audit-PDF-Export, NIS2-Meldungsassistent, Lieferantenportal, erweiterte Scan-/Aware-/Vault-/Privacy-Workflows (Reports & Importe, Phishing-Kampagnen, Secret-Rotation & Access Reviews, DPIA & TIA), SSO (OIDC/SAML), SCIM-Provisionierung, SIEM-Export, granulare Berechtigungen und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
+
 
 Nicht erlaubt: Vakt als gehosteten oder verwalteten Service an Dritte verkaufen (mehr dazu unter [Was ist ELv2?](#was-ist-elv2)).
 
@@ -103,7 +104,7 @@ Was nicht erlaubt ist: Eine zentrale Vakt-Installation betreiben und mehreren Ku
 
 ### Wie erfahre ich, wenn eine neue Version verfügbar ist?
 
-Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich ob eine neue Version auf GitHub verfügbar ist und zeigt Administratoren ein Banner in der Benutzeroberfläche. Alternativ kannst du [Watchtower](https://containrrr.dev/watchtower/) für automatische Updates verwenden oder das [GitHub-Repository](https://github.com/norvik-ops/vakt) beobachten (Watch → Releases only).
+Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich ob eine neue Version auf GitHub verfügbar ist und zeigt Administratoren ein Banner in der Benutzeroberfläche. Alternativ kannst du [Watchtower](https://containrrr.dev/watchtower/) für automatische Updates verwenden oder das [GitHub-Repository](https://github.com/norvik-ops/vakt) beobachten (Watch → Releases only). **Watchtower aktualisiert ausschließlich Images** — `docker-compose.yml`, `Caddyfile` und `scripts/` bleiben dabei auf dem alten Stand; ein vollständiges Update läuft über `./scripts/update.sh`.
 
 ---
 
@@ -201,7 +202,7 @@ Ja, vollständig. Alle Funktionen arbeiten lokal. Die einzigen optionalen Verbin
 
 ### Für welche Frameworks ist Vakt geeignet?
 
-Vakt Comply unterstützt: NIS2, ISO 27001:2022, BSI IT-Grundschutz, EU AI Act, DSGVO Art. 32 TOM, ISO 42001, CRA (Cyber Resilience Act).
+Vakt Comply unterstützt: NIS2, ISO 27001:2022, BSI IT-Grundschutz, EU AI Act, DSGVO Art. 32 TOM, CRA (Cyber Resilience Act).
 
 Mehrere Frameworks können gleichzeitig aktiv sein.
 

@@ -35,6 +35,9 @@ type Querier interface {
 	CountCKControls(ctx context.Context, arg CountCKControlsParams) (int64, error)
 	// Returns one row per control_id with the count of approved+pending evidence.
 	CountCKEvidenceByControl(ctx context.Context, arg CountCKEvidenceByControlParams) ([]CountCKEvidenceByControlRow, error)
+	// R1-18-D3: eine Zeile je Control der gesamten Organisation fuer den
+	// Readiness-Score in ListFrameworks.
+	ListCKFrameworkReadinessRows(ctx context.Context, orgID string) ([]ListCKFrameworkReadinessRowsRow, error)
 	// Anzahl auf 'implemented' gesetzter Controls seit einem Zeitpunkt (Executive Summary / Board Report).
 	CountCKClosedControlsSince(ctx context.Context, arg CountCKClosedControlsSinceParams) (int32, error)
 	// Checks whether a milestone notification has already been sent (dedupe key = "<frameworkID>:<threshold>").
@@ -264,7 +267,7 @@ type Querier interface {
 	GetCKOrgSector(ctx context.Context, id string) (GetCKOrgSectorRow, error)
 	GetCKPolicy(ctx context.Context, arg GetCKPolicyParams) (GetCKPolicyRow, error)
 	// Aggregiert Total/Accepted/Pending für eine Akzeptanz-Kampagne.
-	GetCKPolicyAcceptanceCampaignStats(ctx context.Context, campaignID string) (GetCKPolicyAcceptanceCampaignStatsRow, error)
+	GetCKPolicyAcceptanceCampaignStats(ctx context.Context, arg GetCKPolicyAcceptanceCampaignStatsParams) (GetCKPolicyAcceptanceCampaignStatsRow, error)
 	// Öffentliche Info für das Accept-Portal (Token-basiert, kein Auth).
 	GetCKPolicyAcceptancePublicInfo(ctx context.Context, tokenHash string) (GetCKPolicyAcceptancePublicInfoRow, error)
 	// Liest Request + Policy-Titel + Org-ID für den Token-basierten Accept-Flow.
@@ -445,7 +448,7 @@ type Querier interface {
 	ListCKPoliciesPaged(ctx context.Context, arg ListCKPoliciesPagedParams) ([]ListCKPoliciesPagedRow, error)
 	// ── Policy Acceptance (s26-sqlc-vitals-5) ───────────────────────────────────
 	ListCKPolicyAcceptanceCampaigns(ctx context.Context, arg ListCKPolicyAcceptanceCampaignsParams) ([]ListCKPolicyAcceptanceCampaignsRow, error)
-	ListCKPolicyAcceptanceRequests(ctx context.Context, campaignID string) ([]ListCKPolicyAcceptanceRequestsRow, error)
+	ListCKPolicyAcceptanceRequests(ctx context.Context, arg ListCKPolicyAcceptanceRequestsParams) ([]ListCKPolicyAcceptanceRequestsRow, error)
 	// DB-backed compliance templates from ck_policy_templates (optional category filter).
 	ListCKPolicyTemplates(ctx context.Context, arg ListCKPolicyTemplatesParams) ([]ListCKPolicyTemplatesRow, error)
 	// ── Policy-Versions ─────────────────────────────────────────────────────────
@@ -555,8 +558,10 @@ type Querier interface {
 	SaveCKIncidentReport(ctx context.Context, arg SaveCKIncidentReportParams) (SaveCKIncidentReportRow, error)
 	// ── Cross-Framework Mappings (global reference table) ───────────────────────
 	SeedCKGlobalControlMapping(ctx context.Context, arg SeedCKGlobalControlMappingParams) error
-	// Idempotent (ON CONFLICT DO NOTHING). Aufrufer iteriert die Liste; jedes
-	// Measure wird als is_builtin=TRUE eingefügt.
+	// Idempotent je (org_id, control_id, title). Aufrufer iteriert die Liste;
+	// jedes Measure wird als is_builtin=TRUE eingefügt. Bis Migration 257 stand
+	// hier ein ON CONFLICT DO NOTHING ohne Arbiter auf einer Tabelle ohne
+	// Unique-Constraint — es griff nie (R1-06-D07).
 	SeedCKMeasure(ctx context.Context, arg SeedCKMeasureParams) error
 	SetCKOrgApprovalRequired(ctx context.Context, arg SetCKOrgApprovalRequiredParams) (int64, error)
 	SetHREmployeeStatus(ctx context.Context, arg SetHREmployeeStatusParams) error
@@ -629,7 +634,6 @@ type Querier interface {
 	// nil-Input wird vorab gegen die aktuelle Zeile gemappt. Hier wird die Spalte
 	// IMMER überschrieben (Valid=false → NULL, Valid=true → der Wert).
 	UpdateCKRiskTreatment(ctx context.Context, arg UpdateCKRiskTreatmentParams) (UpdateCKRiskTreatmentRow, error)
-	UpdateCKSoAApplicability(ctx context.Context, arg UpdateCKSoAApplicabilityParams) error
 	UpdateCKSupplier(ctx context.Context, arg UpdateCKSupplierParams) (UpdateCKSupplierRow, error)
 	UpdateCKSupplierAssessmentStatus(ctx context.Context, arg UpdateCKSupplierAssessmentStatusParams) error
 	UpdateCKTask(ctx context.Context, arg UpdateCKTaskParams) (CkTasks, error)
@@ -673,6 +677,11 @@ type Querier interface {
 	BatchUpdateSPComponentEOL(ctx context.Context, arg BatchUpdateSPComponentEOLParams) error
 	GetSPScanOrgID(ctx context.Context, id string) (string, error)
 	UpsertSPEOLCache(ctx context.Context, arg UpsertSPEOLCacheParams) error
+	// ── Findings Upsert (single, by cve_id) ─────────────────────────────────────
+	// Schwester von UpsertSPFindingByRawID fuer Funde mit CVE. Konfliktschluessel:
+	// (org_id, asset_id, cve_id) — der einzige scanner-agnostische Dedup-Schluessel
+	// des Schemas; `raw_id` bleibt bei diesen Zeilen bewusst NULL.
+	UpsertSPFindingByCVE(ctx context.Context, arg UpsertSPFindingByCVEParams) (VbFindings, error)
 	// ── Findings Upsert (single, by raw_id) ─────────────────────────────────────
 	// Single-shot INSERT...ON CONFLICT for importer flows (SARIF/CycloneDX/CSV).
 	// Conflict key: (org_id, raw_id, scanner). Multi-row Upserts with conditional
@@ -689,11 +698,15 @@ type Querier interface {
 	CreateCKBCPPlan(ctx context.Context, arg CreateCKBCPPlanParams) (CkBcpPlans, error)
 	ListCKBCPPlans(ctx context.Context, orgID string) ([]CkBcpPlans, error)
 	GetCKBCPPlan(ctx context.Context, arg GetCKBCPPlanParams) (CkBcpPlans, error)
+	GetCKBCPPlanForUpdate(ctx context.Context, arg GetCKBCPPlanForUpdateParams) (CkBcpPlans, error)
 	UpdateCKBCPPlan(ctx context.Context, arg UpdateCKBCPPlanParams) (CkBcpPlans, error)
 	DeleteCKBCPPlan(ctx context.Context, arg DeleteCKBCPPlanParams) (int64, error)
 	CreateCKBCPTest(ctx context.Context, arg CreateCKBCPTestParams) (CkBcpTests, error)
 	ListCKBCPTests(ctx context.Context, arg ListCKBCPTestsParams) ([]CkBcpTests, error)
 	GetLatestCKBCPTest(ctx context.Context, arg GetLatestCKBCPTestParams) (CkBcpTests, error)
+	// ESK-12: leitet ck_bcp_plans.last_tested_at aus den tatsaechlichen
+	// ck_bcp_tests-Eintraegen ab; das Feld ist bewusst kein Eingabefeld.
+	RefreshCKBCPPlanLastTested(ctx context.Context, arg RefreshCKBCPPlanLastTestedParams) error
 	// ── S60: Schutzbedarfsfeststellung ────────────────────────────────────────
 	CreateCKProtectionNeedAssessment(ctx context.Context, arg CreateCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error)
 	ListCKProtectionNeedAssessments(ctx context.Context, orgID string) ([]CkProtectionNeedAssessments, error)

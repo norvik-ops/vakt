@@ -160,11 +160,17 @@ func (s *Service) ListISMSScopeVersions(ctx context.Context, orgID string) ([]IS
 }
 
 // ApproveISMSScope approves the specified ISMS scope version.
-// Only users with the "admin" role may approve.
-func (s *Service) ApproveISMSScope(ctx context.Context, orgID, id, approverID, userRole string) (ISMSScope, error) {
-	if userRole != "admin" {
-		return ISMSScope{}, fmt.Errorf("only admins may approve the ISMS scope")
-	}
+//
+// Wer freigeben darf, entscheidet ausschliesslich die Route:
+// `auth.RequireRole("Admin")` in routes.go. Hier steht bewusst keine zweite
+// Rollenpruefung mehr. Bis R1-W7C-N1 gab es sie: Sie las `c.Get("role")` —
+// einen Kontextschluessel, den im gesamten Backend niemand setzt (die
+// AuthMiddleware setzt `roles` als []string) — und verglich gegen das
+// kleingeschriebene "admin", das im Rollenvokabular gar nicht vorkommt
+// (Admin, SecurityAnalyst, Viewer, AuditorReadOnly, InternalAuditor).
+// Damit war die Bedingung fuer JEDEN Aufrufer wahr und die ISO-27001-Freigabe
+// fuer alle gesperrt, Admin eingeschlossen.
+func (s *Service) ApproveISMSScope(ctx context.Context, orgID, id, approverID string) (ISMSScope, error) {
 	return s.repo.ApproveISMSScope(ctx, orgID, id, approverID)
 }
 

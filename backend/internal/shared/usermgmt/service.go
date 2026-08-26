@@ -9,7 +9,11 @@ import (
 	"fmt"
 	"net/smtp"
 
+	"github.com/jackc/pgx/v5"
+
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/matharnica/vakt/internal/shared/apperr"
@@ -60,15 +64,21 @@ func (s *Service) WithSessionRevoker(r SessionRevoker) *Service {
 // ---------------------------------------------------------------------------
 
 // ListUsers returns all members of the organisation along with their roles.
-// The role is read from the users.role column (added by migration 077).
-// Org membership is still determined by org_members, so only users in the org
-// are returned.
+// Org membership is determined by org_members, so only users in the org are
+// returned.
+//
+// Both role columns are reported: platform_role from org_members (authoritative,
+// ADR-0077) and role from the users.role cache. A UI that shows only the cache
+// cannot distinguish a Viewer from an InternalAuditor or an AuditorReadOnly —
+// all three cache as "viewer" — so the team list would show the org's internal
+// auditor as a plain viewer and offer no way to see who holds the SoD role.
 func (s *Service) ListUsers(ctx context.Context, orgID string) ([]UserWithRole, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT u.id::text, u.email, COALESCE(u.display_name, '') AS name,
-		       u.role, u.created_at
+		       u.role, r.name AS platform_role, u.created_at
 		FROM users u
 		JOIN org_members om ON om.user_id = u.id
+		JOIN roles r ON r.id = om.role_id
 		WHERE om.org_id = $1::uuid
 		ORDER BY u.created_at ASC`,
 		orgID,
@@ -81,7 +91,7 @@ func (s *Service) ListUsers(ctx context.Context, orgID string) ([]UserWithRole, 
 	var users []UserWithRole
 	for rows.Next() {
 		var u UserWithRole
-		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.PlatformRole, &u.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan user: %w", err)
 		}
 		users = append(users, u)
@@ -92,31 +102,142 @@ func (s *Service) ListUsers(ctx context.Context, orgID string) ([]UserWithRole, 
 	return users, rows.Err()
 }
 
+// roleAssignment is one row of the role vocabulary: the authoritative platform
+// role that goes into org_members, and the users.role cache value that must
+// accompany it.
+type roleAssignment struct {
+	platform string // roles.name — the authoritative role (ADR-0077)
+	simple   string // users.role — the denormalised cache; authorises nothing
+}
+
+// assignableRoles maps every value UpdateRoleInput.Role accepts to the pair of
+// values a role change has to write. It is the single table for this boundary;
+// platformRoleName (the invitation-accept path) is derived from it below, and
+// admin.simpleUserRole is the same mapping at the INSERT boundary — keep them in
+// sync, the mapping itself is fixed by ADR-0077.
+//
+// AuditorReadOnly and InternalAuditor map to the "viewer" cache value on purpose:
+// the column has only three values (migration 077) and neither role is an admin.
+// The cache deliberately loses information (ADR-0077 accepts that; it is a cache,
+// not a source) — which is why UserWithRole also reports PlatformRole. Keeping it
+// correct is still required at every boundary (scripts/check_user_role_insert.py),
+// but since ESK-13 nothing authorises over it: requireAdmin, its last reader with
+// a decision to make, reads org_members.
+var assignableRoles = map[string]roleAssignment{
+	"Admin":           {platform: "Admin", simple: "admin"},
+	"SecurityAnalyst": {platform: "SecurityAnalyst", simple: "editor"},
+	"Viewer":          {platform: "Viewer", simple: "viewer"},
+	"AuditorReadOnly": {platform: "AuditorReadOnly", simple: "viewer"},
+	"InternalAuditor": {platform: "InternalAuditor", simple: "viewer"},
+	// Legacy aliases — the vocabulary this endpoint accepted before platform
+	// roles became assignable. The frontend sent these; old clients still do.
+	"admin":  {platform: "Admin", simple: "admin"},
+	"editor": {platform: "SecurityAnalyst", simple: "editor"},
+	"viewer": {platform: "Viewer", simple: "viewer"},
+}
+
+// THE UPDATE BOUNDARY, written down (REV-ESK13 §2.3).
+//
+// ADR-0077 and scripts/check_user_role_insert.py pin the INSERT boundary: every
+// site that inserts an org_members row must set users.role to match. Nobody had
+// written the rule for the UPDATE side, and the result was an endpoint that moved
+// only the cache. The rule is:
+//
+//	org_members.role_id is the role. It goes into the token claim, every
+//	auth.RequireRole guard reads it, and since ESK-13 usermgmt.requireAdmin and
+//	ensureNotLastAdmin read it too. users.role is a lossy cache of it and
+//	authorises nothing.
+//
+//	UpdateUserRole is the ONLY place that may change either column after the
+//	insert, and it changes both in one transaction. A second UPDATE site that
+//	writes just one of them re-creates the drift migration 253 had to clean up.
+//
+// This is a comment and not a CI gate on purpose: scripts/ is outside this
+// change's file ownership. check_user_role_insert.py is the model to copy — the
+// missing counterpart greps for UPDATE statements against org_members.role_id or
+// users.role and allows this file as their only site.
+
 // UpdateUserRole changes a user's role within the organisation. It prevents
-// demoting the last remaining admin. On role downgrade the user's active
-// sessions are revoked so the new (lesser) role takes effect immediately.
+// demoting the last remaining admin. On role change the user's active sessions
+// are revoked so the new role takes effect at the next login.
+//
+// It writes BOTH role columns in one transaction, org_members first:
+// org_members.role_id is what the login puts into the token claim and what every
+// auth.RequireRole guard reads (ADR-0077), users.role is its cache. Before this,
+// the endpoint wrote only the cache — so "make this member an Admin" left their
+// claims at Viewer, and "demote this Admin to viewer" left them with full Admin
+// claims on every module while the team list showed "Betrachter". Both directions
+// were measured live against a real instance (ESK-13).
 func (s *Service) UpdateUserRole(ctx context.Context, orgID, userID, role string) error {
-	// Prevent removing the last admin.
-	if role != "admin" {
-		if err := s.ensureNotLastAdmin(ctx, orgID, userID); err != nil {
+	assign, ok := assignableRoles[role]
+	if !ok {
+		// Fail closed. The validator should have caught this; if the two lists
+		// ever drift, an unknown role must be an error and not a silent
+		// downgrade to Viewer (which would look like success in the UI).
+		return fmt.Errorf("unknown role %q", role)
+	}
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("update user role: begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	// Prevent removing the last admin — inside the transaction, so the rows it
+	// counted stay locked until the change is committed (see ensureNotLastAdmin).
+	if assign.platform != "Admin" {
+		if err = s.ensureNotLastAdmin(ctx, tx, orgID, userID); err != nil {
 			return err
 		}
 	}
 
-	result, err := s.db.Exec(ctx, `
+	// Resolve the role id explicitly so a role that is missing from the roles
+	// table (e.g. an instance that never ran migration 202, which seeds
+	// InternalAuditor) fails with a readable error instead of a FK violation.
+	var roleID string
+	if err = tx.QueryRow(ctx,
+		`SELECT id::text FROM roles WHERE name = $1`, assign.platform,
+	).Scan(&roleID); err != nil {
+		return fmt.Errorf("lookup role %q: %w", assign.platform, err)
+	}
+
+	// 1) The authoritative role. Scoped to the caller's org, so an admin can
+	//    only re-role members of their own organisation.
+	var result pgconn.CommandTag
+	result, err = tx.Exec(ctx, `
+		UPDATE org_members SET role_id = $1::uuid
+		WHERE org_id = $2::uuid AND user_id = $3::uuid`,
+		roleID, orgID, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("update org member role: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		err = fmt.Errorf("user not found in organisation")
+		return err
+	}
+
+	// 2) The cache. Same transaction — the two must never be observed apart.
+	_, err = tx.Exec(ctx, `
 		UPDATE users SET role = $1
 		WHERE id = $2::uuid
 		  AND EXISTS (
 		    SELECT 1 FROM org_members WHERE org_id = $3::uuid AND user_id = $2::uuid
 		  )`,
-		role, userID, orgID,
+		assign.simple, userID, orgID,
 	)
 	if err != nil {
 		return fmt.Errorf("update user role: %w", err)
 	}
-	if result.RowsAffected() == 0 {
-		return fmt.Errorf("user not found in organisation")
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("update user role: commit: %w", err)
 	}
+
 	// Revoke sessions so the new role takes effect at next login.
 	if s.sessionRevoker != nil {
 		if rErr := s.sessionRevoker.RevokeAllSessions(ctx, userID); rErr != nil {
@@ -132,11 +253,22 @@ func (s *Service) UpdateUserRole(ctx context.Context, orgID, userID, role string
 // Active sessions are revoked immediately so removed users cannot continue
 // using existing tokens (AUTH-007).
 func (s *Service) RemoveUser(ctx context.Context, orgID, userID string) error {
-	if err := s.ensureNotLastAdmin(ctx, orgID, userID); err != nil {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("remove user: begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	if err = s.ensureNotLastAdmin(ctx, tx, orgID, userID); err != nil {
 		return err
 	}
 
-	result, err := s.db.Exec(ctx, `
+	var result pgconn.CommandTag
+	result, err = tx.Exec(ctx, `
 		DELETE FROM org_members
 		WHERE org_id = $1::uuid AND user_id = $2::uuid`,
 		orgID, userID,
@@ -145,7 +277,11 @@ func (s *Service) RemoveUser(ctx context.Context, orgID, userID string) error {
 		return fmt.Errorf("remove user: %w", err)
 	}
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("user not found in organisation")
+		err = fmt.Errorf("user not found in organisation")
+		return err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("remove user: commit: %w", err)
 	}
 	if s.sessionRevoker != nil {
 		if rErr := s.sessionRevoker.RevokeAllSessions(ctx, userID); rErr != nil {
@@ -201,13 +337,19 @@ func (s *Service) CreateInvitation(ctx context.Context, orgID, inviterEmail stri
 		return Invitation{}, fmt.Errorf("generate invitation token: %w", err)
 	}
 
+	// Store the platform role name, whichever vocabulary the caller used
+	// (R1-14cA-11). One canonical value in the column means the accept path has
+	// nothing to guess, and the legacy names stay readable for rows written
+	// before migration 255.
+	storedRole := assignmentFor(in.Role).platform
+
 	var inv Invitation
 	err = s.db.QueryRow(ctx, `
 		INSERT INTO user_invitations (org_id, email, role, token_hash, invited_by)
 		VALUES ($1::uuid, $2, $3, $4, $5)
 		RETURNING id::text, org_id::text, email, role, invited_by,
 		          accepted_at, expires_at, created_at`,
-		orgID, in.Email, in.Role, tokenHash, inviterEmail,
+		orgID, in.Email, storedRole, tokenHash, inviterEmail,
 	).Scan(
 		&inv.ID, &inv.OrgID, &inv.Email, &inv.Role, &inv.InvitedBy,
 		&inv.AcceptedAt, &inv.ExpiresAt, &inv.CreatedAt,
@@ -337,21 +479,30 @@ func (s *Service) AcceptInvitation(ctx context.Context, in AcceptInviteInput) er
 		}
 	}()
 
+	// Both role columns come from one lookup (R1-14cA-11). users.role carries
+	// CHECK (role IN ('admin','editor','viewer')), and this used to insert the
+	// invitation's raw string — which was safe only as long as the invitation
+	// vocabulary happened to be exactly those three. The moment a platform name
+	// like "Admin" can be invited, the raw write violates the constraint at
+	// 'accept' time: after the invitee clicked the link and chose a password,
+	// with no way for them to recover.
+	assign := assignmentFor(role)
+
 	// Create the user.
 	var userID string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO users (email, password_hash, display_name, role)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id::text`,
-		email, string(passwordHash), in.Name, role,
+		email, string(passwordHash), in.Name, assign.simple,
 	).Scan(&userID)
 	if err != nil {
 		return fmt.Errorf("create user: %w", err)
 	}
 
 	// Look up the matching platform role (Admin/SecurityAnalyst/Viewer) from the
-	// roles table. Map our simple role names to the existing role names.
-	platformRole := platformRoleName(role)
+	// roles table.
+	platformRole := assign.platform
 	var roleID string
 	err = tx.QueryRow(ctx, `SELECT id::text FROM roles WHERE name = $1`, platformRole).Scan(&roleID)
 	if err != nil {
@@ -362,13 +513,17 @@ func (s *Service) AcceptInvitation(ctx context.Context, in AcceptInviteInput) er
 		}
 	}
 
-	// Add org membership.
-	_, err = tx.Exec(ctx, `
+	// Add org membership. MustAffect statt verworfenem CommandTag: org_members ist
+	// seit ESK-13 die Quelle der Wahrheit fuer die Autorisierung. Ein INSERT, der
+	// keine Zeile schreibt, wuerde hier eine Einladung als angenommen markieren,
+	// ohne dass der Eingeladene je Rechte bekommt — genau die stille Null, die
+	// dieser Lauf mehrfach gefunden hat.
+	tag, err := tx.Exec(ctx, `
 		INSERT INTO org_members (org_id, user_id, role_id)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)`,
 		orgID, userID, roleID,
 	)
-	if err != nil {
+	if err := shareddb.MustAffect(tag, err); err != nil {
 		return fmt.Errorf("insert org member: %w", err)
 	}
 
@@ -390,34 +545,76 @@ func (s *Service) AcceptInvitation(ctx context.Context, in AcceptInviteInput) er
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-// ensureNotLastAdmin returns an error if userID is the last admin in orgID.
-func (s *Service) ensureNotLastAdmin(ctx context.Context, orgID, userID string) error {
-	var adminCount int
-	err := s.db.QueryRow(ctx, `
-		SELECT COUNT(*)
-		FROM users u
-		JOIN org_members om ON om.user_id = u.id
-		WHERE om.org_id = $1::uuid AND u.role = 'admin'`,
+// ErrLastAdmin is returned when a change would leave the organisation without an
+// Admin. It is a named error so the handler can say WHICH rule refused, instead
+// of the generic "Rolle konnte nicht aktualisiert werden" — an operator who is
+// not told that the last-admin guard fired reaches for the database, which is the
+// self-help ESK-13 exists to remove.
+var ErrLastAdmin = errors.New("cannot remove or demote the last admin")
+
+// ensureNotLastAdmin returns ErrLastAdmin if userID is the last Admin in orgID.
+//
+// It counts org_members — the authoritative role (ADR-0074/ADR-0077) — and so
+// does usermgmt.requireAdmin since ESK-13. That the two read the SAME column is
+// the whole correctness argument: this guard exists to keep at least one member
+// able to pass that gate, and a guard that counts a different column than the
+// gate admits is only accidentally right. It was measurably wrong on the drift
+// every pre-ESK-13 role change produced (REV-ESK13 §2.1: a permitted demotion
+// left an organisation with zero members who could still assign roles).
+//
+// It takes the transaction doing the change rather than the pool, and that is not
+// cosmetic: FOR UPDATE OF om locks this org's Admin membership rows until that
+// transaction commits, so two concurrent demotions serialise instead of both
+// reading "2 admins" and both being let through — the TOCTOU the old pool-level
+// guard had.
+func (s *Service) ensureNotLastAdmin(ctx context.Context, tx pgx.Tx, orgID, userID string) error {
+	rows, err := tx.Query(ctx, `
+		SELECT om.user_id::text
+		FROM org_members om
+		JOIN roles r ON r.id = om.role_id
+		WHERE om.org_id = $1::uuid AND r.name = 'Admin'
+		FOR UPDATE OF om`,
 		orgID,
-	).Scan(&adminCount)
+	)
 	if err != nil {
 		return fmt.Errorf("count admins: %w", err)
 	}
+	defer rows.Close()
 
-	// Check whether the target user is an admin.
-	var targetRole string
-	err = s.db.QueryRow(ctx, `
-		SELECT u.role FROM users u
-		JOIN org_members om ON om.user_id = u.id
-		WHERE u.id = $1::uuid AND om.org_id = $2::uuid`,
-		userID, orgID,
-	).Scan(&targetRole)
-	if err != nil {
-		return fmt.Errorf("fetch target user role: %w", err)
+	adminCount := 0
+	targetIsAdmin := false
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return fmt.Errorf("scan admin: %w", err)
+		}
+		adminCount++
+		if id == userID {
+			targetIsAdmin = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("count admins: %w", err)
 	}
 
-	if targetRole == "admin" && adminCount <= 1 {
-		return fmt.Errorf("cannot remove or demote the last admin")
+	if targetIsAdmin && adminCount <= 1 {
+		return ErrLastAdmin
+	}
+	if targetIsAdmin {
+		return nil
+	}
+
+	// Not an admin — but still has to be a member of this org, which the old
+	// version learned from the role lookup it no longer needs.
+	var member bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM org_members WHERE org_id = $1::uuid AND user_id = $2::uuid)`,
+		orgID, userID,
+	).Scan(&member); err != nil {
+		return fmt.Errorf("fetch target user role: %w", err)
+	}
+	if !member {
+		return ErrUserNotInOrg
 	}
 	return nil
 }
@@ -466,16 +663,26 @@ Vakt Security Platform`, inviterEmail, link)
 	return smtp.SendMail(addr, nil, from, []string{toEmail}, msg)
 }
 
-// platformRoleName maps our simple role names to the names in the roles table.
-func platformRoleName(role string) string {
-	switch role {
-	case "admin":
-		return "Admin"
-	case "editor":
-		return "SecurityAnalyst"
-	default:
-		return "Viewer"
+// assignmentFor maps an invitation's stored role to the pair of values account
+// creation has to write — the authoritative org_members role and the users.role
+// cache.
+//
+// Derived from assignableRoles so there is one table, not two. The fallback is
+// deliberately different from UpdateUserRole's: an invitation row carries a value
+// InviteInput validated when the invitation was created, possibly under an older
+// vocabulary, and if an unknown one shows up here the safe answer for account
+// creation is the least-privilege role — not an error that blocks the invitee
+// from signing up at all.
+func assignmentFor(role string) roleAssignment {
+	if assign, ok := assignableRoles[role]; ok {
+		return assign
 	}
+	return roleAssignment{platform: "Viewer", simple: "viewer"}
+}
+
+// platformRoleName maps an invitation's role to the name in the roles table.
+func platformRoleName(role string) string {
+	return assignmentFor(role).platform
 }
 
 // generateToken creates a cryptographically secure 32-byte random hex token

@@ -699,6 +699,196 @@ def check_price_tax_marking() -> int:
     return n
 
 
+# --- Enterprise-Tier: abgeschafft am 2026-08-08, darf nicht zurueckkehren ------
+#
+# Der Tier war NIE ausstellbar: beide Signierpfade setzen "pro" fest
+# (billing/licensing/service.go), das Admin-Werkzeug hat kein --tier. Verkauft
+# hat die Preisfläche darüber trotzdem drei Rahmenwerke — 25 Routen, die jedem
+# Kunden 402 antworteten (R1-17-02). Der Code-Teil ist ein Einzeiler; der
+# Verkaufs-Teil kehrt erfahrungsgemäß im nächsten Marketing-Text zurück, weil
+# "Enterprise" in jeder B2B-Vorlage steht. Deshalb ein Gate statt Disziplin.
+#
+# Zwei Haelften, weil zwei Fehlerklassen:
+#   (a) Text  — eine Tarif-Zusage auf einer kundenwirksamen Flaeche
+#   (b) Code  — der Tier selbst (EnterpriseTier, Tier == "enterprise")
+#
+# Was das Gate BEWUSST NICHT anfasst, damit "OK" nicht ueber einer Teilmenge
+# gruen meldet und der Leser weiss, wo er selbst hinschauen muss:
+#   - Historie (CHANGELOG, docs/stories, sprints, adr, history, reports,
+#     planning, reviews): ein Marker dort waere eine Faelschung des Protokolls.
+#   - Wettbewerber-Dokumente (competitor-pricing.md, battlecards.md): dort ist
+#     "Enterprise" eine belegte Fremd-Eigenschaft, keine eigene Zusage.
+#   - docs/wiki/enterprise-sso.md: der Dateiname und vier Zeilen darin sind
+#     Azure-Menuenamen ("Enterprise Applications"), kein Tarif. Bewusst NICHT
+#     umbenannt — eine oeffentliche Wiki-URL zu brechen kostet mehr, als der
+#     Wortgleichklang einbringt.
+_ENT_SURFACES = (
+    "sites/",
+    "docs/wiki/",
+    "docs/marketing/",
+    "docs/business/",
+    "docs/managed-hosting/",
+    "docs/legal/",
+    "docs/configuration.md",
+    "docs/procurement.md",
+    "docs/setup.md",
+    "docs/UPGRADE.md",
+    "frontend/src/",
+    "README.md",
+    "OVERVIEW.md",
+)
+_ENT_SURFACES_EXCL = (
+    "node_modules/",
+    "/dist/",
+    "docs/marketing/competitor-pricing.md",  # belegte Fremdpreise
+    "docs/marketing/battlecards.md",         # durchgaengig Wettbewerber-Profile
+    "docs/wiki/enterprise-sso.md",           # Azure-Menuenamen, kein Tarif
+    "frontend/src/api/generated.ts",         # aus openapi.yaml erzeugt
+)
+_ENT_WORD_RE = re.compile(r"\bEnterprise\b", re.IGNORECASE)
+# Eine Tarif-Zusage ist "Enterprise" PLUS Tarif-Vokabular in derselben Zeile.
+# Das blosse Wort reicht nicht: "Enterprise-Umfeld", "Enterprise-Ausschreibung"
+# beschreiben den Markt des Kunden, nicht unser Angebot.
+_ENT_TIER_RE = re.compile(
+    r"Tier|Tarif|\bPlan\b|Edition|Lizenz|Licen[sc]e|Paket|Stufe|\bAbo\b|"
+    r"€|\bEUR\b|/Jahr|/Monat|per year|Preis|pricing|\bSLA\b|Support|"
+    r"Vertrag|contract|kaufen|bestellen|upgrade|"
+    # Ein Tarif ohne Preis nennt sich "auf Anfrage". Die erste Fassung dieses
+    # Musters kannte nur Tarif-Vokabular und liess ausgerechnet die
+    # wahrscheinlichste Rueckkehrform durch — eine Preistabellenzeile
+    # "| Enterprise | auf Anfrage |" enthaelt KEINES der Woerter oben. Gefunden
+    # durch die Rot-Abnahme, nicht durch Nachdenken.
+    r"auf Anfrage|on request|individuell|Angebot|custom pricing|"
+    r"Vertrieb|sales@|Sprechen Sie uns",
+    re.IGNORECASE,
+)
+# Eine Tabellenzelle, die NUR "Enterprise" enthaelt, ist eine Tarifspalte oder
+# -zeile — dafuer braucht es kein weiteres Stichwort. Bewusst eng: in
+# docs/wiki/faq.md steht "| Enterprise, US-Markt |" als Zielgruppe eines
+# Wettbewerbers in derselben Tabellenform. Dort steht Enterprise NICHT allein in
+# der Zelle, und genau daran unterscheiden sich die beiden Faelle.
+_ENT_TABLE_CELL_RE = re.compile(r"\|\s*\**\s*Enterprise\s*\**\s*\|", re.IGNORECASE)
+# Eine Zeile, die die Abschaffung DOKUMENTIERT, ist keine Zusage — sie ist das
+# Gegenteil. Ohne eine Ausnahme faerbt das Gate ausgerechnet die datierten
+# Hinweise rot, die P9 verlangt, und der naechste Leser loescht die Begruendung
+# statt den Fehler.
+#
+# Die Ausnahme ist ein EXPLIZITER Block, kein Verneinungs-Muster. Ein Muster wie
+# "kein Enterprise|abgeschafft|nicht mehr" haette dieselbe Falle wie die
+# Fussnoten-Ausnahme vom 2026-07-19 ('*' traf jede Markdown-Fettschrift): es
+# waechst mit jeder neuen Formulierung, bis es faktisch immer greift, und
+# niemand sieht im Diff, dass gerade eine Zusage durchgerutscht ist. Ein Marker
+# steht im Diff und muss bewusst gesetzt werden.
+#
+# Schutz gegen Missbrauch: der Block MUSS wieder geschlossen werden. Eine Datei,
+# die mit offenem Block endet, ist ein Fehler — sonst schaltet ein Marker in
+# Zeile 1 die Pruefung fuer die ganze Datei ab, und das Gate meldet gruen ueber
+# einer Datei, die es gar nicht gelesen hat.
+_ENT_OFF_RE = re.compile(r"enterprise-gate:aus")
+_ENT_ON_RE = re.compile(r"enterprise-gate:an")
+# Zeilen, in denen "Enterprise" nachweislich etwas anderes bezeichnet.
+_ENT_LINE_OK_RE = re.compile(
+    r"enterprise-sso\.md|Enterprise[- ]App|Enterprise Applications|"
+    r"Enterprise Admins|Enterprise-Auth|Enterprise-SSO|WPA2-Enterprise|"
+    r"Chrome Enterprise|"
+    r"Vanta|Drata|secjur|HiScout|verinice|DataGuard|Sprinto|Secureframe",
+    re.IGNORECASE,
+)
+# Code-Haelfte: der Tier selbst. Tests duerfen "enterprise" nennen — sie
+# BEWEISEN die Ablehnung (TestLoad_UnknownTierFallsBackToCommunity). Der
+# Bezeichner EnterpriseTier ist ueberall verboten, auch im Test.
+_ENT_CODE_PATHS = (
+    "backend/internal/license/",
+    "backend/internal/shared/platform/features/",
+    "backend/internal/billing/licensing/",
+    "backend/cmd/admin/",
+)
+_ENT_IDENT_RE = re.compile(r"\bEnterpriseTier\b|\bIsEnterprise\b")
+_ENT_LITERAL_RE = re.compile(r"[\"']enterprise[\"']")
+# Kommentare vor der Code-Haelfte entfernen. Gemessen wird Typsicherheit, nicht
+# Schreibstil — genau der Fehler, den der Interface-Ratchet am 2026-07-14 hatte
+# (er zaehlte das englische Wort "any" in Kommentaren mit). Ohne das Strippen
+# faerbt dieses Gate seine EIGENE Begruendung rot: der Kommentar an
+# license.sellableTiers muss erklaeren duerfen, welches Tier abgelehnt wird.
+# Das ':' davor schuetzt "https://" davor, als Kommentarbeginn zu gelten.
+_GO_LINE_COMMENT_RE = re.compile(r"(?<!:)//.*$")
+
+
+def check_enterprise_tier() -> tuple[int, int]:
+    tracked = subprocess.run(
+        ["git", "ls-files"], capture_output=True, text=True
+    ).stdout.split()
+    tracked += subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        capture_output=True, text=True,
+    ).stdout.split()
+
+    n_text = 0
+    n_code = 0
+    for f in tracked:
+        if any(x in f for x in _ENT_SURFACES_EXCL):
+            continue
+        in_text = any(f.startswith(x) or f == x for x in _ENT_SURFACES)
+        in_code = f.endswith(".go") and any(f.startswith(x) for x in _ENT_CODE_PATHS)
+        if not in_text and not in_code:
+            continue
+        try:
+            lines = open(f, encoding="utf-8", errors="ignore").read().splitlines()
+        except OSError:
+            continue
+
+        if in_text:
+            n_text += 1
+            muted = False
+            muted_since = 0
+            for i, line in enumerate(lines, 1):
+                if _ENT_OFF_RE.search(line):
+                    muted, muted_since = True, i
+                    continue
+                if _ENT_ON_RE.search(line):
+                    muted = False
+                    continue
+                if muted:
+                    continue
+                if not _ENT_WORD_RE.search(line):
+                    continue
+                if _ENT_LINE_OK_RE.search(line):
+                    continue
+                if not (_ENT_TIER_RE.search(line) or _ENT_TABLE_CELL_RE.search(line)):
+                    continue
+                err(
+                    f"{f}:{i}: Enterprise-Tarifzusage auf einer kundenwirksamen "
+                    f"Fläche — den Tier gibt es seit 2026-08-08 nicht mehr, und "
+                    f"er war nie ausstellbar (docs/marketing/preise.md §1)"
+                )
+            if muted:
+                err(
+                    f"{f}:{muted_since}: 'enterprise-gate:aus' wurde nie wieder "
+                    f"eingeschaltet — der Rest der Datei ist ungeprüft. "
+                    f"'enterprise-gate:an' ans Ende des Blocks setzen."
+                )
+
+        if in_code:
+            n_code += 1
+            for i, raw in enumerate(lines, 1):
+                line = _GO_LINE_COMMENT_RE.sub("", raw)
+                if _ENT_IDENT_RE.search(line):
+                    err(
+                        f"{f}:{i}: EnterpriseTier/IsEnterprise ist am 2026-08-08 "
+                        f"entfernt worden — ein Tier, den kein Signierpfad "
+                        f"ausstellt, verkauft 402er (features.UnsoldFeatures)"
+                    )
+                if f.endswith("_test.go"):
+                    continue
+                if _ENT_LITERAL_RE.search(line):
+                    err(
+                        f"{f}:{i}: Tier-Literal \"enterprise\" im Produktivcode — "
+                        f"license.sellableTiers kennt nur community und pro, "
+                        f"ein solcher Schlüssel fällt auf community zurück"
+                    )
+    return n_text, n_code
+
+
 _TYPO_EXCL = (
     "docs/stories/",
     "docs/sprints/",
@@ -784,11 +974,21 @@ def main() -> int:
     check_prices()
     check_price_catalog()
     n_tax = check_price_tax_marking()
+    n_ent_text, n_ent_code = check_enterprise_tier()
     check_typos()
     check_compose_parity()
     # Nenner ausweisen: Ein Gate, das still nichts geprueft hat, meldet sonst Erfolg
     # fuer Arbeit, die es nicht getan hat.
     print(f"  Preis-Steuerkennzeichnung: {n_tax} Datei(en) mit Vakt-Preisen geprüft")
+    print(f"  Enterprise-Tier: {n_ent_text} kundenwirksame Datei(en) + "
+          f"{n_ent_code} Lizenz-/Billing-Go-Datei(en) geprüft")
+    if n_ent_text == 0 or n_ent_code == 0:
+        # Gleiche Klasse wie der Nenner unten: ein leerer Nenner ist ein
+        # Werkzeugfehler, kein sauberes Repo. Ohne diesen Guard meldet das Gate
+        # Erfolg fuer Arbeit, die es nicht getan hat.
+        print(f"  ❌ Enterprise-Gate hat nichts geprüft (Text={n_ent_text}, "
+              f"Code={n_ent_code}) — Flächenliste oder git ls-files kaputt.")
+        return 2
     if n_tax == 0:
         # G-07: Ein leerer Nenner ist ein Werkzeugfehler, kein sauberes Repo.
         # Als blosse Warnung mit exit 0 meldet das Gate Erfolg fuer Arbeit, die es

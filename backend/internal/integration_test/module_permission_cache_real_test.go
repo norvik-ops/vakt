@@ -38,7 +38,7 @@ func TestModulePermissionCache(t *testing.T) {
 	defer cancel()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		imagePostgres,
 		postgres.WithDatabase("vakt_test"),
 		postgres.WithUsername("vakt"),
 		postgres.WithPassword("vakt"),
@@ -56,7 +56,7 @@ func TestModulePermissionCache(t *testing.T) {
 
 	redisC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        "redis:7-alpine",
+			Image:        imageRedis,
 			ExposedPorts: []string{"6379/tcp"},
 			WaitingFor:   wait.ForListeningPort("6379/tcp").WithStartupTimeout(60 * time.Second),
 		},

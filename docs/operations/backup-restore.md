@@ -29,8 +29,12 @@ Vakt liefert fertige Backup-Skripte in `scripts/`:
 cd /opt/vakt
 ./scripts/backup.sh /backups/vakt
 
-# Backup verifizieren (ohne DB-Eingriff)
-./scripts/backup-verify.sh /backups/vakt/vakt-backup-2026-05-24_020000.tar.gz
+# Backup verifizieren (ohne DB-Eingriff).
+# Passphrase PFLICHT — backup.sh verschlüsselt den Dump immer; ohne sie kann die
+# Dump-Integrität nicht geprüft werden und das Skript endet mit exit 1, statt
+# "verification passed" zu behaupten.
+VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key \
+  ./scripts/backup-verify.sh /backups/vakt/vakt-backup-2026-05-24_020000.tar.gz
 
 # Restore durchführen
 ./scripts/restore.sh /backups/vakt/vakt-backup-2026-05-24_020000.tar.gz
@@ -158,11 +162,22 @@ Reihenfolge bei einer vollständigen Wiederherstellung:
 ## Geplantes Backup (Cron)
 
 ```cron
-# Täglich um 02:00 Uhr (als root oder deploy-Nutzer)
-0 2 * * * cd /opt/vakt && ./scripts/backup.sh /backups/vakt >> /var/log/vakt-backup.log 2>&1
+# Täglich um 02:00 Uhr (als root oder deploy-Nutzer).
+# VAKT_BACKUP_PASSPHRASE_FILE ist auch HIER PFLICHT, nicht nur bei der
+# Verifikation unten: backup.sh verschlüsselt den Dump immer und fällt nur unter
+# `[ -t 0 ]` auf die interaktive Abfrage zurück. Ein Cronjob hat kein Terminal —
+# ohne die Zuweisung endet dieser Job mit exit 1 ("No passphrase provided"), und
+# zwar jede Nacht, still im Logfile. Die Datei vorher mit `chmod 600` anlegen.
+0 2 * * * cd /opt/vakt && VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key ./scripts/backup.sh /backups/vakt >> /var/log/vakt-backup.log 2>&1
 
-# Wöchentliche Verifikation des letzten Backups (Sonntag 03:00)
-0 3 * * 0 cd /opt/vakt && ./scripts/backup-verify.sh $(ls -t /backups/vakt/vakt-backup-*.tar.gz | head -1) >> /var/log/vakt-backup-verify.log 2>&1
+# Wöchentliche Verifikation des letzten Backups (Sonntag 03:00).
+# VAKT_BACKUP_PASSPHRASE_FILE ist PFLICHT: backup.sh verschlüsselt den Dump immer,
+# und backup-verify.sh endet ohne Passphrase mit exit 1, statt die Dump-Prüfung
+# stillschweigend zu überspringen und trotzdem "verification passed" zu melden.
+# Ohne die Zuweisung läuft dieser Job jeden Sonntag ins Leere. Das `%` ist in
+# crontab ein Zeilenumbruch und MUSS escaped werden — hier kommt keins vor, aber
+# beim Umbauen daran denken.
+0 3 * * 0 cd /opt/vakt && VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key ./scripts/backup-verify.sh $(ls -t /backups/vakt/vakt-backup-*.tar.gz | head -1) >> /var/log/vakt-backup-verify.log 2>&1
 
 # Alte Backups nach 30 Tagen löschen
 0 4 * * * find /backups/vakt -name "vakt-backup-*.tar.gz" -mtime +30 -delete

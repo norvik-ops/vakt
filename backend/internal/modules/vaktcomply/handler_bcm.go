@@ -37,6 +37,9 @@ func (h *Handler) CreateBCPPlan(c echo.Context) error {
 	}
 	plan, err := h.service.BCM.CreateBCPPlan(c.Request().Context(), orgID(c), in)
 	if err != nil {
+		if isBCPPlanInputError(err) {
+			return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": "VALIDATION_ERROR"})
+		}
 		log.Error().Err(err).Msg("create bcp plan")
 		return errResp(c, http.StatusInternalServerError, "failed to create BCP plan", "CK_CREATE_BCP_PLAN_FAILED")
 	}
@@ -65,10 +68,25 @@ func (h *Handler) UpdateBCPPlan(c echo.Context) error {
 	}
 	plan, err := h.service.BCM.UpdateBCPPlan(c.Request().Context(), orgID(c), id, in)
 	if err != nil {
+		if isBCPPlanInputError(err) {
+			return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": "VALIDATION_ERROR"})
+		}
 		log.Error().Err(err).Str("plan_id", id).Msg("update bcp plan")
 		return errResp(c, http.StatusInternalServerError, "failed to update BCP plan", "CK_UPDATE_BCP_PLAN_FAILED")
 	}
 	return c.JSON(http.StatusOK, plan)
+}
+
+// isBCPPlanInputError trennt Eingabefehler (422, mit Grund im Body) von
+// Serverfehlern (500). ESK-12: `errors.Is`, weil validateBCPPlanTargets die
+// Sentinels mit dem verletzenden Wert umhuellt — ein `==`-Vergleich wie bei den
+// aelteren BIA-Zweigen daneben faellt bei umhuellten Fehlern still auf 500
+// zurueck, und ein 500 sagt dem Aufrufer nicht, welches Feld er korrigieren muss.
+func isBCPPlanInputError(err error) bool {
+	return errors.Is(err, bcm.ErrRTOOutOfRange) ||
+		errors.Is(err, bcm.ErrRPOOutOfRange) ||
+		errors.Is(err, bcm.ErrSchutzbedarfsklasseInvalid) ||
+		errors.Is(err, bcm.ErrRPOExceedsRTO)
 }
 
 // DeleteBCPPlan handles DELETE /api/v1/vaktcomply/bcp/plans/:id.

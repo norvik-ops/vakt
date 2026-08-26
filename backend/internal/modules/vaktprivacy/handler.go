@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -15,7 +16,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/artifact"
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/matharnica/vakt/internal/shared/safego"
@@ -447,13 +450,11 @@ func (h *Handler) MarkAuthorityNotified(c echo.Context) error {
 func (h *Handler) ExportVVT(c echo.Context) error {
 	ctx := c.Request().Context()
 	filename := fmt.Sprintf("vvt-export-%s.pdf", time.Now().Format("2006-01-02"))
-	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
-	c.Response().Header().Set("Content-Type", "application/pdf")
-	c.Response().WriteHeader(http.StatusOK)
-
-	if err := h.service.GenerateVVTPDF(ctx, orgID(c), c.Response().Writer); err != nil {
+	if err := artifact.Stream(c, "application/pdf", filename, func(w io.Writer) error {
+		return h.service.GenerateVVTPDF(ctx, orgID(c), w)
+	}); err != nil {
 		log.Error().Err(err).Msg("vvt pdf export failed")
-		return nil
+		return errResp(c, http.StatusInternalServerError, "failed to export VVT PDF", "PO_EXPORT_VVT_FAILED")
 	}
 	return nil
 }
@@ -463,13 +464,11 @@ func (h *Handler) ExportVVT(c echo.Context) error {
 func (h *Handler) ExportDPIA(c echo.Context) error {
 	ctx := c.Request().Context()
 	filename := fmt.Sprintf("dpia-export-%s.pdf", time.Now().Format("2006-01-02"))
-	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
-	c.Response().Header().Set("Content-Type", "application/pdf")
-	c.Response().WriteHeader(http.StatusOK)
-
-	if err := h.service.GenerateDPIAPDF(ctx, orgID(c), c.Response().Writer); err != nil {
+	if err := artifact.Stream(c, "application/pdf", filename, func(w io.Writer) error {
+		return h.service.GenerateDPIAPDF(ctx, orgID(c), w)
+	}); err != nil {
 		log.Error().Err(err).Msg("dpia pdf export failed")
-		return nil
+		return errResp(c, http.StatusInternalServerError, "failed to export DPIA PDF", "PO_EXPORT_DPIA_FAILED")
 	}
 	return nil
 }
@@ -544,6 +543,14 @@ func (h *Handler) UpdateDSR(c echo.Context) error {
 	}
 	dsr, err := h.service.UpdateDSR(c.Request().Context(), orgID(c), c.Param("id"), in)
 	if err != nil {
+		if errors.Is(err, ErrErasureNotExecuted) {
+			return errResp(c, http.StatusConflict,
+				"Eine Löschanfrage kann erst als erledigt geschlossen werden, wenn die Löschung nach Art. 17 DSGVO ausgeführt wurde.",
+				"PO_ERASURE_NOT_EXECUTED")
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errResp(c, http.StatusNotFound, "DSR not found", "PO_DSR_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("update dsr")
 		return errResp(c, http.StatusInternalServerError, "failed to update DSR", "PO_UPDATE_DSR_FAILED")
 	}
@@ -570,34 +577,36 @@ func (h *Handler) ExportDSRsCSV(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "failed to export DSRs", "PO_EXPORT_DSR_FAILED")
 	}
 
-	c.Response().Header().Set("Content-Type", "text/csv")
-	c.Response().Header().Set("Content-Disposition", `attachment; filename="dsr-export.csv"`)
-	c.Response().WriteHeader(http.StatusOK)
-
-	w := csv.NewWriter(c.Response().Writer)
-	_ = w.Write([]string{"id", "type", "requester_name", "requester_email", "status", "received_at", "due_date", "completed_at"})
-	for _, d := range dsrs {
-		dueDate := ""
-		if d.DueDate != nil {
-			dueDate = *d.DueDate
+	return artifact.Stream(c, "text/csv", "dsr-export.csv", func(out io.Writer) error {
+		w := csv.NewWriter(out)
+		if err := w.Write([]string{"id", "type", "requester_name", "requester_email", "status", "received_at", "due_date", "completed_at"}); err != nil {
+			return err
 		}
-		completedAt := ""
-		if d.CompletedAt != nil {
-			completedAt = d.CompletedAt.Format(time.RFC3339)
+		for _, d := range dsrs {
+			dueDate := ""
+			if d.DueDate != nil {
+				dueDate = *d.DueDate
+			}
+			completedAt := ""
+			if d.CompletedAt != nil {
+				completedAt = d.CompletedAt.Format(time.RFC3339)
+			}
+			if err := w.Write(csvsafe.Row([]string{
+				d.ID,
+				d.Type,
+				d.RequesterName,
+				d.RequesterEmail,
+				d.Status,
+				d.ReceivedAt.Format(time.RFC3339),
+				dueDate,
+				completedAt,
+			})); err != nil {
+				return err
+			}
 		}
-		_ = w.Write([]string{
-			d.ID,
-			d.Type,
-			d.RequesterName,
-			d.RequesterEmail,
-			d.Status,
-			d.ReceivedAt.Format(time.RFC3339),
-			dueDate,
-			completedAt,
-		})
-	}
-	w.Flush()
-	return nil
+		w.Flush()
+		return w.Error()
+	})
 }
 
 // ── DSR enhanced endpoints (S68-2) ─────────────────────────────────────────
@@ -614,6 +623,16 @@ func (h *Handler) ResolveDSR(c echo.Context) error {
 	uid, _ := c.Get("user_id").(string)
 	dsr, err := h.service.ResolveDSR(c.Request().Context(), orgID(c), c.Param("id"), uid, in)
 	if err != nil {
+		// Art. 17 DSGVO: closing an erasure request as fulfilled while the
+		// erasure has not run is a state conflict, not a malformed request.
+		if errors.Is(err, ErrErasureNotExecuted) {
+			return errResp(c, http.StatusConflict,
+				"Eine Löschanfrage kann erst als erledigt geschlossen werden, wenn die Löschung nach Art. 17 DSGVO ausgeführt wurde.",
+				"PO_ERASURE_NOT_EXECUTED")
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errResp(c, http.StatusNotFound, "DSR not found", "PO_DSR_NOT_FOUND")
+		}
 		log.Error().Err(err).Msg("resolve dsr")
 		return errResp(c, http.StatusBadRequest, err.Error(), "PO_RESOLVE_DSR_FAILED")
 	}
@@ -774,21 +793,19 @@ func (h *Handler) ListRetentionTemplates(c echo.Context) error {
 }
 
 // ExportBreachNotification handles GET /api/v1/vaktprivacy/breaches/:id/notification-pdf.
-// Streams the Art. 33 DSGVO authority notification letter as a PDF blob directly to
-// the response writer. The Content-Disposition header triggers a browser download.
-// If PDF generation fails after headers are sent, the error is logged but not surfaced
-// to the client (the connection is already committed at that point).
+// Renders the Art. 33 DSGVO authority notification letter as a PDF. The PDF is
+// built fully in memory first (artifact.Stream), so a generation failure returns
+// a real 500 instead of an empty "200 application/pdf" (R1-20-A3). The
+// Content-Disposition header triggers a browser download.
 func (h *Handler) ExportBreachNotification(c echo.Context) error {
 	ctx := c.Request().Context()
 	id := c.Param("id")
 	filename := fmt.Sprintf("breach-notification-%s.pdf", time.Now().Format("2006-01-02"))
-	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
-	c.Response().Header().Set("Content-Type", "application/pdf")
-	c.Response().WriteHeader(http.StatusOK)
-
-	if err := h.service.GenerateBreachNotificationPDF(ctx, orgID(c), id, c.Response().Writer); err != nil {
+	if err := artifact.Stream(c, "application/pdf", filename, func(w io.Writer) error {
+		return h.service.GenerateBreachNotificationPDF(ctx, orgID(c), id, w)
+	}); err != nil {
 		log.Error().Err(err).Msg("breach notification pdf export failed")
-		return nil
+		return errResp(c, http.StatusInternalServerError, "failed to export breach notification PDF", "PO_EXPORT_BREACH_PDF_FAILED")
 	}
 	return nil
 }

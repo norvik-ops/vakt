@@ -20,7 +20,7 @@ es werden niemals Daten anderer Organisationen ausgeleitet.
 
 | Datei | Inhalt | Modul |
 |-------|--------|-------|
-| `meta.json` | Export-Datum, Org-ID/-Name, Vakt-Version | — |
+| `meta.json` | Export-Datum, Org-ID/-Name, Vakt-Version, Format-Version | — |
 | `frameworks.json`, `controls.json`, `evidence.json`, `risks.json`, `incidents.json`, `policies.json`, `capas.json`, `tasks.json`, `comments.json` | Compliance-Daten | Vakt Comply |
 | `vvt.json`, `dpias.json`, `avv.json`, `breaches.json` | DSGVO-Dokumentation | Vakt Privacy |
 | `hr_employees.json`, `hr_checklist_runs.json`, `hr_contractors.json`, `hr_mover_events.json` | Mitarbeiterverzeichnis + Lifecycle (enthält PII) | Vakt HR |
@@ -31,6 +31,55 @@ es werden niemals Daten anderer Organisationen ausgeleitet.
 
 **Modul-Abhängigkeit:** HR-Dateien erscheinen nur, wenn `vakthr` in
 `VAKT_MODULES_ENABLED` aktiv ist; Aware-Dateien nur bei aktivem `vaktaware`.
+
+## Format-Version
+
+`meta.json` nennt zwei Versionen. `vakt_version` ist die Vakt-Version, die das
+Archiv erzeugt hat — sie stammt aus der laufenden Instanz und sagt beim
+Zurückspielen, gegen welchen Stand das Schema passt. `format_version` beschreibt
+die Darstellung der Werte in den JSON-Dateien:
+
+| `format_version` | Stand | Darstellung |
+|---|---|---|
+| *(fehlt)* bzw. `1` | bis einschließlich v0.42.x | `uuid` als 16-Zahlen-Array, `bytea` als Base64, `date` als Mitternachts-Zeitstempel |
+| `2` | ab v0.42.50 | `uuid` als Zeichenkette, `bytea` als PostgreSQL-Hex-Literal, `date` als `JJJJ-MM-TT` |
+
+**Ein Archiv ohne `format_version` ist ein Archiv der Version 1.** In Version 1
+stand jeder Fremdschlüssel als Liste von 16 Zahlen in der Datei
+(`"framework_id": [238,190,84,224,…]`), sodass sich die Beziehungen zwischen den
+Dateien mit Standardwerkzeugen nicht auflösen ließen. Wer ein altes Archiv
+weiterverarbeitet, muss diese Arrays selbst in UUIDs zurückrechnen (16 Bytes,
+Big-Endian, Gruppierung 8-4-4-4-12); ein neuer Export derselben Organisation ist
+der einfachere Weg.
+
+## Darstellung der Spaltentypen
+
+Der Export liest die Tabellen generisch (`SELECT *`), damit neue Spalten ohne
+Codeänderung mitkommen. Die Werte werden dabei anhand des PostgreSQL-Spaltentyps
+in eine Form gebracht, die JSON verlustfrei trägt:
+
+| PostgreSQL-Typ | JSON | Beispiel |
+|---|---|---|
+| `uuid`, `uuid[]` | Zeichenkette | `"eebe54e0-1111-2222-3333-444455556666"` |
+| `timestamptz`, `timestamp` | RFC3339, in UTC | `"2026-08-07T04:35:13Z"` |
+| `date` | Kalendertag ohne Uhrzeit | `"2026-11-03"` |
+| `bytea` | PostgreSQL-Hex-Literal | `"\\x00ff41"` |
+| `text`, `varchar`, `text[]` | Zeichenkette bzw. Array | `"offen"`, `["a","b"]` |
+| `bool`, `int2`/`int4`/`int8`, `numeric`, `float8` | native JSON-Typen | `true`, `42`, `1.5` |
+| `json`, `jsonb` | eingebettetes JSON-Objekt | `{"a":1}` |
+| NULL | `null` | `null` |
+
+`date` bewusst ohne Uhrzeit: Ein `"2026-11-03T00:00:00Z"` verschiebt sich beim
+Einlesen in einer anderen Zeitzone um einen Tag. `bytea` bewusst als
+Hex-Literal statt Base64: Der Wert ist so direkt wieder in PostgreSQL
+einfügbar — der Export ist auch ein Migrationsweg.
+
+Die Typen `interval` und `time` kommen in keiner exportierten Tabelle vor und
+werden deshalb nicht abgebildet. Ein Test (`TestDataExport_NoUnrenderableColumnTypes`)
+prüft bei jedem Lauf alle Spalten aller exportierten Tabellen gegen die Liste der
+abgedeckten Typen und schlägt fehl, sobald eine Migration einen nicht abgedeckten
+Typ hinzufügt — das Archiv kann also nicht stillschweigend unbrauchbare Werte
+bekommen.
 
 ## §87 BetrVG / Betriebsrat — Pseudonymisierung der Awareness-Ergebnisse
 

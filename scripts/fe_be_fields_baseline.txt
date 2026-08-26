@@ -1,0 +1,99 @@
+# FE↔BE field-name findings that are NOT (or are not yet confirmed as) defects.
+# K5-17 / G15 — see scripts/check_fe_be_fields.py for the whole argument.
+# Regenerate:  python3 scripts/check_fe_be_fields.py --update-baseline
+#
+# ONE LINE PER TOLERATED FINDING:  path/to/decl.ts::Type.field  # <tag>: <why>
+# The declaring file is part of the key: 25 type names in this tree are declared
+# more than once, and every declaration is checked, so a bare `Type.field` line
+# would silence a second declaration nobody wrote a reason about.
+# This list may only ever get SHORTER. A line whose finding no longer reproduces
+# fails the gate, so an improvement cannot be made without being recorded.
+#
+# Every reason MUST start with one of:
+#   mispair:  the namesake Go struct is a DIFFERENT type than the endpoint returns
+#   fe-only:  a view model / hook wrapper that never crosses the wire
+#   renamed:  the concept exists in Go under another name, the hook maps it
+#   request:  a request-body field bound off a different input struct
+#   carried:  NOT UNDERSTOOD — a live candidate of the very class this gate
+#             exists for. Reported as `unverified:` on every run. This is debt.
+#
+# ── The thirteen cloud/identity integration configs ─────────────────────────
+# One FE type per provider covers BOTH directions of the integration endpoint:
+# the PUT body (credentials — the Go *Config struct, which has no is_configured)
+# and the GET response (the Go *Status struct, cloud/models.go, thirteen of which
+# do carry `json:"is_configured"`). The type name pairs with the request struct,
+# the field comes from the status struct. Verified: is_configured occurs 13× in
+# backend/internal/shared/platform/integrations/cloud/models.go.
+frontend/src/hooks/useCloud.ts::AWSConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::AzureConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::EntraIDConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::GitLabConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::HetznerConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::IONOSConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::IntuneConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::KeycloakConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::LDAPConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::PersonioConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::PrometheusConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::SonarQubeConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+frontend/src/hooks/useCloud.ts::WazuhConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
+#
+# ── Verified mispairings ────────────────────────────────────────────────────
+frontend/src/modules/vaktaware/types.ts::Assignment.assigned_at  # mispair: the list response is vaktaware.AssignmentDetail (models.go:284), which does emit assigned_at
+frontend/src/modules/vaktaware/types.ts::Assignment.completed_at  # mispair: the list response is vaktaware.AssignmentDetail, which does emit completed_at
+frontend/src/modules/vaktaware/types.ts::Assignment.score  # mispair: the list response is vaktaware.AssignmentDetail, which does emit score
+frontend/src/modules/vaktaware/types.ts::Assignment.status  # mispair: the list response is vaktaware.AssignmentDetail, which does emit status
+frontend/src/modules/vaktaware/types.ts::Assignment.user_email  # mispair: the list response is vaktaware.AssignmentDetail, which does emit user_email
+frontend/src/modules/settings/pages/AccountSettingsPage.tsx::SetupResponse.secret  # mispair: name collides with shared/setup.SetupResponse (first-run setup); this is the TOTP enrol response
+frontend/src/modules/settings/pages/AccountSettingsPage.tsx::SetupResponse.uri  # mispair: name collides with shared/setup.SetupResponse (first-run setup); this is the TOTP enrol response
+frontend/src/hooks/useTeam.ts::TeamMember.created_at  # mispair: shared/comments.TeamMember is the @-mention picker shape (id/name/email); this is the settings team list
+frontend/src/hooks/useTeam.ts::TeamMember.platform_role  # mispair: shared/comments.TeamMember is the @-mention picker shape (id/name/email); this is the settings team list from GET /admin/users, served by usermgmt.UserWithRole, which DOES emit platform_role (models.go:25)
+frontend/src/hooks/useTeam.ts::TeamMember.role  # mispair: shared/comments.TeamMember is the @-mention picker shape (id/name/email); this is the settings team list
+#
+# ── Frontend-side shapes that never cross the wire ──────────────────────────
+frontend/src/modules/vaktcomply/hooks/useDORADashboard.ts::DORADashboardResult.notEnabled  # fe-only: hook wrapper — fetchDORADashboard sets it from a 404, there is no server field
+frontend/src/modules/vaktcomply/hooks/useNIS2Reporting.ts::NIS2SubmitStagePayload.input  # fe-only: mutation-argument wrapper; only `input` is serialised, `stage` goes into the path
+#
+# ── carried: UNVERIFIED candidates of this very defect class ────────────────
+# What the gate found on its FIRST run over the repaired baseline. Nine of these
+# are named in KONV-K5 §4.6 as candidates the finding pass explicitly did NOT
+# follow up ("plausibel abgetan, nicht bewiesen"); the rest the gate surfaced on
+# its own. They are carried, not cleared — fixing them is a scoping decision, and
+# claiming they were checked would be the exact lie this gate exists to prevent.
+frontend/src/modules/vaktcomply/hooks/useAIAdvisor.ts::AIStatus.provider_host  # carried: orphan — no Go struct, spec key or column has provider_host; needs a live GET /ai/status
+frontend/src/modules/vakthr/types.ts::AccessConcept.roles  # carried: vakthr.AccessConcept emits no roles; may arrive from a separate endpoint
+frontend/src/modules/vaktcomply/types.ts::Assessment.share_url  # carried: vaktcomply.Assessment emits no share_url; may come from the share-link endpoint
+frontend/src/modules/vaktaware/types.ts::Assignment.module_title  # carried: neither Assignment nor AssignmentDetail emits module_title
+frontend/src/modules/vaktcomply/types.ts::AuditorLink.access_count  # carried: KONV-K5 §4.6 candidate — Go AuditorLink emits used_count
+frontend/src/modules/vaktcomply/types.ts::AuditorLink.label  # carried: KONV-K5 §4.6 candidate — Go AuditorLink emits description
+frontend/src/modules/vaktcomply/types.ts::AuditorLink.last_accessed_at  # carried: KONV-K5 §4.6 candidate — not emitted by Go AuditorLink
+frontend/src/modules/vaktcomply/types.ts::AuditorLink.revoked_at  # carried: KONV-K5 §4.6 candidate — not emitted by Go AuditorLink
+frontend/src/modules/vaktcomply/types.ts::BCMCriterion.description  # carried: bcm.BCMCriterion emits key/met/points only
+frontend/src/modules/vaktcomply/types.ts::BCMReadinessScore.computed_at  # carried: bcm.BCMReadinessScore emits criteria/score only
+frontend/src/modules/vaktcomply/types.ts::BSICockpit.org_id  # carried: the BSI cockpit response emits no org_id
+frontend/src/modules/vaktcomply/types.ts::BSIReportExport.created_at  # carried: Go BSIReportExport emits generated_at
+frontend/src/modules/vaktcomply/types.ts::BSIThreat.threat_id  # carried: Go BSIThreat emits id
+frontend/src/modules/vaktcomply/pages/ISO27001ChecklistPage.tsx::Control.module  # carried: KONV-K5 §4.6 candidate — policy.Control has no module field
+frontend/src/modules/vaktcomply/types.ts::CreateBCPTestInput.plan_id  # carried: Go CreateBCPTestInput binds no plan_id; needs a live check of the create path
+frontend/src/modules/vaktcomply/types.ts::CreateProtectionNeedInput.availability  # carried: KONV-K5 §4.6 candidate — Go input binds name/object_name/object_type
+frontend/src/modules/vaktcomply/types.ts::CreateProtectionNeedInput.confidentiality  # carried: KONV-K5 §4.6 candidate — Go input binds name/object_name/object_type
+frontend/src/modules/vaktcomply/types.ts::CreateProtectionNeedInput.integrity  # carried: KONV-K5 §4.6 candidate — Go input binds name/object_name/object_type
+frontend/src/hooks/useTeam.ts::CreateUserResult.email  # carried: admin.CreateUserResult emits user_id only
+frontend/src/hooks/useTeam.ts::CreateUserResult.role  # carried: admin.CreateUserResult emits user_id only
+frontend/src/modules/vaktcomply/types.ts::Evidence.notes  # carried: KONV-K5 §4.6 candidate — policy.Evidence emits description, not notes
+frontend/src/modules/vaktcomply/types.ts::Evidence.type  # carried: KONV-K5 §4.6 candidate — policy.Evidence emits source, not type
+frontend/src/modules/vaktcomply/components/ExpiringEvidenceWidget.tsx::EvidenceItem.control_id  # carried: Go EvidenceItem emits id/title/description/source/created_at
+frontend/src/modules/vaktcomply/components/ExpiringEvidenceWidget.tsx::EvidenceItem.expires_at  # carried: Go EvidenceItem emits no expires_at, although the widget is about expiry
+frontend/src/modules/vaktscan/types.ts::Finding.asset_name  # carried: KONV-K5 §4.6 candidate — vaktscan.Finding emits asset_id, not asset_name
+frontend/src/modules/vaktscan/types.ts::Finding.notes  # carried: KONV-K5 §4.6 candidate — vaktscan.Finding emits justification, not notes
+frontend/src/modules/vaktcomply/types.ts::ISMSScopeExclusion.item  # carried: orphan — nothing named `item` in any struct, spec key or column
+frontend/src/modules/vaktcomply/types.ts::ImplementationStep.blocking_prereqs  # carried: Go emits blocking_prerequisites, spelled out
+frontend/src/modules/settings/pages/Settings.tsx::NotificationChannel.enabled  # carried: KONV-K5 §4.6 candidate — notify.NotificationChannel emits is_active
+frontend/src/modules/settings/pages/Settings.tsx::NotificationChannel.type  # carried: KONV-K5 §4.6 candidate — notify.NotificationChannel emits channel
+frontend/src/modules/settings/pages/Settings.tsx::OrgOIDCConfig.configured  # carried: Go OrgOIDCConfig emits enabled
+frontend/src/modules/vaktcomply/types.ts::PrereqRef.framework  # carried: KONV-K5 §4.6 candidate — Go PrereqRef emits framework_name/framework_id/framework_active
+frontend/src/modules/vaktcomply/types.ts::ResilienceTestsResponse.tests  # carried: orphan — `tests` is no json tag anywhere; the response may be a bare array
+frontend/src/modules/vaktaware/types.ts::TrainingModule.description  # carried: vaktaware.TrainingModule emits no description
+frontend/src/modules/vaktcomply/types.ts::UpdateProtectionNeedInput.status  # carried: Go UpdateProtectionNeedInput binds availability/confidentiality/integrity only
+frontend/src/hooks/useWebhooks.ts::Webhook.secret  # carried: KONV-K5 §4.6 candidate — webhooks.Webhook emits has_secret, never the secret itself
+frontend/src/hooks/useWebhooks.ts::Webhook.updated_at  # carried: KONV-K5 §4.6 candidate — webhooks.Webhook emits created_at only

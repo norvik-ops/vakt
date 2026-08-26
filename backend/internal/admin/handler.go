@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
 	"github.com/matharnica/vakt/internal/shared/notify"
 )
@@ -73,7 +74,7 @@ func (h *Handler) ListAuditLogs(c echo.Context) error {
 				derefString(l.IPAddress),
 				l.Timestamp.String(),
 			}
-			if err := w.Write(row); err != nil {
+			if err := w.Write(csvsafe.Row(row)); err != nil {
 				return err
 			}
 		}

@@ -19,11 +19,59 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 // `npm run api-types` — Drift wird in CI via `npm run api-types:check`
 // detektiert (siehe ADR-0017).
 import type { components } from '../api/generated'
+import type { ApiRequest } from '../api/contract'
 
 type LoginResponse = components['schemas']['LoginResponse']
 type HealthResponse = components['schemas']['HealthResponse']
 
 type DemoRole = { label: string; role: 'admin' | 'analyst' }
+
+/**
+ * Backup codes as auth.GenerateBackupCodes() issues them: two groups of four
+ * uppercase hex digits joined by a dash (`hex1 + "-" + hex2`, backend/internal/
+ * auth/totp.go:52-54). The dash is accepted optionally here because people
+ * retype these from paper; everything else about the string is the secret.
+ */
+const BACKUP_CODE_RE = /^[0-9A-F]{4}-?[0-9A-F]{4}$/
+
+/**
+ * R1-14cA-03 — build the /auth/2fa/login-verify body for whatever the user
+ * typed into the second-factor field.
+ *
+ * The page used to send `{mfa_token, code}` unconditionally. The backend takes
+ * EITHER `code` (a TOTP, validated against the shared secret) OR `backup_code`
+ * (bcrypt-compared against the stored hashes) — see totp_handler.go:365-379 and
+ * validateSecondFactor at :437. A backup code arriving in `code` therefore went
+ * down the TOTP branch, failed ValidateTOTP and came back 422, every time.
+ *
+ * That made the backup codes unredeemable in exactly the situation they exist
+ * for: the account settings page hands them out with the words "falls Sie
+ * keinen Zugriff auf Ihre Authenticator-App haben". Whoever lost their device
+ * was locked out. The documented fallback /auth/2fa/recovery is no way around
+ * it either — it needs a full session, and at this point in the login there is
+ * only an mfa_pending token.
+ *
+ * The two formats do not overlap: a TOTP is six digits, a backup code is eight
+ * hex characters. Nothing here has to be guessed from context, so the user is
+ * not asked to declare which kind of code they are holding.
+ *
+ * bcrypt compares the raw bytes, so the dash and the upper case travel with the
+ * value rather than being normalised away for display.
+ */
+export function secondFactorBody(
+  mfaToken: string,
+  typed: string,
+): ApiRequest<'/auth/2fa/login-verify', 'post'> {
+  const value = typed.trim()
+  const candidate = value.toUpperCase()
+  if (BACKUP_CODE_RE.test(candidate)) {
+    const backupCode = candidate.includes('-')
+      ? candidate
+      : `${candidate.slice(0, 4)}-${candidate.slice(4)}`
+    return { mfa_token: mfaToken, backup_code: backupCode }
+  }
+  return { mfa_token: mfaToken, code: value }
+}
 
 export default function Login() {
   const { t } = useTranslation()
@@ -143,7 +191,7 @@ export default function Login() {
     try {
       const data = await apiFetch<LoginResponse>('/auth/2fa/login-verify', {
         method: 'POST',
-        body: JSON.stringify({ mfa_token: mfaToken, code: mfaCode.trim() }),
+        body: JSON.stringify(secondFactorBody(mfaToken, mfaCode)),
       })
       finishLogin(data)
     } catch (err) {
@@ -181,18 +229,26 @@ export default function Login() {
                 <p className="text-sm text-secondary">{t('auth.mfaPrompt')}</p>
                 <div className="space-y-1">
                   <Label htmlFor="mfa-code">{t('auth.mfaCodeLabel')}</Label>
+                  {/* inputMode is "text", not "numeric": a backup code is hex
+                      with a dash and cannot be typed on a numeric keypad. */}
                   <Input
                     id="mfa-code"
                     type="text"
-                    inputMode="numeric"
+                    inputMode="text"
                     autoComplete="one-time-code"
+                    autoCapitalize="characters"
+                    spellCheck={false}
                     value={mfaCode}
                     onChange={(e) => { setMfaCode(e.target.value) }}
                     placeholder="123456"
                     required
                     autoFocus
                     aria-invalid={!!error}
+                    aria-describedby="mfa-code-hint"
                   />
+                  <p id="mfa-code-hint" className="text-xs text-secondary">
+                    {t('auth.mfaBackupHint')}
+                  </p>
                 </div>
                 {error && (
                   <p id="login-error" role="alert" className="text-sm text-red-600">{error}</p>

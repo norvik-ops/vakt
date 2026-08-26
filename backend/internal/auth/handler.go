@@ -4,8 +4,11 @@
 package auth
 
 import (
+	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +25,34 @@ import (
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
 )
+
+// AdminResetAuditEntry describes an admin-issued password-reset event for the
+// audit trail. It is a local type (not audit.WriteEntry) so the auth package
+// stays free of an import on internal/shared/audit — see adminResetAuditFn.
+type AdminResetAuditEntry struct {
+	OrgID        string
+	ActorUserID  string
+	TargetUserID string
+	TargetEmail  string
+	IP           string
+	Delivered    bool
+}
+
+// adminResetAuditFn records an audit entry for an admin-issued password reset.
+// It is a package-level injection seam because the auth package CANNOT import
+// internal/shared/audit directly: the audit package imports auth for its HTTP
+// route registration, so a direct import would form a cycle (auth ↔ audit).
+// The composition root (cmd/api), which imports both, wires this once at
+// startup via SetAdminResetAuditWriter, backed by audit.Write. Nil = no audit
+// sink (unit tests, or before wiring).
+var adminResetAuditFn func(ctx context.Context, e AdminResetAuditEntry)
+
+// SetAdminResetAuditWriter injects the audit sink for admin-issued password
+// resets. Call once at startup from the composition root. Safe to leave unset
+// (the reset still works; it is simply not recorded to the audit trail).
+func SetAdminResetAuditWriter(fn func(ctx context.Context, e AdminResetAuditEntry)) {
+	adminResetAuditFn = fn
+}
 
 // weakPasswordCode is the error code returned to clients when a password does
 // not satisfy the platform complexity requirements.
@@ -95,10 +126,38 @@ func (h *Handler) WithDB(db *pgxpool.Pool) *Handler {
 }
 
 // Logout handles POST /api/v1/auth/logout.
-// It reads the Paseto token from the Authorization header or the httpOnly
-// cookie, hashes it with SHA-256, and stores the hash in Redis with a TTL
-// equal to the remaining token lifetime so that AuthMiddleware can reject
-// the token even before it naturally expires.
+//
+// It ends BOTH halves of the session, not one:
+//
+//   - the access token (Paseto, 1 h) goes on the deny-list, so the auth
+//     middleware rejects it before it would expire on its own;
+//   - every refresh session of that user (30 days) is deleted from
+//     refresh_sessions and from Redis, and pw_version is bumped so the stateless
+//     access tokens already handed out die on the next request.
+//
+// R1-W6A-N1 — the second half used to be dead code. This route is mounted on the
+// PUBLIC auth group (cmd/api/routes.go: `api.Group("/auth", authRateLimiter)`)
+// and always has been, on purpose: an expired token must still be able to end
+// its own session. But the old handler took the subject from
+// c.Get("user_id") — which only auth middleware ever writes, and there is none
+// here. The value was therefore ALWAYS empty and RevokeAllSessions ran NEVER.
+// The 30-day refresh session survived every logout. Harmless for the browser
+// (the frontend never sees that token) and not harmless at all for anyone
+// holding it from the login response.
+//
+// The subject is now derived from the presented token itself
+// (ParseTokenSubjectForRevocation — authentic, expiry not required); the mount
+// is untouched. The context is still consulted first so that a future mount
+// behind auth middleware keeps working without a second change here.
+//
+// Rejected alternative: an "optional auth" middleware that fills in user_id when
+// the token validates and lets everything else through. It fails the case this
+// fix is for — the ordinary logout from an idle tab presents an EXPIRED access
+// token over a live refresh session, so the middleware would find nothing to
+// set and leave the long-lived session standing, exactly as before. Mounting the
+// route behind the real auth middleware was rejected for the reason the mount is
+// public in the first place: it would answer 401 to everyone whose token already
+// expired, i.e. deny logout to the people most in need of it.
 func (h *Handler) Logout(c echo.Context) error {
 	header := c.Request().Header.Get("Authorization")
 	const prefix = "Bearer "
@@ -118,22 +177,70 @@ func (h *Handler) Logout(c echo.Context) error {
 	}
 	tokenStr := header[len(prefix):]
 
-	if err := h.service.RevokeToken(c.Request().Context(), tokenStr); err != nil {
-		log.Error().Err(err).Msg("logout: revoke token failed")
-		// Still return 200 — the token will expire naturally.
+	// The local teardown happens on every exit path below, success or not: a
+	// browser that asked to leave should stop presenting the token even when the
+	// server could not revoke it. It is the least-harm half of the job, and the
+	// status code carries the rest of the truth.
+	//
+	// Set here rather than in a defer: SetCookie only adds a header, and headers
+	// are flushed by the first c.JSON — a deferred call would run after
+	// WriteHeader and silently drop both Set-Cookie lines.
+	h.clearSessionCookies(c)
+
+	// R1-W7A-N3: RevokeToken used to return a hard nil and this used to answer
+	// 200 regardless. A revocation that reached neither Redis nor the PG fallback
+	// left the token good for the rest of its hour while the user was told they
+	// were signed out.
+	revokeErr := h.service.RevokeToken(c.Request().Context(), tokenStr)
+	if revokeErr != nil {
+		log.Error().Err(revokeErr).Msg("logout: access-token revocation failed")
+	}
+
+	userID, _ := c.Get("user_id").(string)
+	if userID == "" {
+		subject, err := ParseTokenSubjectForRevocation(h.service.key, tokenStr)
+		if err != nil {
+			// Not a token this server minted (forged, truncated, or issued under a
+			// key that has since been rotated). There is no session to identify,
+			// so there is nothing further to revoke — and saying "logged out"
+			// would claim work that never happened. 4xx is also the honest signal
+			// for the client: the server looked at the token and did not accept
+			// it, which the frontend treats as a harmless already-dead session
+			// rather than an unconfirmed revocation.
+			log.Debug().Err(err).Msg("logout: token carries no usable subject")
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"error": "token not recognised — nothing to revoke",
+				"code":  "AUTH_INVALID_TOKEN",
+			})
+		}
+		userID = subject
 	}
 
 	// Revoke all refresh sessions so a stolen refresh token cannot be used
 	// after logout (AUTH-001: refresh sessions were not cleaned up on logout).
-	userID, _ := c.Get("user_id").(string)
-	if userID != "" {
-		if err := h.service.RevokeAllSessions(c.Request().Context(), userID); err != nil {
-			log.Warn().Err(err).Msg("logout: revoke sessions failed")
-			// non-fatal: access token is already revoked
-		}
+	sessionErr := h.service.RevokeAllSessions(c.Request().Context(), userID)
+	if sessionErr != nil {
+		log.Error().Err(sessionErr).Str("user_id", userID).Msg("logout: session revocation failed")
 	}
 
-	// Clear the httpOnly access token cookie.
+	if revokeErr != nil || sessionErr != nil {
+		// 5xx on purpose, and it is the contract the frontend already reads:
+		// TopBar.tsx treats >=500 (and a dropped connection) as "revocation
+		// unconfirmed" and warns the user that the session may still be open,
+		// while 4xx stays silent. A failed revocation belongs in the first
+		// bucket. The cookies are cleared by the deferred teardown all the same.
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{
+			"error": "the session could not be revoked on the server — it may still be valid",
+			"code":  "LOGOUT_REVOCATION_FAILED",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"status": "logged out"})
+}
+
+// clearSessionCookies expires the httpOnly access token cookie and the CSRF
+// cookie. Runs on every Logout exit path, including the failing ones.
+func (h *Handler) clearSessionCookies(c echo.Context) {
 	secure := CookieSecure(c)
 	c.SetCookie(&http.Cookie{ // nosemgrep: cookie-missing-secure -- Secure is set via variable; static analysis can't resolve it
 		Name:     "access_token",
@@ -145,8 +252,6 @@ func (h *Handler) Logout(c echo.Context) error {
 		MaxAge:   -1,
 	})
 	ClearCSRFCookie(c)
-
-	return c.JSON(http.StatusOK, map[string]string{"status": "logged out"})
 }
 
 // Register handles POST /api/v1/auth/register.
@@ -433,6 +538,16 @@ func (h *Handler) OIDCInitiate(c echo.Context) error {
 	if provider == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "provider required"})
 	}
+	// R1-07-B07-3: refuse a provider the callback cannot complete, here, before
+	// the user is sent to a foreign identity provider. Otherwise they sign in
+	// there and the request fails afterwards with 422 — at the one point in the
+	// flow where the user can do nothing about it.
+	if !isSupportedOIDCProvider(provider) {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
+			"error": "unsupported OIDC provider: " + provider + " (supported: " + strings.Join(OIDCProviders, ", ") + ")",
+			"code":  "AUTH_OIDC_PROVIDER_UNSUPPORTED",
+		})
+	}
 
 	raw := make([]byte, 16)
 	if _, err := rand.Read(raw); err != nil {
@@ -645,7 +760,51 @@ func (h *Handler) SAMLMetadata(c echo.Context) error {
 		})
 	}
 
+	// R1-07-B04: Casdoor answers its own controller envelope — HTTP 200 with a
+	// JSON body {"status":"error",...} — when the app id is unknown. The status
+	// check above passes, and blobbing that body out under application/xml
+	// handed a consuming IdP broken XML with a success status. Measured live: a
+	// JSON error under Content-Type: application/xml, HTTP 200.
+	//
+	// Serve the body only if it is what the content type claims.
+	if !isSAMLMetadataDocument(xmlBody) {
+		log.Error().
+			Str("url", metadataURL).
+			Int("bytes", len(xmlBody)).
+			Msg("saml_metadata: Casdoor answered 200 with something that is not SAML metadata")
+		return c.JSON(http.StatusBadGateway, map[string]string{
+			"error": "Casdoor did not return SAML metadata — check the SAML application id in Casdoor",
+			"code":  "AUTH_SAML_UPSTREAM_ERROR",
+		})
+	}
+
 	return c.Blob(http.StatusOK, "application/xml", xmlBody)
+}
+
+// isSAMLMetadataDocument reports whether body's first XML element is a SAML
+// metadata root (EntityDescriptor or EntitiesDescriptor).
+//
+// It only looks at the root element: validating the whole document is the
+// consuming IdP's job, and a stricter check here would reject metadata this
+// code has no business having an opinion about. Entity expansion is disabled
+// and the input is size-capped, so a hostile upstream cannot turn this into a
+// Billion-Laughs (same treatment as buildSAMLSP, SEC-M03).
+func isSAMLMetadataDocument(body []byte) bool {
+	if len(body) == 0 || len(body) > samlMetadataMaxBytes {
+		return false
+	}
+	dec := xml.NewDecoder(bytes.NewReader(body))
+	dec.Entity = map[string]string{}
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			return false
+		}
+		if start, ok := tok.(xml.StartElement); ok {
+			return start.Name.Local == "EntityDescriptor" ||
+				start.Name.Local == "EntitiesDescriptor"
+		}
+	}
 }
 
 // RequestPasswordReset handles POST /api/v1/auth/password-reset/request.
@@ -688,8 +847,26 @@ func (h *Handler) RequestPasswordReset(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// adminResetResponse is the response body for an admin-issued password reset.
+// The raw reset token is deliberately ABSENT (R1-24-RT01): only the delivery
+// status is exposed. Reason is populated only when sent=false.
+type adminResetResponse struct {
+	Sent   bool   `json:"sent"`
+	Reason string `json:"reason,omitempty"`
+}
+
 // AdminGeneratePasswordResetToken handles POST /api/v1/admin/users/:email/password-reset-token.
-// Admin-only endpoint that generates a password reset link without requiring SMTP.
+// Admin-only endpoint that issues a password reset for a member of the CALLER'S
+// OWN organisation. The reset link is delivered by email — the raw token is NEVER
+// returned in the response body.
+//
+// SECURITY (R1-24-RT01 / R1-10-V02): before this fix the handler looked up the
+// target by email alone (globally unique) and returned the reset link — with
+// only a same-org Admin role check — which let an admin of one org mint a reset
+// token for ANY account platform-wide and take it over (full cross-org account
+// takeover, live-confirmed against the DB). The org scope now runs inside
+// AdminIssuePasswordReset (JOIN on org_members keyed on the caller's org), and
+// the token no longer leaves the server.
 func (h *Handler) AdminGeneratePasswordResetToken(c echo.Context) error {
 	email := c.Param("email")
 	if email == "" {
@@ -699,30 +876,74 @@ func (h *Handler) AdminGeneratePasswordResetToken(c echo.Context) error {
 		})
 	}
 
-	frontendURL := ""
-	if h.cfg != nil {
-		frontendURL = h.cfg.FrontendURL
+	// The caller's org scopes the lookup. This is populated by AuthMiddleware on
+	// the protected chain; an empty value would let the query resolve nothing —
+	// but treat it as a hard failure rather than silently issuing across orgs.
+	callerOrgID, _ := c.Get("org_id").(string)
+	callerUserID, _ := c.Get("user_id").(string)
+	if callerOrgID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized",
+			"code":  "AUTH_MISSING_TOKEN",
+		})
 	}
 
-	resetLink, err := h.service.GeneratePasswordResetLink(c.Request().Context(), email, frontendURL)
+	frontendURL, smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom := "", "", "", "", "", ""
+	if h.cfg != nil {
+		frontendURL = h.cfg.FrontendURL
+		smtpHost = h.cfg.SMTPHost
+		smtpPort = h.cfg.SMTPPort
+		smtpUser = h.cfg.SMTPUser
+		smtpPass = h.cfg.SMTPPass
+		smtpFrom = h.cfg.SMTPFrom
+	}
+
+	targetUserID, sent, err := h.service.AdminIssuePasswordReset(
+		c.Request().Context(), email, callerOrgID,
+		frontendURL, smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom,
+	)
 	if err != nil {
-		log.Error().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("admin: generate password reset link failed")
+		log.Error().Err(err).Str("email_redacted", logsafe.RedactEmail(email)).Msg("admin: issue password reset failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to generate reset link",
+			"error": "failed to issue password reset",
 			"code":  "AUTH_RESET_GENERATE_FAILED",
 		})
 	}
-	if resetLink == "" {
+	if targetUserID == "" {
+		// No such active user in the caller's org. Same shape as a genuine
+		// not-found: an org2 admin probing an org1 address gets a 404, never a token.
 		return c.JSON(http.StatusNotFound, map[string]string{
 			"error": "user not found",
 			"code":  "AUTH_USER_NOT_FOUND",
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"reset_link": resetLink,
-		"expires_in": "1h",
-	})
+	// Audit the admin-issued reset — same class as the usermgmt break-glass
+	// routes (MFA reset, role change). Fire-and-forget via the injected sink;
+	// never blocks the reset. See adminResetAuditFn for why this is a hook and
+	// not a direct audit.Write call.
+	if adminResetAuditFn != nil {
+		adminResetAuditFn(c.Request().Context(), AdminResetAuditEntry{
+			OrgID:        callerOrgID,
+			ActorUserID:  callerUserID,
+			TargetUserID: targetUserID,
+			TargetEmail:  email,
+			IP:           c.RealIP(),
+			Delivered:    sent,
+		})
+	}
+
+	if !sent {
+		// The user exists (200, not 404), but no reset email went out — either
+		// SMTP is not configured, or delivery failed. Either way the token is
+		// deliberately NOT returned in the body (that was the takeover primitive).
+		reason := "delivery_failed"
+		if smtpHost == "" {
+			reason = "smtp_not_configured"
+		}
+		return c.JSON(http.StatusOK, adminResetResponse{Sent: false, Reason: reason})
+	}
+	return c.JSON(http.StatusOK, adminResetResponse{Sent: true})
 }
 
 // ResetPassword handles POST /api/v1/auth/password-reset/confirm.

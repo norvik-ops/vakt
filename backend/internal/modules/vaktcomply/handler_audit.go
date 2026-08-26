@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	auditmod "github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
+	"github.com/matharnica/vakt/internal/shared/artifact"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/rs/zerolog/log"
 )
@@ -337,12 +339,10 @@ func (h *Handler) UpdateManagementReviewOutputs(c echo.Context) error {
 // ApproveManagementReview handles POST /api/v1/vaktcomply/management-reviews/:id/approve.
 func (h *Handler) ApproveManagementReview(c echo.Context) error {
 	id := c.Param("id")
-	role, _ := c.Get("role").(string)
-	review, err := h.service.Audit.ApproveManagementReview(c.Request().Context(), orgID(c), id, userID(c), role)
+	// Keine Rollenpruefung hier: die Route traegt sie
+	// (auth.RequireRole("InternalAuditor"), ADR-0055).
+	review, err := h.service.Audit.ApproveManagementReview(c.Request().Context(), orgID(c), id, userID(c))
 	if err != nil {
-		if err.Error() == "only admin can approve" {
-			return errResp(c, http.StatusForbidden, "only admin can approve", "CK_MGMT_REVIEW_FORBIDDEN")
-		}
 		if isNotFound(err) {
 			return errResp(c, http.StatusNotFound, "management review not found", "CK_MGMT_REVIEW_NOT_FOUND")
 		}
@@ -460,12 +460,10 @@ func (h *Handler) AuditorExportBundle(c echo.Context) error {
 	rawToken := c.Param("token")
 	ctx := c.Request().Context()
 
-	// ExportAuditorBundle validates the token, writes the ZIP to the writer,
-	// and returns the framework name for the Content-Disposition header.
-	// We must set headers before writing, so we buffer via ExportAuditorBundle
-	// which streams directly; we pre-set headers and let it write.
-	//
-	// To keep headers accurate we do a lightweight token check first.
+	// Preflight the token first so an invalid/expired link gets a clean 404
+	// (the filename also derives from the framework name it returns). The bundle
+	// itself is then built fully in memory via artifact.Stream, so a build
+	// failure returns a real 500 instead of an empty "200 application/zip".
 	fwName, err := h.service.PreflightAuditorExport(ctx, rawToken)
 	if err != nil {
 		log.Debug().Err(err).Msg("auditor export bundle: preflight failed")
@@ -473,14 +471,12 @@ func (h *Handler) AuditorExportBundle(c echo.Context) error {
 	}
 
 	filename := fmt.Sprintf("%s-evidence-bundle.zip", fwName)
-	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
-	c.Response().Header().Set("Content-Type", "application/zip")
-	c.Response().WriteHeader(http.StatusOK)
-
-	if _, err := h.service.ExportAuditorBundle(ctx, rawToken, c.Response().Writer); err != nil {
+	if err := artifact.Stream(c, "application/zip", filename, func(w io.Writer) error {
+		_, err := h.service.ExportAuditorBundle(ctx, rawToken, w)
+		return err
+	}); err != nil {
 		log.Error().Err(err).Msg("auditor export bundle: write failed")
-		// Headers already sent; cannot return JSON — log only.
-		return nil
+		return errResp(c, http.StatusInternalServerError, "failed to build evidence bundle", "CK_AUDITOR_BUNDLE_FAILED")
 	}
 	return nil
 }
@@ -543,13 +539,6 @@ func (h *Handler) AuditorExportZIP(c echo.Context) error {
 		Details:      map[string]string{"ip": c.RealIP()},
 	})
 
-	c.Response().Header().Set("Content-Type", "application/zip")
-	c.Response().Header().Set("Content-Disposition", `attachment; filename="vakt-audit-export.zip"`)
-	c.Response().WriteHeader(http.StatusOK)
-
-	zw := zip.NewWriter(c.Response().Writer)
-	defer func() { _ = zw.Close() }()
-
 	entries := []struct {
 		name string
 		data any
@@ -561,21 +550,25 @@ func (h *Handler) AuditorExportZIP(c echo.Context) error {
 		{"audit_records.json", auditRecords},
 	}
 
-	for _, entry := range entries {
-		f, fErr := zw.Create(entry.name)
-		if fErr != nil {
-			log.Error().Err(fErr).Str("file", entry.name).Msg("auditor export zip: create zip entry")
-			return nil
+	if err := artifact.Stream(c, "application/zip", "vakt-audit-export.zip", func(out io.Writer) error {
+		zw := zip.NewWriter(out)
+		for _, entry := range entries {
+			f, fErr := zw.Create(entry.name)
+			if fErr != nil {
+				return fmt.Errorf("create zip entry %s: %w", entry.name, fErr)
+			}
+			enc := json.NewEncoder(f)
+			enc.SetIndent("", "  ")
+			if encErr := enc.Encode(entry.data); encErr != nil {
+				return fmt.Errorf("encode %s: %w", entry.name, encErr)
+			}
 		}
-		enc := json.NewEncoder(f)
-		enc.SetIndent("", "  ")
-		if encErr := enc.Encode(entry.data); encErr != nil {
-			log.Error().Err(encErr).Str("file", entry.name).Msg("auditor export zip: encode json")
-			return nil
-		}
+		return zw.Close()
+	}); err != nil {
+		log.Error().Err(err).Msg("auditor export zip: build failed")
+		return errResp(c, http.StatusInternalServerError, "failed to build export", "CK_EXPORT_ERROR")
 	}
-
-	return zw.Close()
+	return nil
 }
 
 func (h *Handler) ListMilestones(c echo.Context) error {

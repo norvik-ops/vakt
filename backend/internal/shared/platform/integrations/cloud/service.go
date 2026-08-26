@@ -34,6 +34,74 @@ func NewService(db *pgxpool.Pool, masterKey []byte, evidence EvidenceWriter) *Se
 	}
 }
 
+// maskedSecret is the placeholder the API returns instead of a stored secret.
+// A save that sends it back means "keep the existing value" — it is never a
+// secret in its own right and must never be encrypted and persisted as one.
+const maskedSecret = "****"
+
+// The provider configs live in a single JSONB column and carry mixed types —
+// strings for the (encrypted) credentials plus the boolean allow_private_target.
+// Decoding that into map[string]string breaks as soon as one non-string value
+// appears, and that is how R1-B0-N1 happened: f08884f5 added the boolean to the
+// write path of five providers while four read paths still expected strings only.
+//
+// The stored shape is known, so it is declared once per provider as a typed
+// struct: the fields are visible instead of being guessed at run time, a field
+// absent from an older row is simply the zero value, and a key the struct does
+// not name is ignored rather than fatal. One struct serves BOTH read paths of a
+// provider — the masked GET response and the decrypting internal loader — so the
+// two can no longer drift apart.
+
+type storedWazuhConfig struct {
+	BaseURL            string `json:"base_url"`
+	Username           string `json:"username"`
+	Password           string `json:"password"` // hex-encoded ciphertext
+	VerifyTLS          bool   `json:"verify_tls"`
+	AllowPrivateTarget bool   `json:"allow_private_target"`
+}
+
+type storedPrometheusConfig struct {
+	PrometheusURL      string `json:"prometheus_url"`
+	AlertmanagerURL    string `json:"alertmanager_url"`
+	Token              string `json:"token"` // hex-encoded ciphertext
+	AllowPrivateTarget bool   `json:"allow_private_target"`
+}
+
+type storedKeycloakConfig struct {
+	KeycloakURL        string `json:"keycloak_url"`
+	Realm              string `json:"realm"`
+	ClientID           string `json:"client_id"`
+	ClientSecret       string `json:"client_secret"` // hex-encoded ciphertext
+	AllowPrivateTarget bool   `json:"allow_private_target"`
+}
+
+type storedGitLabConfig struct {
+	GitLabURL          string `json:"gitlab_url"`
+	AccessToken        string `json:"access_token"` // hex-encoded ciphertext
+	GroupID            string `json:"group_id"`
+	AllowPrivateTarget bool   `json:"allow_private_target"`
+}
+
+type storedSonarQubeConfig struct {
+	BaseURL            string `json:"base_url"`
+	Token              string `json:"token"` // hex-encoded ciphertext
+	AllowPrivateTarget bool   `json:"allow_private_target"`
+}
+
+// keepExistingSecret resolves the masked placeholder against the value loaded
+// from the database. It refuses rather than silently storing the placeholder or
+// an empty string: a credential the customer believes is configured but that is
+// really the literal "****" is worse than a visible error.
+func keepExistingSecret(incoming, existing string, haveExisting bool, what string) (string, error) {
+	if incoming != maskedSecret {
+		return incoming, nil
+	}
+	if !haveExisting || existing == "" {
+		return "", fmt.Errorf("%s konnte nicht uebernommen werden — bitte erneut eingeben", what)
+	}
+	return existing, nil
+}
+
 // --- AWS ---
 
 // GetAWSConfig returns the AWS config for an org with secrets masked.
@@ -635,22 +703,18 @@ func (s *Service) GetWazuhConfig(ctx context.Context, orgID string) (*WazuhConfi
 	if raw == nil {
 		return resp, nil
 	}
-	var stored map[string]any
+	var stored storedWazuhConfig
 	if err := json.Unmarshal(raw, &stored); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Str("provider", ProviderWazuh).
+			Msg("cloud: stored config is unreadable — reporting as not configured")
 		return resp, nil
 	}
-	if v, ok := stored["base_url"].(string); ok {
-		resp.BaseURL = v
+	resp.BaseURL = stored.BaseURL
+	resp.Username = stored.Username
+	if stored.Password != "" {
+		resp.Password = maskedSecret
 	}
-	if v, ok := stored["username"].(string); ok {
-		resp.Username = v
-	}
-	if v, ok := stored["password"].(string); ok && v != "" {
-		resp.Password = "****"
-	}
-	if v, ok := stored["verify_tls"].(bool); ok {
-		resp.VerifyTLS = v
-	}
+	resp.VerifyTLS = stored.VerifyTLS
 	resp.IsConfigured = resp.BaseURL != "" && resp.Username != ""
 	return resp, nil
 }
@@ -660,11 +724,18 @@ func (s *Service) SaveWazuhConfig(ctx context.Context, orgID string, in SaveWazu
 	if err := httputil.ValidateOutboundURL(in.BaseURL, in.AllowPrivateTarget); err != nil {
 		return fmt.Errorf("wazuh base_url: %w", err)
 	}
-	existing, _ := s.getDecryptedWazuhConfig(ctx, orgID)
+	existing, loadErr := s.getDecryptedWazuhConfig(ctx, orgID)
+	if loadErr != nil {
+		log.Warn().Err(loadErr).Str("org_id", orgID).Msg("cloud: could not load existing Wazuh config")
+	}
 
-	pw := in.Password
-	if pw == "****" && existing != nil {
-		pw = existing.Password
+	existingPw := ""
+	if existing != nil {
+		existingPw = existing.Password
+	}
+	pw, err := keepExistingSecret(in.Password, existingPw, existing != nil, "Wazuh-Passwort")
+	if err != nil {
+		return err
 	}
 
 	encPw := ""
@@ -692,21 +763,17 @@ func (s *Service) getDecryptedWazuhConfig(ctx context.Context, orgID string) (*W
 	if err != nil || raw == nil {
 		return nil, err
 	}
-	var stored map[string]any
+	var stored storedWazuhConfig
 	if err := json.Unmarshal(raw, &stored); err != nil {
 		return nil, err
 	}
-	cfg := &WazuhConfig{}
-	if v, ok := stored["base_url"].(string); ok {
-		cfg.BaseURL = v
+	cfg := &WazuhConfig{
+		BaseURL:            stored.BaseURL,
+		Username:           stored.Username,
+		VerifyTLS:          stored.VerifyTLS,
+		AllowPrivateTarget: stored.AllowPrivateTarget,
 	}
-	if v, ok := stored["username"].(string); ok {
-		cfg.Username = v
-	}
-	if v, ok := stored["verify_tls"].(bool); ok {
-		cfg.VerifyTLS = v
-	}
-	if encPw, ok := stored["password"].(string); ok && encPw != "" {
+	if encPw := stored.Password; encPw != "" {
 		ct, err := hex.DecodeString(encPw)
 		if err != nil {
 			return nil, fmt.Errorf("decode wazuh password: %w", err)
@@ -780,14 +847,16 @@ func (s *Service) GetPrometheusConfig(ctx context.Context, orgID string) (*Prome
 	if raw == nil {
 		return resp, nil
 	}
-	var stored map[string]string
+	var stored storedPrometheusConfig
 	if err := json.Unmarshal(raw, &stored); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Str("provider", ProviderPrometheus).
+			Msg("cloud: stored config is unreadable — reporting as not configured")
 		return resp, nil
 	}
-	resp.PrometheusURL = stored["prometheus_url"]
-	resp.AlertmanagerURL = stored["alertmanager_url"]
-	if stored["token"] != "" {
-		resp.Token = "****"
+	resp.PrometheusURL = stored.PrometheusURL
+	resp.AlertmanagerURL = stored.AlertmanagerURL
+	if stored.Token != "" {
+		resp.Token = maskedSecret
 	}
 	resp.IsConfigured = resp.PrometheusURL != ""
 	return resp, nil
@@ -803,11 +872,18 @@ func (s *Service) SavePrometheusConfig(ctx context.Context, orgID string, in Sav
 			return fmt.Errorf("alertmanager_url: %w", err)
 		}
 	}
-	existing, _ := s.getDecryptedPrometheusConfig(ctx, orgID)
+	existing, loadErr := s.getDecryptedPrometheusConfig(ctx, orgID)
+	if loadErr != nil {
+		log.Warn().Err(loadErr).Str("org_id", orgID).Msg("cloud: could not load existing Prometheus config")
+	}
 
-	token := in.Token
-	if token == "****" && existing != nil {
-		token = existing.Token
+	existingToken := ""
+	if existing != nil {
+		existingToken = existing.Token
+	}
+	token, err := keepExistingSecret(in.Token, existingToken, existing != nil, "Prometheus-Token")
+	if err != nil {
+		return err
 	}
 
 	encToken := ""
@@ -834,16 +910,17 @@ func (s *Service) getDecryptedPrometheusConfig(ctx context.Context, orgID string
 	if err != nil || raw == nil {
 		return nil, err
 	}
-	var stored map[string]string
+	var stored storedPrometheusConfig
 	if err := json.Unmarshal(raw, &stored); err != nil {
 		return nil, err
 	}
 	cfg := &PrometheusConfig{
-		PrometheusURL:   stored["prometheus_url"],
-		AlertmanagerURL: stored["alertmanager_url"],
+		PrometheusURL:      stored.PrometheusURL,
+		AlertmanagerURL:    stored.AlertmanagerURL,
+		AllowPrivateTarget: stored.AllowPrivateTarget,
 	}
-	if stored["token"] != "" {
-		ct, err := hex.DecodeString(stored["token"])
+	if enc := stored.Token; enc != "" {
+		ct, err := hex.DecodeString(enc)
 		if err != nil {
 			return nil, fmt.Errorf("decode prometheus token: %w", err)
 		}
@@ -1170,17 +1247,19 @@ func (s *Service) GetKeycloakConfig(ctx context.Context, orgID string) (*Keycloa
 	if raw == nil {
 		return resp, nil
 	}
-	var stored map[string]string
+	var stored storedKeycloakConfig
 	if err := json.Unmarshal(raw, &stored); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Str("provider", ProviderKeycloak).
+			Msg("cloud: stored config is unreadable — reporting as not configured")
 		return resp, nil
 	}
-	resp.KeycloakURL = stored["keycloak_url"]
-	resp.Realm = stored["realm"]
-	resp.ClientID = stored["client_id"]
-	if stored["client_secret"] != "" {
-		resp.ClientSecret = "****"
+	resp.KeycloakURL = stored.KeycloakURL
+	resp.Realm = stored.Realm
+	resp.ClientID = stored.ClientID
+	if stored.ClientSecret != "" {
+		resp.ClientSecret = maskedSecret
 	}
-	resp.IsConfigured = resp.KeycloakURL != "" && resp.Realm != "" && resp.ClientID != "" && resp.ClientSecret == "****"
+	resp.IsConfigured = resp.KeycloakURL != "" && resp.Realm != "" && resp.ClientID != "" && resp.ClientSecret == maskedSecret
 	return resp, nil
 }
 
@@ -1189,11 +1268,18 @@ func (s *Service) SaveKeycloakConfig(ctx context.Context, orgID string, in SaveK
 	if err := httputil.ValidateOutboundURL(in.KeycloakURL, in.AllowPrivateTarget); err != nil {
 		return fmt.Errorf("keycloak_url: %w", err)
 	}
-	existing, _ := s.getDecryptedKeycloakConfig(ctx, orgID)
+	existing, loadErr := s.getDecryptedKeycloakConfig(ctx, orgID)
+	if loadErr != nil {
+		log.Warn().Err(loadErr).Str("org_id", orgID).Msg("cloud: could not load existing Keycloak config")
+	}
 
-	secret := in.ClientSecret
-	if secret == "****" && existing != nil {
-		secret = existing.ClientSecret
+	existingSecret := ""
+	if existing != nil {
+		existingSecret = existing.ClientSecret
+	}
+	secret, err := keepExistingSecret(in.ClientSecret, existingSecret, existing != nil, "Keycloak-Client-Secret")
+	if err != nil {
+		return err
 	}
 
 	encSecret := ""
@@ -1221,16 +1307,17 @@ func (s *Service) getDecryptedKeycloakConfig(ctx context.Context, orgID string) 
 	if err != nil || raw == nil {
 		return nil, err
 	}
-	var stored map[string]string
+	var stored storedKeycloakConfig
 	if err := json.Unmarshal(raw, &stored); err != nil {
 		return nil, err
 	}
 	cfg := &KeycloakConfig{
-		KeycloakURL: stored["keycloak_url"],
-		Realm:       stored["realm"],
-		ClientID:    stored["client_id"],
+		KeycloakURL:        stored.KeycloakURL,
+		Realm:              stored.Realm,
+		ClientID:           stored.ClientID,
+		AllowPrivateTarget: stored.AllowPrivateTarget,
 	}
-	if enc := stored["client_secret"]; enc != "" {
+	if enc := stored.ClientSecret; enc != "" {
 		ct, err := hex.DecodeString(enc)
 		if err != nil {
 			return nil, fmt.Errorf("decode keycloak client secret: %w", err)
@@ -1483,16 +1570,18 @@ func (s *Service) GetGitLabConfig(ctx context.Context, orgID string) (*GitLabCon
 	if raw == nil {
 		return resp, nil
 	}
-	var stored map[string]string
+	var stored storedGitLabConfig
 	if err := json.Unmarshal(raw, &stored); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Str("provider", ProviderGitLab).
+			Msg("cloud: stored config is unreadable — reporting as not configured")
 		return resp, nil
 	}
-	resp.GitLabURL = stored["gitlab_url"]
-	resp.GroupID = stored["group_id"]
-	if stored["access_token"] != "" {
-		resp.AccessToken = "****"
+	resp.GitLabURL = stored.GitLabURL
+	resp.GroupID = stored.GroupID
+	if stored.AccessToken != "" {
+		resp.AccessToken = maskedSecret
 	}
-	resp.IsConfigured = resp.GitLabURL != "" && resp.AccessToken == "****"
+	resp.IsConfigured = resp.GitLabURL != "" && resp.AccessToken == maskedSecret
 	return resp, nil
 }
 
@@ -1501,11 +1590,18 @@ func (s *Service) SaveGitLabConfig(ctx context.Context, orgID string, in SaveGit
 	if err := httputil.ValidateOutboundURL(in.GitLabURL, in.AllowPrivateTarget); err != nil {
 		return fmt.Errorf("gitlab_url: %w", err)
 	}
-	existing, _ := s.getDecryptedGitLabConfig(ctx, orgID)
+	existing, loadErr := s.getDecryptedGitLabConfig(ctx, orgID)
+	if loadErr != nil {
+		log.Warn().Err(loadErr).Str("org_id", orgID).Msg("cloud: could not load existing GitLab config")
+	}
 
-	token := in.AccessToken
-	if token == "****" && existing != nil {
-		token = existing.AccessToken
+	existingToken := ""
+	if existing != nil {
+		existingToken = existing.AccessToken
+	}
+	token, err := keepExistingSecret(in.AccessToken, existingToken, existing != nil, "GitLab-Zugriffstoken")
+	if err != nil {
+		return err
 	}
 
 	encToken := ""
@@ -1532,16 +1628,17 @@ func (s *Service) getDecryptedGitLabConfig(ctx context.Context, orgID string) (*
 	if err != nil || raw == nil {
 		return nil, err
 	}
-	var stored map[string]string
+	var stored storedGitLabConfig
 	if err := json.Unmarshal(raw, &stored); err != nil {
 		return nil, err
 	}
 	cfg := &GitLabConfig{
-		GitLabURL: stored["gitlab_url"],
-		GroupID:   stored["group_id"],
+		GitLabURL:          stored.GitLabURL,
+		GroupID:            stored.GroupID,
+		AllowPrivateTarget: stored.AllowPrivateTarget,
 	}
-	if stored["access_token"] != "" {
-		ct, err := hex.DecodeString(stored["access_token"])
+	if enc := stored.AccessToken; enc != "" {
+		ct, err := hex.DecodeString(enc)
 		if err != nil {
 			return nil, fmt.Errorf("decode gitlab token: %w", err)
 		}
@@ -1615,15 +1712,17 @@ func (s *Service) GetSonarQubeConfig(ctx context.Context, orgID string) (*SonarQ
 	if raw == nil {
 		return resp, nil
 	}
-	var stored map[string]string
+	var stored storedSonarQubeConfig
 	if err := json.Unmarshal(raw, &stored); err != nil {
+		log.Warn().Err(err).Str("org_id", orgID).Str("provider", ProviderSonarQube).
+			Msg("cloud: stored config is unreadable — reporting as not configured")
 		return resp, nil
 	}
-	resp.BaseURL = stored["base_url"]
-	if stored["token"] != "" {
-		resp.Token = "****"
+	resp.BaseURL = stored.BaseURL
+	if stored.Token != "" {
+		resp.Token = maskedSecret
 	}
-	resp.IsConfigured = resp.BaseURL != "" && resp.Token == "****"
+	resp.IsConfigured = resp.BaseURL != "" && resp.Token == maskedSecret
 	return resp, nil
 }
 
@@ -1632,11 +1731,18 @@ func (s *Service) SaveSonarQubeConfig(ctx context.Context, orgID string, in Save
 	if err := httputil.ValidateOutboundURL(in.BaseURL, in.AllowPrivateTarget); err != nil {
 		return fmt.Errorf("sonarqube base_url: %w", err)
 	}
-	existing, _ := s.getDecryptedSonarQubeConfig(ctx, orgID)
+	existing, loadErr := s.getDecryptedSonarQubeConfig(ctx, orgID)
+	if loadErr != nil {
+		log.Warn().Err(loadErr).Str("org_id", orgID).Msg("cloud: could not load existing SonarQube config")
+	}
 
-	token := in.Token
-	if token == "****" && existing != nil {
-		token = existing.Token
+	existingToken := ""
+	if existing != nil {
+		existingToken = existing.Token
+	}
+	token, err := keepExistingSecret(in.Token, existingToken, existing != nil, "SonarQube-Token")
+	if err != nil {
+		return err
 	}
 
 	encToken := ""
@@ -1662,13 +1768,16 @@ func (s *Service) getDecryptedSonarQubeConfig(ctx context.Context, orgID string)
 	if err != nil || raw == nil {
 		return nil, err
 	}
-	var stored map[string]string
+	var stored storedSonarQubeConfig
 	if err := json.Unmarshal(raw, &stored); err != nil {
 		return nil, err
 	}
-	cfg := &SonarQubeConfig{BaseURL: stored["base_url"]}
-	if stored["token"] != "" {
-		ct, err := hex.DecodeString(stored["token"])
+	cfg := &SonarQubeConfig{
+		BaseURL:            stored.BaseURL,
+		AllowPrivateTarget: stored.AllowPrivateTarget,
+	}
+	if enc := stored.Token; enc != "" {
+		ct, err := hex.DecodeString(enc)
 		if err != nil {
 			return nil, fmt.Errorf("decode sonarqube token: %w", err)
 		}

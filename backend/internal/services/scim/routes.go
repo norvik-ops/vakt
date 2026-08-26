@@ -39,9 +39,17 @@ func Register(g *echo.Group, db *pgxpool.Pool, revoker ...SessionRevoker) {
 	))
 
 	scim := g.Group("",
+		// Network guard first: an address that may not talk to SCIM should not
+		// get to spend a token check, a rate-limiter slot or a DB round trip
+		// (R1-F3W2A-04). Opt-in via VAKT_SCIM_ALLOWED_IPS; a no-op when unset.
+		IPAllowlist(),
 		features.Require(features.FeatureSCIMProvisioning),
 		SCIMAuthMiddleware(db),
 		scimLimiter,
+		// Must sit in front of every handler that binds a body: it is what makes
+		// application/scim+json — the type RFC 7644 prescribes and the type Entra
+		// ID and Okta send — reach the binder at all (R1-07-B07-2).
+		SCIMMediaTypeMiddleware,
 	)
 
 	// ServiceProviderConfig — discovery endpoint, no auth required by spec but

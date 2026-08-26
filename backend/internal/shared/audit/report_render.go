@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 )
 
 const (
@@ -30,7 +31,7 @@ var (
 
 // Render generates the audit report PDF bytes from ReportData.
 func Render(d *ReportData) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(marginL, marginT, marginR)
 	pdf.SetAutoPageBreak(true, marginB+5)
 

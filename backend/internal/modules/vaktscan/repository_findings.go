@@ -147,6 +147,7 @@ func (r *Repository) UpsertFinding(ctx context.Context, orgID string, f Finding)
 	if err != nil {
 		return nil, fmt.Errorf("insert finding: %w", err)
 	}
+	r.emitNewFinding(ctx, orgID, inserted)
 	return &inserted, nil
 }
 

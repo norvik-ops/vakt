@@ -205,14 +205,16 @@ export function NIS2StagePanel({ incidentId }: { incidentId: string }) {
   if (isError) return null
 
   function handleAssess() {
+    // Kein detected_at: der Server ankert die Fristen am discovered_at des
+    // Vorfalls. Hier stand new Date(), womit die 24-Stunden-Frist eines vor
+    // Tagen entdeckten Vorfalls erst jetzt zu laufen begann.
     assess.mutate(
+      { check: assessCheck },
       {
-        detected_at: new Date().toISOString(),
-        check: assessCheck,
-      },
-      {
-        onSuccess: () => {
-          toast('NIS2-Meldepflicht bewertet')
+        onSuccess: (res) => {
+          toast(
+            `NIS2-Meldepflicht bewertet — Fristen ab Kenntnisnahme (${new Date(res.detected_at).toLocaleString('de-DE')})`,
+          )
         },
         onError: (err) => {
           toast(err.message, 'error')
@@ -224,7 +226,9 @@ export function NIS2StagePanel({ incidentId }: { incidentId: string }) {
   const stages: { key: Stage; label: string; deadline?: string | null }[] = [
     { key: 'early_warning', label: 'Frühwarnung (24h)', deadline: status?.deadlines.early_warning },
     { key: 'full_report', label: '72h-Meldung', deadline: status?.deadlines.full_report },
-    { key: 'final_report', label: '30-Tage-Abschluss', deadline: status?.deadlines.final_report },
+    // Ein Monat ist ein Kalenderzeitraum, keine 30 Tage — das Label sagte etwas
+    // anderes als die Frist, die jetzt gerechnet wird.
+    { key: 'final_report', label: 'Abschluss (1 Monat)', deadline: status?.deadlines.final_report },
   ]
 
   return (

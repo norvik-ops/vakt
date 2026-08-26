@@ -900,13 +900,16 @@ func (r *Repository) ListAssessmentsForSupplier(ctx context.Context, orgID, supp
 // org_id wird via JOIN auf ck_supplier_assessments validiert (ck_supplier_answers
 // hat keine eigene org_id-Spalte — Schema-Lücke aus Migration 048; existierender
 // Code referenzierte sa.org_id was zur Laufzeit gefehlt hätte).
-func (r *Repository) UpdateAnswerReview(ctx context.Context, orgID, assessmentID, answerID, reviewStatus, reworkNote string) error {
+// certExpiryDate ist optional: nil laesst einen bereits erfassten Wert stehen
+// (L1-04 — die Spalte hatte bis dahin gar keinen Schreiber).
+func (r *Repository) UpdateAnswerReview(ctx context.Context, orgID, assessmentID, answerID, reviewStatus, reworkNote string, certExpiryDate *time.Time) error {
 	n, err := r.q.UpdateCKAnswerReview(ctx, db.UpdateCKAnswerReviewParams{
-		ReviewStatus: ckOptText(reviewStatus),
-		Column2:      reworkNote,
-		ID:           answerID,
-		AssessmentID: assessmentID,
-		OrgID:        orgID,
+		ReviewStatus:   ckOptText(reviewStatus),
+		Column2:        reworkNote,
+		ID:             answerID,
+		AssessmentID:   assessmentID,
+		OrgID:          orgID,
+		CertExpiryDate: ckOptDateFromTimePtr(certExpiryDate),
 	})
 	if err != nil {
 		return fmt.Errorf("update answer review: %w", err)

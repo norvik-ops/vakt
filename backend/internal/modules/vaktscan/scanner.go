@@ -228,7 +228,7 @@ func RunTrivyScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) er
 		return fmt.Errorf("trivy exec: %w", runErr)
 	}
 
-	findings, parseErr := findingsFromTrivy(out, payload)
+	findings, sevReport, parseErr := findingsFromTrivy(out, payload)
 	if parseErr != nil {
 		_ = repo.UpdateScanStatus(ctx, payload.ScanID, "failed",
 			WithErrorMessage("failed to parse trivy output: "+parseErr.Error()),
@@ -250,13 +250,33 @@ func RunTrivyScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) er
 		return upsertErr
 	}
 
-	_ = repo.UpdateScanStatus(ctx, payload.ScanID, "completed",
-		WithFindingCount(count),
-		WithDurationMs(durationMs),
-		WithCompletedAt(time.Now()))
+	finishScan(ctx, repo, payload.ScanID, "trivy", count, durationMs, sevReport)
 
 	log.Info().Str("scan_id", payload.ScanID).Int("findings", count).Msg("trivy scan complete")
 	return nil
+}
+
+// finishScan markiert einen Scan als abgeschlossen und hängt, falls es welche
+// gab, den Hinweis auf umgedeutete Schweregrade an.
+//
+// Warum der Hinweis an den Scan gehört und nicht nur ins Log: Ein Fund, dessen
+// Schweregrad wir nicht deuten konnten, wird als `unknown` gespeichert — er ist
+// also da, aber unbewertet. Wer den Scan ansieht, muss erfahren, dass das
+// passiert ist; sonst ist es ein stilles Umdeuten, und das ist genauso wenig eine
+// Option wie stilles Verwerfen. `error_message` ist das einzige Feld an vb_scans,
+// das der Oberfläche zur Verfügung steht — der Scan bleibt trotzdem `completed`,
+// denn er ist erfolgreich gelaufen.
+func finishScan(ctx context.Context, repo *Repository, scanID, scanner string, count int, durationMs int64, report severityReport) {
+	opts := []ScanUpdateOpt{
+		WithFindingCount(count),
+		WithDurationMs(durationMs),
+		WithCompletedAt(time.Now()),
+	}
+	if note := report.note(); note != "" {
+		log.Warn().Str("scan_id", scanID).Str("scanner", scanner).Msg(note)
+		opts = append(opts, WithErrorMessage(note))
+	}
+	_ = repo.UpdateScanStatus(ctx, scanID, "completed", opts...)
 }
 
 // RunNucleiScan executes nuclei against the scan target and normalises findings.
@@ -315,7 +335,7 @@ func RunNucleiScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) e
 		return fmt.Errorf("nuclei exec: %w", runErr)
 	}
 
-	findings := findingsFromNuclei(out, payload)
+	findings, sevReport := findingsFromNuclei(out, payload)
 	count, upsertErr := repo.BatchUpsertFindings(ctx, payload.OrgID, findings)
 	if upsertErr != nil {
 		// GB-2: pgx runs a batch inside one implicit transaction, so a single
@@ -330,10 +350,7 @@ func RunNucleiScan(ctx context.Context, db *pgxpool.Pool, payload ScanPayload) e
 		return upsertErr
 	}
 
-	_ = repo.UpdateScanStatus(ctx, payload.ScanID, "completed",
-		WithFindingCount(count),
-		WithDurationMs(durationMs),
-		WithCompletedAt(time.Now()))
+	finishScan(ctx, repo, payload.ScanID, "nuclei", count, durationMs, sevReport)
 
 	log.Info().Str("scan_id", payload.ScanID).Int("findings", count).Msg("nuclei scan complete")
 	return nil

@@ -36,8 +36,10 @@ import (
 func OrgIPAllowlist(db *pgxpool.Pool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			p := c.Path()
-			if !strings.Contains(p, "/admin/") && !strings.HasSuffix(p, "/admin") {
+			// Shared predicate with AdminIPAllowlist — see IsAdminPath. Two
+			// copies of this condition is how the env guard's scope drifted
+			// away from this one in the first place.
+			if !IsAdminPath(c.Path()) {
 				return next(c)
 			}
 			orgID, _ := c.Get("org_id").(string)

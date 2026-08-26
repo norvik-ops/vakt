@@ -10,22 +10,11 @@ package auth
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 )
 
-// dialFailingRedisClient points at an unbindable port so every call errors fast.
-func dialFailingRedisClient(t *testing.T) *redis.Client {
-	t.Helper()
-	return redis.NewClient(&redis.Options{
-		Addr:        "127.0.0.1:1",
-		DialTimeout: 100 * time.Millisecond,
-		ReadTimeout: 100 * time.Millisecond,
-		MaxRetries:  -1,
-	})
-}
+// The dead-Redis client lives in redis_outage_test.go (dialFailingRedis).
 
 func TestPwVersionFromDB_NilPool(t *testing.T) {
 	v, ok := pwVersionFromDB(context.Background(), nil, "00000000-0000-0000-0000-000000000001")
@@ -40,7 +29,7 @@ func TestPwVersionFromDB_NilPool(t *testing.T) {
 // criterion for the degenerate test path.
 func TestCheckPwVersion_RedisDownNoDB_PassesThrough(t *testing.T) {
 	claims := &Claims{UserID: "00000000-0000-0000-0000-000000000001", PwVersion: 0}
-	err := checkPwVersion(context.Background(), dialFailingRedisClient(t), nil, claims)
+	err := checkPwVersion(context.Background(), dialFailingRedis(t), nil, claims)
 	assert.NoError(t, err, "Redis down + no PG fallback must pass through (no lockout)")
 }
 
@@ -50,6 +39,6 @@ func TestCheckPwVersion_RedisDownNoDB_PassesThrough(t *testing.T) {
 // because there is no source of truth to compare against.
 func TestCheckPwVersion_RedisDownNoDB_StaleAlsoPasses(t *testing.T) {
 	claims := &Claims{UserID: "00000000-0000-0000-0000-000000000001", PwVersion: 5}
-	err := checkPwVersion(context.Background(), dialFailingRedisClient(t), nil, claims)
+	err := checkPwVersion(context.Background(), dialFailingRedis(t), nil, claims)
 	assert.NoError(t, err)
 }

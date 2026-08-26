@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 )
 
 // GenerateCampaignReportPDF renders a phishing-simulation campaign report as PDF bytes.
 func GenerateCampaignReportPDF(campaign *Campaign, stats *CampaignStats, orgName string) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 	pdf.AddPage()

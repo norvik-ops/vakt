@@ -32,7 +32,20 @@ BACKEND = ROOT / "backend"
 # The gate could therefore be satisfied by deleting the word "any" from a comment
 # while adding a real `any` type — it measured writing style, not type safety.
 # Stripping comments and string literals first leaves the 412 real ones.
-BASELINE = 412
+#
+# 412 -> 411 (2026-08-07, Codeaudit v5c, R1-14b-02): der Fix fuer die
+# Scan->Comply-Evidenzkette hat einen untypisierten Wert eingespart. Die Grenze
+# wird hier gleich mitgezogen, weil ein nicht festgeschriebener Gewinn beim
+# naechsten Diff wieder verbraucht wird, ohne dass es jemand merkt.
+#
+# 411 -> 409 (2026-08-07, Codeaudit v5c, R1-B0-N1): die Lesepfade der
+# Cloud-Integrationen lesen ihr Konfigurations-JSONB jetzt in typisierte
+# Strukturen statt in eine Karte. Der erste Anlauf des Fixes nutzte
+# map[string]any und lief mit 421 gegen genau dieses Gate — zu Recht: die
+# gespeicherte Form ist bekannt, also gehoert sie deklariert. Zwei der
+# eingesparten Vorkommen waren Altbestand (die beiden Wazuh-Lesepfade), die bei
+# der Gelegenheit mitgezogen wurden.
+BASELINE = 406
 
 # `interface{}` (old syntax) and the `any` keyword used as a type.
 INTERFACE_RE = re.compile(r"interface\s*\{\s*\}")

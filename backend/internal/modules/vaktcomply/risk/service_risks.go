@@ -53,11 +53,13 @@ func (s *Service) UpdateRisk(ctx context.Context, orgID, id string, in UpdateRis
 		safego.Run(ctx, "vaktcomply.risk.notify_owner", func(ctx context.Context) error {
 			notifyCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
-			notify.Send(notifyCtx, s.db, orgID,
+			// Regel 3 aus dem notify-Paketkommentar: innerhalb von safego.Run
+			// den Fehler zurueckgeben, safego loggt ihn. Das Risiko ist
+			// bereits gespeichert, der Aufrufer hat laengst geantwortet.
+			return notify.Send(notifyCtx, s.db, orgID,
 				"Risiko zugewiesen",
 				fmt.Sprintf("Das Risiko '%s' wurde Ihnen zugewiesen.", title),
 				"info", "vaktcomply")
-			return nil
 		})
 	}
 	return risk, nil
@@ -83,7 +85,8 @@ func (s *Service) UpdateRiskResidualFields(ctx context.Context, orgID, id string
 	return s.repo.UpdateRiskResidualFields(ctx, orgID, id, in)
 }
 
-// AcceptRisk records a formal risk acceptance for a risk with treatment_status=accepted (S61-4).
+// AcceptRisk records a formal risk acceptance for a risk whose register status is
+// 'accepted' (S61-4; precondition corrected in R1-14c-12 — see Repository.AcceptRisk).
 func (s *Service) AcceptRisk(ctx context.Context, orgID, id, userID string, in AcceptRiskInput) error {
 	return s.repo.AcceptRisk(ctx, orgID, id, userID, in.Justification)
 }

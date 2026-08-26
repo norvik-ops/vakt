@@ -3,6 +3,8 @@
 
 package vaktscan
 
+import "strings"
+
 // Die drei Dedup-Schlüssel von vb_findings — und warum ein Leerstring hier kein
 // „kein Wert" ist.
 //
@@ -49,4 +51,35 @@ func dedupKey(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+// cveKey ist dasselbe für `cve_id` — und zugleich die einzige Stelle, an der
+// entschieden wird, welcher Text dort landet.
+//
+// Zwei Gründe, warum das ein eigener Choke-Point ist und nicht bei jedem
+// Importer einzeln steht:
+//
+//  1. Der Unique-Index vergleicht Text exakt. „cve-2021-44228" und
+//     „CVE-2021-44228" sind für PostgreSQL zwei Schlüssel, für einen Menschen
+//     eine Schwachstelle. Ohne Normalisierung hängt die Deduplizierung an der
+//     Schreiblaune des jeweiligen Werkzeugs.
+//  2. Ein Leerstring ist NICHT „keine CVE": ein leerer Text ist in PostgreSQL
+//     NOT NULL, der partielle
+//     Index `WHERE cve_id IS NOT NULL` griffe also für jede Zeile und ließe alle
+//     Funde eines Assets zu einer einzigen zusammenfallen — genau die Klasse,
+//     die Migration 243 für raw_id/template_id aufgeräumt hat.
+//
+// Der Wert, der hier herauskommt, entscheidet zugleich, welcher Arbiter beim
+// Upsert greift (Repository.UpsertImportedFinding). Deshalb liegen
+// Normalisierung und Arbiter-Wahl bewusst nebeneinander und nicht an zwei Enden
+// des Codes.
+func cveKey(s *string) *string {
+	if s == nil {
+		return nil
+	}
+	v := strings.ToUpper(strings.TrimSpace(*s))
+	if v == "" {
+		return nil
+	}
+	return &v
 }

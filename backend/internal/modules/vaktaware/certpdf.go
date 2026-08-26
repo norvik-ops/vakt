@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 )
 
 // GenerateTrainingCertificatePDF renders a training completion certificate as PDF bytes.
 func GenerateTrainingCertificatePDF(moduleName, userEmail string, score *int, passed bool, completedAt time.Time, orgName string) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 

@@ -3,7 +3,7 @@
 > **Diese Datei wurde konsolidiert.** Die vollständige, gepflegte
 > Konfigurationsreferenz — alle Umgebungsvariablen, komplette `.env`-Vorlage,
 > LDAP/Active Directory, OIDC/SAML SSO, Lizenz, Encryption-at-Rest und
-> Enterprise-Integrationen — liegt jetzt an **einer** Stelle:
+> Verzeichnis-/SIEM-Integrationen — liegt jetzt an **einer** Stelle:
 >
 > ### ➡ [`docs/wiki/configuration.md`](wiki/configuration.md)
 

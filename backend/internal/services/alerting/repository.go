@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matharnica/vakt/internal/shared/apperr"
+	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
 
 // rawChannel includes the url_encrypted field for internal use by the service.
@@ -125,6 +126,28 @@ func (r *Repository) GetEnabledChannelsForEvent(ctx context.Context, orgID, even
 		channels = append(channels, ch)
 	}
 	return channels, rows.Err()
+}
+
+// MarkFired records that the event was delivered for the org, which suppresses
+// repeat alerts for the next 24 hours. The three cron checks in cmd/worker read
+// this table with a NOT EXISTS … last_fired_at > NOW() - INTERVAL '24 hours'
+// guard, so a row written here is what makes an org go quiet. It must only ever
+// be written after a confirmed delivery (ADR-0083).
+// Null Zeilen sind hier KEIN Normalfall: ON CONFLICT … DO UPDATE trifft immer
+// genau eine Zeile, einfügend oder auffrischend. Bleibt sie aus, steht die
+// Sperre nicht — und der Aufrufer glaubt, er habe sie gesetzt. Genau diese
+// Lüge schliesst ADR-0083, deshalb wird sie hier auch geprüft und nicht
+// als idempotent weggewunken.
+func (r *Repository) MarkFired(ctx context.Context, orgID, event string) error {
+	tag, err := r.db.Exec(ctx, `
+		INSERT INTO notification_alert_state (org_id, event_type, last_fired_at)
+		VALUES ($1::uuid, $2, NOW())
+		ON CONFLICT (org_id, event_type) DO UPDATE SET last_fired_at = NOW()
+	`, orgID, event)
+	if err := shareddb.MustAffect(tag, err); err != nil {
+		return fmt.Errorf("mark alert fired: %w", err)
+	}
+	return nil
 }
 
 // GetChannelRaw returns a single channel including url_encrypted, scoped to the org.

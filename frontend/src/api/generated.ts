@@ -7068,6 +7068,20 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description DSR not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description An erasure request cannot be set to completed before the Art. 17 DSGVO erasure has been executed (code PO_ERASURE_NOT_EXECUTED). Setting status=completed on an erasure request runs the erasure and then completes it; this conflict only arises when the erasure could not be carried out. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         post?: never;
@@ -7239,6 +7253,20 @@ export interface paths {
                 };
                 /** @description extension_reason required for extension */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description DSR not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description An erasure request cannot be closed as fulfilled before the Art. 17 DSGVO erasure has been executed (code PO_ERASURE_NOT_EXECUTED). Run the erasure first; rejecting or extending stays possible. */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -9755,7 +9783,16 @@ export interface paths {
                             /** Format: email */
                             email?: string;
                             name?: string;
-                            role?: string;
+                            /**
+                             * @description Denormalised users.role cache. Cannot express AuditorReadOnly or InternalAuditor — both appear here as "viewer". Use platform_role.
+                             * @enum {string}
+                             */
+                            role?: "admin" | "editor" | "viewer";
+                            /**
+                             * @description The authoritative role (org_members -> roles.name, ADR-0077) — the role carried in the token claim and checked by every RequireRole guard.
+                             * @enum {string}
+                             */
+                            platform_role?: "Admin" | "SecurityAnalyst" | "Viewer" | "AuditorReadOnly" | "InternalAuditor";
                             /** Format: date-time */
                             created_at?: string;
                         }[];
@@ -9773,7 +9810,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["InsufficientRoleError"];
+                    };
                 };
             };
         };
@@ -10632,7 +10671,10 @@ export interface paths {
         delete: operations["deleteBCPPlan"];
         options?: never;
         head?: never;
-        /** Update BCP plan */
+        /**
+         * Update BCP plan
+         * @description Mergendes PATCH nach RFC 7386: ein Feld, das im Body FEHLT, bleibt unveraendert; ein Feld mit `null` wird geloescht; ein Feld mit Wert wird gesetzt. Ausgenommen sind title und status — sie sind Pflicht und werden immer ersetzt. Bis 2026-07-30 ersetzte dieser Endpunkt ALLE Felder: ein PATCH mit nur title und status loeschte rto_hours, rpo_hours, schutzbedarfsklasse, scope, version und owner mit 200 und ohne Meldung (REV-ESK12 B1). Wer den Datenverlust wollte, schickt jetzt ausdruecklich `null` bzw. `""`.
+         */
         patch: operations["updateBCPPlan"];
         trace?: never;
     };
@@ -12768,7 +12810,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Mark incident as NIS2-reportable and set 3-stage deadlines */
+        /**
+         * Mark incident as NIS2-reportable and set 3-stage deadlines
+         * @description Evaluates the three NIS2 Art. 23 criteria and stores the early warning (+24h), incident notification (+72h) and final report (+1 calendar month) deadlines.
+         *     The deadlines are anchored to the incident's own `discovered_at` — NIS2 counts from becoming aware (Kenntnisnahme), not from the moment the assessment is made. There is deliberately no `detected_at` in the request body; a caller-supplied anchor previously made every deadline start "now". If the incident carries no usable discovery time, the request is rejected with 422 rather than anchored to a substituted value.
+         */
         post: operations["assessNIS2Reportability"];
         delete?: never;
         options?: never;
@@ -13434,13 +13480,21 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Controls list */
+                /** @description Controls list. Both branches of the handler wrap — cursor mode (the default, no page param) and offset mode — so this is never a bare array. The spec claimed one until R1-11-D01; the generated frontend type claimed one too, and the portal crashed on controls.map(). */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Control"][];
+                        "application/json": {
+                            data: components["schemas"]["Control"][];
+                            /** @description Cursor metadata in cursor mode; offset metadata (page, limit, total, total_pages) when page is passed. */
+                            pagination: {
+                                limit?: number;
+                                next_cursor?: string;
+                                has_more?: boolean;
+                            };
+                        };
                     };
                 };
                 /** @description Invalid or expired auditor session token */
@@ -13522,15 +13576,20 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Risks list */
+                /** @description Risks list. ListRisks is dual-branch like ListControls: without a page param it takes the cursor branch. The envelope key is `pagination`, never a top-level `total` — the spec claimed one until R1-11-D01, and no handler has ever sent it. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            data?: components["schemas"]["Risk"][];
-                            total?: number;
+                            data: components["schemas"]["Risk"][];
+                            /** @description Cursor metadata in cursor mode; offset metadata (page, limit, total, total_pages) when page is passed. */
+                            pagination: {
+                                limit?: number;
+                                next_cursor?: string;
+                                has_more?: boolean;
+                            };
                         };
                     };
                 };
@@ -13568,15 +13627,15 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Incidents list */
+                /** @description Incidents list. ListIncidents wraps unconditionally with offset metadata. The envelope key is `pagination`, never a top-level `total` (R1-11-D01). */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            data?: components["schemas"]["Incident"][];
-                            total?: number;
+                            data: components["schemas"]["Incident"][];
+                            pagination: components["schemas"]["PaginationMeta"];
                         };
                     };
                 };
@@ -13614,15 +13673,15 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Policies list */
+                /** @description Policies list. ListPolicies wraps unconditionally with offset metadata. The envelope key is `pagination`, never a top-level `total` (R1-11-D01). */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            data?: components["schemas"]["Policy"][];
-                            total?: number;
+                            data: components["schemas"]["Policy"][];
+                            pagination: components["schemas"]["PaginationMeta"];
                         };
                     };
                 };
@@ -16588,7 +16647,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Generate a password reset link for a user (no SMTP required) */
+        /**
+         * Issue a password reset for a user in the caller's own organisation
+         * @description Sends the reset link to the target user by email. The raw reset token is never returned in the response body — returning it was a cross-org account-takeover primitive (R1-24-RT01). The response only reports whether delivery happened.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -16600,15 +16662,20 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Reset link */
+                /** @description Reset issued. sent=true means the email went out; sent=false means the user exists but no mail was delivered (see reason). */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            reset_link?: string;
-                            expires_in?: string;
+                            /** @description Whether the reset email was delivered. */
+                            sent: boolean;
+                            /**
+                             * @description Present only when sent is false.
+                             * @enum {string}
+                             */
+                            reason?: "smtp_not_configured" | "delivery_failed";
                         };
                     };
                 };
@@ -16774,7 +16841,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change a user's role (revokes their sessions) */
+        /**
+         * Change a user's role (revokes their sessions)
+         * @description Writes the authoritative role (org_members -> roles.name, ADR-0077) and its users.role cache in one transaction. This is the only way to change a member's role after their account exists, and therefore the only way to grant InternalAuditor, which ADR-0055 requires for completing audits and approving management reviews (segregation of duties).
+         */
         patch: {
             parameters: {
                 query?: never;
@@ -16787,8 +16857,11 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        role: "admin" | "editor" | "viewer";
+                        /**
+                         * @description A platform role name; admin/editor/viewer are kept as legacy aliases for Admin/SecurityAnalyst/Viewer.
+                         * @enum {string}
+                         */
+                        role: "Admin" | "SecurityAnalyst" | "Viewer" | "AuditorReadOnly" | "InternalAuditor" | "admin" | "editor" | "viewer";
                     };
                 };
             };
@@ -16819,7 +16892,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["InsufficientRoleError"];
+                    };
                 };
                 /** @description Validation error */
                 422: {
@@ -28316,7 +28391,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Feature requires a Pro/Enterprise licence (TISAX) */
+                /** @description TISAX is not sold — no licence tier unlocks it (features.UnsoldFeatures) */
                 402: {
                     headers: {
                         [name: string]: unknown;
@@ -38506,6 +38581,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description 403 body of auth.RequireRole and usermgmt.requireAdmin. It names the roles that would have been accepted: `required_roles` machine-readable and the same list in prose in `error`. The role names are a compile-time property of the route, identical for every caller and every organisation, and carry no request or database data. */
+        InsufficientRoleError: {
+            /** @example forbidden: requires role InternalAuditor */
+            error: string;
+            /** @enum {string} */
+            code: "AUTH_INSUFFICIENT_ROLE";
+            /**
+             * @description Roles that would have been accepted, in the order the route declares them.
+             * @example [
+             *       "InternalAuditor"
+             *     ]
+             */
+            required_roles: ("Admin" | "SecurityAnalyst" | "Viewer" | "AuditorReadOnly" | "InternalAuditor")[];
+        };
         UpdateInfo: {
             check_enabled: boolean;
             /** @example 0.42.16 */
@@ -39248,6 +39337,20 @@ export interface components {
             /** @enum {string} */
             status: "draft" | "active" | "archived";
             owner: string;
+            /** @description Recovery Time Objective in Stunden (BSI 200-4). null = noch nicht festgelegt. */
+            rto_hours: number | null;
+            /** @description Recovery Point Objective in Stunden (BSI 200-4). Muss <= rto_hours sein. null = noch nicht festgelegt. */
+            rpo_hours: number | null;
+            /**
+             * @description Schutzbedarfsklasse nach BSI 200-4. null = noch nicht festgelegt.
+             * @enum {integer|null}
+             */
+            schutzbedarfsklasse: 1 | 2 | 3 | null;
+            /**
+             * Format: date
+             * @description Datum des juengsten protokollierten BCP-Tests. Abgeleitet aus den ck_bcp_tests-Eintraegen des Plans, kein Eingabefeld — POST /bcp/plans/{id}/tests schreibt es fort. null = kein Test erfasst.
+             */
+            readonly last_tested_at: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -39804,7 +39907,7 @@ export interface components {
             /** Format: uuid */
             org_id?: string;
             /** @enum {string} */
-            severity?: "critical" | "high" | "medium" | "low" | "info";
+            severity?: "critical" | "high" | "medium" | "low" | "info" | "unknown";
             remediation_days?: number;
             notification_advance_days?: number;
             is_default?: boolean;
@@ -40311,7 +40414,7 @@ export interface components {
             email: string;
             /** @enum {integer} */
             escalation_level: 1 | 2 | 3;
-            available_247: boolean;
+            available_24_7: boolean;
             notes: string;
             /** Format: date-time */
             created_at: string;
@@ -40325,7 +40428,7 @@ export interface components {
             email?: string;
             /** @enum {integer} */
             escalation_level: 1 | 2 | 3;
-            available_247?: boolean;
+            available_24_7?: boolean;
             notes?: string;
         };
         BackupJob: {
@@ -42249,8 +42352,24 @@ export interface operations {
                 "application/json": {
                     title: string;
                     scope?: string;
+                    /** @default 1.0 */
                     version?: string;
+                    /**
+                     * @description Weggelassen heisst `draft`. Das Feld wurde vom Server schon vorher angenommen, war aber nicht deklariert (REV-ESK12 B3).
+                     * @default draft
+                     * @enum {string}
+                     */
+                    status?: "draft" | "active" | "archived";
                     owner?: string;
+                    /** @description Recovery Time Objective in Stunden (BSI 200-4). Optional; weggelassen heisst `null` = noch nicht festgelegt. Es wird kein Wert vorbelegt — eine Zahl hier ist eine Angabe, die jemand entschieden hat. last_tested_at nimmt dieser Endpunkt NICHT entgegen: es wird aus den Testeintraegen abgeleitet. */
+                    rto_hours?: number;
+                    /** @description Recovery Point Objective in Stunden (BSI 200-4). Muss <= rto_hours sein, sofern beide gesetzt sind. Optional; weggelassen heisst `null` = noch nicht festgelegt. */
+                    rpo_hours?: number;
+                    /**
+                     * @description Schutzbedarfsklasse nach BSI 200-4. Optional; weggelassen heisst `null` = noch nicht festgelegt.
+                     * @enum {integer}
+                     */
+                    schutzbedarfsklasse?: 1 | 2 | 3;
                 };
             };
         };
@@ -42262,6 +42381,19 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BCPPlan"];
+                };
+            };
+            /** @description Ungueltige Eingabe. Der Koerper nennt den Grund im Feld `error` und den verletzenden Wert: "rto_hours must be between 1 and 8760", "rpo_hours must be between 1 and 8760", "schutzbedarfsklasse must be 1, 2 or 3" oder "rpo_hours must be less than or equal to rto_hours"; `code` ist immer VALIDATION_ERROR. Bis 2026-07-30 kam nur der letzte der vier Gruende beim Aufrufer an, die drei anderen wurden vorher zu "Ungültige Eingabe" verallgemeinert (REV-ESK12 B2). Verletzungen der Pflicht-/Aufzaehlungsfelder title und status liefern weiterhin das unspezifische "Ungültige Eingabe" — sie kommen aus der Struct-Validierung und nennen kein Feld. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        /** @enum {string} */
+                        code: "VALIDATION_ERROR";
+                    };
                 };
             };
         };
@@ -42320,12 +42452,28 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    /** @description Pflichtfeld, ersetzend — muss bei jedem PATCH mitgeschickt werden. */
                     title: string;
+                    /** @description Weggelassen = unveraendert. `""` leert das Feld. */
                     scope?: string;
+                    /** @description Weggelassen = unveraendert. `""` leert das Feld. */
                     version?: string;
-                    /** @enum {string} */
-                    status?: "draft" | "active" | "archived";
+                    /**
+                     * @description Pflichtfeld, ersetzend. Der Server hat es schon vorher verlangt; die Spezifikation fuehrte es faelschlich als optional.
+                     * @enum {string}
+                     */
+                    status: "draft" | "active" | "archived";
+                    /** @description Weggelassen = unveraendert. `""` leert das Feld. */
                     owner?: string;
+                    /** @description Recovery Time Objective in Stunden (BSI 200-4). Weggelassen = unveraendert, `null` = loeschen ("noch nicht festgelegt"). */
+                    rto_hours?: number | null;
+                    /** @description Recovery Point Objective in Stunden (BSI 200-4). Weggelassen = unveraendert, `null` = loeschen. Geprueft wird der ZIELZUSTAND: rpo_hours <= rto_hours muss auch dann gelten, wenn nur eines der beiden Felder im Body steht. */
+                    rpo_hours?: number | null;
+                    /**
+                     * @description Schutzbedarfsklasse nach BSI 200-4. Weggelassen = unveraendert, `null` = loeschen.
+                     * @enum {integer|null}
+                     */
+                    schutzbedarfsklasse?: 1 | 2 | 3 | null;
                 };
             };
         };
@@ -42337,6 +42485,19 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BCPPlan"];
+                };
+            };
+            /** @description Ungueltige Eingabe. Der Koerper nennt den Grund im Feld `error` und den verletzenden Wert: "rto_hours must be between 1 and 8760", "rpo_hours must be between 1 and 8760", "schutzbedarfsklasse must be 1, 2 or 3" oder "rpo_hours must be less than or equal to rto_hours"; `code` ist immer VALIDATION_ERROR. Bis 2026-07-30 kam nur der letzte der vier Gruende beim Aufrufer an, die drei anderen wurden vorher zu "Ungültige Eingabe" verallgemeinert (REV-ESK12 B2). Verletzungen der Pflicht-/Aufzaehlungsfelder title und status liefern weiterhin das unspezifische "Ungültige Eingabe" — sie kommen aus der Struct-Validierung und nennen kein Feld. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        /** @enum {string} */
+                        code: "VALIDATION_ERROR";
+                    };
                 };
             };
         };
@@ -44014,12 +44175,13 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        total: number;
-                        high_critical: number;
-                        /** Format: float */
-                        avg_rto_hours: number;
-                        /** Format: float */
-                        avg_rpo_hours: number;
+                        total_processes: number;
+                        critical_count: number;
+                        shortest_rto_hours: number;
+                        /** @description Count of BIA processes per Schutzbedarfsklasse (1–3). */
+                        klasse_breakdown: {
+                            [key: string]: number;
+                        };
                     };
                 };
             };
@@ -46090,8 +46252,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** Format: date-time */
-                    detected_at: string;
+                    /** @description The three Art. 23 criteria; any one of them makes the incident reportable. */
                     check: {
                         causes_significant_disruption?: boolean;
                         affects_third_parties?: boolean;
@@ -46102,14 +46263,37 @@ export interface operations {
         };
         responses: {
             /** @description Reportability assessed */
-            204: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        is_reportable: boolean;
+                        /**
+                         * Format: date-time
+                         * @description The incident's discovered_at, which the deadlines were anchored to.
+                         */
+                        detected_at: string;
+                    };
+                };
+            };
+            /** @description Invalid input */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Invalid input */
-            400: {
+            /** @description Incident not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Incident has no usable discovery time; deadlines cannot be anchored */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -46595,7 +46779,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                severity: "critical" | "high" | "medium" | "low" | "info";
+                severity: "critical" | "high" | "medium" | "low" | "info" | "unknown";
             };
             cookie?: never;
         };
@@ -46616,6 +46800,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SLAPolicy"];
                 };
+            };
+            /** @description Unbekannter Schweregrad im Pfad, oder Rumpf ungueltig. Der Pfad-Parameter ging frueher ungeprueft in den INSERT und lief dort in den CHECK der Tabelle — ein Eingabefehler, der als 500 zurueckkam. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

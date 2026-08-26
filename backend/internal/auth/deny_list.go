@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,11 +16,18 @@ type denyListFallback struct {
 	db *pgxpool.Pool
 }
 
-// revokeInFallback writes a token hash to the PostgreSQL fallback table.
-// Called by RevokeToken when Redis.Set fails.
-func (f *denyListFallback) revokeInFallback(ctx context.Context, tokenHash string, expiresAt time.Time) {
+// revokeInFallback writes a token hash to the PostgreSQL fallback table and
+// reports whether the revocation actually landed there.
+//
+// R1-W7A-N3: this used to log its failure and return nothing, which left its
+// only caller (RevokeToken) unable to tell a persisted revocation from a lost
+// one. "No fallback configured" is reported as an error too — not because it is
+// a fault, but because from the caller's angle it is the same fact: this sink
+// does not hold the revocation. RevokeToken decides what that means; here we
+// only state it.
+func (f *denyListFallback) revokeInFallback(ctx context.Context, tokenHash string, expiresAt time.Time) error {
 	if f == nil || f.db == nil {
-		return
+		return errNoDenyListFallback
 	}
 	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
@@ -29,8 +38,15 @@ func (f *denyListFallback) revokeInFallback(ctx context.Context, tokenHash strin
 		tokenHash, expiresAt)
 	if err != nil {
 		log.Warn().Err(err).Msg("deny-list fallback: write failed")
+		return fmt.Errorf("deny-list fallback write: %w", err)
 	}
+	return nil
 }
+
+// errNoDenyListFallback marks the absence of a PostgreSQL fallback (no pool
+// wired). Distinct from a write error so a caller can tell "not configured"
+// from "configured and broken" if it ever needs to.
+var errNoDenyListFallback = errors.New("deny-list fallback not configured")
 
 // isRevokedInFallback checks the PostgreSQL fallback table.
 // Returns true if the token is found and not yet expired.

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
-import type { NIS2ReportStatus, NIS2ReportabilityCheck, NIS2ReportInput, NIS2StageReport, AuthorityContact } from '../types'
+import type { NIS2ReportStatus, NIS2ReportabilityCheck, NIS2Assessment, NIS2ReportInput, NIS2StageReport, AuthorityContact } from '../types'
 
 export function useNIS2Status(incidentId: string) {
   return useQuery<NIS2ReportStatus>({
@@ -11,16 +11,19 @@ export function useNIS2Status(incidentId: string) {
   })
 }
 
+// Kein detected_at mehr: die Fristen haengen am discovered_at des Vorfalls,
+// das der Server selbst liest. Frueher schickte diese Stelle new Date() — damit
+// startete die gesetzliche 24-Stunden-Frist im Moment der Bewertung statt bei
+// der Kenntnisnahme.
 interface NIS2AssessPayload {
-  detected_at: string
   check: NIS2ReportabilityCheck
 }
 
 export function useNIS2AssessReportability(incidentId: string) {
   const queryClient = useQueryClient()
-  return useMutation<undefined, Error, NIS2AssessPayload>({
+  return useMutation<NIS2Assessment, Error, NIS2AssessPayload>({
     mutationFn: (payload) =>
-      apiFetch<undefined>(`/vaktcomply/incidents/${incidentId}/nis2/assess`, {
+      apiFetch<NIS2Assessment>(`/vaktcomply/incidents/${incidentId}/nis2/assess`, {
         method: 'POST',
         body: JSON.stringify(payload),
       }),

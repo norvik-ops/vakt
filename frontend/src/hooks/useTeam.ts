@@ -5,11 +5,27 @@ import { apiFetch } from '../api/client'
 // Types
 // ---------------------------------------------------------------------------
 
+// PlatformRole is roles.name — the role org_members carries, the role the token
+// claim carries, and the role every backend RequireRole guard checks (ADR-0077).
+// This is the one to display and the one to send when changing a role.
+//
+// The legacy `role` field below is the denormalised users.role cache. It only
+// knows admin/editor/viewer, so AuditorReadOnly and InternalAuditor both appear
+// there as 'viewer' — rendering it would show the org's internal auditor as a
+// plain viewer.
+export type PlatformRole =
+  | 'Admin'
+  | 'SecurityAnalyst'
+  | 'Viewer'
+  | 'AuditorReadOnly'
+  | 'InternalAuditor'
+
 export interface TeamMember {
   id: string
   email: string
   name: string
   role: 'admin' | 'editor' | 'viewer'
+  platform_role: PlatformRole
   created_at: string
 }
 
@@ -29,6 +45,9 @@ export interface InviteInput {
   role: 'admin' | 'editor' | 'viewer'
 }
 
+// POST /admin/users is served by internal/admin, whose validator does NOT accept
+// InternalAuditor — a user is created with one of these four and then given the
+// auditor role through useUpdateRole().
 export interface CreateUserInput {
   email: string
   password: string
@@ -42,7 +61,7 @@ export interface CreateUserResult {
 }
 
 export interface UpdateRoleInput {
-  role: 'admin' | 'editor' | 'viewer'
+  role: PlatformRole
 }
 
 export interface InviteInfo {
@@ -66,7 +85,7 @@ export function useTeamMembers() {
 
 export function useUpdateRole() {
   const qc = useQueryClient()
-  return useMutation<undefined, Error, { id: string; role: 'admin' | 'editor' | 'viewer' }>({
+  return useMutation<undefined, Error, { id: string; role: PlatformRole }>({
     mutationFn: ({ id, role }) =>
       apiFetch<undefined>(`/admin/users/${id}/role`, {
         method: 'PATCH',

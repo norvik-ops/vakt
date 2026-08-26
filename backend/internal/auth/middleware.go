@@ -556,6 +556,20 @@ func isSafeMethod(method string) bool {
 	}
 }
 
+// InsufficientRoleResponse is the 403 body every insufficient-role guard returns
+// (auth.RequireRole and usermgmt.requireAdmin). It is the Go side of
+// `InsufficientRoleError` in openapi.yaml — one type, so the two guards cannot
+// drift into two shapes.
+//
+// RequiredRoles is what makes the answer actionable: a bare "forbidden" tells an
+// operator nothing about which role to grant, and the obvious self-help is then
+// an UPDATE against the database.
+type InsufficientRoleResponse struct {
+	Error         string   `json:"error"`
+	Code          string   `json:"code"`
+	RequiredRoles []string `json:"required_roles"`
+}
+
 // RequireRole returns middleware that enforces that at least one of the caller's
 // roles appears in the allowedRoles list using exact string matching (not a
 // role hierarchy). Callers must explicitly list every role that should be
@@ -563,11 +577,32 @@ func isSafeMethod(method string) bool {
 //
 // Known roles: Admin, SecurityAnalyst, Viewer, AuditorReadOnly, InternalAuditor.
 // InternalAuditor is parallel (SoD), not in the rw chain (Vier-Augen-Prinzip).
+//
+// The 403 body names the roles that would have been accepted, both as prose in
+// `error` and machine-readable in `required_roles`. Without it the caller reads
+// only "forbidden" and cannot tell WHICH role is missing — for the SoD routes
+// (ADR-0055) that is the difference between "assign a second user the
+// InternalAuditor role" and an UPDATE against the database, which is what an
+// operator reaches for when the product does not say what it wants (ESK-13).
+//
+// Why this is not an information leak: allowedRoles is a compile-time literal
+// list per route — identical for every caller, every org and every :id, and
+// carrying no data from the request or the database. The value is already part
+// of the published contract (openapi.yaml enums, ADR-0055's role matrix). The
+// branch is also only reachable AFTER authentication, since RequireRole is
+// always mounted behind the Paseto/auth middleware; an anonymous caller gets a
+// 401 and never sees it. It reveals nothing about the requested resource — the
+// guard runs before the handler, so the answer is the same whether or not the
+// :id exists, which is exactly what it was before this change.
 func RequireRole(allowedRoles ...string) echo.MiddlewareFunc {
 	allowed := make(map[string]struct{}, len(allowedRoles))
 	for _, r := range allowedRoles {
 		allowed[r] = struct{}{}
 	}
+	// Built once, in the order the route declared them, so the message is
+	// deterministic (ranging the map above would not be).
+	required := append([]string(nil), allowedRoles...)
+	message := "forbidden: requires role " + strings.Join(required, " or ")
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -577,9 +612,10 @@ func RequireRole(allowedRoles ...string) echo.MiddlewareFunc {
 					return next(c)
 				}
 			}
-			return c.JSON(http.StatusForbidden, map[string]string{
-				"error": "forbidden",
-				"code":  "AUTH_INSUFFICIENT_ROLE",
+			return c.JSON(http.StatusForbidden, InsufficientRoleResponse{
+				Error:         message,
+				Code:          "AUTH_INSUFFICIENT_ROLE",
+				RequiredRoles: required,
 			})
 		}
 	}

@@ -258,17 +258,66 @@ func masterKeyFromHex(hexKey string) []byte {
 	return b
 }
 
+// samlDB returns the pool the direct SAML SP path reads org_saml_configs from.
+//
+// R1-21-A03 / R1-10-V04 / R1-07-B03: this used to be h.db alone, filled by
+// WithDB("required for direct SAML SP") — and WithDB had no caller anywhere in
+// the tree. h.db was always nil, LoadOrgSAMLConfig returns "unconfigured" for a
+// nil pool, and so every direct SAML request silently fell back to the Casdoor
+// proxy. The whole org_saml_configs path was unreachable.
+//
+// The service's pool is the one the rest of the package already uses and is
+// never nil in a wired server, so reading it here removes the dependency on a
+// wiring line somebody has to remember. WithDB stays for tests that build a
+// handler without a service.
+func (h *Handler) samlDB() *pgxpool.Pool {
+	if h.db != nil {
+		return h.db
+	}
+	if h.service != nil {
+		return h.service.db
+	}
+	return nil
+}
+
+// samlOrgID resolves the organisation the direct SAML SP acts for.
+//
+// The three SAML SP handlers are mounted PUBLIC, and they must be: the IdP
+// POSTs the assertion to /saml/acs without a Vakt session, and /saml/initiate
+// is what creates that session in the first place. They read c.Get("org_id") —
+// a value only the auth middleware sets, so on a public mount it is always
+// empty. /auth/saml/initiate therefore answered 400 AUTH_SAML_NO_ORG to
+// everyone (measured live, R1-07-B03).
+//
+// One customer per server, one organisation: the instance's organisation is the
+// org this SP acts for. A context value still wins if one is ever set, so a
+// future authenticated mount keeps working unchanged.
+func (h *Handler) samlOrgID(c echo.Context) string {
+	if orgID, _ := c.Get("org_id").(string); orgID != "" {
+		return orgID
+	}
+	if h.service == nil || h.service.db == nil {
+		return ""
+	}
+	orgID, err := h.service.resolveInstanceOrg(c.Request().Context())
+	if err != nil {
+		log.Warn().Err(err).Msg("saml_direct: cannot resolve the instance organisation")
+		return ""
+	}
+	return orgID
+}
+
 // SAMLDirectMetadata serves GET /api/v1/auth/saml/metadata using the org's
 // direct SAML SP config. Falls back to Casdoor proxy if no direct config.
 func (h *Handler) SAMLDirectMetadata(c echo.Context) error {
-	orgID, _ := c.Get("org_id").(string)
+	orgID := h.samlOrgID(c)
 	if orgID == "" {
-		// Unauthenticated access: try Casdoor fallback
+		// No organisation at all (un-setup instance): Casdoor fallback.
 		return h.SAMLMetadata(c)
 	}
 
 	masterKey := masterKeyFromHex(h.cfg.SecretKey)
-	cfg, err := LoadOrgSAMLConfig(c.Request().Context(), h.db, orgID, masterKey)
+	cfg, err := LoadOrgSAMLConfig(c.Request().Context(), h.samlDB(), orgID, masterKey)
 	if err != nil || cfg == nil || !cfg.Enabled {
 		return h.SAMLMetadata(c)
 	}
@@ -296,7 +345,7 @@ func (h *Handler) SAMLDirectMetadata(c echo.Context) error {
 // SAMLInitiate handles GET /api/v1/auth/saml/initiate — SP-initiated login.
 // Generates an AuthnRequest and redirects the user to the IdP.
 func (h *Handler) SAMLInitiate(c echo.Context) error {
-	orgID, _ := c.Get("org_id").(string)
+	orgID := h.samlOrgID(c)
 	if orgID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "org context required",
@@ -305,7 +354,7 @@ func (h *Handler) SAMLInitiate(c echo.Context) error {
 	}
 
 	masterKey := masterKeyFromHex(h.cfg.SecretKey)
-	cfg, err := LoadOrgSAMLConfig(c.Request().Context(), h.db, orgID, masterKey)
+	cfg, err := LoadOrgSAMLConfig(c.Request().Context(), h.samlDB(), orgID, masterKey)
 	if err != nil || cfg == nil || !cfg.Enabled {
 		return c.JSON(http.StatusNotFound, map[string]string{
 			"error": "SAML not configured for this organisation",
@@ -376,14 +425,14 @@ func (h *Handler) SAMLInitiate(c echo.Context) error {
 // SAMLDirectACS handles POST /api/v1/auth/saml/acs using crewjam/saml for
 // assertion validation. Falls back to Casdoor when no direct config.
 func (h *Handler) SAMLDirectACS(c echo.Context) error {
-	orgID, _ := c.Get("org_id").(string)
+	orgID := h.samlOrgID(c)
 
 	var masterKey []byte
 	var cfg *OrgSAMLConfig
 	if orgID != "" {
 		masterKey = masterKeyFromHex(h.cfg.SecretKey)
 		var err error
-		cfg, err = LoadOrgSAMLConfig(c.Request().Context(), h.db, orgID, masterKey)
+		cfg, err = LoadOrgSAMLConfig(c.Request().Context(), h.samlDB(), orgID, masterKey)
 		if err != nil {
 			log.Error().Err(err).Str("org_id", orgID).Msg("saml_acs: load config failed")
 		}

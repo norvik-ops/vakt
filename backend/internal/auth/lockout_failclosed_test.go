@@ -7,26 +7,12 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// dialFailingRedis points a real go-redis client at a port that is
-// guaranteed to be unreachable inside test sandboxes. Every call returns
-// an i/o error within the configured timeout — exactly the situation the
-// fail-closed path is designed for.
-func dialFailingRedis(t *testing.T) *redis.Client {
-	t.Helper()
-	return redis.NewClient(&redis.Options{
-		Addr:        "127.0.0.1:1", // unbindable port → dial error
-		DialTimeout: 100 * time.Millisecond,
-		ReadTimeout: 100 * time.Millisecond,
-		MaxRetries:  -1,
-	})
-}
+// The dead-Redis client lives in redis_outage_test.go (dialFailingRedis).
 
 // TestCheckAccountLocked_FailClosedByDefault is the audit P1-6 regression.
 // Without VAKT_AUTH_FAIL_OPEN_ON_REDIS_OUTAGE the service must reject

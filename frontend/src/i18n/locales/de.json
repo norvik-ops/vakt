@@ -238,7 +238,8 @@
       "high": "Hoch",
       "medium": "Mittel",
       "low": "Niedrig",
-      "info": "Info"
+      "info": "Info",
+      "unknown": "Unbewertet"
     },
     "status": {
       "open": "Offen",
@@ -252,6 +253,10 @@
       "notFound": "Asset nicht gefunden",
       "startScan": "Scan starten",
       "scanStarted": "Scan wurde gestartet.",
+      "scanFailed": "Scan konnte nicht gestartet werden: {{msg}}",
+      "scannerLabel": "Scanner",
+      "scannerPlaceholder": "Scanner waehlen",
+      "noScanners": "Auf dieser Instanz ist kein Scanner installiert.",
       "assetDetails": "Asset-Details",
       "criticality": "Kritikalität",
       "target": "Ziel",
@@ -534,7 +539,9 @@
       "disableConfirm": "Möchtest du {{name}} wirklich entfernen? Alle zugehörigen Controls und Nachweise werden unwiderruflich gelöscht.",
       "disabling": "Wird entfernt…",
       "confirmDisable": "Ja, deaktivieren",
-      "frameworkStatusDraft": "Entwurf — erwartet Ende 2026"
+      "frameworkStatusDraft": "Entwurf — erwartet Ende 2026",
+      "frameworkStatusNotOffered": "Nicht im Angebot",
+      "frameworkStatusNotOfferedHint": "Dieses Rahmenwerk wird derzeit nicht angeboten und kann nicht aktiviert werden."
     },
     "controlDetailPage": {
       "addEvidence": "Nachweis hinzufügen",
@@ -1127,7 +1134,15 @@
       "labelSeverity": "Schweregrad",
       "labelFindingDesc": "Beschreibung",
       "placeholderFindingDesc": "Details zum Finding …",
-      "findingSubmitBtn": "Finding anlegen"
+      "findingSubmitBtn": "Finding anlegen",
+      "typeComplianceCheck": "Compliance-Prüfung",
+      "typeProcessAudit": "Prozessaudit",
+      "summaryPlannedThisYear": "Geplant (Jahr)",
+      "summaryOverdueCapas": "Überfällige CAPAs",
+      "labelScope": "Auditumfang *",
+      "placeholderScope": "Welche Bereiche, Standorte und Prozesse deckt dieses Audit ab?",
+      "labelAuditReport": "Auditbericht *",
+      "placeholderAuditReport": "Ergebnisse, Feststellungen und Schlussfolgerungen des Audits (mind. 10 Zeichen) …"
     },
     "soaPage": {
       "subtitle": "Anhang A — Anwendbarkeit aller 93 Maßnahmen (Klausel 6.1.3)",
@@ -1156,6 +1171,7 @@
       "groupA7": "A.7 Physische Maßnahmen",
       "groupA8": "A.8 Technologische Maßnahmen",
       "implNotStarted": "Nicht begonnen",
+      "implPlanned": "Geplant",
       "implInProgress": "In Bearbeitung",
       "implImplemented": "Umgesetzt",
       "implNotApplicable": "Nicht anwendbar",
@@ -1238,7 +1254,17 @@
       "freqMonthly": "Monatlich",
       "freqQuarterly": "Quartalsweise",
       "freqAnnually": "Jährlich",
-      "freqAsNeeded": "Bei Bedarf"
+      "freqAsNeeded": "Bei Bedarf",
+      "categoryEmployee": "Beschäftigte",
+      "categoryShareholder": "Gesellschafter",
+      "categoryInsurer": "Versicherer",
+      "categoryItProvider": "IT-Dienstleister",
+      "colReviewDate": "Nächste Überprüfung",
+      "badgeOverdue": "überfällig",
+      "badgeSystemDefault": "Standardeintrag",
+      "labelReviewDate": "Nächste Überprüfung",
+      "labelConcerns": "Bedenken und Erwartungen",
+      "placeholderConcerns": "Was erwartet diese Partei vom ISMS?"
     },
     "incidentDetail": {
       "notFound": "Vorfall nicht gefunden.",
@@ -2053,6 +2079,7 @@
       "resolveCompleted": "Erledigt",
       "resolveRejected": "Abgelehnt",
       "resolveExtended": "Verlängert",
+      "resolveErasureNotExecuted": "Eine Löschanfrage kann erst als „Erledigt\" geschlossen werden, wenn die Löschung nach Art. 17 DSGVO tatsächlich ausgeführt wurde. Nutzen Sie dafür die Schaltfläche „Löschung\" in der Anfrage — danach lässt sich die Anfrage abschließen.",
       "resolveLabelExtensionReason": "Begründung der Verlängerung",
       "resolveLabelNotes": "Abschlussnotiz",
       "resolveBtn": "Abschließen",
@@ -2381,11 +2408,11 @@
     "moduleVaktprivacyDesc": "DSGVO-Dokumentation (VVT, DSFA, AVV, Datenpannen)",
     "licenseAutoRenewal": "Auto-Renewal aktiv",
     "licenseValidUntil": "Gültig bis {{date}}",
-    "licenseProComingSoon": "Vakt Pro — demnächst verfügbar",
-    "licenseProFeature1": "Rollen: Admin, Analyst, Viewer, Auditor",
+    "licenseProComingSoon": "Vakt Pro bestellen",
+    "licenseProFeature1": "BSI IT-Grundschutz — Modellierung, Grundschutz-Check, Cockpit",
     "licenseProFeature2": "Granulare Modul-Berechtigungen pro Benutzer",
-    "licenseProFeature3": "TISAX, DORA, EU AI Act, CRA",
-    "licenseProFeature4": "KI-Berater, Audit-PDF Export, SSO, API-Zugang",
+    "licenseProFeature3": "EU AI Act, CRA, DSGVO-TOM, CIS, KRITIS, BSI C5",
+    "licenseProFeature4": "Audit-PDF-Export, SSO, SCIM, SIEM, API-Zugang",
     "siemTitle": "SIEM-Integration",
     "siemProTitle": "Pro-Feature",
     "siemProDesc": "Leite Audit-Log-Einträge automatisch an Splunk, Elasticsearch oder einen generischen Webhook weiter. Verfügbar mit Vakt Pro.",
@@ -2527,7 +2554,9 @@
     "creating": "Anlegen...",
     "createUser": "Nutzer anlegen",
     "userCreated": "Nutzer erfolgreich angelegt",
-    "deleted": "Gelöscht"
+    "deleted": "Gelöscht",
+    "roleAuditorReadOnly": "AuditorReadOnly — Nur lesen, für externe Prüfer",
+    "roleInternalAuditor": "InternalAuditor — Audits abschließen und Management-Reviews genehmigen (Funktionstrennung)"
   },
   "accountSettingsPage": {
     "title": "Konto-Einstellungen",
@@ -2713,8 +2742,9 @@
     "passwordStrengthWeak": "Schwach",
     "passwordStrengthMedium": "Mittel",
     "passwordStrengthStrong": "Stark",
-    "mfaPrompt": "Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein, um die Anmeldung abzuschließen.",
+    "mfaPrompt": "Geben Sie den Code aus Ihrer Authenticator-App ein, um die Anmeldung abzuschließen.",
     "mfaCodeLabel": "Authentifizierungscode",
+    "mfaBackupHint": "Kein Zugriff auf die App? Geben Sie stattdessen einen Ihrer Backup-Codes ein (Format ABCD-1234).",
     "mfaVerify": "Bestätigen",
     "mfaBack": "Zurück zur Anmeldung",
     "mfaInvalidCode": "Ungültiger oder abgelaufener Code"
@@ -2943,7 +2973,9 @@
     "team": {
       "roleAdmin": "Admin",
       "roleEditor": "Editor",
-      "roleViewer": "Viewer"
+      "roleViewer": "Viewer",
+      "roleAuditorReadOnly": "AuditorReadOnly",
+      "roleInternalAuditor": "InternalAuditor"
     }
   },
   "admin": {
@@ -3039,9 +3071,9 @@
     },
     "pro": {
       "title": "Vakt Pro",
-      "description": "Dieses Feature ist in der Community Edition nicht enthalten. Vakt Pro enthält TISAX, DORA, EU AI Act, NIS2-Meldepflicht-Assistent, Audit-PDF-Export, SSO, API-Keys, granulare Modul-Berechtigungen und mehr.",
+      "description": "Dieses Feature ist in der Community Edition nicht enthalten. Vakt Pro enthält BSI IT-Grundschutz, EU AI Act, CRA, DSGVO-TOM, CIS, NIS2-Meldepflicht-Assistent, Audit-PDF-Export, SSO, API-Keys, granulare Modul-Berechtigungen und mehr.",
       "cta": "Jetzt upgraden →",
-      "featureList": "TISAX · DORA · EU AI Act · NIS2-Assistent · Audit-PDF · SSO · API-Keys",
+      "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · NIS2-Assistent · Audit-PDF · SSO · API-Keys",
       "demoHint": "Pro"
     }
   },
@@ -3277,6 +3309,9 @@
     "version": "Version",
     "owner": "Verantwortlicher",
     "ownerPlaceholder": "z.B. IT-Leiter",
+    "notSet": "nicht festgelegt",
+    "lastTested": "Zuletzt getestet",
+    "statusLabel": "Status",
     "deleteConfirm": "Plan wirklich löschen?",
     "loadError": "Fehler beim Laden der BCP-Pläne.",
     "emptyTitle": "Keine BCP-Pläne vorhanden",
@@ -3503,6 +3538,10 @@
     "csvHeaderAction": "Aktion",
     "csvHeaderResource": "Ressourcentyp",
     "csvHeaderDetails": "Details",
+    "csvHeaderIp": "IP-Adresse",
+    "exporting": "Exportiere …",
+    "exportTruncated": "Export auf {{exported}} von {{total}} Eintraegen begrenzt.",
+    "exportFailed": "Export fehlgeschlagen",
     "csvHeaders": {
       "timestamp": "Zeitstempel",
       "user": "Benutzer",
@@ -4163,6 +4202,7 @@
       "biaProcesses": "BIA-Prozesse",
       "highCritical": "hoch/kritisch",
       "avgRto": "Ø RTO",
+      "shortestRto": "Kürzeste RTO",
       "recoveryPlans": "Wiederanlaufpläne",
       "tested": "getestet",
       "emergencyContacts": "Notfallkontakte",

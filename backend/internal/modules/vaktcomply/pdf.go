@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-pdf/fpdf"
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
 )
 
 type BoardReportData struct {
@@ -25,7 +26,7 @@ type BoardReportData struct {
 // GenerateBoardReportPDF renders a 1-click management board report as PDF bytes.
 // Style matches the SecReflex campaign report (blue header bar, Helvetica, fpdf).
 func GenerateBoardReportPDF(data BoardReportData) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 18)
 	pdf.AliasNbPages("{nb}")
@@ -356,7 +357,7 @@ func statBoxRow(pdf *fpdf.Fpdf, boxes []statBox) {
 }
 
 func GenerateAuditIndexPDF(frameworkName, orgName string, controlOrder []string, controlMap map[string]*auditControlEntry, exportedAt time.Time) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 
@@ -499,7 +500,7 @@ func GenerateAuditIndexPDF(frameworkName, orgName string, controlOrder []string,
 // GenerateIncidentReportPDF renders a BaFin-style DORA incident report as PDF bytes.
 // For major incidents (is_major_incident = true) it adds the Art. 18 DORA label prominently.
 func GenerateIncidentReportPDF(incident *Incident, orgName string) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 	pdf.AddPage()
@@ -726,7 +727,7 @@ func GenerateIncidentReportPDF(incident *Incident, orgName string) ([]byte, erro
 
 // GenerateDORAPDF renders a DORA readiness report as PDF bytes.
 func GenerateDORAPDF(dashboard *DORADashboard, orgName string) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 	pdf.AddPage()
@@ -889,7 +890,7 @@ func GenerateDORAPDF(dashboard *DORADashboard, orgName string) ([]byte, error) {
 // protectionLevel: "normal" | "high" | "very_high"
 // assessmentLevel: "AL1" | "AL2" | "AL3"
 func GenerateTISAXReportPDF(report *ReadinessReport, controls []Control, gaps *TISAXGapAnalysis, orgName, protectionLevel, assessmentLevel string, assessmentDate time.Time) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 
@@ -1212,7 +1213,7 @@ func GenerateTISAXReportPDF(report *ReadinessReport, controls []Control, gaps *T
 
 // GenerateFrameworkPDF renders a human-readable compliance overview as PDF bytes.
 func GenerateFrameworkPDF(report *ReadinessReport, gaps *GapAnalysis, orgName string) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 	pdf.AddPage()
@@ -1400,7 +1401,7 @@ func GenerateFrameworkPDF(report *ReadinessReport, gaps *GapAnalysis, orgName st
 
 // GenerateAssessmentReportPDFBytes renders a supplier assessment report as PDF.
 func GenerateAssessmentReportPDFBytes(asm *AssessmentWithQuestionnaire, supplier *Supplier, answers []AnswerWithReview, status SupplierStatus) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 	pdf.AddPage()
@@ -1496,7 +1497,7 @@ func GenerateAssessmentReportPDFBytes(asm *AssessmentWithQuestionnaire, supplier
 
 // GenerateAIDocumentationPDF produces the technical dossier PDF for an AI system (Art. 11, Annex IV EU AI Act).
 func GenerateAIDocumentationPDF(system *AISystem, doc *AIDocumentation) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 	pdf.AddPage()
@@ -1566,7 +1567,7 @@ func GenerateAIDocumentationPDF(system *AISystem, doc *AIDocumentation) ([]byte,
 
 // GenerateEUAIActReportPDF produces the full EU AI Act compliance report PDF.
 func GenerateEUAIActReportPDF(dashboard *EUAIActDashboard, systems []AISystem) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 	pdf.AddPage()
@@ -1697,7 +1698,7 @@ func GenerateNIS2ReportFormPDF(incident *Incident, reportType, orgName string) (
 		formTitle = "NIS2 Meldung"
 	}
 
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 	pdf.AddPage()
@@ -1814,7 +1815,7 @@ func GenerateNIS2ReportFormPDF(incident *Incident, reportType, orgName string) (
 // GenerateSoAPDF renders an ISO 27001 Statement of Applicability as a PDF document.
 // Controls are grouped by domain (A.5, A.6, A.7, A.8).
 func GenerateSoAPDF(rows []SoARow, frameworkName, orgName string, generatedAt time.Time) ([]byte, error) {
-	pdf := fpdf.New("L", "mm", "A4", "") // Landscape for the wide table
+	pdf := pdfutil.New("L") // Landscape for the wide table
 	pdf.SetMargins(12, 12, 12)
 	pdf.SetAutoPageBreak(true, 14)
 	pdf.AddPage()
@@ -1998,7 +1999,7 @@ func GenerateSoAPDF(rows []SoARow, frameworkName, orgName string, generatedAt ti
 // GenerateExecutiveSummaryPDF renders a one-page Compliance Executive Summary PDF.
 // Sections: 1 — Gesamtstatus, 2 — Framework-Übersicht, 3 — Top 5 Risiken, 4 — Letzte 30 Tage.
 func GenerateExecutiveSummaryPDF(d *ExecutiveSummaryData) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfutil.New("P")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
 

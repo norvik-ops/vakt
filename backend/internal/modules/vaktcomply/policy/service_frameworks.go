@@ -35,6 +35,21 @@ func (s *Service) ListFrameworks(ctx context.Context, orgID string) ([]Framework
 	if err != nil {
 		return nil, fmt.Errorf("list frameworks: %w", err)
 	}
+
+	// R1-18-D3: ohne diesen Schritt blieb ReadinessScore auf 0 und fiel wegen
+	// `omitempty` ganz aus der Antwort — das Auditor-Portal zeigte
+	// "Bereitschaft %" ohne Zahl. Ein Fehler beim Rechnen darf die Liste nicht
+	// scheitern lassen; dann fehlt eben die Kennzahl wie bisher, aber
+	// protokolliert statt stillschweigend.
+	scores, scoreErr := s.repo.ReadinessScoresByFramework(ctx, orgID)
+	if scoreErr != nil {
+		log.Warn().Err(scoreErr).Str("org_id", orgID).
+			Msg("list frameworks: Bereitschaftsgrad nicht berechenbar — Feld bleibt leer")
+		return frameworks, nil
+	}
+	for i := range frameworks {
+		frameworks[i].ReadinessScore = scores[frameworks[i].ID]
+	}
 	return frameworks, nil
 }
 
@@ -758,12 +773,21 @@ func (s *Service) checkFrameworkMilestone(ctx context.Context, orgID, frameworkI
 		if already > 0 {
 			continue
 		}
-		notify.Send(ctx, s.db, orgID,
+		// R1-W4A-N1: Die Entdopplung liest genau die Zeile, die Send
+		// schreibt (CountCKFrameworkMilestoneNotifs ueber dedupeKey). Sie
+		// unterdrueckt also nur, was auch wirklich geschrieben wurde — ein
+		// Fehlschlag laesst den Meilenstein beim naechsten Lauf erneut zu.
+		// Genau deshalb darf der Fehler hier nicht verschwinden.
+		if err := notify.Send(ctx, s.db, orgID,
 			fmt.Sprintf("%d %% Compliance-Meilenstein erreicht", threshold),
 			fmt.Sprintf("%s hat %d %% Umsetzungsgrad erreicht.", fw.Name, threshold),
 			"framework_milestone",
 			dedupeKey,
-		)
+		); err != nil {
+			log.Error().Err(err).Str("org_id", orgID).
+				Str("framework_id", frameworkID).Int("threshold", threshold).
+				Msg("milestone notification NICHT geschrieben")
+		}
 	}
 }
 

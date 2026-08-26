@@ -120,6 +120,27 @@ GROUP BY c.id, c.control_id, c.title, c.domain, c.not_applicable,
          c.soa_justification, c.soa_implementation, c.soa_responsible, c.manual_status
 ORDER BY c.control_id ASC;
 
+-- name: ListCKFrameworkReadinessRows :many
+-- R1-18-D3: GET /vaktcomply/frameworks (und das Auditor-Portal darauf) lieferte
+-- readiness_score nie mit — das Feld traegt `omitempty`, blieb auf 0 und fiel
+-- damit ganz aus der Antwort. Der externe Auditor sah "Bereitschaft %" ohne
+-- Zahl.
+--
+-- Eine Zeile je Control der gesamten Organisation, mit den drei Angaben, aus
+-- denen policy.ResolveStatus den wirksamen Zustand ableitet. Der Score wird
+-- danach in Go mit derselben Funktion gerechnet, die auch der Readiness-Report
+-- benutzt — eine zweite Formel in SQL wuerde auseinanderdriften.
+--
+-- Org-weit statt je Framework, damit ListFrameworks nicht in ein N+1 laeuft.
+SELECT c.framework_id,
+       c.not_applicable,
+       COALESCE(c.manual_status, '')::text AS manual_status,
+       COUNT(e.id) FILTER (WHERE e.status IN ('approved', 'pending'))::int AS evidence_count
+FROM ck_controls c
+LEFT JOIN ck_evidence e ON e.control_id = c.id AND e.org_id = c.org_id
+WHERE c.org_id = $1
+GROUP BY c.id, c.framework_id, c.not_applicable, c.manual_status;
+
 -- name: CountCKEvidenceByControl :many
 -- Returns one row per control_id with the count of approved+pending evidence.
 SELECT e.control_id::uuid AS control_id, COUNT(*)::int AS evidence_count
@@ -217,8 +238,29 @@ SET status      = $1,
 WHERE id = $3 AND org_id = $4;
 
 -- name: AddCKCollectorEvidence :one
+-- Idempotent je (org_id, control_id, source, title) — der natuerliche
+-- Schluessel einer maschinell gesammelten Evidenz. Zwei Laeufe desselben
+-- Sammlers am selben Control sind eine Evidenz mit frischerem Inhalt, keine
+-- zwei. Bis Migration 257 war das ein nacktes INSERT, waehrend der
+-- Doc-Kommentar an der Aufrufstelle "upsert-safe" behauptete: der taegliche
+-- BCM-Cron legte pro Lauf eine identische Zeile an (R1-19-W03), jeder
+-- Trainings-Report-Export zehn (R1-20-A10).
+--
+-- Der Arbiter nennt das Praedikat des Teilindex ck_evidence_collector_uniq
+-- mit; ohne diese Wiederholung kann Postgres den Teilindex nicht ableiten.
+-- Ausserhalb des Praedikats (manueller Upload, Evidenz ohne Control,
+-- CI-/Integrations-Evidenz mit auto_source_type) greift der Upsert nicht und
+-- die Zeile wird wie bisher angelegt.
 INSERT INTO ck_evidence (control_id, org_id, title, source, collector_data, uploaded_by)
 VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (org_id, control_id, source, title)
+  WHERE control_id IS NOT NULL
+    AND source <> 'manual'
+    AND auto_source_type IS NULL
+DO UPDATE SET
+  collector_data = EXCLUDED.collector_data,
+  uploaded_by    = COALESCE(EXCLUDED.uploaded_by, ck_evidence.uploaded_by),
+  updated_at     = NOW()
 RETURNING id, control_id, org_id, title, description, source,
           file_path, file_size, status, version,
           expires_at, expiry_notified_at, created_at, updated_at;
@@ -1030,8 +1072,17 @@ ON CONFLICT (assessment_id, question_id) DO UPDATE
 -- keine eigene org_id-Spalte — siehe Migration 048; existierender Code
 -- referenzierte sa.org_id was zur Laufzeit gefehlt hätte). Diese Variante
 -- ist korrekt und multi-tenant-safe via FK-Kette.
+-- L1-04: cert_expiry_date hatte KEINEN Schreiber. Die Spalte kam mit
+-- Migration 049, FindCKExpiringCerts verlangt cert_expiry_date IS NOT NULL —
+-- die Warnung vor ablaufenden Lieferanten-Zertifikaten konnte deshalb nie
+-- ausloesen. Gesetzt wird sie jetzt bei der Pruefung der Antwort, also dort, wo
+-- ein Mensch das hochgeladene Zertifikat vor sich hat.
+-- NULL laesst den bisherigen Wert stehen (COALESCE), damit eine erneute
+-- Pruefung ohne Datumsangabe ein bereits erfasstes Ablaufdatum nicht loescht.
 UPDATE ck_supplier_answers
-SET review_status = $1, rework_note = NULLIF($2::text, '')
+SET review_status    = $1,
+    rework_note      = NULLIF($2::text, ''),
+    cert_expiry_date = COALESCE(sqlc.narg('cert_expiry_date')::date, cert_expiry_date)
 WHERE ck_supplier_answers.id = $3
   AND assessment_id = $4
   AND assessment_id IN (
@@ -1214,11 +1265,25 @@ DELETE FROM ck_control_measures
 WHERE id = $1 AND org_id = $2 AND is_builtin = FALSE;
 
 -- name: SeedCKMeasure :exec
--- Idempotent (ON CONFLICT DO NOTHING). Aufrufer iteriert die Liste; jedes
--- Measure wird als is_builtin=TRUE eingefügt.
+-- Idempotent je (org_id, control_id, title). Aufrufer iteriert die Liste;
+-- jedes Measure wird als is_builtin=TRUE eingefügt.
+--
+-- R1-06-D07: hier stand bis Migration 257 ein ON CONFLICT DO NOTHING OHNE
+-- Arbiter auf einer Tabelle ohne jeden Unique-Constraint. Ohne Arbiter gibt es
+-- keinen Konflikt, also greift DO NOTHING nie — die Tabelle wuchs bei jedem
+-- API-Start um 23 Zeilen. Der Arbiter nennt das Praedikat des Teilindex
+-- ck_control_measures_builtin_uniq mit, damit Postgres ihn ableiten kann;
+-- selbst angelegte Massnahmen (is_builtin = FALSE) bleiben unberuehrt.
+--
+-- DO UPDATE statt DO NOTHING, damit eine geaenderte Katalogfassung (Text,
+-- Schwierigkeit, Reihenfolge) beim naechsten Start ankommt.
 INSERT INTO ck_control_measures (control_id, org_id, title, description, difficulty, step_order, is_builtin)
 VALUES ($1, $2, $3, $4, $5, $6, TRUE)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (org_id, control_id, title) WHERE is_builtin
+DO UPDATE SET
+  description = EXCLUDED.description,
+  difficulty  = EXCLUDED.difficulty,
+  step_order  = EXCLUDED.step_order;
 
 -- ── Suppliers (NIS2 Art. 21 / DORA Art. 28) ─────────────────────────────────
 
@@ -1905,12 +1970,13 @@ JOIN ck_frameworks f ON f.id = c.framework_id AND f.org_id = c.org_id
 WHERE c.org_id = $1
 ORDER BY f.name, c.domain, c.title;
 
--- name: UpdateCKSoAApplicability :exec
-UPDATE ck_controls
-SET soa_applicable        = $1,
-    soa_justification_yes = $2,
-    soa_justification_no  = $3
-WHERE id = $4::uuid AND org_id = $5::uuid;
+-- R1-20-02: UpdateCKSoAApplicability wurde hier entfernt. Die Query hatte
+-- keinen Aufrufer — der SoA-PATCH geht ueber
+-- policy.Repository.UpdateSoAApplicability mit rohem Exec, weil er den
+-- CommandTag fuer die 404-Unterscheidung braucht. Geschrieben hat sie
+-- soa_applicable; seit Migration 264 ist diese Spalte aus not_applicable
+-- abgeleitet (GENERATED ALWAYS, ADR-0082). Stehen geblieben waere sie eine
+-- Falle, die erst zur Laufzeit auffaellt.
 
 -- ── Org Member Role (S25-3) ──────────────────────────────────────────────────
 
@@ -2121,19 +2187,28 @@ RETURNING id::text;
 UPDATE ck_policy_acceptance_requests SET sent_at = now() WHERE id = $1::uuid;
 
 -- name: GetCKPolicyAcceptanceCampaignStats :one
+-- The tenant predicate ($2, not just campaign_id) is the isolation boundary:
+-- ck_policy_acceptance_requests carries the organization key (migration 068).
+-- Without it an org-2 caller reads org-1 stats via an org-1 campaign_id
+-- (R1-16-V1). NB: keep the literal column token out of this comment so the
+-- lint gates stay keyed to the predicate, not the prose.
 SELECT
     COUNT(*)::int                          AS total,
     COUNT(accepted_at)::int                AS accepted,
     (COUNT(*) - COUNT(accepted_at))::int   AS pending
 FROM ck_policy_acceptance_requests
-WHERE campaign_id = $1::uuid;
+WHERE campaign_id = $1::uuid AND org_id = $2::uuid;
 
 -- name: ListCKPolicyAcceptanceRequests :many
+-- The tenant predicate ($2) is the isolation boundary — without it an org-2
+-- caller reads org-1 recipient PII (recipient_email/recipient_name) via an
+-- org-1 campaign_id (R1-24-RT02). NB: keep the literal column token out of this
+-- comment so the lint gates stay keyed to the predicate, not the prose.
 SELECT id::text, campaign_id::text, recipient_email,
        COALESCE(recipient_name, '') AS recipient_name,
        accepted_at, sent_at, created_at
 FROM ck_policy_acceptance_requests
-WHERE campaign_id = $1::uuid
+WHERE campaign_id = $1::uuid AND org_id = $2::uuid
 ORDER BY created_at ASC;
 
 -- name: GetCKPolicyAcceptanceRequestByToken :one
@@ -2189,8 +2264,9 @@ RETURNING id::text;
 -- ── BCP / Notfallhandbuch (S60) ──────────────────────────────────────────────
 
 -- name: CreateCKBCPPlan :one
-INSERT INTO ck_bcp_plans (org_id, title, scope, version, status, owner)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO ck_bcp_plans (org_id, title, scope, version, status, owner,
+                          rto_hours, rpo_hours, schutzbedarfsklasse)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: ListCKBCPPlans :many
@@ -2202,9 +2278,24 @@ ORDER BY created_at DESC;
 SELECT * FROM ck_bcp_plans
 WHERE id = $1 AND org_id = $2;
 
+-- name: GetCKBCPPlanForUpdate :one
+-- ESK-12 / REV-ESK12 B1: das PATCH auf einen BCP-Plan mergt (fehlendes Feld =
+-- unveraendert), muss also den Bestand lesen und mit den uebergebenen Feldern
+-- zurueckschreiben. Ohne Zeilensperre koennten zwei gleichzeitige PATCHes beide
+-- denselben Bestand lesen und der zweite die Aenderung des ersten ueberschreiben
+-- — ein Feld, das der Aufrufer gar nicht angefasst hat, faellt dann auf den
+-- Wert VOR dem anderen Aufruf zurueck. Das ist derselbe stille Verlust, nur
+-- durch Nebenlaeufigkeit statt durch Weglassen. FOR UPDATE serialisiert die
+-- beiden; die Sperre haelt bis zum COMMIT derselben Transaktion, in der auch
+-- das UPDATE laeuft.
+SELECT * FROM ck_bcp_plans
+WHERE id = $1 AND org_id = $2
+FOR UPDATE;
+
 -- name: UpdateCKBCPPlan :one
 UPDATE ck_bcp_plans
-SET title = $3, scope = $4, version = $5, status = $6, owner = $7, updated_at = NOW()
+SET title = $3, scope = $4, version = $5, status = $6, owner = $7,
+    rto_hours = $8, rpo_hours = $9, schutzbedarfsklasse = $10, updated_at = NOW()
 WHERE id = $1 AND org_id = $2
 RETURNING *;
 
@@ -2227,6 +2318,31 @@ SELECT * FROM ck_bcp_tests
 WHERE plan_id = $1 AND org_id = $2
 ORDER BY test_date DESC
 LIMIT 1;
+
+-- name: RefreshCKBCPPlanLastTested :exec
+-- ESK-12: last_tested_at ist eine ABLEITUNG aus ck_bcp_tests, kein Eingabefeld.
+-- Als freies Feld koennte jemand ein Testdatum behaupten, zu dem kein Testeintrag
+-- existiert — in Audit-Evidenz genau die Aussage ohne Messung dahinter, die dieser
+-- Befund beanstandet. Als MAX ueber die tatsaechlichen Eintraege kann das Feld nur
+-- behaupten, was auch als Datensatz belegt ist. Alle Ergebnisse zaehlen: ein
+-- fehlgeschlagener Test IST ein durchgefuehrter Test.
+--
+-- REV-ESK12 B4: Hier stand zusaetzlich, das Feld falle "beim Loeschen des
+-- letzten Tests von selbst zurueck". Das ist eine wahre Eigenschaft des
+-- MAX-Ausdrucks, aber KEIN heute erreichbares Verhalten — einen Endpunkt zum
+-- Loeschen eines BCP-Tests gibt es nicht (routes.go kennt kein
+-- DELETE .../tests/:id). Ein Satz, den kein Aufrufer ausloesen kann, gehoert
+-- nicht in einen Docstring, der beschreibt, was passiert.
+--
+-- Die org_id im WHERE ist die einzige Absicherung dieser Ableitung gegen
+-- Organisationsgrenzen: ck_bcp_tests hat keinen zusammengesetzten FK auf
+-- (plan_id, org_id) (REV-ESK12 B5).
+UPDATE ck_bcp_plans
+SET last_tested_at = (
+        SELECT MAX(t.test_date) FROM ck_bcp_tests t
+        WHERE t.plan_id = ck_bcp_plans.id AND t.org_id = ck_bcp_plans.org_id
+    )
+WHERE ck_bcp_plans.id = $1 AND ck_bcp_plans.org_id = $2;
 
 -- ── Schutzbedarfsfeststellung (S60) ──────────────────────────────────────────
 
@@ -2307,22 +2423,28 @@ INSERT INTO ck_recovery_plans (org_id, bia_process_id, title, activation_criteri
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
+-- COALESCE ist Absicht, nicht Kosmetik: der LEFT JOIN macht bp.name nullable,
+-- also emittiert sqlc fuer nacktes `bp.name` ein pgtype.Text. Das Domaenenmodell
+-- (bcm.RecoveryPlan.BIAProcessName) ist ein string — „kein verknuepfter
+-- BIA-Prozess" IST der Leerstring, kein NULL. Ohne COALESCE bricht
+-- repository_bia.go, und alle drei Queries muessten getrennte Row-Typen tragen,
+-- statt sich `ListCKRecoveryPlansRow` zu teilen.
 -- name: ListCKRecoveryPlans :many
-SELECT rp.*, bp.name AS bia_process_name
+SELECT rp.*, COALESCE(bp.name, '') AS bia_process_name
 FROM ck_recovery_plans rp
 LEFT JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
 WHERE rp.org_id = $1
 ORDER BY rp.created_at DESC;
 
 -- name: ListCKRecoveryPlansByBIAProcess :many
-SELECT rp.*, bp.name AS bia_process_name
+SELECT rp.*, COALESCE(bp.name, '') AS bia_process_name
 FROM ck_recovery_plans rp
 LEFT JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
 WHERE rp.org_id = $1 AND rp.bia_process_id = $2
 ORDER BY rp.created_at DESC;
 
 -- name: GetCKRecoveryPlan :one
-SELECT rp.*, bp.name AS bia_process_name
+SELECT rp.*, COALESCE(bp.name, '') AS bia_process_name
 FROM ck_recovery_plans rp
 LEFT JOIN ck_bia_processes bp ON bp.id = rp.bia_process_id
 WHERE rp.id = $1 AND rp.org_id = $2;

@@ -10,6 +10,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { apiFetch } from '../../../api/client'
+import { fetchAllPaginated } from '../../../api/fetchAllPages'
 import { EmptyState } from '../../../shared/components/EmptyState'
 import { ProGate } from '../../../shared/components/ProGate'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
@@ -87,9 +88,22 @@ export default function PrivacyDesignPage() {
     queryFn: () => apiFetch('/vaktprivacy/privacy-design/summary'),
   })
 
+  // R1-W2C-01: this declared VVTEntry[] and read the response as an array.
+  // GET /vaktprivacy/vvt goes through pagination.Wrap unconditionally
+  // (vaktprivacy/handler.go:93) and always answers {data, pagination}. On that
+  // object `!vvtEntries?.length` is `!undefined` — permanently true — so the
+  // page rendered "no processing activities" no matter how many VVT records
+  // existed, and the table below was unreachable. No crash, no console error,
+  // no failed request: a silent empty state that reads like an empty system.
+  // Two other consumers of the same endpoint (hooks/useVVT.ts,
+  // VVTLinksCard.tsx) already unwrapped it; this page was the outlier.
+  //
+  // fetchAllPaginated rather than one large page: the endpoint's cap is 100
+  // and an over-large ?limit is discarded in favour of 25, not clamped, so
+  // asking for everything in one request quietly returns a quarter of it.
   const { data: vvtEntries, isLoading: vvtLoading } = useQuery<VVTEntry[]>({
-    queryKey: ['vaktprivacy', 'vvt'],
-    queryFn: () => apiFetch('/vaktprivacy/vvt'),
+    queryKey: ['vaktprivacy', 'vvt', 'privacy-design-all'],
+    queryFn: async () => (await fetchAllPaginated<VVTEntry>('/vaktprivacy/vvt')).items,
   })
 
   const { data: currentAssessment } = useQuery<PrivacyDesignAssessment | null>({
