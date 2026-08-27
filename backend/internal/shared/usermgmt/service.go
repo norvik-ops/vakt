@@ -14,12 +14,22 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/matharnica/vakt/internal/shared/apperr"
+	"github.com/matharnica/vakt/internal/shared/logsafe"
 	"github.com/matharnica/vakt/internal/shared/mailhdr"
 	"github.com/matharnica/vakt/internal/shared/password"
 )
+
+// ErrSMTPNotConfigured meldet, dass die Einladungsmail NICHT hinausging, weil
+// kein SMTP-Server eingerichtet ist.
+//
+// Bewusst ein eigener Sentinel statt notifications.ErrNotConfigured: usermgmt
+// braucht von notifications sonst nichts, und eine Paket-Abhaengigkeit fuer
+// einen Fehlerwert waere Kopplung ohne Gegenwert.
+var ErrSMTPNotConfigured = errors.New("usermgmt: SMTP nicht eingerichtet — Einladung nicht versendet")
 
 // SMTPConfig holds the SMTP settings needed to send invitation emails.
 type SMTPConfig struct {
@@ -358,10 +368,24 @@ func (s *Service) CreateInvitation(ctx context.Context, orgID, inviterEmail stri
 		return Invitation{}, fmt.Errorf("insert invitation: %w", err)
 	}
 
-	// Send invitation email — non-fatal if SMTP is not configured.
+	// Der Versand ist nicht toedlich: die Einladung steht in user_invitations,
+	// ist in der Oberflaeche sichtbar und laeuft nach 7 Tagen ab. Anders als bei
+	// den Fristen-Warnungen (R1-W9C-N1) wird hier also kein Zustand verbrannt.
+	//
+	// Verschluckt werden darf der Fehler trotzdem nicht: `_ = sendErr` hat jeden
+	// echten Zustellfehler unsichtbar gemacht — der Administrator sah eine
+	// angelegte Einladung und nahm an, die Mail sei unterwegs.
+	//
+	// Der Token wird BEWUSST NICHT geloggt. Der alte Kommentar an dieser Stelle
+	// schlug genau das vor ("Log the token so the admin can share it manually") —
+	// das waere ein Anmelde-Geheimnis im Klartext im Log. Der Administrator holt
+	// den Link stattdessen aus der Einladungsliste.
 	if sendErr := s.sendInviteEmail(in.Email, inviterEmail, rawToken); sendErr != nil {
-		// Log the token so the admin can share it manually if SMTP is absent.
-		_ = sendErr // mailer already handles missing-host gracefully; log at caller
+		log.Warn().Err(sendErr).
+			Str("to_redacted", logsafe.RedactEmail(in.Email)).
+			Str("invitation_id", inv.ID).
+			Msg("CreateInvitation: Einladungsmail nicht zugestellt — die Einladung " +
+				"steht in der Liste und kann von dort geteilt werden")
 	}
 
 	return inv, nil
@@ -622,7 +646,9 @@ func (s *Service) ensureNotLastAdmin(ctx context.Context, tx pgx.Tx, orgID, user
 // sendInviteEmail sends an HTML invitation email with the acceptance link.
 func (s *Service) sendInviteEmail(toEmail, inviterEmail, rawToken string) error {
 	if s.smtpCfg.Host == "" || s.smtpCfg.Host == "localhost" {
-		return nil // SMTP not configured — silent no-op
+		// Kein nil: "nicht gesendet" ist kein Erfolg. Der Aufrufer loggt es als
+		// Warnung, nicht als Stoerfall — eine Instanz ohne SMTP ist zulaessig.
+		return ErrSMTPNotConfigured
 	}
 
 	link := fmt.Sprintf("%s/invite/accept?token=%s", s.frontendURL, rawToken)

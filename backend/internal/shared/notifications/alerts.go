@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -111,7 +112,7 @@ Diese E-Mail wurde automatisch von Vakt generiert.`,
 		)
 
 		if err := m.Send(r.DPOEmail, subject, body); err != nil {
-			log.Error().Err(err).Str("breach_id", r.ID).Str("to_redacted", logsafe.RedactEmail(r.DPOEmail)).Msg("CheckBreachDeadlines: send failed")
+			logNotSent(err, "CheckBreachDeadlines", "breach_id", r.ID, r.DPOEmail)
 			continue
 		}
 		markSent(ctx, db, r.OrgID, NotifBreachWarning, r.ID, r.DPOEmail)
@@ -174,7 +175,7 @@ Diese E-Mail wurde automatisch von Vakt generiert.`,
 		)
 
 		if err := m.Send(r.DPOEmail, subject, body); err != nil {
-			log.Error().Err(err).Str("dsr_id", r.ID).Str("to_redacted", logsafe.RedactEmail(r.DPOEmail)).Msg("CheckDSRDeadlines: send failed")
+			logNotSent(err, "CheckDSRDeadlines", "dsr_id", r.ID, r.DPOEmail)
 			continue
 		}
 		markSent(ctx, db, r.OrgID, NotifDSROverdue, r.ID, r.DPOEmail)
@@ -237,7 +238,7 @@ Diese E-Mail wurde automatisch von Vakt generiert.`,
 		)
 
 		if err := m.Send(r.DPOEmail, subject, body); err != nil {
-			log.Error().Err(err).Str("avv_id", r.ID).Str("to_redacted", logsafe.RedactEmail(r.DPOEmail)).Msg("CheckAVVExpiry: send failed")
+			logNotSent(err, "CheckAVVExpiry", "avv_id", r.ID, r.DPOEmail)
 			continue
 		}
 		markSent(ctx, db, r.OrgID, NotifAVVExpiring, r.ID, r.DPOEmail)
@@ -312,7 +313,7 @@ Diese E-Mail wurde automatisch von Vakt generiert.`,
 		)
 
 		if err := m.Send(dpoEmail, subject, body); err != nil {
-			log.Error().Err(err).Str("ccm_check_id", id).Str("to_redacted", logsafe.RedactEmail(dpoEmail)).Msg("CheckCCMFailures: send failed")
+			logNotSent(err, "CheckCCMFailures", "ccm_check_id", id, dpoEmail)
 			continue
 		}
 		markSent(ctx, db, orgID, NotifCCMFailed, id, dpoEmail)
@@ -410,6 +411,30 @@ func alreadySent(ctx context.Context, db *pgxpool.Pool, orgID, notifType, resour
 		return false // send on error to avoid silent drops
 	}
 	return exists
+}
+
+// logNotSent protokolliert, dass eine Warnung NICHT hinausging — und
+// unterscheidet dabei zwei Faelle, die frueher beide als Fehler galten.
+//
+// Wichtig ist, was hier NICHT passiert: markSent wird nicht aufgerufen. Der
+// Datensatz bleibt damit unmarkiert und der naechste Lauf versucht es erneut.
+// Genau das war der Defekt (R1-W9C-N1): Mailer.Send gab bei fehlendem SMTP
+// nil zurueck, der Aufrufer hielt das fuer "zugestellt" und markSent verbrannte
+// die Meldung dauerhaft.
+//
+// Die Unterscheidung der Log-Stufe ist kein Kosmetik-Detail. Eine Instanz ohne
+// SMTP ist ein zulaessiger Betriebszustand — sie wuerde sonst bei JEDEM Lauf
+// fuer JEDEN offenen Vorgang eine Fehlerzeile schreiben und damit die echten
+// Zustellfehler unter Rauschen begraben.
+func logNotSent(err error, job, idField, id, email string) {
+	ev := log.Error()
+	msg := job + ": send failed — nicht markiert, naechster Lauf versucht es erneut"
+	if errors.Is(err, ErrNotConfigured) {
+		ev = log.Warn()
+		msg = job + ": SMTP nicht eingerichtet — nichts gesendet, nichts markiert; " +
+			"die Meldung bleibt offen und geht hinaus, sobald SMTP eingerichtet ist"
+	}
+	ev.Err(err).Str(idField, id).Str("to_redacted", logsafe.RedactEmail(email)).Msg(msg)
 }
 
 // markSent inserts a row into notification_log. Uses ON CONFLICT DO NOTHING

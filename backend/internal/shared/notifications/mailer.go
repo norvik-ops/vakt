@@ -2,6 +2,7 @@
 package notifications
 
 import (
+	"errors"
 	"fmt"
 	"net/smtp"
 
@@ -20,13 +21,33 @@ func NewMailer(cfg *config.Config) *Mailer {
 	return &Mailer{cfg: cfg}
 }
 
+// ErrNotConfigured meldet, dass NICHTS gesendet wurde, weil kein SMTP-Server
+// eingerichtet ist.
+//
+// Frueher gab Send in diesem Fall nil zurueck — "graceful no-op". Das war die
+// gefaehrlichste Zeile in diesem Paket: die Aufrufer in alerts.go werten nil
+// als "zugestellt" und rufen danach markSent auf, das eine Zeile mit
+// EINDEUTIGEM SCHLUESSEL UND OHNE ABLAUF in notification_log schreibt. Eine
+// Instanz ohne SMTP hat damit ihre Art.-33-Datenpannen-Warnung ENDGUELTIG
+// verbrannt: die Meldung gilt als erledigt und wird nie wieder versucht, auch
+// nicht, nachdem SMTP eingerichtet wurde. Dasselbe galt fuer ueberfaellige
+// Betroffenenanfragen, ablaufende AVV und gescheiterte Compliance-Pruefungen.
+//
+// Der Sentinel macht den Unterschied sichtbar, den nil verschluckt hat:
+// "nicht gesendet" ist kein Erfolg. Die Aufrufer ueberspringen markSent bei
+// jedem Fehler, also genuegt es, die Wahrheit zurueckzugeben — sie loggen den
+// Fall nur bewusst als Warnung statt als Fehler, weil eine Instanz ohne SMTP
+// ein zulaessiger Betriebszustand ist und kein Stoerfall.
+var ErrNotConfigured = errors.New("notifications: SMTP nicht eingerichtet — nichts gesendet")
+
 // Send sends a plain-text email.
-// Returns nil if SMTP host is not configured (graceful no-op).
+// Returns ErrNotConfigured — NOT nil — if no SMTP host is configured.
 func (m *Mailer) Send(to, subject, body string) error {
 	if m.cfg == nil || m.cfg.SMTPHost == "" || m.cfg.SMTPHost == "localhost" {
-		// Treat localhost-only or missing host as "not configured" for safety.
-		// Callers can still rely on this being nil — no send means no error.
-		return nil
+		// localhost gilt weiterhin als "nicht eingerichtet": der Wert stammt aus
+		// Entwicklungs-Defaults. Diese Einstufung bleibt unveraendert — geaendert
+		// wird nur, was sie MELDET.
+		return ErrNotConfigured
 	}
 
 	from := m.cfg.SMTPFrom
