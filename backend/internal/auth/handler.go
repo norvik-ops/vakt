@@ -187,15 +187,19 @@ func (h *Handler) Logout(c echo.Context) error {
 	// WriteHeader and silently drop both Set-Cookie lines.
 	h.clearSessionCookies(c)
 
-	// R1-W7A-N3: RevokeToken used to return a hard nil and this used to answer
-	// 200 regardless. A revocation that reached neither Redis nor the PG fallback
-	// left the token good for the rest of its hour while the user was told they
-	// were signed out.
-	revokeErr := h.service.RevokeToken(c.Request().Context(), tokenStr)
-	if revokeErr != nil {
-		log.Error().Err(revokeErr).Msg("logout: access-token revocation failed")
-	}
-
+	// R1-SA13-02: Die Echtheitspruefung steht jetzt VOR dem Widerruf.
+	//
+	// Vorher lief RevokeToken als Erstes — und RevokeToken prueft nichts, es
+	// schreibt den Schluessel in Redis UND in die PG-Ausweichtabelle. Ein
+	// beliebiger Bearer-String landete damit im Widerrufsspeicher, obwohl der
+	// Handler danach 401 antwortete: ein unauthentifiziert befuellbarer Speicher.
+	//
+	// Die Umstellung ist gefahrlos, weil ParseTokenSubjectForRevocation mit
+	// NewParserWithoutExpiryCheck arbeitet: es prueft Signatur und Schluessel,
+	// ueberspringt aber die Ablaufpruefung. Ein Token, das dieser Server
+	// ausgestellt hat, kommt also auch abgelaufen durch — genau das, was ein
+	// Widerruf braucht. Ein gefaelschtes kommt nicht durch, und fuer das gibt es
+	// auch nichts zu widerrufen.
 	userID, _ := c.Get("user_id").(string)
 	if userID == "" {
 		subject, err := ParseTokenSubjectForRevocation(h.service.key, tokenStr)
@@ -214,6 +218,15 @@ func (h *Handler) Logout(c echo.Context) error {
 			})
 		}
 		userID = subject
+	}
+
+	// R1-W7A-N3: RevokeToken used to return a hard nil and this used to answer
+	// 200 regardless. A revocation that reached neither Redis nor the PG fallback
+	// left the token good for the rest of its hour while the user was told they
+	// were signed out.
+	revokeErr := h.service.RevokeToken(c.Request().Context(), tokenStr)
+	if revokeErr != nil {
+		log.Error().Err(revokeErr).Msg("logout: access-token revocation failed")
 	}
 
 	// Revoke all refresh sessions so a stolen refresh token cannot be used
