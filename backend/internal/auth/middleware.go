@@ -352,12 +352,17 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 		SELECT ak.id, ak.org_id, ak.created_by, ak.scopes,
 		       (ak.key_hash = $1) AS matched_current,
 		       ak.previous_key_grace_expires_at,
+		       u.is_active AS owner_active,
 		       COALESCE((SELECT r.name
 		                 FROM org_members om
 		                 JOIN roles r ON r.id = om.role_id
 		                 WHERE om.user_id = ak.created_by AND om.org_id = ak.org_id
 		                 LIMIT 1), '') AS creator_role
+		-- R1-SA21-D7: der Join holt den Menschen hinter dem Schluessel dazu.
+		-- api_keys.created_by ist NOT NULL mit Fremdschluessel auf users(id)
+		-- (Migration 001), der Join kann also keine Zeile verlieren.
 		FROM api_keys ak
+		JOIN users u ON u.id = ak.created_by
 		WHERE (ak.key_hash = $1
 		       OR (ak.previous_key_hash = $1
 		           AND ak.previous_key_grace_expires_at IS NOT NULL
@@ -367,14 +372,55 @@ func handleAPIKey(c echo.Context, next echo.HandlerFunc, db *pgxpool.Pool, rawKe
 
 	var keyID, orgID, createdBy, creatorRole string
 	var scopes []string
-	var matchedCurrent bool
+	var matchedCurrent, ownerActive bool
 	var graceExpiresAt *time.Time
-	err := db.QueryRow(c.Request().Context(), query, keyHash).Scan(&keyID, &orgID, &createdBy, &scopes, &matchedCurrent, &graceExpiresAt, &creatorRole)
+	err := db.QueryRow(c.Request().Context(), query, keyHash).Scan(&keyID, &orgID, &createdBy, &scopes, &matchedCurrent, &graceExpiresAt, &ownerActive, &creatorRole)
 	if err != nil {
 		log.Debug().Err(err).Msg("api key lookup failed")
 		return c.JSON(http.StatusUnauthorized, map[string]string{
 			"error": "invalid api key",
 			"code":  "AUTH_INVALID_TOKEN",
+		})
+	}
+
+	// R1-SA21-D7: Ein Schluessel gilt nur, solange sein Ersteller aktiv ist.
+	//
+	// Die Abfrage pruefte vorher nur den Schluessel selbst — revoked_at und
+	// expires_at — und nie den Menschen dahinter. Ein per SCIM
+	// deprovisionierter Nutzer (services/scim/service.go setzt
+	// users.is_active = FALSE) behielt seinen API-Schluessel UNBEFRISTET. Das
+	// wiegt schwerer als bei einem Paseto-Token, das nach einer Stunde
+	// ablaeuft. Von den drei Wegen aus einem Konto heraus widerrief nur einer
+	// die Schluessel (vakthr enforceOffboardingRevocation); SCIM und
+	// usermgmt.RemoveUser taten es nicht. Die Pruefung steht deshalb hier, an
+	// der einen Stelle, durch die jede Schluessel-Anfrage muss.
+	//
+	// Sie steht BEWUSST hier und nicht als `AND u.is_active = TRUE` im WHERE.
+	// Im WHERE waere der Schluessel einfach nicht gefunden worden und der
+	// Aufrufer haette ein nacktes "invalid api key" bekommen — obwohl der
+	// Schluessel administrativ voellig gesund aussieht (revoked_at NULL, nicht
+	// abgelaufen). Ein adversariales Review dieser Aenderung nannte genau das
+	// als schwersten betrieblichen Einwand: eine CI-Pipeline faellt aus, und
+	// niemand kann sehen, warum. Hier ist die Ursache benennbar — im Log UND
+	// im Fehlercode.
+	//
+	// BEWUSST AKZEPTIERT: Ein langlebiger Dienst-Schluessel haengt damit am
+	// Konto dessen, der ihn angelegt hat. Verlaesst diese Person das
+	// Unternehmen, faellt die Integration aus. Das ist die richtige Richtung —
+	// die Alternative ist ein Zugang, den ein Ausgeschiedener unbefristet
+	// behaelt — aber es ist eine echte Einschraenkung. Ein eigener
+	// Maschinen-Prinzipal ohne menschlichen Ersteller waere die saubere
+	// Loesung; das ist eine Produktentscheidung, kein Verdrahtungsfehler
+	// (siehe Ledger R1-SA21-D7).
+	if !ownerActive {
+		log.Warn().
+			Str("api_key_id", keyID).
+			Str("created_by", createdBy).
+			Msg("api key refused: its creator is deactivated (SCIM deprovisioning or account deletion). " +
+				"The key itself is neither revoked nor expired — deactivate is the reason.")
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "the user this API key belongs to is deactivated",
+			"code":  "AUTH_KEY_OWNER_INACTIVE",
 		})
 	}
 
