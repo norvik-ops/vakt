@@ -281,11 +281,15 @@ func RenderRisiken(rows []RiskRow) ([]byte, error) {
 	for _, r := range rows {
 		counts[cellKey{r.Likelihood, r.Impact}]++
 	}
+	// Same cell arithmetic as the grid above. The score is recomputed instead of
+	// read back via GetCellValue (GO-2026-6452 has no fix in excelize yet).
 	for k, cnt := range counts {
-		rowOff := 5 - k.l // likelihood 5 → row 4, likelihood 1 → row 8
-		cell := colName(k.i+1) + fmt.Sprint(rowOff+3)
-		existing, _ := f.GetCellValue(matSheet, cell)
-		_ = f.SetCellValue(matSheet, cell, fmt.Sprintf("%s (%d×)", existing, cnt))
+		if k.l < 1 || k.l > 5 || k.i < 1 || k.i > 5 {
+			continue // outside the 5×5 matrix
+		}
+		row := (5 - k.l) + 4 // likelihood 5 → row 4, likelihood 1 → row 8
+		cell := colName(k.i+1) + fmt.Sprint(row)
+		_ = f.SetCellValue(matSheet, cell, fmt.Sprintf("%d (%d×)", k.l*k.i, cnt))
 	}
 
 	buf, err := f.WriteToBuffer()

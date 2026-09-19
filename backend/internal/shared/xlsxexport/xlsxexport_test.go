@@ -210,3 +210,33 @@ func TestColName(t *testing.T) {
 	assert.Equal(t, "AA", colName(27))
 	assert.Equal(t, "AZ", colName(52))
 }
+
+// Die Risiko-Anzahl muss in der Zelle ihres eigenen Scores stehen. Vorher
+// landete sie eine Zeile zu hoch — ein Risiko mit W=5 überschrieb die
+// Achsen-Kopfzeile, eines mit W=1 stand bei W=2.
+func TestRenderRisiken_MatrixCountsInOwnCell(t *testing.T) {
+	rows := []RiskRow{
+		{ID: "00000001-aaaa-bbbb-cccc-000000000000", Title: "a", Likelihood: 5, Impact: 5},
+		{ID: "00000002-aaaa-bbbb-cccc-000000000000", Title: "b", Likelihood: 5, Impact: 5},
+		{ID: "00000003-aaaa-bbbb-cccc-000000000000", Title: "c", Likelihood: 1, Impact: 3},
+		{ID: "00000004-aaaa-bbbb-cccc-000000000000", Title: "d", Likelihood: 0, Impact: 9}, // ausserhalb der Matrix: ignorieren
+	}
+	data, err := RenderRisiken(rows)
+	require.NoError(t, err)
+
+	f, err := excelize.OpenReader(bytes.NewReader(data))
+	require.NoError(t, err)
+	defer f.Close()
+
+	get := func(cell string) string {
+		v, _ := f.GetCellValue("Matrix", cell)
+		return v
+	}
+	// W=5 steht in Zeile 4, A=5 in Spalte F.
+	assert.Equal(t, "25 (2×)", get("F4"))
+	// W=1 steht in Zeile 8, A=3 in Spalte D.
+	assert.Equal(t, "3 (1×)", get("D8"))
+	// Achsen-Kopfzeile und Nachbarzellen bleiben unberührt.
+	assert.Equal(t, "A=5", get("F3"))
+	assert.Equal(t, "6", get("D7")) // W=2 × A=3, ohne Anzahl
+}
