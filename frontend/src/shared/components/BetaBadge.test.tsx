@@ -1,25 +1,24 @@
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import { BetaBadge } from './BetaBadge'
+import { ModuleBetaBadge, ModuleBetaNotice } from './BetaBadge'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 
-describe('BetaBadge', () => {
-  it('renders the Private Beta label and links to the disclaimer', () => {
-    render(<BetaBadge />)
-    const link = screen.getByTestId('beta-badge')
-    expect(link.textContent).toContain('beta.badge')
-    expect(link.getAttribute('href')).toContain('beta-disclaimer.md')
-    expect(link.getAttribute('title')).toBe('beta.tooltip')
-    expect(link.getAttribute('rel')).toContain('noopener')
+describe('ModuleBetaBadge / ModuleBetaNotice', () => {
+  it('labels a single module as beta with an explaining tooltip', () => {
+    render(<ModuleBetaBadge />)
+    const badge = screen.getByTestId('module-beta-badge')
+    expect(badge.textContent).toBe('beta.module')
+    expect(badge.getAttribute('title')).toBe('beta.moduleTooltip')
   })
 
-  it('renders a discreet dot variant when collapsed (still linked)', () => {
-    render(<BetaBadge collapsed />)
-    const link = screen.getByTestId('beta-badge')
-    expect(link.getAttribute('href')).toContain('beta-disclaimer.md')
-    expect(link.getAttribute('aria-label')).toBe('beta.badge')
+  it('shows the module-specific notice next to the badge', () => {
+    render(<ModuleBetaNotice messageKey="beta.hrNotice" />)
+    const notice = screen.getByTestId('module-beta-notice')
+    expect(notice.getAttribute('role')).toBe('note')
+    expect(notice.textContent).toContain('beta.hrNotice')
+    expect(notice.textContent).toContain('beta.module')
   })
 })

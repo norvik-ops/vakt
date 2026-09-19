@@ -7,7 +7,7 @@
 ![Go](https://img.shields.io/badge/go-1.26%2B-blue)
 ![Docker](https://img.shields.io/badge/docker-compose%20v2-blue)
 
-> **Early Access** — Vakt is under active development. Expect rough edges and breaking changes between releases. Support is **best-effort (no SLA)**, and as a self-hosted product **backups/restore are your responsibility** (scripts + runbook included). See the [Early Access Disclaimer](docs/wiki/beta-disclaimer.md) for details. Feedback welcome: [hello@norvikops.de](mailto:hello@norvikops.de)
+> **Early Access** — Vakt is under active development. Expect rough edges and breaking changes between releases. Support: Vakt Pro per the [SLA](https://vakt.norvikops.de/sla) (e-mail, target first response within 3 business days); Community is best-effort via GitHub Issues. As a self-hosted product, **backups/restore are your responsibility** (scripts + runbook included). See the [Early Access Disclaimer](docs/wiki/beta-disclaimer.md) for details. Feedback welcome: [hello@norvikops.de](mailto:hello@norvikops.de)
 
 **Try it locally** — `docker compose up -d` and open [http://localhost](http://localhost). No sign-up, no cloud, no data leaving your machine.
 

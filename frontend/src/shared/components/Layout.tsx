@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ProBadge } from './ProBadge'
-import { BetaBadge } from './BetaBadge'
+import { ModuleBetaBadge } from './BetaBadge'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import { cn } from '../../lib/utils'
@@ -57,6 +57,8 @@ interface NavItem {
   label: string
   icon: React.ElementType
   exact?: boolean
+  /** Modul außerhalb des Launch-Gates (docs/launch-gate.md) — zeigt ein Beta-Label. */
+  beta?: boolean
   children?: NavChild[]
   childGroups?: NavGroup[]
 }
@@ -180,6 +182,7 @@ const MODULES_NAV: NavItem[] = [
     path: '/vakthr',
     label: 'nav.hr.root',
     icon: UserCog,
+    beta: true,
     children: [
       { path: '/vakthr/employees',   label: 'nav.hr.employees',   icon: Users },
       { path: '/vakthr/checklists',  label: 'nav.hr.checklists',  icon: ClipboardList },
@@ -457,10 +460,8 @@ export default function Layout() {
           {!sidebarCollapsed && (
             <div className="flex items-center gap-2 px-2">
               <p className="text-[11px] text-secondary">Security Platform</p>
-              <BetaBadge />
             </div>
           )}
-          {sidebarCollapsed && <BetaBadge collapsed />}
         </div>
 
         {/* Search trigger — only when sidebar is collapsed (TopBar covers expanded case) */}
@@ -486,7 +487,7 @@ export default function Layout() {
             </p>
           )}
           <div className="space-y-[2px] mb-4">
-            {MODULES_NAV.map(({ path, label, icon: Icon, exact, children, childGroups }) => {
+            {MODULES_NAV.map(({ path, label, icon: Icon, exact, beta, children, childGroups }) => {
               const active = isActive(path, exact)
               const hasChildren = (children?.length ?? 0) > 0 || (childGroups?.length ?? 0) > 0
               const expanded = active && hasChildren
@@ -509,6 +510,7 @@ export default function Layout() {
                   >
                     <Icon className={cn('w-4 h-4 shrink-0', active ? 'text-brand' : '')} aria-hidden="true" />
                     {!sidebarCollapsed && t(label)}
+                    {!sidebarCollapsed && beta && <ModuleBetaBadge />}
                   </Link>
                   {expanded && !sidebarCollapsed && (
                     <div className="ml-3 mt-0.5 mb-1 pl-3 border-l border-border space-y-[1px]">

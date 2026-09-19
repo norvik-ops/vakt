@@ -4,6 +4,15 @@ All notable user-facing changes to Vakt are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [Unreleased]
+
+### Geändert
+
+- **Das „Private Beta“-Label in der App ist entfallen.** Vakt bleibt Early Access; die Support-Zusagen für Vakt Pro stehen im [SLA](https://vakt.norvikops.de/sla), für Community gilt Best-Effort. Backups bleiben bei einem self-hosted Produkt in Ihrer Verantwortung.
+- **SLA Version 2.0.** Alle Fristen sind jetzt ausdrücklich Zielwerte ohne Vertragsstrafen oder Gutschriften. Support per E-Mail an Werktagen ohne feste Uhrzeiten, Reaktionsziel 3 Werktage (vorher 48 Stunden, Mo–Fr 9–17 Uhr). Schwerwiegende Sicherheitslücken: Ziel-Patch in 14 Tagen (vorher 72 Stunden). Patches gibt es für die aktuelle Version (vorher 12 Monate LTS je Major-Version). Neu: Regelung für Abwesenheiten. Die eigene Haftungsbegrenzung ist entfallen; für die Haftung gelten ausschließlich die AGB.
+- **Vakt HR ist als Beta gekennzeichnet.** Die Seitenleiste zeigt am Modul ein Beta-Label, jede HR-Seite einen kurzen Hinweis. Das Modul funktioniert unverändert und liefert weiter Nachweise an Vakt Comply; es wird noch ausgebaut.
+
+---
 ## [0.43.0] — 2026-08-27
 
 Ergebnis eines vollständigen Launch-Readiness-Audits: 212 Commits, 14 Datenbank-Migrationen (252–262, 264–266) und fünf neue Architekturentscheidungen (ADR-0080 bis ADR-0084).

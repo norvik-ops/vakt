@@ -4344,8 +4344,9 @@
     "selectPlaceholder": "Kies een verwerkingsactiviteit …"
   },
   "beta": {
-    "badge": "Private bèta",
-    "tooltip": "Vakt is in private bèta — best-effort-ondersteuning, geen 24/7-SLA. Back-ups zijn uw verantwoordelijkheid. Klik voor details."
+    "module": "Bèta",
+    "moduleTooltip": "Deze module is in bèta: hij werkt, maar wordt nog uitgebreid. Problemen hier hebben een lagere prioriteit dan in de kern (Comply).",
+    "hrNotice": "Vakt HR is in bèta. De module werkt en levert bewijs aan Comply, maar wordt nog uitgebreid. Uw feedback helpt ons om hem af te maken."
   },
   "onboarding30": {
     "title": "Eerste 30 dagen — begeleide start",

@@ -4344,8 +4344,9 @@
     "selectPlaceholder": "Select a processing activity …"
   },
   "beta": {
-    "badge": "Private Beta",
-    "tooltip": "Vakt is in private beta — best-effort support, no 24/7 SLA. Backups are your responsibility. Click for details."
+    "module": "Beta",
+    "moduleTooltip": "This module is in beta: it works, but is still being expanded. Issues here have lower priority than in the core (Comply).",
+    "hrNotice": "Vakt HR is in beta. The module works and feeds evidence into Comply, but is still being expanded. Your feedback helps us finish it."
   },
   "onboarding30": {
     "title": "First 30 days — guided setup",

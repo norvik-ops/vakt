@@ -4344,8 +4344,9 @@
     "selectPlaceholder": "Choisir une activité de traitement …"
   },
   "beta": {
-    "badge": "Bêta privée",
-    "tooltip": "Vakt est en bêta privée — support best-effort, pas de SLA 24/7. Les sauvegardes relèvent de votre responsabilité. Cliquez pour les détails."
+    "module": "Bêta",
+    "moduleTooltip": "Ce module est en bêta : il fonctionne, mais est encore en cours de développement. Les problèmes ici ont une priorité inférieure à ceux du cœur (Comply).",
+    "hrNotice": "Vakt HR est en bêta. Le module fonctionne et fournit des preuves à Comply, mais il est encore en cours de développement. Vos retours nous aident à le finaliser."
   },
   "onboarding30": {
     "title": "30 premiers jours — démarrage guidé",

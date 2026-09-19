@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Spinner } from '../../components/Spinner'
+import { ModuleBetaNotice } from '../../shared/components/BetaBadge'
 
 const EmployeesPage = lazy(() => import('./pages/EmployeesPage'))
 const ChecklistsPage = lazy(() => import('./pages/ChecklistsPage'))
@@ -14,6 +15,7 @@ const fallback = <div className="flex h-full items-center justify-center"><Spinn
 export default function HRRoutes() {
   return (
     <Suspense fallback={fallback}>
+      <ModuleBetaNotice messageKey="beta.hrNotice" />
       <Routes>
         <Route index element={<Navigate to="employees" replace />} />
         <Route path="employees" element={<EmployeesPage />} />

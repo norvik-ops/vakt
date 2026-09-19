@@ -4344,8 +4344,9 @@
     "selectPlaceholder": "Verarbeitungstätigkeit wählen …"
   },
   "beta": {
-    "badge": "Private Beta",
-    "tooltip": "Vakt befindet sich in der Private Beta — Best-Effort-Support, kein 24/7-SLA. Backups liegen in Ihrer Verantwortung. Klicken für Details."
+    "module": "Beta",
+    "moduleTooltip": "Dieses Modul ist in der Beta: Es funktioniert, wird aber noch ausgebaut. Fehler hier haben niedrigere Priorität als im Kern (Comply).",
+    "hrNotice": "Vakt HR ist in der Beta. Das Modul funktioniert und liefert Nachweise an Comply, wird aber noch ausgebaut. Rückmeldungen helfen uns, es fertigzustellen."
   },
   "onboarding30": {
     "title": "Erste 30 Tage — geführter Einstieg",
