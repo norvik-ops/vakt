@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+---
+## [0.44.0] — 2026-09-19
+
+### Behoben
+
+- **Statement of Applicability (SoA):** Der Verantwortliche erscheint als Name statt interner UUID, Status-Werte und der XLSX-/DOCX-Export sind durchgängig deutsch, und die Bereitschaft in Prozent steht im Auditor-Portal.
+- **Vakt Aware:** Automatisch (z. B. bei Eintritt) in eine Kampagne eingetragene Mitarbeiter werden beim nächsten Kampagnenlauf zuverlässig als Empfänger berücksichtigt.
+- **Richtlinien:** „Vorlage verwenden“ legt die Richtlinie jetzt wirklich an, statt nach einem Erfolgshinweis mit einem Fehler zu enden.
+- **Sicherheit & Stabilität:** zusätzliche Rate-Limits (Login, Ersteinrichtung, Lexware-Webhook), SSRF-Schutz auf allen KI-Ausgängen, ein robusterer DSGVO-Art.-17-Löschpfad und eine korrekte Ablaufprüfung für SCIM-Tokens.
+
 ### Geändert
 
 - **Das „Private Beta“-Label in der App ist entfallen.** Vakt bleibt Early Access; die Support-Zusagen für Vakt Pro stehen im [SLA](https://vakt.norvikops.de/sla), für Community gilt Best-Effort. Backups bleiben bei einem self-hosted Produkt in Ihrer Verantwortung.
