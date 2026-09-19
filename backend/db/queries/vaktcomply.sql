@@ -954,9 +954,15 @@ ORDER BY date ASC;
 -- ── Bulk-Control-Status ─────────────────────────────────────────────────────
 
 -- name: BulkUpdateCKControlStatus :exec
+-- R1-36a-D01/W3A-N3: 'not_applicable' is the boolean column not_applicable, not a
+-- manual_status value — the single-control path (UpdateCKControl) sets the bool.
+-- Writing the string into manual_status left not_applicable=false, so the
+-- generated status column (WHEN not_applicable THEN 'not_applicable') fell through
+-- to 'missing' and the control still counted as a gap in SoA/readiness/KPI.
 UPDATE ck_controls
-SET manual_status = $1
-WHERE id = ANY(sqlc.arg('ids')::uuid[]) AND org_id = $2;
+SET manual_status  = CASE WHEN sqlc.arg('status')::text = 'not_applicable' THEN NULL ELSE sqlc.arg('status')::text END,
+    not_applicable = (sqlc.arg('status')::text = 'not_applicable')
+WHERE id = ANY(sqlc.arg('ids')::uuid[]) AND org_id = sqlc.arg('org_id');
 
 -- ── Collaborative Tasks ─────────────────────────────────────────────────────
 
@@ -1842,7 +1848,8 @@ FROM ck_controls
 WHERE org_id = $1
   AND not_applicable = false
   AND (lower(title) ILIKE ANY(sqlc.arg('patterns')::text[])
-       OR lower(domain) ILIKE ANY(sqlc.arg('patterns')::text[]))
+       OR lower(domain) ILIKE ANY(sqlc.arg('patterns')::text[])
+       OR lower(description) ILIKE ANY(sqlc.arg('patterns')::text[]))
 LIMIT 10;
 
 -- name: FindCKControlByCode :one

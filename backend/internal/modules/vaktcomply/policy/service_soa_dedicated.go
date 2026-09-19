@@ -337,3 +337,9 @@ func statusLabel(s string) string {
 		return "Nicht begonnen"
 	}
 }
+
+// SoAStatusLabel maps an implementation_status enum to its German label. It is
+// the single source shared by the SoA PDF (buildSoAPDF), XLSX and DOCX exports
+// so all three read identically instead of the XLSX/DOCX leaking the raw English
+// enum ("not_started", "partial", …) into a German product (R1-20-07).
+func SoAStatusLabel(s string) string { return statusLabel(s) }

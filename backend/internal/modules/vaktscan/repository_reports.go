@@ -108,6 +108,11 @@ func (r *Repository) UpsertImportedFinding(ctx context.Context, orgID string, f 
 	// also genauso verloren.
 	f.Severity, _ = normalizeSeverity(f.Severity)
 
+	// R1-36b-SC02(a): compute risk_score up front so imported findings get a
+	// non-NULL score (the scan path does this too). EPSS is not known at import
+	// time (multiplier 1.0); the first EPSS refresh recomputes it (R1-36b-SC02 b).
+	ComputeRiskScore(&f)
+
 	sources := f.Sources
 	if sources == nil {
 		sources = []string{}
@@ -126,6 +131,7 @@ func (r *Repository) UpsertImportedFinding(ctx context.Context, orgID string, f 
 			Scanner:     f.Scanner,
 			Sources:     sources,
 			SlaDueAt:    spOptTs(f.SLADueAt),
+			RiskScore:   float64PtrToNumeric(f.RiskScore),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("upsert finding by cve_id: %w", err)
@@ -151,6 +157,7 @@ func (r *Repository) UpsertImportedFinding(ctx context.Context, orgID string, f 
 		RawID:       spOptText(f.RawID),
 		Sources:     sources,
 		SlaDueAt:    spOptTs(f.SLADueAt),
+		RiskScore:   float64PtrToNumeric(f.RiskScore),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("upsert finding by raw_id: %w", err)

@@ -26,7 +26,7 @@ func TestKompendiumScorer_Score(t *testing.T) {
 	assert.InDelta(t, 50.0, s.Score(1, 0, 0, 2), 0.01, "half ja")
 	assert.InDelta(t, 25.0, s.Score(0, 1, 0, 2), 0.01, "one teilweise of 2 → 0.5/2 = 25%")
 	assert.InDelta(t, 75.0, s.Score(1, 1, 0, 2), 0.01, "ja + teilweise of 2 → 1.5/2 = 75%")
-	assert.InDelta(t, 100.0, s.Score(0, 0, 0, 0), 0.01, "no rows → 100% (all entbehrlich edge)")
+	assert.InDelta(t, 0.0, s.Score(0, 0, 0, 0), 0.01, "R1-20-09: no rows (nothing assessed) → 0%, not 100%")
 }
 
 func TestKompendiumScorer_ScoreFiltered_BasisOnly(t *testing.T) {
@@ -66,4 +66,17 @@ func TestDummyScorer_Exchangeable(t *testing.T) {
 	var s ComplianceScorer = dummyScorer{fixed: 42.0}
 	assert.InDelta(t, 42.0, s.Score(1, 2, 3, 4), 0.01)
 	assert.InDelta(t, 42.0, s.ScoreFiltered(nil, "basis"), 0.01)
+}
+
+// TestKompendiumScorer_Score_EmptyCatalogue covers R1-20-09: an org that has not
+// been assessed yet (total == 0) must score 0 %, not 100 %. Only a non-empty
+// catalogue whose relevant controls are all "entbehrlich" counts as fully handled.
+func TestKompendiumScorer_Score_EmptyCatalogue(t *testing.T) {
+	s := KompendiumScorer{}
+	assert.Equal(t, 0.0, s.Score(0, 0, 0, 0),
+		"empty catalogue (nothing assessed) must be 0 %, not fully handled")
+	assert.Equal(t, 100.0, s.Score(0, 0, 5, 5),
+		"non-empty catalogue with all relevant controls entbehrlich stays 100 %")
+	assert.InDelta(t, 50.0, s.Score(1, 0, 0, 2), 0.01,
+		"1 of 2 relevant controls done = 50 %")
 }

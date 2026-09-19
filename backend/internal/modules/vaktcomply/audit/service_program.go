@@ -90,31 +90,6 @@ func (s *Service) GetAuditProgramSummary(ctx context.Context, orgID string) (*Au
 	return s.repo.GetAuditProgramSummary(ctx, orgID)
 }
 
-// RunAuditProgramEvidenceSync generates Evidence for ISO 27001 Clause 9.2 based on completed audits.
-// Called by the daily Asynq task.
-func (s *Service) RunAuditProgramEvidenceSync(ctx context.Context, orgID string) error {
-	count, err := s.repo.CountCompletedAuditsLastYear(ctx, orgID)
-	if err != nil {
-		return fmt.Errorf("audit program evidence sync: count completed audits: %w", err)
-	}
-	findings, err := s.repo.CountOpenAuditFindings(ctx, orgID)
-	if err != nil {
-		return fmt.Errorf("audit program evidence sync: count open findings: %w", err)
-	}
-
-	evidenceStatus := "ok"
-	description := fmt.Sprintf("Internes Audit-Programm (Clause 9.2): %d Audits in letzten 12 Monaten, %d offene Befunde.", count, findings)
-	if count == 0 {
-		evidenceStatus = "warning"
-		description = "Kein internes ISMS-Audit in den letzten 12 Monaten durchgeführt. ISO 27001 Clause 9.2 erfordert ein jährliches Audit-Programm."
-	}
-
-	log.Info().Str("org_id", orgID).Str("status", evidenceStatus).Msg("audit program evidence sync")
-	_ = description
-	// In production, this would write to ck_evidence via the evidence writer
-	return nil
-}
-
 // ExportAuditReport generates a PDF audit report for a given audit ID.
 func (s *Service) ExportAuditReport(ctx context.Context, orgID, auditID string) ([]byte, error) {
 	audit, err := s.repo.GetAuditProgramAudit(ctx, orgID, auditID)

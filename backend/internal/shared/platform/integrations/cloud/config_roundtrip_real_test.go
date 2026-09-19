@@ -8,6 +8,7 @@ package cloud
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -148,11 +149,21 @@ func cloudProviderCases() []providerCase {
 				return configuredOf(err, r, func() bool { return r.IsConfigured })
 			},
 			readAllowPrivate: func(ctx context.Context, s *Service, org string) (bool, error) {
+				// The masked GET response is what the settings form reads to
+				// pre-fill the SSRF toggle (R1-SA27-01). Assert it echoes the flag
+				// and cross-check the decrypting loader (the collectors' path) agrees.
+				r, err := s.GetWazuhConfig(ctx, org)
+				if err != nil || r == nil {
+					return false, err
+				}
 				c, err := s.getDecryptedWazuhConfig(ctx, org)
 				if err != nil || c == nil {
 					return false, err
 				}
-				return c.AllowPrivateTarget, nil
+				if r.AllowPrivateTarget != c.AllowPrivateTarget {
+					return false, fmt.Errorf("wazuh: masked GET (%v) and loader (%v) disagree on allow_private_target", r.AllowPrivateTarget, c.AllowPrivateTarget)
+				}
+				return r.AllowPrivateTarget, nil
 			},
 		},
 		{
@@ -172,11 +183,18 @@ func cloudProviderCases() []providerCase {
 				return configuredOf(err, r, func() bool { return r.IsConfigured })
 			},
 			readAllowPrivate: func(ctx context.Context, s *Service, org string) (bool, error) {
+				r, err := s.GetPrometheusConfig(ctx, org)
+				if err != nil || r == nil {
+					return false, err
+				}
 				c, err := s.getDecryptedPrometheusConfig(ctx, org)
 				if err != nil || c == nil {
 					return false, err
 				}
-				return c.AllowPrivateTarget, nil
+				if r.AllowPrivateTarget != c.AllowPrivateTarget {
+					return false, fmt.Errorf("prometheus: masked GET (%v) and loader (%v) disagree on allow_private_target", r.AllowPrivateTarget, c.AllowPrivateTarget)
+				}
+				return r.AllowPrivateTarget, nil
 			},
 		},
 		{
@@ -227,11 +245,18 @@ func cloudProviderCases() []providerCase {
 				return configuredOf(err, r, func() bool { return r.IsConfigured })
 			},
 			readAllowPrivate: func(ctx context.Context, s *Service, org string) (bool, error) {
+				r, err := s.GetKeycloakConfig(ctx, org)
+				if err != nil || r == nil {
+					return false, err
+				}
 				c, err := s.getDecryptedKeycloakConfig(ctx, org)
 				if err != nil || c == nil {
 					return false, err
 				}
-				return c.AllowPrivateTarget, nil
+				if r.AllowPrivateTarget != c.AllowPrivateTarget {
+					return false, fmt.Errorf("keycloak: masked GET (%v) and loader (%v) disagree on allow_private_target", r.AllowPrivateTarget, c.AllowPrivateTarget)
+				}
+				return r.AllowPrivateTarget, nil
 			},
 		},
 		{
@@ -270,11 +295,18 @@ func cloudProviderCases() []providerCase {
 				return configuredOf(err, r, func() bool { return r.IsConfigured })
 			},
 			readAllowPrivate: func(ctx context.Context, s *Service, org string) (bool, error) {
+				r, err := s.GetGitLabConfig(ctx, org)
+				if err != nil || r == nil {
+					return false, err
+				}
 				c, err := s.getDecryptedGitLabConfig(ctx, org)
 				if err != nil || c == nil {
 					return false, err
 				}
-				return c.AllowPrivateTarget, nil
+				if r.AllowPrivateTarget != c.AllowPrivateTarget {
+					return false, fmt.Errorf("gitlab: masked GET (%v) and loader (%v) disagree on allow_private_target", r.AllowPrivateTarget, c.AllowPrivateTarget)
+				}
+				return r.AllowPrivateTarget, nil
 			},
 		},
 		{
@@ -294,11 +326,18 @@ func cloudProviderCases() []providerCase {
 				return configuredOf(err, r, func() bool { return r.IsConfigured })
 			},
 			readAllowPrivate: func(ctx context.Context, s *Service, org string) (bool, error) {
+				r, err := s.GetSonarQubeConfig(ctx, org)
+				if err != nil || r == nil {
+					return false, err
+				}
 				c, err := s.getDecryptedSonarQubeConfig(ctx, org)
 				if err != nil || c == nil {
 					return false, err
 				}
-				return c.AllowPrivateTarget, nil
+				if r.AllowPrivateTarget != c.AllowPrivateTarget {
+					return false, fmt.Errorf("sonarqube: masked GET (%v) and loader (%v) disagree on allow_private_target", r.AllowPrivateTarget, c.AllowPrivateTarget)
+				}
+				return r.AllowPrivateTarget, nil
 			},
 		},
 		{

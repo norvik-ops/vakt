@@ -2284,7 +2284,16 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["Risk"];
+                    "application/json": {
+                        title: string;
+                        description?: string;
+                        category?: string;
+                        likelihood: number;
+                        impact: number;
+                        owner?: string;
+                        treatment: string;
+                        treatment_notes?: string;
+                    };
                 };
             };
             responses: {
@@ -2414,7 +2423,21 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["Incident"];
+                    "application/json": {
+                        title: string;
+                        description: string;
+                        severity: string;
+                        /** Format: date-time */
+                        discovered_at?: string;
+                        affected_systems?: string[];
+                        breach_id?: string;
+                        incident_type?: string;
+                        reporting_obligation?: string;
+                        notification_authority?: string;
+                        affected_customers?: number;
+                        financial_impact_estimate?: string;
+                        is_major_incident?: boolean;
+                    };
                 };
             };
             responses: {
@@ -2478,7 +2501,19 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["Incident"];
+                    "application/json": {
+                        title: string;
+                        description: string;
+                        severity: string;
+                        status: string;
+                        affected_systems?: string[];
+                        incident_type?: string;
+                        reporting_obligation?: string;
+                        notification_authority?: string;
+                        affected_customers?: number;
+                        financial_impact_estimate?: string;
+                        is_major_incident?: boolean;
+                    };
                 };
             };
             responses: {
@@ -2545,7 +2580,18 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["VVTEntry"];
+                    "application/json": {
+                        name: string;
+                        purpose: string;
+                        legal_basis: string;
+                        data_categories?: string[];
+                        data_subjects?: string[];
+                        recipients?: string[];
+                        retention_period?: string;
+                        third_country_transfer?: boolean;
+                        safeguards?: string;
+                        responsible_person?: string;
+                    };
                 };
             };
             responses: {
@@ -2604,7 +2650,19 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["VVTEntry"];
+                    "application/json": {
+                        name: string;
+                        purpose: string;
+                        legal_basis: string;
+                        data_categories?: string[];
+                        data_subjects?: string[];
+                        recipients?: string[];
+                        retention_period?: string;
+                        third_country_transfer?: boolean;
+                        safeguards?: string;
+                        responsible_person?: string;
+                        status: string;
+                    };
                 };
             };
             responses: {
@@ -2689,7 +2747,15 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["Breach"];
+                    "application/json": {
+                        title: string;
+                        description: string;
+                        /** Format: date-time */
+                        discovered_at: string;
+                        subjects_notification_required?: boolean;
+                        affected_count?: number;
+                        data_categories?: string[];
+                    };
                 };
             };
             responses: {
@@ -2738,6 +2804,65 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktprivacy/breaches/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Advance a breach through the Art. 33/34 DSGVO lifecycle */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "open" | "authority_notified" | "subjects_notified" | "closed";
+                        /** @description Only mandatory for a direct open→closed transition (no notification duty); the service enforces that rule. */
+                        rationale?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated breach */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Illegal status transition */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing rationale, or a status that cannot yet be persisted */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3607,7 +3732,14 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["CreateTemplateInput"];
+                    "application/json": {
+                        name: string;
+                        subject: string;
+                        from_name: string;
+                        from_email: string;
+                        html_body: string;
+                        attack_type: string;
+                    };
                 };
             };
             responses: {
@@ -3911,8 +4043,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @description CSV content (email,first_name,last_name) */
-                        csv: string;
+                        csv_content: string;
                     };
                 };
             };
@@ -3981,7 +4112,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         name: string;
-                        html: string;
+                        html_content: string;
                     };
                 };
             };
@@ -4048,7 +4179,20 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["CreateCampaignInput"];
+                    "application/json": {
+                        name: string;
+                        template_id?: string;
+                        group_id?: string;
+                        landing_page_id?: string;
+                        from_name: string;
+                        from_email: string;
+                        subject: string;
+                        /** Format: date-time */
+                        scheduled_at?: string;
+                        recurrence?: string;
+                        track_opens?: boolean;
+                        betriebsrat_mode?: boolean;
+                    };
                 };
             };
             responses: {
@@ -4299,8 +4443,12 @@ export interface paths {
                 content: {
                     "application/json": {
                         title: string;
-                        description?: string;
-                        duration_minutes?: number;
+                        type: string;
+                        attack_type: string;
+                        content_url: string;
+                        duration_seconds?: number;
+                        passing_score: number;
+                        questions?: Record<string, never>[];
                     };
                 };
             };
@@ -5253,11 +5401,19 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        title?: string;
-                        content?: string;
-                        /** @enum {string} */
-                        status?: "draft" | "active" | "archived";
+                        title: string;
+                        description?: string;
+                        category?: string;
+                        status: string;
+                        version?: string;
+                        /** Format: date-time */
+                        effective_date?: string;
+                        /** Format: date-time */
+                        review_date?: string;
                         owner?: string;
+                        version_note?: string;
+                        updated_by?: string;
+                        next_review_due?: string;
                     };
                 };
             };
@@ -5323,11 +5479,12 @@ export interface paths {
                 content: {
                     "application/json": {
                         title: string;
-                        audit_type: string;
-                        /** Format: date */
-                        planned_date?: string;
-                        lead_auditor?: string;
                         scope?: string;
+                        auditor?: string;
+                        /** Format: date-time */
+                        audit_date: string;
+                        findings?: string;
+                        recommendations?: string;
                     };
                 };
             };
@@ -5395,9 +5552,14 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        status?: string;
-                        findings_summary?: string;
-                        conclusion?: string;
+                        title: string;
+                        scope?: string;
+                        auditor?: string;
+                        /** Format: date-time */
+                        audit_date: string;
+                        status: string;
+                        findings?: string;
+                        recommendations?: string;
                     };
                 };
             };
@@ -5469,16 +5631,13 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        source_type: string;
+                        source_id?: string;
                         title: string;
                         description?: string;
-                        /** @enum {string} */
-                        priority: "low" | "medium" | "high" | "critical";
-                        /** Format: date */
+                        assignee_email?: string;
                         due_date?: string;
-                        /** Format: uuid */
-                        assignee_id?: string;
-                        source_type?: string;
-                        source_id?: string;
+                        priority?: string;
                     };
                 };
             };
@@ -5878,9 +6037,10 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        name: string;
+                        title: string;
                         description?: string;
-                        /** Format: date */
+                        reviewer_email: string;
+                        scope?: string;
                         due_date?: string;
                     };
                 };
@@ -6031,9 +6191,8 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        user_name: string;
+                        user_email: string;
                         access_level: string;
-                        system: string;
                     };
                 };
             };
@@ -6126,11 +6285,12 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        title: string;
                         reason: string;
-                        compensating_control?: string;
-                        /** Format: date */
+                        risk_accepted: string;
+                        approved_by?: string;
+                        /** Format: date-time */
                         expires_at?: string;
-                        risk_accepted?: boolean;
                     };
                 };
             };
@@ -6456,11 +6616,37 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        status?: "active" | "under_review" | "terminated";
-                        /** @enum {string} */
-                        risk_level?: "low" | "medium" | "high" | "critical";
+                        name: string;
+                        contact_name?: string;
                         contact_email?: string;
+                        service_type?: string;
+                        criticality?: string;
+                        nis2_relevant?: boolean;
+                        dora_relevant?: boolean;
+                        /** Format: date-time */
+                        contract_end?: string;
+                        notes?: string;
+                        sub_suppliers?: string[];
+                        data_location?: string;
+                        exit_strategy_exists?: boolean;
+                        assessment_status?: string;
+                        /** Format: date-time */
+                        last_assessment_at?: string;
+                        category?: string;
+                        data_access?: boolean;
+                        avv_document_id?: string;
+                        last_assessment_score?: number;
+                        /** Format: date-time */
+                        next_assessment_due?: string;
+                        supplier_status?: string;
+                        /** Format: date-time */
+                        contract_start?: string;
+                        data_protection_score?: number;
+                        availability_score?: number;
+                        security_certifications?: string;
+                        audit_rights?: boolean;
+                        sub_processors_known?: boolean;
+                        incident_notification?: boolean;
                     };
                 };
             };
@@ -6594,9 +6780,13 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        status?: string;
-                        measures?: string;
+                        title: string;
+                        description?: string;
+                        necessity_assessment?: string;
                         risk_assessment?: string;
+                        mitigation_measures?: string;
+                        residual_risk?: string;
+                        dpo_consultation?: boolean;
                     };
                 };
             };
@@ -6689,10 +6879,12 @@ export interface paths {
                 content: {
                     "application/json": {
                         processor_name: string;
-                        processor_address?: string;
-                        data_categories?: string[];
-                        processing_purposes?: string;
-                        technical_measures?: string;
+                        service_description: string;
+                        /** Format: date-time */
+                        contract_date?: string;
+                        /** Format: date-time */
+                        review_date?: string;
+                        notes?: string;
                     };
                 };
             };
@@ -6755,10 +6947,14 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        status?: "draft" | "active" | "terminated";
-                        /** Format: date */
-                        signed_at?: string;
+                        processor_name: string;
+                        service_description: string;
+                        /** Format: date-time */
+                        contract_date?: string;
+                        /** Format: date-time */
+                        review_date?: string;
+                        status: string;
+                        notes?: string;
                     };
                 };
             };
@@ -7005,12 +7201,13 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        type: "access" | "erasure" | "rectification" | "portability" | "restriction" | "objection";
-                        subject_name?: string;
-                        /** Format: email */
-                        subject_email: string;
+                        requester_name: string;
+                        requester_email: string;
+                        type: string;
                         description?: string;
+                        notes?: string;
+                        channel?: string;
+                        reference_id?: string;
                     };
                 };
             };
@@ -7053,10 +7250,8 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        status?: "open" | "in_progress" | "completed" | "rejected";
+                        status: string;
                         notes?: string;
-                        rejection_reason?: string;
                     };
                 };
             };
@@ -7910,9 +8105,9 @@ export interface paths {
                         applicable?: boolean;
                         justification?: string;
                         exclusion_reason?: string;
-                        /** @enum {string} */
-                        implementation_status?: "not_started" | "in_progress" | "implemented" | "partial";
-                        owner?: string;
+                        implementation_status: string;
+                        manually_set?: boolean;
+                        ck_control_id?: string;
                         evidence_reference?: string;
                         notes?: string;
                     };
@@ -8090,11 +8285,10 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        name?: string;
-                        category?: string;
+                        name: string;
+                        category: string;
                         requirements?: string;
                         concerns?: string;
-                        /** Format: date */
                         review_date?: string;
                     };
                 };
@@ -8234,14 +8428,15 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        audit_plan_id?: string;
                         title: string;
-                        /** @enum {string} */
-                        audit_type: "isms_internal" | "compliance_check" | "supplier_audit" | "process_audit" | "follow_up";
-                        /** Format: date */
-                        scheduled_date?: string;
-                        lead_auditor?: string;
-                        /** Format: uuid */
-                        plan_id?: string;
+                        audit_type: string;
+                        scope: string;
+                        methodology?: string;
+                        planned_date: string;
+                        lead_auditor_id?: string;
+                        auditor_ids?: string[];
+                        supplier_id?: string;
                     };
                 };
             };
@@ -8461,11 +8656,8 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        summary?: string;
-                        /** @enum {string} */
-                        overall_rating?: "satisfactory" | "minor_issues" | "major_issues" | "critical";
-                        /** Format: date */
-                        completed_date?: string;
+                        audit_report: string;
+                        actual_date: string;
                     };
                 };
             };
@@ -8526,9 +8718,9 @@ export interface paths {
                 content: {
                     "application/json": {
                         title: string;
-                        description?: string;
-                        /** @enum {string} */
-                        severity: "major_nc" | "minor_nc" | "observation" | "ofi";
+                        description: string;
+                        severity: string;
+                        affected_control_id?: string;
                     };
                 };
             };
@@ -8628,15 +8820,11 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        control_id: string;
                         name: string;
-                        description?: string;
-                        /** @enum {string} */
-                        query_type: "sql" | "api" | "manual";
-                        /** @description Cron expression */
-                        schedule?: string;
-                        threshold?: number;
-                        /** Format: uuid */
-                        control_id?: string;
+                        check_type: string;
+                        config?: Record<string, never>;
+                        interval_hours: number;
                     };
                 };
             };
@@ -9043,12 +9231,13 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        type: "url" | "text" | "file";
-                        title?: string;
-                        /** Format: uri */
-                        url?: string;
-                        text?: string;
+                        title: string;
+                        description?: string;
+                        source: string;
+                        file_path?: string;
+                        file_size?: number;
+                        /** Format: date-time */
+                        expires_at?: string;
                     };
                 };
             };
@@ -9164,12 +9353,8 @@ export interface paths {
                     "application/json": {
                         title: string;
                         description?: string;
-                        /** Format: date */
-                        due_date?: string;
-                        /** Format: uuid */
-                        assignee_id?: string;
-                        /** @enum {string} */
-                        status?: "planned" | "in_progress" | "done";
+                        difficulty: string;
+                        step_order?: number;
                     };
                 };
             };
@@ -9307,12 +9492,8 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        type: "questionnaire" | "onsite" | "document_review";
-                        title?: string;
-                        /** Format: date */
-                        due_date?: string;
-                        notes?: string;
+                        questionnaire_id: string;
+                        expires_in_days: number;
                     };
                 };
             };
@@ -38812,6 +38993,8 @@ export interface components {
             total_controls?: number;
             implemented_controls?: number;
             score?: number;
+            /** @description Bereitschaftsgrad 0–100 (evidenzgestützt, partial zählt halb, not_applicable aus dem Nenner). Immer gesetzt; 0 ist ein gültiger Wert. Vom Auditor-Portal als 'Bereitschaft %' angezeigt (R1-G-38). */
+            readiness_score?: number;
             /**
              * @description DORA framework variant — 'full' (Art. 5–15) or 'simplified' (Art. 16). Ignored for non-DORA frameworks.
              * @enum {string}
@@ -39657,6 +39840,8 @@ export interface components {
             /** @description "****" if set */
             password: string;
             verify_tls: boolean;
+            /** @description allow RFC1918/private targets (SSRF opt-in, on-premises Wazuh) */
+            allow_private_target?: boolean;
             is_configured: boolean;
         };
         SaveWazuhConfigInput: {
@@ -39664,6 +39849,8 @@ export interface components {
             username: string;
             password: string;
             verify_tls?: boolean;
+            /** @description allow RFC1918/private targets (SSRF opt-in, on-premises Wazuh) */
+            allow_private_target?: boolean;
         };
         WazuhStatus: components["schemas"]["CloudSyncStatus"] & {
             agent_count?: number;
@@ -39674,12 +39861,16 @@ export interface components {
             alertmanager_url: string;
             /** @description "****" if set */
             token: string;
+            /** @description allow RFC1918/private targets (SSRF opt-in, on-premises Prometheus) */
+            allow_private_target?: boolean;
             is_configured: boolean;
         };
         SavePrometheusConfigInput: {
             prometheus_url: string;
             alertmanager_url?: string;
             token?: string;
+            /** @description allow RFC1918/private targets (SSRF opt-in, on-premises Prometheus) */
+            allow_private_target?: boolean;
         };
         PrometheusStatus: components["schemas"]["CloudSyncStatus"] & {
             target_count?: number;
@@ -39725,6 +39916,8 @@ export interface components {
             client_id: string;
             /** @description "****" if set */
             client_secret: string;
+            /** @description allow RFC1918/private targets (SSRF opt-in, on-premises Keycloak) */
+            allow_private_target?: boolean;
             is_configured: boolean;
         };
         SaveKeycloakConfigInput: {
@@ -39732,6 +39925,8 @@ export interface components {
             realm: string;
             client_id: string;
             client_secret: string;
+            /** @description allow RFC1918/private targets (SSRF opt-in, on-premises Keycloak) */
+            allow_private_target?: boolean;
         };
         KeycloakStatus: components["schemas"]["CloudSyncStatus"] & {
             user_count?: number;
@@ -39770,12 +39965,16 @@ export interface components {
             /** @description "****" if set */
             access_token: string;
             group_id: string;
+            /** @description allow RFC1918/private targets (SSRF opt-in, self-hosted GitLab) */
+            allow_private_target?: boolean;
             is_configured: boolean;
         };
         SaveGitLabConfigInput: {
             gitlab_url: string;
             access_token: string;
             group_id?: string;
+            /** @description allow RFC1918/private targets (SSRF opt-in, self-hosted GitLab) */
+            allow_private_target?: boolean;
         };
         GitLabStatus: components["schemas"]["CloudSyncStatus"] & {
             project_count?: number;
@@ -39785,11 +39984,15 @@ export interface components {
             base_url: string;
             /** @description "****" if set */
             token: string;
+            /** @description allow RFC1918/private targets (SSRF opt-in, self-hosted SonarQube) */
+            allow_private_target?: boolean;
             is_configured: boolean;
         };
         SaveSonarQubeConfigInput: {
             base_url: string;
             token: string;
+            /** @description allow RFC1918/private targets (SSRF opt-in, self-hosted SonarQube) */
+            allow_private_target?: boolean;
         };
         SonarQubeStatus: components["schemas"]["CloudSyncStatus"] & {
             project_count?: number;
@@ -41368,11 +41571,16 @@ export interface operations {
                 "application/json": {
                     name: string;
                     service_type: string;
-                    /** @enum {string} */
-                    criticality: "low" | "medium" | "high" | "critical";
-                    country?: string;
-                    /** Format: email */
-                    contact_email?: string;
+                    criticality: string;
+                    contract_start?: string;
+                    contract_end?: string;
+                    sla_rto_hours?: number;
+                    sla_availability?: number;
+                    has_subcontractors?: boolean;
+                    subcontractor_names?: string;
+                    data_location: string;
+                    exit_strategy?: boolean;
+                    exit_notes?: string;
                     notes?: string;
                 };
             };
@@ -41443,13 +41651,18 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    name?: string;
-                    service_type?: string;
-                    /** @enum {string} */
-                    criticality?: "low" | "medium" | "high" | "critical";
-                    country?: string;
-                    /** Format: email */
-                    contact_email?: string;
+                    name: string;
+                    service_type: string;
+                    criticality: string;
+                    contract_start?: string;
+                    contract_end?: string;
+                    sla_rto_hours?: number;
+                    sla_availability?: number;
+                    has_subcontractors?: boolean;
+                    subcontractor_names?: string;
+                    data_location: string;
+                    exit_strategy?: boolean;
+                    exit_notes?: string;
                     notes?: string;
                 };
             };
@@ -41544,13 +41757,13 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    title: string;
-                    /** @enum {string} */
-                    test_type: "vulnerability_assessment" | "penetration_test" | "tlpt" | "scenario_based";
-                    /** Format: date */
-                    scheduled_date?: string;
+                    type: string;
                     scope?: string;
-                    notes?: string;
+                    provider?: string;
+                    /** Format: date-time */
+                    test_date: string;
+                    summary?: string;
+                    remediation_status?: string;
                 };
             };
         };
@@ -41620,15 +41833,13 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    title?: string;
-                    /** @enum {string} */
-                    status?: "planned" | "in_progress" | "completed" | "failed";
-                    /** Format: date */
-                    scheduled_date?: string;
-                    /** Format: date */
-                    completed_date?: string;
-                    outcome?: string;
-                    notes?: string;
+                    type: string;
+                    scope?: string;
+                    provider?: string;
+                    /** Format: date-time */
+                    test_date: string;
+                    summary?: string;
+                    remediation_status: string;
                 };
             };
         };
@@ -41763,10 +41974,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    sector?: string;
-                    sub_sector?: string;
-                    employee_count?: number;
-                    annual_revenue_eur?: number;
+                    sector: string;
+                    federal_state?: string;
                 };
             };
         };
@@ -41964,13 +42173,18 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    name?: string;
+                    name: string;
                     description?: string;
-                    vendor?: string;
+                    provider?: string;
                     use_case?: string;
-                    deployment_context?: string;
-                    /** @enum {string} */
-                    risk_category?: "minimal" | "limited" | "high" | "unacceptable";
+                    affected_groups?: string;
+                    autonomy_level?: string;
+                    /** Format: date-time */
+                    in_production_since?: string;
+                    status?: string;
+                    risk_class?: string;
+                    classification_rationale?: string;
+                    classified_by?: string;
                 };
             };
         };
@@ -42020,10 +42234,10 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    prohibited_use_case?: boolean;
-                    high_risk_annex3?: boolean;
-                    high_risk_annex2?: boolean;
-                    limited_transparency?: boolean;
+                    risk_class: string;
+                    rationale?: string;
+                    classified_by?: string;
+                    wizard_answers?: Record<string, never>;
                 };
             };
         };
@@ -43743,7 +43957,15 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateBSIRiskInput"];
+                "application/json": {
+                    eintrittshaeufigkeit: string;
+                    schadensauswirkung: string;
+                    behandlungsoption?: string;
+                    massnahme?: string;
+                    verantwortlicher?: string;
+                    zieldatum?: string;
+                    restrisiko?: string;
+                };
             };
         };
         responses: {
@@ -46889,13 +47111,13 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** Format: uuid */
                     employee_id: string;
-                    old_role: string;
-                    new_role: string;
-                    /** Format: date */
+                    from_department?: string;
+                    from_job_title?: string;
+                    to_department: string;
+                    to_job_title: string;
                     effective_date: string;
-                    notes?: string;
+                    due_days_offset?: number;
                 };
             };
         };
@@ -47338,20 +47560,15 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    first_name?: string;
-                    last_name?: string;
-                    /** Format: email */
+                    first_name: string;
+                    last_name: string;
                     email?: string;
                     company?: string;
-                    /** Format: date */
-                    contract_start?: string;
-                    /** Format: date */
                     contract_end?: string;
                     access_scope?: string[];
                     nda_signed?: boolean;
                     avv_signed?: boolean;
-                    /** @enum {string} */
-                    status?: "active" | "expiring_soon" | "offboarding" | "terminated";
+                    status?: string;
                 };
             };
         };

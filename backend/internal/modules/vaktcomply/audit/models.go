@@ -112,16 +112,20 @@ type CreateAuditPlanInput struct {
 }
 
 // CreateAuditProgramAuditInput holds validated input for an individual audit.
+// R1-SA14-02: the *ID fields feed ::uuid casts and FKs; without uuid validation
+// a malformed id passed the (previously shape-only) validator and surfaced as a
+// Postgres 22P02 → 500. The uuid tags reject it as a 422 at the handler edge;
+// a well-formed-but-nonexistent id (FK 23503) is mapped to 409 in the handler.
 type CreateAuditProgramAuditInput struct {
-	AuditPlanID   *string  `json:"audit_plan_id,omitempty"`
+	AuditPlanID   *string  `json:"audit_plan_id,omitempty" validate:"omitempty,uuid"`
 	Title         string   `json:"title"       validate:"required,max=300"`
 	AuditType     string   `json:"audit_type"  validate:"required,oneof=isms_internal compliance_check supplier_audit process_audit"`
 	Scope         string   `json:"scope"       validate:"required,max=5000"`
 	Methodology   string   `json:"methodology" validate:"omitempty,oneof=document_review interview technical_check combined"`
 	PlannedDate   string   `json:"planned_date" validate:"required"`
-	LeadAuditorID *string  `json:"lead_auditor_id,omitempty"`
-	AuditorIDs    []string `json:"auditor_ids,omitempty"`
-	SupplierID    *string  `json:"supplier_id,omitempty"`
+	LeadAuditorID *string  `json:"lead_auditor_id,omitempty" validate:"omitempty,uuid"`
+	AuditorIDs    []string `json:"auditor_ids,omitempty" validate:"omitempty,dive,uuid"`
+	SupplierID    *string  `json:"supplier_id,omitempty" validate:"omitempty,uuid"`
 }
 
 // CompleteAuditInput holds the audit report and actual completion date.

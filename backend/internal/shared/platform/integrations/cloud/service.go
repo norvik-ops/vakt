@@ -715,6 +715,7 @@ func (s *Service) GetWazuhConfig(ctx context.Context, orgID string) (*WazuhConfi
 		resp.Password = maskedSecret
 	}
 	resp.VerifyTLS = stored.VerifyTLS
+	resp.AllowPrivateTarget = stored.AllowPrivateTarget
 	resp.IsConfigured = resp.BaseURL != "" && resp.Username != ""
 	return resp, nil
 }
@@ -858,6 +859,7 @@ func (s *Service) GetPrometheusConfig(ctx context.Context, orgID string) (*Prome
 	if stored.Token != "" {
 		resp.Token = maskedSecret
 	}
+	resp.AllowPrivateTarget = stored.AllowPrivateTarget
 	resp.IsConfigured = resp.PrometheusURL != ""
 	return resp, nil
 }
@@ -1259,6 +1261,7 @@ func (s *Service) GetKeycloakConfig(ctx context.Context, orgID string) (*Keycloa
 	if stored.ClientSecret != "" {
 		resp.ClientSecret = maskedSecret
 	}
+	resp.AllowPrivateTarget = stored.AllowPrivateTarget
 	resp.IsConfigured = resp.KeycloakURL != "" && resp.Realm != "" && resp.ClientID != "" && resp.ClientSecret == maskedSecret
 	return resp, nil
 }
@@ -1581,6 +1584,7 @@ func (s *Service) GetGitLabConfig(ctx context.Context, orgID string) (*GitLabCon
 	if stored.AccessToken != "" {
 		resp.AccessToken = maskedSecret
 	}
+	resp.AllowPrivateTarget = stored.AllowPrivateTarget
 	resp.IsConfigured = resp.GitLabURL != "" && resp.AccessToken == maskedSecret
 	return resp, nil
 }
@@ -1722,6 +1726,7 @@ func (s *Service) GetSonarQubeConfig(ctx context.Context, orgID string) (*SonarQ
 	if stored.Token != "" {
 		resp.Token = maskedSecret
 	}
+	resp.AllowPrivateTarget = stored.AllowPrivateTarget
 	resp.IsConfigured = resp.BaseURL != "" && resp.Token == maskedSecret
 	return resp, nil
 }

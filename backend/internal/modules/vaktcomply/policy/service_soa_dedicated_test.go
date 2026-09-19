@@ -49,3 +49,16 @@ func TestStatusLabel_Unknown(t *testing.T) {
 	assert.Equal(t, "Nicht begonnen", statusLabel(""))
 	assert.Equal(t, "Nicht begonnen", statusLabel("IMPLEMENTED"))
 }
+
+// TestSoAStatusLabel_ExportedMirrorsInternal guards R1-20-07: the XLSX/DOCX SoA
+// exports translate implementation_status through the exported SoAStatusLabel,
+// which must stay identical to the internal statusLabel the PDF uses — otherwise
+// the same status reads German in the PDF and raw English in the XLSX/DOCX.
+func TestSoAStatusLabel_ExportedMirrorsInternal(t *testing.T) {
+	for _, s := range []string{"implemented", "partial", "planned", "not_started", "", "bogus"} {
+		assert.Equal(t, statusLabel(s), SoAStatusLabel(s), "SoAStatusLabel(%q) must match statusLabel", s)
+	}
+	// The raw enum must never leak through untranslated.
+	assert.NotEqual(t, "not_started", SoAStatusLabel("not_started"))
+	assert.Equal(t, "Implementiert", SoAStatusLabel("implemented"))
+}

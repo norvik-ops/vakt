@@ -289,6 +289,7 @@ func (h *Handler) ExportSoADOCX(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_SOA_EXPORT_FAILED")
 	}
 
+	ownerByCtrl := h.soaControlOwners(ctx, org, entries)
 	rows := make([]docxexport.SoARow, len(entries))
 	for i, e := range entries {
 		justification := e.Justification
@@ -296,13 +297,13 @@ func (h *Handler) ExportSoADOCX(c echo.Context) error {
 			justification = e.ExclusionReason
 		}
 		owner := ""
-		if e.ApprovedBy != nil {
-			owner = *e.ApprovedBy
+		if e.CKControlID != nil {
+			owner = ownerByCtrl[*e.CKControlID]
 		}
 		rows[i] = docxexport.SoARow{
 			ControlRef: e.ControlRef, ControlName: e.ControlName, ControlGroup: e.ControlGroup,
 			Applicable: e.Applicable, Justification: justification,
-			ImplementationStatus: e.ImplementationStatus, Owner: owner, UpdatedAt: e.UpdatedAt,
+			ImplementationStatus: SoAStatusLabel(e.ImplementationStatus), Owner: owner, UpdatedAt: e.UpdatedAt,
 		}
 	}
 	var sum docxexport.SoASummary

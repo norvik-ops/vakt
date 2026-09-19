@@ -7,6 +7,9 @@ import (
 	"encoding/csv"
 	"fmt"
 	"html/template"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -72,6 +75,16 @@ func GeneratePackage(ctx context.Context, db *pgxpool.Pool, orgID string) (*Audi
 		return nil, fmt.Errorf("gap analysis html: %w", err)
 	}
 
+	// ── Evidence files (the actual uploaded documents) ────────────────────────
+	// R1-14c-03: previously the ZIP shipped only CSV/HTML metadata, so an auditor
+	// received the register of evidence but none of the evidence itself. The
+	// uploaded files live under uploadDir/evidence/<org>/<stored_name>; we resolve
+	// uploadDir the same way config.go does (VAKT_UPLOAD_DIR, default /data/uploads)
+	// rather than threading a new parameter through the handler seam.
+	if err := writeEvidenceFiles(ctx, db, orgID, resolveUploadDir(), zw); err != nil {
+		return nil, fmt.Errorf("evidence files: %w", err)
+	}
+
 	// ── README ───────────────────────────────────────────────────────────────
 	f, _ := zw.Create("README.txt")
 	fmt.Fprintf(f, "Vakt Audit-Paket\n")
@@ -79,12 +92,13 @@ func GeneratePackage(ctx context.Context, db *pgxpool.Pool, orgID string) (*Audi
 	fmt.Fprintf(f, "Organisation: %s\n\n", orgName)
 	fmt.Fprintf(f, "Enthaltene Dateien:\n")
 	fmt.Fprintf(f, "  controls.csv      — Alle Compliance-Controls mit Status\n")
-	fmt.Fprintf(f, "  evidence.csv      — Gesammelte Evidenzen\n")
+	fmt.Fprintf(f, "  evidence.csv      — Gesammelte Evidenzen (Metadaten)\n")
 	fmt.Fprintf(f, "  findings.csv      — Offene Sicherheitslücken (Vakt Scan)\n")
 	fmt.Fprintf(f, "  risks.csv         — Risikoregister (Vakt Comply)\n")
 	fmt.Fprintf(f, "  incidents.csv     — Vorfallsregister (Vakt Comply)\n")
 	fmt.Fprintf(f, "  policies.csv      — Richtlinien (Vakt Comply)\n")
-	fmt.Fprintf(f, "  gap_analysis.html — Gap-Analyse-Bericht (im Browser öffnen)\n\n")
+	fmt.Fprintf(f, "  gap_analysis.html — Gap-Analyse-Bericht (im Browser öffnen)\n")
+	fmt.Fprintf(f, "  evidence/         — Die hochgeladenen Belegdateien\n\n")
 	fmt.Fprintf(f, "Für Audits: Bitte gap_analysis.html im Browser öffnen und als PDF drucken.\n")
 
 	if err := zw.Close(); err != nil {
@@ -257,6 +271,99 @@ func writePoliciesCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *z
 	}
 	w.Flush()
 	return rows.Err()
+}
+
+// ── Evidence files ─────────────────────────────────────────────────────────────
+
+// resolveUploadDir mirrors config.go's VAKT_UPLOAD_DIR resolution so the audit
+// package finds the same on-disk evidence directory the upload path wrote to.
+func resolveUploadDir() string {
+	if d := os.Getenv("VAKT_UPLOAD_DIR"); d != "" {
+		return d
+	}
+	return "/data/uploads"
+}
+
+// writeEvidenceFiles streams every uploaded evidence file for the org into the ZIP
+// under evidence/<name>. Path safety: the disk path is built ONLY from the
+// server-generated stored_name (a UUID + extension, see EvidenceFileService.Upload),
+// never from original_name, so a hostile original filename cannot escape the
+// evidence directory. A file that is missing or unreadable on disk is skipped and
+// logged — one broken file must never abort the whole audit export.
+func writeEvidenceFiles(ctx context.Context, db *pgxpool.Pool, orgID, uploadDir string, zw *zip.Writer) error {
+	rows, err := db.Query(ctx, `
+		SELECT stored_name, original_name
+		FROM ck_evidence_files
+		WHERE org_id = $1::uuid
+		ORDER BY created_at`, orgID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type fileRow struct{ stored, original string }
+	var files []fileRow
+	for rows.Next() {
+		var stored, original string
+		if err := rows.Scan(&stored, &original); err != nil {
+			continue
+		}
+		files = append(files, fileRow{stored: stored, original: original})
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	baseDir := filepath.Join(uploadDir, "evidence", orgID)
+	used := map[string]bool{}
+	for _, fr := range files {
+		diskPath := filepath.Join(baseDir, fr.stored)
+		data, rerr := os.ReadFile(diskPath)
+		if rerr != nil {
+			log.Warn().Err(rerr).Str("org_id", orgID).Str("stored_name", fr.stored).
+				Msg("audit export: evidence file missing on disk, skipping")
+			continue
+		}
+		w, cerr := zw.Create(evidenceZipPath(fr.original, fr.stored, used))
+		if cerr != nil {
+			return cerr
+		}
+		if _, werr := w.Write(data); werr != nil {
+			return werr
+		}
+	}
+	return nil
+}
+
+// evidenceZipPath builds a safe, unique archive path (evidence/<name>) for one
+// evidence file. original_name shapes only the human-readable entry name; it is
+// never used for disk access. Directory components and traversal segments are
+// stripped, and duplicate names are de-duplicated with a numeric suffix so no
+// file silently overwrites another inside the ZIP.
+func evidenceZipPath(originalName, storedName string, used map[string]bool) string {
+	// Treat both / and \ as separators before taking the base component, so a
+	// Windows-style "..\..\x" collapses to "x" on a Linux host too.
+	base := filepath.Base(strings.ReplaceAll(originalName, "\\", "/"))
+	if base == "" || base == "." || base == ".." {
+		base = storedName
+	}
+	if base == "" || base == "." || base == ".." {
+		base = "datei"
+	}
+	name := "evidence/" + base
+	if !used[name] {
+		used[name] = true
+		return name
+	}
+	ext := filepath.Ext(base)
+	stem := strings.TrimSuffix(base, ext)
+	for i := 2; ; i++ {
+		cand := fmt.Sprintf("evidence/%s-%d%s", stem, i, ext)
+		if !used[cand] {
+			used[cand] = true
+			return cand
+		}
+	}
 }
 
 // ── Gap Analysis HTML ─────────────────────────────────────────────────────────

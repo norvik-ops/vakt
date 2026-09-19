@@ -16,7 +16,7 @@ import {
 } from '../../../hooks/useCloud'
 import { toast } from '../../../shared/hooks/useToast'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
-import { SyncLastBadge, RecentEvidenceList } from './shared'
+import { SyncLastBadge, RecentEvidenceList, AllowPrivateTargetToggle } from './shared'
 
 // --- GitLab tab ---
 
@@ -32,19 +32,21 @@ export function GitLabTab() {
   const [gitlabURL, setGitlabURL] = useState('')
   const [accessToken, setAccessToken] = useState('')
   const [groupID, setGroupID] = useState('')
+  const [allowPrivateTarget, setAllowPrivateTarget] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
   if (cfg && !initialized) {
     setGitlabURL(cfg.gitlab_url)
     setAccessToken(cfg.access_token)
     setGroupID(cfg.group_id)
+    setAllowPrivateTarget(cfg.allow_private_target)
     setInitialized(true)
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     try {
-      await saveConfig.mutateAsync({ gitlab_url: gitlabURL, access_token: accessToken, group_id: groupID })
+      await saveConfig.mutateAsync({ gitlab_url: gitlabURL, access_token: accessToken, group_id: groupID, allow_private_target: allowPrivateTarget })
       toast(t('integrations.page.saved'), 'success')
     } catch (err) {
       toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
@@ -127,6 +129,7 @@ export function GitLabTab() {
           />
           <p className="text-[11px] text-secondary mt-1">Leer lassen um alle zugänglichen Projekte (Membership) zu erfassen.</p>
         </div>
+        <AllowPrivateTargetToggle id="gitlab-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
         <div className="flex gap-2 pt-1">
           <button type="submit" disabled={saveConfig.isPending}
             className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
@@ -158,18 +161,20 @@ export function SonarQubeTab() {
 
   const [baseURL, setBaseURL] = useState('')
   const [token, setToken] = useState('')
+  const [allowPrivateTarget, setAllowPrivateTarget] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
   if (cfg && !initialized) {
     setBaseURL(cfg.base_url)
     setToken(cfg.token)
+    setAllowPrivateTarget(cfg.allow_private_target)
     setInitialized(true)
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     try {
-      await saveConfig.mutateAsync({ base_url: baseURL, token })
+      await saveConfig.mutateAsync({ base_url: baseURL, token, allow_private_target: allowPrivateTarget })
       toast(t('integrations.page.saved'), 'success')
     } catch (err) {
       toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
@@ -247,6 +252,7 @@ export function SonarQubeTab() {
             Token aus SonarQube → My Account → Security → Generate Token. Typ: <code>User Token</code>.
           </p>
         </div>
+        <AllowPrivateTargetToggle id="sonarqube-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
         <div className="flex gap-2 pt-1">
           <button type="submit" disabled={saveConfig.isPending}
             className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">

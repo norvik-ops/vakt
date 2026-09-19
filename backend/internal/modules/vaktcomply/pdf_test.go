@@ -12,9 +12,39 @@ import (
 
 // TestGenerateSoAPDF_Empty verifies that a SoA PDF is produced without error for an empty row list.
 func TestGenerateSoAPDF_Empty(t *testing.T) {
-	got, err := GenerateSoAPDF([]SoARow{}, "ISO 27001", "Test GmbH", time.Now())
+	got, err := GenerateSoAPDF([]SoARow{}, "ISO 27001", "Test GmbH", time.Now(), false)
 	require.NoError(t, err)
 	assert.Greater(t, len(got), 0, "PDF output must not be empty")
+}
+
+// TestGenerateSoAPDF_DraftRenders verifies the draft fallback still produces a PDF
+// (the visible "ENTWURF" banner is added, R1-36a-D02 / ADR-0091).
+func TestGenerateSoAPDF_DraftRenders(t *testing.T) {
+	got, err := GenerateSoAPDF([]SoARow{}, "ISO 27001", "Test GmbH", time.Now(), true)
+	require.NoError(t, err)
+	assert.Greater(t, len(got), 0, "draft PDF output must not be empty")
+}
+
+// TestIsISO27001Framework covers the heuristic that decides whether the framework
+// SoA export must serve the canonical dedicated SoA (R1-36a-D02 / ADR-0091). It
+// mirrors the frontend match in useFrameworks.ts.
+func TestIsISO27001Framework(t *testing.T) {
+	cases := []struct {
+		name string
+		want bool
+	}{
+		{"ISO 27001", true},
+		{"ISO 27001:2022", true},
+		{"iso27001", true},
+		{"ISO27001 Annex A", true},
+		{"NIS2", false},
+		{"BSI IT-Grundschutz", false},
+		{"DORA", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		assert.Equalf(t, c.want, isISO27001Framework(c.name), "isISO27001Framework(%q)", c.name)
+	}
 }
 
 // TestGenerateSoAPDF_WithRows verifies that a SoA PDF is produced for a set of sample rows.
@@ -52,7 +82,7 @@ func TestGenerateSoAPDF_WithRows(t *testing.T) {
 		},
 	}
 
-	got, err := GenerateSoAPDF(rows, "ISO 27001", "Acme GmbH", time.Now())
+	got, err := GenerateSoAPDF(rows, "ISO 27001", "Acme GmbH", time.Now(), false)
 	require.NoError(t, err)
 	assert.Greater(t, len(got), 0, "PDF output must not be empty for non-empty row list")
 }
@@ -71,7 +101,7 @@ func TestGenerateSoAPDF_MultiDomain(t *testing.T) {
 		})
 	}
 
-	got, err := GenerateSoAPDF(rows, "ISO 27001:2022", "Multi GmbH", time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC))
+	got, err := GenerateSoAPDF(rows, "ISO 27001:2022", "Multi GmbH", time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC), false)
 	require.NoError(t, err)
 	assert.Greater(t, len(got), 1000, "multi-domain PDF should produce substantial output")
 }

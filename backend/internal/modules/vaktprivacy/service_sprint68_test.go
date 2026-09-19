@@ -84,13 +84,13 @@ func TestDSR_Overdue_DueDateFuture(t *testing.T) {
 	assert.False(t, isOverdue(dueDate))
 }
 
-// --- DSR due date: received_at + 30 days ---
+// --- DSR due date: one calendar month from receipt (R1-14c-13) ---
+// Full month-length/leap/clamp coverage lives in
+// service_regulatory_test.go:TestDSRDueDate_OneCalendarMonth.
 
-func TestDSR_DueDate_Is30DaysFromReceipt(t *testing.T) {
+func TestDSR_DueDate_IsOneCalendarMonth(t *testing.T) {
 	receivedAt := time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)
-	dueDate := receivedAt.AddDate(0, 0, 30)
-	expected := time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC)
-	assert.Equal(t, expected, dueDate)
+	assert.Equal(t, time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC), dsrDueDate(receivedAt))
 }
 
 // --- DSR type validation: new types restriction + no_profiling ---

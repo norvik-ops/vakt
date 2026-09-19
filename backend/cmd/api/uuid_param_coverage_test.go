@@ -95,13 +95,9 @@ var shortCircuitCodes = map[int]bool{
 	http.StatusForbidden:       true, // 403 — CSRF / Rolle / MFA, laeuft also NACH dem Guard
 }
 
-// Zwei Gruende, die sich wiederholen — als Konstante, damit jede einzelne
-// Log-Zeile fuer sich lesbar bleibt. Ein "dito" im sortierten Protokoll steht
-// neben irgendeinem Nachbarn, nicht neben dem gemeinten.
-const (
-	scimNoGuard    = "SCIM haengt an `api`, nicht an `protected` — kein ValidateUUIDParams; 402 Feature-Gate vor der Messung"
-	auditorNoGuard = "Auditor-Portal haengt an `api` mit AuditorAuth — kein ValidateUUIDParams; 401 ohne Auditor-Session"
-)
+// R1-SA13-05/W0D-N1: SCIM and the auditor DATA routes now carry
+// ValidateUUIDParams (mounted on their groups in routes.go), so they are no
+// longer exempt — a malformed :id is a 400 from the guard, not a 22P02 → 500.
 
 // knownUnprovenRoutes ist die begruendete, vollstaendige Liste der Routen, ueber
 // die dieses Gate heute nichts beweisen kann. Sie ist KEINE Ausnahme vom Guard,
@@ -128,23 +124,20 @@ const (
 // Wer eine Route hier eintraegt, nennt den Grund. Wer eine Route verbessert,
 // traegt sie aus — das Gate erzwingt beides.
 var knownUnprovenRoutes = map[string]string{
-	// ── LUECKE: eigener Auth-Pfad, kein ValidateUUIDParams (12 Routen) ────────
-	"GET /api/v1/scim/v2/Users/:id":                            scimNoGuard,
-	"PUT /api/v1/scim/v2/Users/:id":                            scimNoGuard,
-	"PATCH /api/v1/scim/v2/Users/:id":                          scimNoGuard,
-	"DELETE /api/v1/scim/v2/Users/:id":                         scimNoGuard,
-	"GET /api/v1/scim/v2/Groups/:id":                           scimNoGuard,
-	"PUT /api/v1/scim/v2/Groups/:id":                           scimNoGuard,
-	"PATCH /api/v1/scim/v2/Groups/:id":                         scimNoGuard,
-	"DELETE /api/v1/scim/v2/Groups/:id":                        scimNoGuard,
-	"GET /api/v1/auditor/vaktcomply/frameworks/:id":            auditorNoGuard,
-	"GET /api/v1/auditor/vaktcomply/frameworks/:id/controls":   auditorNoGuard,
-	"GET /api/v1/auditor/vaktcomply/frameworks/:id/report.pdf": auditorNoGuard,
-	"GET /api/v1/auditor/vaktcomply/frameworks/:id/soa.pdf":    auditorNoGuard,
-
 	// ── MESSLUECKE: Token-/Signaturpruefung im Handler ────────────────────────
 	"POST /api/v1/auditor/accept/:token":            "public, `:token` auf der Denylist; der Handler selbst antwortet 401 auf ein unbekanntes Token",
 	"POST /api/v1/vakthr/webhooks/personio/:org_id": "public Webhook, HMAC-Signaturpruefung antwortet 401 vor jedem Cast",
+
+	// ── MESSLUECKE: Auditor-Session-Auth antwortet 401 vor dem :id-Cast ───────
+	// Das Auditor-Portal sitzt hinter einer eigenen Session-Guard (nicht `protected`);
+	// ohne gueltige Auditor-Session antwortet sie 401, bevor der :id-Param einen
+	// Handler oder ValidateUUIDParams erreicht. Ueber diese Read-only-Routen kann das
+	// Gate nichts beweisen. (Latenter Folgepunkt: mit gueltiger Session + kaputter
+	// :id sollte der Handler 400 via apperr geben, nicht 500 — separat zu pruefen.)
+	"GET /api/v1/auditor/vaktcomply/frameworks/:id":            "Auditor-Session-Auth antwortet 401 vor dem :id-Cast",
+	"GET /api/v1/auditor/vaktcomply/frameworks/:id/controls":   "Auditor-Session-Auth antwortet 401 vor dem :id-Cast",
+	"GET /api/v1/auditor/vaktcomply/frameworks/:id/report.pdf": "Auditor-Session-Auth antwortet 401 vor dem :id-Cast",
+	"GET /api/v1/auditor/vaktcomply/frameworks/:id/soa.pdf":    "Auditor-Session-Auth antwortet 401 vor dem :id-Cast",
 
 	// ── MESSLUECKE: nur Denylist-Params, CSRF/Feature-Gate uebernimmt ─────────
 	"DELETE /api/v1/admin/accounts/:email/unlock":            "`:email` auf der Denylist → Guard laesst passieren, CSRF antwortet 403",

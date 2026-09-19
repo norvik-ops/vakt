@@ -51,17 +51,17 @@ func (c *AWSCollector) Collect(ctx context.Context, orgID string, cfg AWSConfig)
 	}
 
 	// Find IAM controls to attach evidence to (best-effort; nil = no control link)
-	iamControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"iam", "access", "identity", "password", "mfa"})
+	iamControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("iam", "access", "identity", "password", "mfa"))
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: no iam controls found")
 	}
 
-	cloudtrailControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"audit", "log", "trail", "monitoring"})
+	cloudtrailControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("audit", "log", "trail", "monitoring"))
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: no cloudtrail controls found")
 	}
 
-	storageControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"encryption", "storage", "s3", "backup"})
+	storageControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("encryption", "storage", "s3", "backup"))
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("aws_collector: no storage controls found")
 	}

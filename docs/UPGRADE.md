@@ -250,13 +250,17 @@ Helm führt den migrate-Job vor dem API-Rollout aus (init-Container-Pattern).
 ### v0.16.0
 
 - **Keine Breaking Changes.** Neue Worker-Queue-Namespaces sind rückwärtskompatibel (bestehende Jobs laufen in Default-Queue weiter).
-- Empfohlen: `docker compose pull && docker compose up -d` genügt.
+- Update wie üblich mit `./scripts/update.sh` (oder von Hand die Standardschritte oben:
+  Backup → Auslieferungs-Dateien holen → Images ziehen → migrieren → `docker compose up -d`).
+  Auch ohne Breaking Change gilt Schritt „Auslieferungs-Dateien holen": ein reines
+  `docker compose pull` lässt `docker-compose.yml`/`Caddyfile`/`scripts/` — und damit
+  eventuelle Härtungsänderungen — auf dem alten Stand.
 
 ### v0.15.0 (Sprint 28 — NIS2 Pro-Layer)
 
 - **Migration 127 automatisch:** Neue Tabelle `ck_nis2_assessment_runs` für Re-Assessment-History. Keine manuelle Aktion, keine Downtime.
 - **NIS2 Pro-Features erfordern `FeatureNIS2Reporting`-License-Flag:** Embedded-Mode (iframe), Branded PDF-Export, Re-Assessment-History, Multi-Framework-Wizard sind hinter dem Pro-Gate. CE-Features (`/nis2-check`, Score-Engine, Sign-up-Migration) bleiben unverändert kostenlos.
-- **Neue öffentliche Route `/nis2-check/multi`:** Reverse-Proxy / WAF: Pfad-Prefix `allow-list` ergänzen (analog `/nis2-check` aus v0.12.0). Standard-nginx-Config im Repo ist bereits korrekt.
+- **Neue SPA-Route `/nis2-check/multi` (Pro, hinter Login):** Reverse-Proxy / WAF: Pfad-Prefix `allow-list` ergänzen, damit der Proxy den Pfad ans Frontend routet. Anders als `/nis2-check` (öffentlicher Single-Wizard) liegt der Multi-Framework-Wizard hinter dem AuthGuard (Pro-Feature, ADR-0021) — anonyme Besucher werden zu `/login` geleitet, die Assistent-Endpunkte selbst verlangen Auth. Standard-nginx-Config im Repo ist bereits korrekt.
 - **Embedded-Mode CORS:** `Access-Control-Allow-Origin: *` wird ausschließlich auf öffentlichen NIS2-Wizard-Endpoints gesetzt. Kein Impact auf authenticated API-Endpoints. Wer einen strikten CORS-Filter vorgelagert hat, muss `/api/v1/public/nis2-assessment/*` und `/nis2-check*` in die Allow-List aufnehmen.
 - **PDF-Generator Abhängigkeit:** `github.com/go-pdf/fpdf` ist seit v0.15.0 in `go.mod`. Self-hosted-Builds mit pinned Dependencies: Paket nachholen (`go mod download`).
 

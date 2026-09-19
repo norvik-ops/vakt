@@ -73,10 +73,10 @@ func (c *WazuhPullCollector) Collect(ctx context.Context, orgID string, cfg Wazu
 		return 0, fmt.Errorf("wazuh: fetch agents: %w", err)
 	}
 
-	inventoryControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"asset", "inventory", "endpoint"})
-	vulnControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"vulnerability", "patch", "cve"})
-	configControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"configuration", "hardening", "baseline"})
-	monitorControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"monitoring", "logging", "fim", "integrity"})
+	inventoryControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("asset", "inventory", "endpoint"))
+	vulnControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("vulnerability", "patch", "cve"))
+	configControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("configuration", "hardening", "baseline"))
+	monitorControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("monitoring", "logging", "fim", "integrity"))
 
 	total := 0
 	// F3/R-H20: accumulate sub-collector failures (see cloud collector comment).

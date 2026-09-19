@@ -18,6 +18,8 @@ import { EmptyState } from '../../../shared/components/EmptyState'
 import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
 import { apiFetch } from '../../../api/client'
 import { toast } from '../../../shared/hooks/useToast'
+import { useCreatePolicy } from '../hooks/usePolicies'
+import { handleApiError } from '../../../shared/utils/errorMessages'
 
 interface DBTemplate {
   id: string
@@ -101,6 +103,7 @@ function TemplateCard({
 function TemplateCategoryTab({ category }: { category: Category }) {
   const [preview, setPreview] = useState<DBTemplate | null>(null)
   const navigate = useNavigate()
+  const createPolicy = useCreatePolicy()
 
   const { data: templates, isLoading, isError } = useQuery<DBTemplate[]>({
     queryKey: ['vaktcomply', 'templates', category],
@@ -111,9 +114,22 @@ function TemplateCategoryTab({ category }: { category: Category }) {
   function handleUseTemplate(t: DBTemplate) {
     const dest = CATEGORY_DESTINATIONS[category]
     if (category === 'policy') {
-      // /vaktcomply/policies/new is a real route (policies/:id treats "new" as create).
-      navigate(`${dest}/new?template=${t.id}`)
-      toast(`Vorlage "${t.name}" ausgewählt`, 'success')
+      // R1-SA28-02: There is NO /vaktcomply/policies/new route — policies/:id would
+      // treat "new" as a UUID path param and ValidateUUIDParams returns 400. The old
+      // code navigated there and fired a success toast that lied. Instead create the
+      // policy directly from the DB template (mirrors the backend
+      // CreatePolicyFromTemplate flow: title=name, body=content) and land on its detail
+      // page. The success toast now fires only after the policy actually exists.
+      createPolicy.mutate(
+        { title: t.name, description: t.content, category: t.framework ?? undefined },
+        {
+          onSuccess: (policy) => {
+            toast(`Richtlinie "${t.name}" aus Vorlage erstellt`, 'success')
+            navigate(`${dest}/${policy.id}`)
+          },
+          onError: (err) => toast(handleApiError(err), 'error'),
+        },
+      )
     } else {
       // S131-G4 (D28-03): DPIA/AVV have NO /new route — the old /new target hit the
       // catch-all and silently bounced the user to the /vaktprivacy overview, losing

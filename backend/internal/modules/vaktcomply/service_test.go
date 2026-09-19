@@ -360,24 +360,6 @@ func TestControlWithEvidence_Structure(t *testing.T) {
 	assert.Equal(t, "e-1", cwe.Evidence[0].ID)
 }
 
-func TestAuditorDetailView_Fields(t *testing.T) {
-	fw := Framework{ID: "fw-1", Name: "NIS2"}
-	report := &ReadinessReport{FrameworkID: "fw-1", ReadinessScore: 75.0}
-	controls := []ControlWithEvidence{
-		{Control: Control{ID: "c-1"}, Evidence: nil},
-	}
-
-	view := AuditorDetailView{
-		Framework: fw,
-		Report:    report,
-		Controls:  controls,
-	}
-
-	assert.Equal(t, "fw-1", view.Framework.ID)
-	assert.InDelta(t, 75.0, view.Report.ReadinessScore, 0.001)
-	require.Len(t, view.Controls, 1)
-}
-
 func TestEvidenceMetadata_Structure(t *testing.T) {
 	c := Control{ID: "c-1", ControlID: "A.5.1", Domain: "Policies"}
 	ev := []Evidence{

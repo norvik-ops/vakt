@@ -166,12 +166,6 @@ export const router = createBrowserRouter([
     element: <NIS2WizardPage />,
   },
   {
-    // Sprint 28 S28-4: Multi-Framework-Assessment (NIS2 + ISO27001 + DSGVO-TOM).
-    // ProGate: FeatureNIS2Reporting. Kein Layout-Wrapper, kein Setup-Guard.
-    path: '/nis2-check/multi',
-    element: <MultiFrameworkWizardPage />,
-  },
-  {
     path: '/login',
     element: (
       <SetupGuard>
@@ -194,6 +188,17 @@ export const router = createBrowserRouter([
       </SetupGuard>
     ),
     children: [
+      {
+        // Sprint 28 S28-4 / R1-SA12-D05: Multi-Framework-Assessment (NIS2 + ISO27001
+        // + DSGVO-TOM) is a Pro feature (ADR-0021) — its /start, /answer, /result
+        // endpoints require auth. The route must therefore sit BEHIND AuthGuard, so an
+        // anonymous visitor is redirected cleanly by the guard instead of getting a
+        // hard window.location='/login' when apiFetch hits a 401 mid-render. Kept
+        // Layout-less on purpose: the page is a full-screen (min-h-screen) wizard, not
+        // an in-shell page. Non-Pro users see the page's own FeatureLocked upgrade view.
+        path: '/nis2-check/multi',
+        element: <MultiFrameworkWizardPage />,
+      },
       {
         element: <Layout />,
         children: [

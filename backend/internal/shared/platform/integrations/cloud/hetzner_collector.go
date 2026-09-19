@@ -34,10 +34,10 @@ func (c *HetznerCollector) Collect(ctx context.Context, orgID string, cfg Hetzne
 	opts := append([]hcloud.ClientOption{hcloud.WithToken(cfg.APIToken)}, c.clientOpts...)
 	client := hcloud.NewClient(opts...)
 
-	inventoryControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"asset", "inventory", "server"})
-	networkControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"network", "firewall", "port"})
-	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"ssh", "access", "privileged", "key"})
-	backupControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"backup", "snapshot", "recovery"})
+	inventoryControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("asset", "inventory", "server"))
+	networkControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("network", "firewall", "port"))
+	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("ssh", "access", "privileged", "key"))
+	backupControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("backup", "snapshot", "recovery"))
 
 	total := 0
 	// Accumulate sub-collector failures so a total failure surfaces as

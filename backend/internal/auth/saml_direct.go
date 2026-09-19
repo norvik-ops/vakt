@@ -422,6 +422,34 @@ func (h *Handler) SAMLInitiate(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"redirect_url": redirectURL.String()})
 }
 
+// samlDirectMode is the routing decision for SAMLDirectACS after it tries to
+// load the org's direct SAML config.
+type samlDirectMode int
+
+const (
+	// samlDirectFallthrough: no usable direct config → hand off to Casdoor.
+	samlDirectFallthrough samlDirectMode = iota
+	// samlDirectUse: an enabled direct config was loaded → validate locally.
+	samlDirectUse
+	// samlDirectLoadError: the config could not be loaded (row present but
+	// unreadable) → fail closed instead of silently downgrading to Casdoor.
+	samlDirectLoadError
+)
+
+// classifySAMLDirect turns the (cfg, loadErr) result of LoadOrgSAMLConfig into a
+// routing decision. A non-nil loadErr is a genuine load failure and must not
+// fall through to Casdoor; a nil cfg with nil err is the legitimate
+// "not configured" case and does.
+func classifySAMLDirect(cfg *OrgSAMLConfig, loadErr error) samlDirectMode {
+	if loadErr != nil {
+		return samlDirectLoadError
+	}
+	if cfg == nil || !cfg.Enabled {
+		return samlDirectFallthrough
+	}
+	return samlDirectUse
+}
+
 // SAMLDirectACS handles POST /api/v1/auth/saml/acs using crewjam/saml for
 // assertion validation. Falls back to Casdoor when no direct config.
 func (h *Handler) SAMLDirectACS(c echo.Context) error {
@@ -429,17 +457,27 @@ func (h *Handler) SAMLDirectACS(c echo.Context) error {
 
 	var masterKey []byte
 	var cfg *OrgSAMLConfig
+	var loadErr error
 	if orgID != "" {
 		masterKey = masterKeyFromHex(h.cfg.SecretKey)
-		var err error
-		cfg, err = LoadOrgSAMLConfig(c.Request().Context(), h.samlDB(), orgID, masterKey)
-		if err != nil {
-			log.Error().Err(err).Str("org_id", orgID).Msg("saml_acs: load config failed")
-		}
+		cfg, loadErr = LoadOrgSAMLConfig(c.Request().Context(), h.samlDB(), orgID, masterKey)
 	}
 
-	if cfg == nil || !cfg.Enabled {
-		// No direct config — fall through to Casdoor-based handler
+	switch classifySAMLDirect(cfg, loadErr) {
+	case samlDirectLoadError:
+		// A genuine load error means the org's direct SAML config row EXISTS but
+		// could not be decoded/decrypted. Falling through to Casdoor here would
+		// silently downgrade a customer who HAS configured direct SAML onto the
+		// proxy path — a security-relevant misroute. Fail closed instead.
+		// "Not configured" is a different case (LoadOrgSAMLConfig returns
+		// (nil, nil) for a missing row or nil pool) and still falls through below.
+		log.Error().Err(loadErr).Str("org_id", orgID).Msg("saml_acs: load config failed")
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "SAML configuration error",
+			"code":  "AUTH_SAML_CONFIG_ERROR",
+		})
+	case samlDirectFallthrough:
+		// No direct config (or disabled) — fall through to Casdoor-based handler.
 		return h.SAMLCallback(c)
 	}
 

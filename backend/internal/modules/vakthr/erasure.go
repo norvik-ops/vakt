@@ -59,16 +59,37 @@ func (SubjectEraser) ResolveEmployeeIDs(ctx context.Context, tx sharedevents.Exe
 	return ids, nil
 }
 
-// EraseSubjectPII deletes the hr_employees row(s) for the subject, on the
-// passed transaction. Order-independent: it neither reads nor writes any other
-// module's prefix.
+// EraseSubjectPII deletes the subject's rows from every hr_ table that stores
+// personal data, on the passed transaction. Order-independent: it neither reads
+// nor writes any other module's prefix.
+//
+// Two tables carry subject PII under the hr_ prefix:
+//   - hr_employees   (name + email of an employee)
+//   - hr_contractors (first_name/last_name/email of an external contractor,
+//     Migration 190). Without this second delete a contractor's name and email
+//     survived an Art. 17 DSGVO erasure request (R1-36c-02).
+//
+// Both are keyed on (org_id, lower(email)); a NULL contractor email never
+// matches, which is correct — such a row is not this subject.
 func (SubjectEraser) EraseSubjectPII(ctx context.Context, tx sharedevents.Execer, subj sharedevents.SubjectRef) (sharedevents.ErasureCounts, error) {
-	tag, err := tx.Exec(ctx,
+	empTag, err := tx.Exec(ctx,
 		`DELETE FROM hr_employees WHERE org_id = $1 AND lower(email) = lower($2)`,
 		subj.OrgID, subj.Email,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("vakthr erasure: delete hr_employees: %w", err)
 	}
-	return sharedevents.ErasureCounts{"hr_employees": tag.RowsAffected()}, nil
+
+	conTag, err := tx.Exec(ctx,
+		`DELETE FROM hr_contractors WHERE org_id = $1 AND lower(email) = lower($2)`,
+		subj.OrgID, subj.Email,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("vakthr erasure: delete hr_contractors: %w", err)
+	}
+
+	return sharedevents.ErasureCounts{
+		"hr_employees":   empTag.RowsAffected(),
+		"hr_contractors": conTag.RowsAffected(),
+	}, nil
 }

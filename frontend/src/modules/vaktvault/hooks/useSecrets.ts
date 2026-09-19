@@ -48,10 +48,15 @@ export function useCreateEnvironment(projectId: string) {
  * on demand, minimising the blast radius of a compromised session.
  */
 export function useSecretKeys(projectId: string, envId: string) {
-  return useQuery<string[]>({
+  // R1-SA18-02: the list endpoint returns Secret objects ({ key, value:"" } —
+  // value is omitted on list), NOT bare strings. Declaring string[] made each
+  // row an object rendered as a React child (error #31). Deserialise Secret[]
+  // and project to the key names so consumers keep their string[] contract.
+  return useQuery<Secret[], Error, string[]>({
     queryKey: ['vaktvault', 'projects', projectId, 'envs', envId, 'secrets'],
     queryFn: () =>
-      apiFetch<string[]>(`${BASE}/projects/${projectId}/envs/${envId}/secrets`),
+      apiFetch<Secret[]>(`${BASE}/projects/${projectId}/envs/${envId}/secrets`),
+    select: (secrets) => secrets.map((s) => s.key),
     staleTime: 30_000,
     enabled: Boolean(projectId) && Boolean(envId),
   })

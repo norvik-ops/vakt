@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,7 +74,7 @@ func TestRegister(t *testing.T) {
 	h := NewHandler(nil)
 
 	assert.NotPanics(t, func() {
-		Register(g, h)
+		Register(g, h, nil)
 	})
 
 	// Check expected routes are present.
@@ -84,6 +85,42 @@ func TestRegister(t *testing.T) {
 	}
 	assert.Contains(t, paths, "GET /api/v1/setup/status")
 	assert.Contains(t, paths, "POST /api/v1/setup")
+}
+
+// TestRegisterPostLimiterScopedToWrite is the regression guard for R1-SA18-03.
+// The strict setup limiter must sit on the POST (org creation) only. GET /status
+// is polled on every page load; carrying the same strict limiter starved it into
+// 429s that the frontend swallowed, silently disabling the setup switch. The test
+// asserts a marker postLimiter runs for POST but never for GET /status.
+func TestRegisterPostLimiterScopedToWrite(t *testing.T) {
+	e := echo.New()
+	e.Use(middleware.Recover()) // GetStatus derefs the nil pool; recover → 500 not a crash
+	g := e.Group("/api/v1/setup")
+	h := NewHandler(nil)
+
+	var postLimiterHits int
+	marker := func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			postLimiterHits++
+			return c.NoContent(http.StatusOK) // short-circuit before the nil-pool handler
+		}
+	}
+	Register(g, h, marker)
+
+	// GET /status must not touch the write limiter. GetStatus reads the pool,
+	// which is nil here; assert only that the marker did not run (a 500 from the
+	// nil pool is fine — it proves the limiter was bypassed, not the route).
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/setup/status", nil)
+	getRec := httptest.NewRecorder()
+	e.ServeHTTP(getRec, getReq)
+	assert.Equal(t, 0, postLimiterHits, "write limiter must NOT run for GET /status (R1-SA18-03)")
+
+	// POST carries the write limiter.
+	postReq := httptest.NewRequest(http.MethodPost, "/api/v1/setup", nil)
+	postRec := httptest.NewRecorder()
+	e.ServeHTTP(postRec, postReq)
+	assert.Equal(t, 1, postLimiterHits, "write limiter must run for POST /setup")
+	assert.Equal(t, http.StatusOK, postRec.Code)
 }
 
 // TestSetupInput_Validation verifies the validation tags compile correctly via

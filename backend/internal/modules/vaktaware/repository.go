@@ -1269,12 +1269,50 @@ func (r *Repository) IsEnrolledInCampaign(ctx context.Context, orgID, campaignID
 }
 
 // CreateCampaignEnrollment records an auto-enrollment.
-func (r *Repository) CreateCampaignEnrollment(ctx context.Context, orgID, campaignID, employeeID, source string) error {
+//
+// email and fullName (ADR-0088) are the recipient PII the HR producer handed
+// over via the entry event. They are stored so the auto-enrolled employee is
+// addressable at send time without vaktaware ever reading hr_employees. Empty
+// strings collapse to NULL (NULLIF), so an enrollment without PII — e.g. the
+// phishing_click path — is stored as unaddressable rather than as an empty mail
+// that MaterializeEnrollmentsAsTargets would try to send to.
+func (r *Repository) CreateCampaignEnrollment(ctx context.Context, orgID, campaignID, employeeID, source, email, fullName string) error {
 	_, err := r.db.Exec(ctx, `
-		INSERT INTO sr_campaign_enrollments (org_id, campaign_id, employee_id, source)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO sr_campaign_enrollments (org_id, campaign_id, employee_id, source, email, full_name)
+		VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''))
 		ON CONFLICT (campaign_id, employee_id) DO NOTHING`,
-		orgID, campaignID, employeeID, source)
+		orgID, campaignID, employeeID, source, email, fullName)
+	return err
+}
+
+// MaterializeEnrollmentsAsTargets turns addressable auto-enrollments of a
+// campaign into sr_targets rows in the campaign's group, so the existing
+// send+tracking path (ListTargets → ClaimDelivery → CreateTrackingEvent, all
+// keyed on sr_targets.id) reaches them unchanged (ADR-0088, R1-36a-D08).
+//
+// It is called by SendCampaignEmails right before ListTargets. Only enrollments
+// with a non-NULL email are materialised; NOT EXISTS against lower(email) plus
+// ON CONFLICT (group_id, email) DO NOTHING make it idempotent and prevent a
+// double send to someone who is already a target of the group.
+//
+// first_name receives the stored full_name (last_name/department keep their
+// empty-string defaults): sr_campaign_enrollments carries a single display name, and the one
+// place it is used — the {{first_name}} greeting token — is filled correctly by
+// putting the whole name there rather than guessing a split.
+func (r *Repository) MaterializeEnrollmentsAsTargets(ctx context.Context, orgID, campaignID, groupID string) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO sr_targets (org_id, group_id, email, first_name)
+		SELECT e.org_id, $3, e.email, COALESCE(e.full_name, '')
+		FROM sr_campaign_enrollments e
+		WHERE e.org_id = $1
+		  AND e.campaign_id = $2
+		  AND e.email IS NOT NULL
+		  AND NOT EXISTS (
+		      SELECT 1 FROM sr_targets t
+		      WHERE t.group_id = $3 AND lower(t.email) = lower(e.email)
+		  )
+		ON CONFLICT (group_id, email) DO NOTHING`,
+		orgID, campaignID, groupID)
 	return err
 }
 

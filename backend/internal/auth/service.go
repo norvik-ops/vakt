@@ -13,49 +13,28 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"unicode"
 
 	"aidanwoods.dev/go-paseto"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matharnica/vakt/internal/shared/logsafe"
+	"github.com/matharnica/vakt/internal/shared/password"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // ErrWeakPassword is returned when a supplied password does not satisfy the
-// platform complexity requirements.
-var ErrWeakPassword = errors.New("password must be at least 10 characters and contain uppercase, digit, and special character")
+// platform complexity requirements. Aliased to the canonical sentinel in
+// internal/shared/password so `errors.Is(err, ErrWeakPassword)` in this package
+// keeps matching after the policy check moved to the shared package (R1-W7C-N2).
+var ErrWeakPassword = password.ErrWeakPassword
 
 // validatePasswordStrength checks that password meets the Vakt minimum
-// complexity policy:
-//   - At least 10 characters
-//   - At least one uppercase letter (A–Z)
-//   - At least one decimal digit (0–9)
-//   - At least one special character (!@#$%^&*()-_=+[]{}|;:'",.<>?/`~\)
-//
-// Returns ErrWeakPassword when any requirement is not satisfied.
-func validatePasswordStrength(password string) error {
-	if len(password) < 10 {
-		return ErrWeakPassword
-	}
-	var hasUpper, hasDigit, hasSpecial bool
-	const special = "!@#$%^&*()-_=+[]{}|;:'\",.<>?/`~\\"
-	for _, r := range password {
-		switch {
-		case unicode.IsUpper(r):
-			hasUpper = true
-		case unicode.IsDigit(r):
-			hasDigit = true
-		case strings.ContainsRune(special, r):
-			hasSpecial = true
-		}
-	}
-	if !hasUpper || !hasDigit || !hasSpecial {
-		return ErrWeakPassword
-	}
-	return nil
+// complexity policy. It delegates to the canonical, shared policy so all
+// entry-points (auth, setup, admin, usermgmt) enforce identical rules.
+func validatePasswordStrength(pw string) error {
+	return password.ValidateStrength(pw)
 }
 
 // Service handles authentication business logic: registration, login, and token refresh.

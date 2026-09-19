@@ -490,6 +490,9 @@ components:
           type: integer
         score:
           type: number
+        readiness_score:
+          type: number
+          description: "Bereitschaftsgrad 0–100 (evidenzgestützt, partial zählt halb, not_applicable aus dem Nenner). Immer gesetzt; 0 ist ein gültiger Wert. Vom Auditor-Portal als 'Bereitschaft %' angezeigt (R1-G-38)."
         framework_variant:
           type: string
           enum: [full, simplified]
@@ -1727,6 +1730,7 @@ components:
         username: { type: string }
         password: { type: string, description: '"****" if set' }
         verify_tls: { type: boolean }
+        allow_private_target: { type: boolean, description: 'allow RFC1918/private targets (SSRF opt-in, on-premises Wazuh)' }
         is_configured: { type: boolean }
 
     SaveWazuhConfigInput:
@@ -1737,6 +1741,7 @@ components:
         username: { type: string }
         password: { type: string }
         verify_tls: { type: boolean }
+        allow_private_target: { type: boolean, description: 'allow RFC1918/private targets (SSRF opt-in, on-premises Wazuh)' }
 
     WazuhStatus:
       allOf:
@@ -1755,6 +1760,7 @@ components:
         prometheus_url: { type: string }
         alertmanager_url: { type: string }
         token: { type: string, description: '"****" if set' }
+        allow_private_target: { type: boolean, description: 'allow RFC1918/private targets (SSRF opt-in, on-premises Prometheus)' }
         is_configured: { type: boolean }
 
     SavePrometheusConfigInput:
@@ -1764,6 +1770,7 @@ components:
         prometheus_url: { type: string }
         alertmanager_url: { type: string }
         token: { type: string }
+        allow_private_target: { type: boolean, description: 'allow RFC1918/private targets (SSRF opt-in, on-premises Prometheus)' }
 
     PrometheusStatus:
       allOf:
@@ -1836,6 +1843,7 @@ components:
         realm: { type: string }
         client_id: { type: string }
         client_secret: { type: string, description: '"****" if set' }
+        allow_private_target: { type: boolean, description: 'allow RFC1918/private targets (SSRF opt-in, on-premises Keycloak)' }
         is_configured: { type: boolean }
 
     SaveKeycloakConfigInput:
@@ -1846,6 +1854,7 @@ components:
         realm: { type: string }
         client_id: { type: string }
         client_secret: { type: string }
+        allow_private_target: { type: boolean, description: 'allow RFC1918/private targets (SSRF opt-in, on-premises Keycloak)' }
 
     KeycloakStatus:
       allOf:
@@ -1904,6 +1913,7 @@ components:
         gitlab_url: { type: string }
         access_token: { type: string, description: '"****" if set' }
         group_id: { type: string }
+        allow_private_target: { type: boolean, description: 'allow RFC1918/private targets (SSRF opt-in, self-hosted GitLab)' }
         is_configured: { type: boolean }
 
     SaveGitLabConfigInput:
@@ -1913,6 +1923,7 @@ components:
         gitlab_url: { type: string }
         access_token: { type: string }
         group_id: { type: string }
+        allow_private_target: { type: boolean, description: 'allow RFC1918/private targets (SSRF opt-in, self-hosted GitLab)' }
 
     GitLabStatus:
       allOf:
@@ -1928,6 +1939,7 @@ components:
       properties:
         base_url: { type: string }
         token: { type: string, description: '"****" if set' }
+        allow_private_target: { type: boolean, description: 'allow RFC1918/private targets (SSRF opt-in, self-hosted SonarQube)' }
         is_configured: { type: boolean }
 
     SaveSonarQubeConfigInput:
@@ -1936,6 +1948,7 @@ components:
       properties:
         base_url: { type: string }
         token: { type: string }
+        allow_private_target: { type: boolean, description: 'allow RFC1918/private targets (SSRF opt-in, self-hosted SonarQube)' }
 
     SonarQubeStatus:
       allOf:
@@ -3929,7 +3942,17 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Risk'
+              type: object
+              required: [title, likelihood, impact, treatment]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                category: { type: string }
+                likelihood: { type: integer }
+                impact: { type: integer }
+                owner: { type: string }
+                treatment: { type: string }
+                treatment_notes: { type: string }
       responses:
         '201':
           description: Risk created
@@ -3999,7 +4022,21 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Incident'
+              type: object
+              required: [title, description, severity]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                severity: { type: string }
+                discovered_at: { type: string, format: date-time }
+                affected_systems: { type: array, items: { type: string } }
+                breach_id: { type: string }
+                incident_type: { type: string }
+                reporting_obligation: { type: string }
+                notification_authority: { type: string }
+                affected_customers: { type: integer }
+                financial_impact_estimate: { type: string }
+                is_major_incident: { type: boolean }
       responses:
         '201':
           description: Incident created
@@ -4033,7 +4070,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Incident'
+              type: object
+              required: [title, description, severity, status]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                severity: { type: string }
+                status: { type: string }
+                affected_systems: { type: array, items: { type: string } }
+                incident_type: { type: string }
+                reporting_obligation: { type: string }
+                notification_authority: { type: string }
+                affected_customers: { type: integer }
+                financial_impact_estimate: { type: string }
+                is_major_incident: { type: boolean }
       responses:
         '200':
           description: Updated
@@ -4075,7 +4125,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VVTEntry'
+              type: object
+              required: [name, purpose, legal_basis]
+              properties:
+                name: { type: string }
+                purpose: { type: string }
+                legal_basis: { type: string }
+                data_categories: { type: array, items: { type: string } }
+                data_subjects: { type: array, items: { type: string } }
+                recipients: { type: array, items: { type: string } }
+                retention_period: { type: string }
+                third_country_transfer: { type: boolean }
+                safeguards: { type: string }
+                responsible_person: { type: string }
       responses:
         '201':
           description: Created
@@ -4109,7 +4171,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VVTEntry'
+              type: object
+              required: [name, purpose, legal_basis, status]
+              properties:
+                name: { type: string }
+                purpose: { type: string }
+                legal_basis: { type: string }
+                data_categories: { type: array, items: { type: string } }
+                data_subjects: { type: array, items: { type: string } }
+                recipients: { type: array, items: { type: string } }
+                retention_period: { type: string }
+                third_country_transfer: { type: boolean }
+                safeguards: { type: string }
+                responsible_person: { type: string }
+                status: { type: string }
       responses:
         '200':
           description: Updated
@@ -4162,7 +4237,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Breach'
+              type: object
+              required: [title, description, discovered_at]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                discovered_at: { type: string, format: date-time }
+                subjects_notification_required: { type: boolean }
+                affected_count: { type: integer }
+                data_categories: { type: array, items: { type: string } }
       responses:
         '201':
           description: Created
@@ -4181,6 +4264,42 @@ paths:
       responses:
         '200':
           description: Updated
+
+  /vaktprivacy/breaches/{id}/status:
+    put:
+      summary: Advance a breach through the Art. 33/34 DSGVO lifecycle
+      tags: [vaktprivacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [open, authority_notified, subjects_notified, closed]
+                rationale:
+                  type: string
+                  maxLength: 2000
+                  description: >-
+                    Only mandatory for a direct open→closed transition (no
+                    notification duty); the service enforces that rule.
+      responses:
+        '200':
+          description: Updated breach
+        '409':
+          description: Illegal status transition
+        '422':
+          description: Missing rationale, or a status that cannot yet be persisted
 
   # ── SecVault ──────────────────────────────────────────────────────────────
   /vaktvault/projects:
@@ -4717,7 +4836,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateTemplateInput'
+              type: object
+              required: [name, subject, from_name, from_email, html_body, attack_type]
+              properties:
+                name: { type: string }
+                subject: { type: string }
+                from_name: { type: string }
+                from_email: { type: string }
+                html_body: { type: string }
+                attack_type: { type: string }
       responses:
         '201':
           description: Created template
@@ -4893,11 +5020,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [csv]
+              required: [csv_content]
               properties:
-                csv:
-                  type: string
-                  description: CSV content (email,first_name,last_name)
+                csv_content: { type: string }
       responses:
         '200':
           description: Import result
@@ -4941,12 +5066,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, html]
+              required: [name, html_content]
               properties:
-                name:
-                  type: string
-                html:
-                  type: string
+                name: { type: string }
+                html_content: { type: string }
       responses:
         '201':
           description: Created landing page
@@ -4985,7 +5108,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateCampaignInput'
+              type: object
+              required: [name, from_name, from_email, subject]
+              properties:
+                name: { type: string }
+                template_id: { type: string }
+                group_id: { type: string }
+                landing_page_id: { type: string }
+                from_name: { type: string }
+                from_email: { type: string }
+                subject: { type: string }
+                scheduled_at: { type: string, format: date-time }
+                recurrence: { type: string }
+                track_opens: { type: boolean }
+                betriebsrat_mode: { type: boolean }
       responses:
         '201':
           description: Created campaign
@@ -5110,14 +5246,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title]
+              required: [title, type, attack_type, content_url, passing_score]
               properties:
-                title:
-                  type: string
-                description:
-                  type: string
-                duration_minutes:
-                  type: integer
+                title: { type: string }
+                type: { type: string }
+                attack_type: { type: string }
+                content_url: { type: string }
+                duration_seconds: { type: integer }
+                passing_score: { type: integer }
+                questions: { type: array, items: { type: object } }
       responses:
         '201':
           description: Created module
@@ -5633,19 +5770,19 @@ paths:
           application/json:
             schema:
               type: object
+              required: [title, status]
               properties:
-                title:
-                  type: string
-                content:
-                  type: string
-                status:
-                  type: string
-                  enum:
-                  - draft
-                  - active
-                  - archived
-                owner:
-                  type: string
+                title: { type: string }
+                description: { type: string }
+                category: { type: string }
+                status: { type: string }
+                version: { type: string }
+                effective_date: { type: string, format: date-time }
+                review_date: { type: string, format: date-time }
+                owner: { type: string }
+                version_note: { type: string }
+                updated_by: { type: string }
+                next_review_due: { type: string }
       responses:
         '200':
           description: Updated policy
@@ -5681,13 +5818,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title, audit_type]
+              required: [title, audit_date]
               properties:
                 title: { type: string }
-                audit_type: { type: string }
-                planned_date: { type: string, format: date }
-                lead_auditor: { type: string }
                 scope: { type: string }
+                auditor: { type: string }
+                audit_date: { type: string, format: date-time }
+                findings: { type: string }
+                recommendations: { type: string }
       responses:
         '201':
           description: Created audit
@@ -5713,10 +5851,15 @@ paths:
           application/json:
             schema:
               type: object
+              required: [title, audit_date, status]
               properties:
+                title: { type: string }
+                scope: { type: string }
+                auditor: { type: string }
+                audit_date: { type: string, format: date-time }
                 status: { type: string }
-                findings_summary: { type: string }
-                conclusion: { type: string }
+                findings: { type: string }
+                recommendations: { type: string }
       responses:
         '200':
           description: Updated audit
@@ -5787,31 +5930,15 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-              - title
-              - priority
+              required: [source_type, title]
               properties:
-                title:
-                  type: string
-                description:
-                  type: string
-                priority:
-                  type: string
-                  enum:
-                  - low
-                  - medium
-                  - high
-                  - critical
-                due_date:
-                  type: string
-                  format: date
-                assignee_id:
-                  type: string
-                  format: uuid
-                source_type:
-                  type: string
-                source_id:
-                  type: string
+                source_type: { type: string }
+                source_id: { type: string }
+                title: { type: string }
+                description: { type: string }
+                assignee_email: { type: string }
+                due_date: { type: string }
+                priority: { type: string }
       responses:
         '201':
           description: Created CAPA
@@ -6000,11 +6127,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required: [title, reviewer_email]
               properties:
-                name: { type: string }
+                title: { type: string }
                 description: { type: string }
-                due_date: { type: string, format: date }
+                reviewer_email: { type: string }
+                scope: { type: string }
+                due_date: { type: string }
       responses:
         '201':
           description: Created campaign
@@ -6064,11 +6193,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [user_name, access_level, system]
+              required: [user_email, access_level]
               properties:
-                user_name: { type: string }
+                user_email: { type: string }
                 access_level: { type: string }
-                system: { type: string }
       responses:
         '201':
           description: Created item
@@ -6116,12 +6244,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [reason]
+              required: [title, reason, risk_accepted]
               properties:
+                title: { type: string }
                 reason: { type: string }
-                compensating_control: { type: string }
-                expires_at: { type: string, format: date }
-                risk_accepted: { type: boolean }
+                risk_accepted: { type: string }
+                approved_by: { type: string }
+                expires_at: { type: string, format: date-time }
       responses:
         '201':
           description: Created exception
@@ -6261,10 +6390,35 @@ paths:
           application/json:
             schema:
               type: object
+              required: [name]
               properties:
-                status: { type: string, enum: [active, under_review, terminated] }
-                risk_level: { type: string, enum: [low, medium, high, critical] }
+                name: { type: string }
+                contact_name: { type: string }
                 contact_email: { type: string }
+                service_type: { type: string }
+                criticality: { type: string }
+                nis2_relevant: { type: boolean }
+                dora_relevant: { type: boolean }
+                contract_end: { type: string, format: date-time }
+                notes: { type: string }
+                sub_suppliers: { type: array, items: { type: string } }
+                data_location: { type: string }
+                exit_strategy_exists: { type: boolean }
+                assessment_status: { type: string }
+                last_assessment_at: { type: string, format: date-time }
+                category: { type: string }
+                data_access: { type: boolean }
+                avv_document_id: { type: string }
+                last_assessment_score: { type: integer }
+                next_assessment_due: { type: string, format: date-time }
+                supplier_status: { type: string }
+                contract_start: { type: string, format: date-time }
+                data_protection_score: { type: integer }
+                availability_score: { type: integer }
+                security_certifications: { type: string }
+                audit_rights: { type: boolean }
+                sub_processors_known: { type: boolean }
+                incident_notification: { type: boolean }
       responses:
         '200':
           description: Updated supplier
@@ -6339,10 +6493,15 @@ paths:
           application/json:
             schema:
               type: object
+              required: [title]
               properties:
-                status: { type: string }
-                measures: { type: string }
+                title: { type: string }
+                description: { type: string }
+                necessity_assessment: { type: string }
                 risk_assessment: { type: string }
+                mitigation_measures: { type: string }
+                residual_risk: { type: string }
+                dpo_consultation: { type: boolean }
       responses:
         '200':
           description: Updated DPIA
@@ -6384,13 +6543,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [processor_name]
+              required: [processor_name, service_description]
               properties:
                 processor_name: { type: string }
-                processor_address: { type: string }
-                data_categories: { type: array, items: { type: string } }
-                processing_purposes: { type: string }
-                technical_measures: { type: string }
+                service_description: { type: string }
+                contract_date: { type: string, format: date-time }
+                review_date: { type: string, format: date-time }
+                notes: { type: string }
       responses:
         '201':
           description: Created AVV
@@ -6416,9 +6575,14 @@ paths:
           application/json:
             schema:
               type: object
+              required: [processor_name, service_description, status]
               properties:
-                status: { type: string, enum: [draft, active, terminated] }
-                signed_at: { type: string, format: date }
+                processor_name: { type: string }
+                service_description: { type: string }
+                contract_date: { type: string, format: date-time }
+                review_date: { type: string, format: date-time }
+                status: { type: string }
+                notes: { type: string }
       responses:
         '200':
           description: Updated AVV
@@ -6531,12 +6695,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [type, subject_email]
+              required: [requester_name, requester_email, type]
               properties:
-                type: { type: string, enum: [access, erasure, rectification, portability, restriction, objection] }
-                subject_name: { type: string }
-                subject_email: { type: string, format: email }
+                requester_name: { type: string }
+                requester_email: { type: string }
+                type: { type: string }
                 description: { type: string }
+                notes: { type: string }
+                channel: { type: string }
+                reference_id: { type: string }
       responses:
         '201':
           description: Created DSR
@@ -6559,18 +6726,10 @@ paths:
           application/json:
             schema:
               type: object
+              required: [status]
               properties:
-                status:
-                  type: string
-                  enum:
-                  - open
-                  - in_progress
-                  - completed
-                  - rejected
-                notes:
-                  type: string
-                rejection_reason:
-                  type: string
+                status: { type: string }
+                notes: { type: string }
       responses:
         '200':
           description: Updated DSR
@@ -6915,12 +7074,14 @@ paths:
           application/json:
             schema:
               type: object
+              required: [implementation_status]
               properties:
                 applicable: { type: boolean }
                 justification: { type: string }
                 exclusion_reason: { type: string }
-                implementation_status: { type: string, enum: [not_started, in_progress, implemented, partial] }
-                owner: { type: string }
+                implementation_status: { type: string }
+                manually_set: { type: boolean }
+                ck_control_id: { type: string }
                 evidence_reference: { type: string }
                 notes: { type: string }
       responses:
@@ -6987,12 +7148,13 @@ paths:
           application/json:
             schema:
               type: object
+              required: [name, category]
               properties:
                 name: { type: string }
                 category: { type: string }
                 requirements: { type: string }
                 concerns: { type: string }
-                review_date: { type: string, format: date }
+                review_date: { type: string }
       responses:
         '200':
           description: Updated interested party
@@ -7046,13 +7208,17 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title, audit_type]
+              required: [title, audit_type, scope, planned_date]
               properties:
+                audit_plan_id: { type: string }
                 title: { type: string }
-                audit_type: { type: string, enum: [isms_internal, compliance_check, supplier_audit, process_audit, follow_up] }
-                scheduled_date: { type: string, format: date }
-                lead_auditor: { type: string }
-                plan_id: { type: string, format: uuid }
+                audit_type: { type: string }
+                scope: { type: string }
+                methodology: { type: string }
+                planned_date: { type: string }
+                lead_auditor_id: { type: string }
+                auditor_ids: { type: array, items: { type: string } }
+                supplier_id: { type: string }
       responses:
         '201':
           description: Created audit
@@ -7219,10 +7385,10 @@ paths:
           application/json:
             schema:
               type: object
+              required: [audit_report, actual_date]
               properties:
-                summary: { type: string }
-                overall_rating: { type: string, enum: [satisfactory, minor_issues, major_issues, critical] }
-                completed_date: { type: string, format: date }
+                audit_report: { type: string }
+                actual_date: { type: string }
       responses:
         '200':
           description: Completed audit
@@ -7248,11 +7414,12 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title, severity]
+              required: [title, description, severity]
               properties:
                 title: { type: string }
                 description: { type: string }
-                severity: { type: string, enum: [major_nc, minor_nc, observation, ofi] }
+                severity: { type: string }
+                affected_control_id: { type: string }
       responses:
         '201':
           description: Created finding
@@ -7294,14 +7461,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, query_type]
+              required: [control_id, name, check_type, interval_hours]
               properties:
+                control_id: { type: string }
                 name: { type: string }
-                description: { type: string }
-                query_type: { type: string, enum: [sql, api, manual] }
-                schedule: { type: string, description: "Cron expression" }
-                threshold: { type: number }
-                control_id: { type: string, format: uuid }
+                check_type: { type: string }
+                config: { type: object }
+                interval_hours: { type: integer }
       responses:
         '201':
           description: Created CCM check
@@ -7467,12 +7633,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [type]
+              required: [title, source]
               properties:
-                type: { type: string, enum: [url, text, file] }
                 title: { type: string }
-                url: { type: string, format: uri }
-                text: { type: string }
+                description: { type: string }
+                source: { type: string }
+                file_path: { type: string }
+                file_size: { type: integer }
+                expires_at: { type: string, format: date-time }
       responses:
         '201':
           description: Evidence created
@@ -7525,13 +7693,12 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title]
+              required: [title, difficulty]
               properties:
                 title: { type: string }
                 description: { type: string }
-                due_date: { type: string, format: date }
-                assignee_id: { type: string, format: uuid }
-                status: { type: string, enum: [planned, in_progress, done] }
+                difficulty: { type: string }
+                step_order: { type: integer }
       responses:
         '201':
           description: Measure created
@@ -7594,12 +7761,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [type]
+              required: [questionnaire_id, expires_in_days]
               properties:
-                type: { type: string, enum: [questionnaire, onsite, document_review] }
-                title: { type: string }
-                due_date: { type: string, format: date }
-                notes: { type: string }
+                questionnaire_id: { type: string }
+                expires_in_days: { type: integer }
       responses:
         '201':
           description: Assessment created
@@ -8373,13 +8538,20 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, service_type, criticality]
+              required: [name, service_type, criticality, data_location]
               properties:
                 name: { type: string }
                 service_type: { type: string }
-                criticality: { type: string, enum: [low, medium, high, critical] }
-                country: { type: string }
-                contact_email: { type: string, format: email }
+                criticality: { type: string }
+                contract_start: { type: string }
+                contract_end: { type: string }
+                sla_rto_hours: { type: integer }
+                sla_availability: { type: number }
+                has_subcontractors: { type: boolean }
+                subcontractor_names: { type: string }
+                data_location: { type: string }
+                exit_strategy: { type: boolean }
+                exit_notes: { type: string }
                 notes: { type: string }
       responses:
         '201':
@@ -8422,12 +8594,20 @@ paths:
           application/json:
             schema:
               type: object
+              required: [name, service_type, criticality, data_location]
               properties:
                 name: { type: string }
                 service_type: { type: string }
-                criticality: { type: string, enum: [low, medium, high, critical] }
-                country: { type: string }
-                contact_email: { type: string, format: email }
+                criticality: { type: string }
+                contract_start: { type: string }
+                contract_end: { type: string }
+                sla_rto_hours: { type: integer }
+                sla_availability: { type: number }
+                has_subcontractors: { type: boolean }
+                subcontractor_names: { type: string }
+                data_location: { type: string }
+                exit_strategy: { type: boolean }
+                exit_notes: { type: string }
                 notes: { type: string }
       responses:
         '200':
@@ -8526,13 +8706,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title, test_type]
+              required: [type, test_date]
               properties:
-                title: { type: string }
-                test_type: { type: string, enum: [vulnerability_assessment, penetration_test, tlpt, scenario_based] }
-                scheduled_date: { type: string, format: date }
+                type: { type: string }
                 scope: { type: string }
-                notes: { type: string }
+                provider: { type: string }
+                test_date: { type: string, format: date-time }
+                summary: { type: string }
+                remediation_status: { type: string }
       responses:
         '201':
           description: Resilience test created
@@ -8574,13 +8755,14 @@ paths:
           application/json:
             schema:
               type: object
+              required: [type, test_date, remediation_status]
               properties:
-                title: { type: string }
-                status: { type: string, enum: [planned, in_progress, completed, failed] }
-                scheduled_date: { type: string, format: date }
-                completed_date: { type: string, format: date }
-                outcome: { type: string }
-                notes: { type: string }
+                type: { type: string }
+                scope: { type: string }
+                provider: { type: string }
+                test_date: { type: string, format: date-time }
+                summary: { type: string }
+                remediation_status: { type: string }
       responses:
         '200':
           description: Updated resilience test
@@ -8719,11 +8901,10 @@ paths:
           application/json:
             schema:
               type: object
+              required: [sector]
               properties:
                 sector: { type: string }
-                sub_sector: { type: string }
-                employee_count: { type: integer }
-                annual_revenue_eur: { type: number }
+                federal_state: { type: string }
       responses:
         '200':
           description: Updated sector
@@ -8908,13 +9089,19 @@ paths:
           application/json:
             schema:
               type: object
+              required: [name]
               properties:
                 name: { type: string }
                 description: { type: string }
-                vendor: { type: string }
+                provider: { type: string }
                 use_case: { type: string }
-                deployment_context: { type: string }
-                risk_category: { type: string, enum: [minimal, limited, high, unacceptable] }
+                affected_groups: { type: string }
+                autonomy_level: { type: string }
+                in_production_since: { type: string, format: date-time }
+                status: { type: string }
+                risk_class: { type: string }
+                classification_rationale: { type: string }
+                classified_by: { type: string }
       responses:
         '200':
           description: Updated AI system
@@ -8975,11 +9162,12 @@ paths:
           application/json:
             schema:
               type: object
+              required: [risk_class]
               properties:
-                prohibited_use_case: { type: boolean }
-                high_risk_annex3: { type: boolean }
-                high_risk_annex2: { type: boolean }
-                limited_transparency: { type: boolean }
+                risk_class: { type: string }
+                rationale: { type: string }
+                classified_by: { type: string }
+                wizard_answers: { type: object }
       responses:
         '200':
           description: Classification result
@@ -10501,7 +10689,17 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/UpdateBSIRiskInput' }
+            schema:
+              type: object
+              required: [eintrittshaeufigkeit, schadensauswirkung]
+              properties:
+                eintrittshaeufigkeit: { type: string }
+                schadensauswirkung: { type: string }
+                behandlungsoption: { type: string }
+                massnahme: { type: string }
+                verantwortlicher: { type: string }
+                zieldatum: { type: string }
+                restrisiko: { type: string }
       responses:
         '200':
           description: Updated
@@ -13168,13 +13366,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [employee_id, old_role, new_role, effective_date]
+              required: [employee_id, to_department, to_job_title, effective_date]
               properties:
-                employee_id: { type: string, format: uuid }
-                old_role: { type: string }
-                new_role: { type: string }
-                effective_date: { type: string, format: date }
-                notes: { type: string }
+                employee_id: { type: string }
+                from_department: { type: string }
+                from_job_title: { type: string }
+                to_department: { type: string }
+                to_job_title: { type: string }
+                effective_date: { type: string }
+                due_days_offset: { type: integer }
       responses:
         '201':
           description: Created mover event
@@ -13550,19 +13750,17 @@ paths:
           application/json:
             schema:
               type: object
+              required: [first_name, last_name]
               properties:
                 first_name: { type: string }
                 last_name: { type: string }
-                email: { type: string, format: email }
+                email: { type: string }
                 company: { type: string }
-                contract_start: { type: string, format: date }
-                contract_end: { type: string, format: date }
+                contract_end: { type: string }
                 access_scope: { type: array, items: { type: string } }
                 nda_signed: { type: boolean }
                 avv_signed: { type: boolean }
-                status:
-                  type: string
-                  enum: [active, expiring_soon, offboarding, terminated]
+                status: { type: string }
       responses:
         '200':
           description: Updated contractor

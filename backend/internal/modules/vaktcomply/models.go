@@ -920,13 +920,6 @@ type ControlWithEvidence struct {
 	Evidence []Evidence `json:"evidence"`
 }
 
-// AuditorDetailView is the enhanced auditor view response (E09.2).
-type AuditorDetailView struct {
-	Framework Framework             `json:"framework"`
-	Report    *ReadinessReport      `json:"report"`
-	Controls  []ControlWithEvidence `json:"controls"`
-}
-
 // EvidenceMetadata is written into evidence_metadata.json inside the export ZIP (E09.3).
 type EvidenceMetadata struct {
 	Control  Control    `json:"control"`

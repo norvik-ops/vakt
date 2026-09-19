@@ -59,12 +59,33 @@ export default function ChecklistRunPage() {
     },
   })
 
+  // Completing a single step goes through the dedicated per-step endpoint, not the
+  // bulk PUT: only this path writes an hr_run_events row (the per-step evidence
+  // trail, previously never populated) and runs the offboarding access-revocation
+  // guard when the final required step closes the run. Un-checking has no dedicated
+  // endpoint and still falls back to the bulk PUT below.
+  const completeStep = useMutation<ChecklistRun, Error, string>({
+    mutationFn: (stepId) =>
+      apiFetch<ChecklistRun>(`/vakthr/checklist-runs/${id ?? ''}/steps/${stepId}`, {
+        method: 'POST',
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['vakthr', 'checklist-runs', id], updated)
+      void queryClient.invalidateQueries({ queryKey: ['vakthr', 'checklist-runs', id, 'events'] })
+      if (run?.employee_id) {
+        void queryClient.invalidateQueries({ queryKey: ['vakthr', 'checklist-runs', run.employee_id] })
+      }
+    },
+  })
+
   function toggleItem(itemId: string) {
     if (!run) return
     const already = run.completed_items.includes(itemId)
-    const next = already
-      ? run.completed_items.filter((x) => x !== itemId)
-      : [...run.completed_items, itemId]
+    if (!already) {
+      completeStep.mutate(itemId)
+      return
+    }
+    const next = run.completed_items.filter((x) => x !== itemId)
     updateRun.mutate({ completed_items: next, status: 'in_progress' })
   }
 
@@ -195,7 +216,7 @@ export default function ChecklistRunPage() {
         <div className="rounded-lg border border-border bg-surface overflow-hidden">
           {checklist?.items.map((item, idx) => {
             const checked = run?.completed_items.includes(item.id) ?? false
-            const disabled = run?.status === 'completed' || updateRun.isPending
+            const disabled = run?.status === 'completed' || updateRun.isPending || completeStep.isPending
             return (
               <button
                 key={item.id}

@@ -7,17 +7,66 @@ set -euo pipefail
 umask 077
 
 # Vakt restore script.
-# Usage: ./scripts/restore.sh <backup-file.tar.gz> [--dry-run]
-#   --dry-run  Validates the archive and decrypts the key without touching the database.
+# Usage: ./scripts/restore.sh <backup-file.tar.gz> [--dry-run] [--target-url <url>]
+#   --dry-run          Validates the archive and decrypts the key without touching the database.
+#   --target-url <url> Restore into an ALTERNATIVE database instead of the .env one
+#                      (e.g. a throwaway copy: postgres://vakt:…@host:5432/vakt_restore_copy).
+#
+# SA06-06: aiming the restore at a copy used to be impossible. This script sources
+# .env with `set -a`, which EXPORTS every variable in it — so a VAKT_DB_URL the
+# operator set on the command line was silently overwritten by the production URL
+# from .env, and the restore always hit the live database. Precedence is now
+# explicit: --target-url  >  a VAKT_DB_URL exported before the call  >  .env.
+# NOTE: only the DATABASE target is redirected here. The uploads/evidence volume is
+# still resolved from the Compose project (see resolve_uploads_volume below); when
+# restoring into a copy on the same host, pass --dry-run first or run from a
+# directory whose basename matches the copy's project name if you also need the
+# uploads isolated.
 #
 # Passphrase for the encrypted key may be supplied non-interactively via
 # VAKT_BACKUP_PASSPHRASE or VAKT_BACKUP_PASSPHRASE_FILE (for automation / tests);
 # otherwise it is prompted on a TTY.
 
-BACKUP_FILE="${1:-}"
+# Capture any VAKT_DB_URL the operator exported BEFORE we source .env below —
+# otherwise `set -a; source .env` clobbers it (SA06-06).
+PRE_ENV_DB_URL="${VAKT_DB_URL:-}"
+
+BACKUP_FILE=""
 DRY_RUN=false
-for arg in "$@"; do
-	[ "$arg" = "--dry-run" ] && DRY_RUN=true
+TARGET_URL=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--dry-run)
+		DRY_RUN=true
+		shift
+		;;
+	--target-url)
+		TARGET_URL="${2:-}"
+		if [ -z "$TARGET_URL" ]; then
+			echo "ERROR: --target-url needs a value (a postgres:// connection URL)" >&2
+			exit 1
+		fi
+		shift 2
+		;;
+	--target-url=*)
+		TARGET_URL="${1#--target-url=}"
+		shift
+		;;
+	-*)
+		echo "ERROR: unknown option: $1" >&2
+		echo "Usage: $0 <backup-file.tar.gz> [--dry-run] [--target-url <url>]" >&2
+		exit 1
+		;;
+	*)
+		if [ -z "$BACKUP_FILE" ]; then
+			BACKUP_FILE="$1"
+		else
+			echo "ERROR: unexpected extra argument: $1" >&2
+			exit 1
+		fi
+		shift
+		;;
+	esac
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,7 +77,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/backup-pg-target.sh"
 
 if [ -z "$BACKUP_FILE" ] || [ ! -f "$BACKUP_FILE" ]; then
-	echo "ERROR: Usage: $0 <backup-file.tar.gz> [--dry-run]" >&2
+	echo "ERROR: Usage: $0 <backup-file.tar.gz> [--dry-run] [--target-url <url>]" >&2
 	exit 1
 fi
 
@@ -45,9 +94,18 @@ if [ -z "$SECRET_KEY" ]; then
 	exit 1
 fi
 
-DB_URL="${VAKT_DB_URL:-}"
+# Precedence: --target-url  >  a VAKT_DB_URL exported before this call  >  .env (SA06-06).
+if [ -n "$TARGET_URL" ]; then
+	DB_URL="$TARGET_URL"
+	echo "→ Restore target: --target-url (overrides the VAKT_DB_URL from .env)"
+elif [ -n "$PRE_ENV_DB_URL" ]; then
+	DB_URL="$PRE_ENV_DB_URL"
+	echo "→ Restore target: the VAKT_DB_URL exported before the call (overrides .env)"
+else
+	DB_URL="${VAKT_DB_URL:-}"
+fi
 if [ -z "$DB_URL" ] && [ "$DRY_RUN" = false ]; then
-	echo "ERROR: VAKT_DB_URL not set" >&2
+	echo "ERROR: no restore target — set VAKT_DB_URL in .env, export it, or pass --target-url <url>" >&2
 	exit 1
 fi
 

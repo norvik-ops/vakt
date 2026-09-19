@@ -77,7 +77,7 @@ func TestWithSubjectErasers_AppendsAndDeduplicates(t *testing.T) {
 // The list is asserted explicitly rather than derived, so ADDING a module is a
 // deliberate act that shows up in review instead of being inferred.
 func TestRequiredEraserModules_CoversEveryPIIModule(t *testing.T) {
-	require.ElementsMatch(t, []string{"vaktaware", "vakthr"}, requiredEraserModules,
+	require.ElementsMatch(t, []string{"vaktaware", "vakthr", "vaktcomply"}, requiredEraserModules,
 		"modules holding subject PII changed — wire an eraser for the new module "+
 			"and update requiredEraserModules, or Art. 17 erasure silently skips it")
 }

@@ -8,16 +8,45 @@ import { EmptyState } from '../../../shared/components/EmptyState'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../../components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '../../../components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../../components/ui/alert-dialog'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
-import { useAISystems, useDeleteAISystem, useCreateAISystem, useUpdateAISystem } from '../hooks/useAISystems'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../../components/ui/select'
+import {
+  useAISystems,
+  useDeleteAISystem,
+  useCreateAISystem,
+  useUpdateAISystem,
+} from '../hooks/useAISystems'
 import { AISystemStatusBadge } from '../components/AISystemStatusBadge'
 import { AIClassificationWizard } from '../components/AIClassificationWizard'
-import { RISK_CLASS_CSS as RISK_CLASS, RISK_CLASS_LABELS as RISK_LABELS } from '../components/aiRiskClassConfig'
+import {
+  RISK_CLASS_CSS as RISK_CLASS,
+  RISK_CLASS_LABELS as RISK_LABELS,
+} from '../components/aiRiskClassConfig'
 import type { AISystem, CreateAISystemInput, UpdateAISystemInput } from '../types'
 
 // AUTONOMY_I18N_KEY: map domain enums → i18n keys. Resolved with t() inside
@@ -86,8 +115,22 @@ function AISystemCard({
             >
               <FlaskConical className="w-3.5 h-3.5" />
             </Button>
-            <Link to={`ai-systems/${system.id}/documentation`} title={t('vaktcomply.aiSystems.actions.documentation')}>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-primary/70 hover:text-primary">
+            {/* R1-SA28-01: der Link stand als `ai-systems/${system.id}/documentation` hier.
+                Diese Seite ist SELBST unter `ai-systems` gemountet (SecVitalsRoutes.tsx:106),
+                ein relativer Link haengt also an den bereits vorhandenen Pfad an — Ergebnis
+                war `/vaktcomply/ai-systems/ai-systems/<id>/documentation`. Kein Treffer,
+                path='*' greift, und der Nutzer landet STILL auf der Comply-Uebersicht statt
+                auf einem 404. Das war der einzige Einstieg in die Art.-11-Technikdoku des
+                EU AI Act. */}
+            <Link
+              to={`${system.id}/documentation`}
+              title={t('vaktcomply.aiSystems.actions.documentation')}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-primary/70 hover:text-primary"
+              >
                 <FileText className="w-3.5 h-3.5" />
               </Button>
             </Link>
@@ -118,11 +161,15 @@ function AISystemCard({
             </Badge>
           )}
           <Badge variant="outline" className="text-xs">
-            {AUTONOMY_I18N_KEY[system.autonomy_level] ? t(AUTONOMY_I18N_KEY[system.autonomy_level]) : system.autonomy_level}
+            {AUTONOMY_I18N_KEY[system.autonomy_level]
+              ? t(AUTONOMY_I18N_KEY[system.autonomy_level])
+              : system.autonomy_level}
           </Badge>
         </div>
         {system.affected_groups && (
-          <p className="text-xs text-muted-foreground">Betroffene Gruppen: {system.affected_groups}</p>
+          <p className="text-xs text-muted-foreground">
+            Betroffene Gruppen: {system.affected_groups}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -163,15 +210,27 @@ export default function AISystemsPage() {
 
   function handleSubmit() {
     if (editId) {
-      updateSystem.mutate(form, { onSuccess: () => { setDialogOpen(false); } })
+      updateSystem.mutate(form, {
+        onSuccess: () => {
+          setDialogOpen(false)
+        },
+      })
     } else {
-      createSystem.mutate(form, { onSuccess: () => { setDialogOpen(false); } })
+      createSystem.mutate(form, {
+        onSuccess: () => {
+          setDialogOpen(false)
+        },
+      })
     }
   }
 
   function confirmDelete() {
     if (!deleteId) return
-    deleteSystem.mutate(deleteId, { onSuccess: () => { setDeleteId(null); } })
+    deleteSystem.mutate(deleteId, {
+      onSuccess: () => {
+        setDeleteId(null)
+      },
+    })
   }
 
   const isPending = createSystem.isPending || updateSystem.isPending
@@ -198,17 +257,25 @@ export default function AISystemsPage() {
           <Label className="text-xs">{t('vaktcomply.aiSystems.fields.riskClass')}</Label>
           <Select
             value={filterRiskClass || '_all'}
-            onValueChange={(v) => { setFilterRiskClass(v === '_all' ? '' : v); }}
+            onValueChange={(v) => {
+              setFilterRiskClass(v === '_all' ? '' : v)
+            }}
           >
             <SelectTrigger className="h-8 w-44" data-testid="filter-risk-class">
               <SelectValue placeholder={t('vaktcomply.aiSystems.filterAll')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_all">{t('vaktcomply.aiSystems.filterAll')}</SelectItem>
-              <SelectItem value="unacceptable">{t('vaktcomply.aiSystems.riskClassLevel.prohibited')}</SelectItem>
+              <SelectItem value="unacceptable">
+                {t('vaktcomply.aiSystems.riskClassLevel.prohibited')}
+              </SelectItem>
               <SelectItem value="high">{t('vaktcomply.aiSystems.riskClassLevel.high')}</SelectItem>
-              <SelectItem value="limited">{t('vaktcomply.aiSystems.riskClassLevel.limited')}</SelectItem>
-              <SelectItem value="minimal">{t('vaktcomply.aiSystems.riskClassLevel.minimal')}</SelectItem>
+              <SelectItem value="limited">
+                {t('vaktcomply.aiSystems.riskClassLevel.limited')}
+              </SelectItem>
+              <SelectItem value="minimal">
+                {t('vaktcomply.aiSystems.riskClassLevel.minimal')}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -216,17 +283,27 @@ export default function AISystemsPage() {
           <Label className="text-xs">{t('vaktcomply.aiSystems.fields.status')}</Label>
           <Select
             value={filterStatus || '_all'}
-            onValueChange={(v) => { setFilterStatus(v === '_all' ? '' : v); }}
+            onValueChange={(v) => {
+              setFilterStatus(v === '_all' ? '' : v)
+            }}
           >
             <SelectTrigger className="h-8 w-44" data-testid="filter-status">
               <SelectValue placeholder={t('vaktcomply.aiSystems.filterAll')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_all">{t('vaktcomply.aiSystems.filterAll')}</SelectItem>
-              <SelectItem value="under_review">{t('vaktcomply.aiSystems.statusLevel.classified')}</SelectItem>
-              <SelectItem value="approved">{t('vaktcomply.aiSystems.statusLevel.approved')}</SelectItem>
-              <SelectItem value="compliant">{t('vaktcomply.aiSystems.statusLevel.compliant')}</SelectItem>
-              <SelectItem value="decommissioned">{t('vaktcomply.aiSystems.statusLevel.decommissioned')}</SelectItem>
+              <SelectItem value="under_review">
+                {t('vaktcomply.aiSystems.statusLevel.classified')}
+              </SelectItem>
+              <SelectItem value="approved">
+                {t('vaktcomply.aiSystems.statusLevel.approved')}
+              </SelectItem>
+              <SelectItem value="compliant">
+                {t('vaktcomply.aiSystems.statusLevel.compliant')}
+              </SelectItem>
+              <SelectItem value="decommissioned">
+                {t('vaktcomply.aiSystems.statusLevel.decommissioned')}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -275,9 +352,15 @@ export default function AISystemsPage() {
               <AISystemCard
                 key={a.id}
                 system={a}
-                onEdit={() => { openEdit(a); }}
-                onDelete={() => { setDeleteId(a.id); }}
-                onClassify={() => { setWizardSystem(a); }}
+                onEdit={() => {
+                  openEdit(a)
+                }}
+                onDelete={() => {
+                  setDeleteId(a.id)
+                }}
+                onClassify={() => {
+                  setWizardSystem(a)
+                }}
               />
             ))}
           </div>
@@ -287,7 +370,9 @@ export default function AISystemsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{isUpdate ? t('vaktcomply.aiSystems.edit') : t('vaktcomply.aiSystems.add')}</DialogTitle>
+            <DialogTitle>
+              {isUpdate ? t('vaktcomply.aiSystems.edit') : t('vaktcomply.aiSystems.add')}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
@@ -295,7 +380,9 @@ export default function AISystemsPage() {
               <Input
                 placeholder={t('vaktcomply.aiSystems.placeholders.name')}
                 value={form.name}
-                onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); }}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }}
               />
             </div>
             <div className="space-y-1.5">
@@ -303,7 +390,9 @@ export default function AISystemsPage() {
               <Input
                 placeholder={t('vaktcomply.aiSystems.placeholders.provider')}
                 value={form.provider ?? ''}
-                onChange={(e) => { setForm((f) => ({ ...f, provider: e.target.value })); }}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, provider: e.target.value }))
+                }}
               />
             </div>
             <div className="space-y-1.5">
@@ -312,7 +401,9 @@ export default function AISystemsPage() {
                 rows={2}
                 placeholder={t('vaktcomply.aiSystems.placeholders.useCase')}
                 value={form.use_case ?? ''}
-                onChange={(e) => { setForm((f) => ({ ...f, use_case: e.target.value })); }}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, use_case: e.target.value }))
+                }}
               />
             </div>
             <div className="space-y-1.5">
@@ -321,7 +412,9 @@ export default function AISystemsPage() {
                 rows={2}
                 placeholder={t('vaktcomply.aiSystems.placeholders.description')}
                 value={form.description ?? ''}
-                onChange={(e) => { setForm((f) => ({ ...f, description: e.target.value })); }}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, description: e.target.value }))
+                }}
               />
             </div>
             <div className="space-y-1.5">
@@ -329,7 +422,9 @@ export default function AISystemsPage() {
               <Input
                 placeholder={t('vaktcomply.aiSystems.placeholders.affectedGroups')}
                 value={form.affected_groups ?? ''}
-                onChange={(e) => { setForm((f) => ({ ...f, affected_groups: e.target.value })); }}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, affected_groups: e.target.value }))
+                }}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -337,17 +432,23 @@ export default function AISystemsPage() {
                 <Label>{t('vaktcomply.aiSystems.fields.autonomy')}</Label>
                 <Select
                   value={form.autonomy_level ?? 'assistive'}
-                  onValueChange={(v) =>
-                    { setForm((f) => ({ ...f, autonomy_level: v as AISystem['autonomy_level'] })); }
-                  }
+                  onValueChange={(v) => {
+                    setForm((f) => ({ ...f, autonomy_level: v as AISystem['autonomy_level'] }))
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="assistive">{t('vaktcomply.aiSystems.autonomyLevel.assistive')}</SelectItem>
-                    <SelectItem value="partial">{t('vaktcomply.aiSystems.autonomyLevel.semiAutonomous')}</SelectItem>
-                    <SelectItem value="full">{t('vaktcomply.aiSystems.autonomyLevel.fullyAutonomous')}</SelectItem>
+                    <SelectItem value="assistive">
+                      {t('vaktcomply.aiSystems.autonomyLevel.assistive')}
+                    </SelectItem>
+                    <SelectItem value="partial">
+                      {t('vaktcomply.aiSystems.autonomyLevel.semiAutonomous')}
+                    </SelectItem>
+                    <SelectItem value="full">
+                      {t('vaktcomply.aiSystems.autonomyLevel.fullyAutonomous')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -355,17 +456,29 @@ export default function AISystemsPage() {
                 <Label>{t('vaktcomply.aiSystems.fields.riskClass')}</Label>
                 <Select
                   value={(form as UpdateAISystemInput).risk_class ?? '_none'}
-                  onValueChange={(v) => { setForm((f) => ({ ...f, risk_class: v === '_none' ? undefined : v })); }}
+                  onValueChange={(v) => {
+                    setForm((f) => ({ ...f, risk_class: v === '_none' ? undefined : v }))
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={t('vaktcomply.aiSystems.placeholders.select')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="_none">{t('vaktcomply.aiSystems.placeholders.select')}</SelectItem>
-                    <SelectItem value="minimal">{t('vaktcomply.aiSystems.riskClassLevel.minimal')}</SelectItem>
-                    <SelectItem value="limited">{t('vaktcomply.aiSystems.riskClassLevel.limited')}</SelectItem>
-                    <SelectItem value="high">{t('vaktcomply.aiSystems.riskClassLevel.high')}</SelectItem>
-                    <SelectItem value="unacceptable">{t('vaktcomply.aiSystems.riskClassLevel.unacceptable')}</SelectItem>
+                    <SelectItem value="_none">
+                      {t('vaktcomply.aiSystems.placeholders.select')}
+                    </SelectItem>
+                    <SelectItem value="minimal">
+                      {t('vaktcomply.aiSystems.riskClassLevel.minimal')}
+                    </SelectItem>
+                    <SelectItem value="limited">
+                      {t('vaktcomply.aiSystems.riskClassLevel.limited')}
+                    </SelectItem>
+                    <SelectItem value="high">
+                      {t('vaktcomply.aiSystems.riskClassLevel.high')}
+                    </SelectItem>
+                    <SelectItem value="unacceptable">
+                      {t('vaktcomply.aiSystems.riskClassLevel.unacceptable')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -375,18 +488,26 @@ export default function AISystemsPage() {
                 <Label>{t('vaktcomply.aiSystems.fields.status')}</Label>
                 <Select
                   value={(form as UpdateAISystemInput).status ?? 'under_review'}
-                  onValueChange={(v) =>
-                    { setForm((f) => ({ ...f, status: v as AISystem['status'] })); }
-                  }
+                  onValueChange={(v) => {
+                    setForm((f) => ({ ...f, status: v as AISystem['status'] }))
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="under_review">{t('vaktcomply.aiSystems.statusOptions.under_review')}</SelectItem>
-                    <SelectItem value="approved">{t('vaktcomply.aiSystems.statusOptions.approved')}</SelectItem>
-                    <SelectItem value="prohibited">{t('vaktcomply.aiSystems.statusOptions.prohibited')}</SelectItem>
-                    <SelectItem value="decommissioned">{t('vaktcomply.aiSystems.statusOptions.decommissioned')}</SelectItem>
+                    <SelectItem value="under_review">
+                      {t('vaktcomply.aiSystems.statusOptions.under_review')}
+                    </SelectItem>
+                    <SelectItem value="approved">
+                      {t('vaktcomply.aiSystems.statusOptions.approved')}
+                    </SelectItem>
+                    <SelectItem value="prohibited">
+                      {t('vaktcomply.aiSystems.statusOptions.prohibited')}
+                    </SelectItem>
+                    <SelectItem value="decommissioned">
+                      {t('vaktcomply.aiSystems.statusOptions.decommissioned')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -397,7 +518,9 @@ export default function AISystemsPage() {
                 rows={2}
                 placeholder={t('vaktcomply.aiSystems.fields.classification')}
                 value={form.classification_rationale ?? ''}
-                onChange={(e) => { setForm((f) => ({ ...f, classification_rationale: e.target.value })); }}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, classification_rationale: e.target.value }))
+                }}
               />
             </div>
             {isUpdate && (
@@ -406,7 +529,9 @@ export default function AISystemsPage() {
                 <Input
                   placeholder={t('vaktcomply.aiSystems.fields.classifiedBy')}
                   value={(form as UpdateAISystemInput).classified_by ?? ''}
-                  onChange={(e) => { setForm((f) => ({ ...f, classified_by: e.target.value })); }}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, classified_by: e.target.value }))
+                  }}
                 />
               </div>
             )}
@@ -415,14 +540,19 @@ export default function AISystemsPage() {
               <Input
                 type="date"
                 value={(form as UpdateAISystemInput).in_production_since ?? ''}
-                onChange={(e) =>
-                  { setForm((f) => ({ ...f, in_production_since: e.target.value || undefined })); }
-                }
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, in_production_since: e.target.value || undefined }))
+                }}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDialogOpen(false); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDialogOpen(false)
+              }}
+            >
               Abbrechen
             </Button>
             <Button onClick={handleSubmit} disabled={!form.name || isPending}>
@@ -437,11 +567,18 @@ export default function AISystemsPage() {
           systemId={wizardSystem.id}
           systemName={wizardSystem.name}
           open={!!wizardSystem}
-          onClose={() => { setWizardSystem(null); }}
+          onClose={() => {
+            setWizardSystem(null)
+          }}
         />
       )}
 
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null) }}>
+      <AlertDialog
+        open={!!deleteId}
+        onOpenChange={(open) => {
+          if (!open) setDeleteId(null)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('vaktcomply.aiSystems.deleteTitle')}</AlertDialogTitle>

@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/matharnica/vakt/internal/shared/notify"
+	"github.com/matharnica/vakt/internal/shared/password"
 )
 
 // AuditLog is a single audit log entry as returned by the admin API.
@@ -267,6 +268,13 @@ func (s *Service) InviteUser(ctx context.Context, orgID, invitedByID string, inp
 // CreateUser directly creates an active user in the org without requiring SMTP.
 // The caller receives the userID; password is already supplied by the admin.
 func (s *Service) CreateUser(ctx context.Context, orgID, createdByID string, input CreateUserInput) (*CreateUserResult, error) {
+	// Enforce the canonical password policy (R1-W7C-N2). The `min=10` struct tag
+	// only bounds length; complexity (upper/digit/special) is enforced here so
+	// admin-created accounts match every other password entry-point.
+	if err := password.ValidateStrength(input.Password); err != nil {
+		return nil, err
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), 12)
 	if err != nil {
 		return nil, fmt.Errorf("create user: hash password: %w", err)

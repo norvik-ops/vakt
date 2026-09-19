@@ -236,5 +236,34 @@ if [ "$SIGN_RC" -ne 0 ] || [ "$SIG_SIZE" -lt 32 ]; then
 	exit 1
 fi
 
+# R1-35-03: Backup-Nachweis in backup_log schreiben.
+# Die Tabelle backup_log hat Leser (Dashboard-Banner "Backup veraltet" via
+# LastBackupAt, Metric vakt_backup_age_hours), aber bis hierher KEINEN Schreiber
+# — das Banner stand dauerhaft auf "veraltet" und die Metric permanent auf 999,
+# obwohl dieser Cron lief. Der Schreiber sitzt bewusst HIER, ganz am Ende: erst
+# nachdem Dump, Verschluesselung, Archiv UND Signatur nachweislich durchliefen.
+# Ein Marker vor dem fertigen, signierten Artefakt waere genau das "leeres Backup
+# sieht aus wie Schutz" (dieselbe Klasse wie der Signatur-Block oben) — er wuerde
+# ein Backup melden, das gar nicht auf der Platte liegt.
+#
+# org_id: der pg_dump ist DB-weit, der Erfolg gilt also fuer ALLE Organisationen
+# — ein Eintrag je Org, rein anhaengend. Die Leser nehmen den neuesten je Org
+# (ORDER BY backed_up_at DESC LIMIT 1), also ist Anhaengen korrekt. Eintraege
+# aelter als 90 Tage werden im selben Aufruf entfernt; bei laufendem Cron ist der
+# neueste Eintrag je Org stets frisch (< 1 Tag), der Schnitt trifft nie den
+# maßgeblichen. Begruendung und verworfene Alternativen: ADR-0090.
+#
+# Ein Fehler HIER darf das Backup NICHT rot machen: der signierte Dump liegt
+# gueltig vor, das ist das maßgebliche Ergebnis. Deshalb best-effort mit Warnung
+# — `if …; then` haelt die Funktion aus `set -e` heraus.
+BACKUP_LOG_SQL="INSERT INTO backup_log (org_id, backed_up_at) SELECT id, NOW() FROM organizations; DELETE FROM backup_log WHERE backed_up_at < NOW() - INTERVAL '90 days';"
+if vakt_pg_exec_sql "$BACKUP_LOG_SQL"; then
+	echo "✓ backup_log aktualisiert (ein Eintrag je Organisation)"
+else
+	echo "   WARNUNG: backup_log-Eintrag nicht geschrieben — das Backup ist gueltig und" >&2
+	echo "            signiert, aber Dashboard-Banner und vakt_backup_age_hours zeigen es" >&2
+	echo "            evtl. weiter als veraltet. Pruefe die DB-Erreichbarkeit." >&2
+fi
+
 echo "✓ Backup saved:    ${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz"
 echo "✓ Signature saved: ${OUTPUT_DIR}/${BACKUP_NAME}.tar.gz.sig"

@@ -579,64 +579,6 @@ func (s *Service) RevokeAuditorLink(ctx context.Context, orgID, linkID string) e
 	return nil
 }
 
-// AuditorViewDetailed validates the token and returns the framework, readiness report,
-// and each control with its evidence items — for the enhanced auditor portal (E09.2).
-func (s *Service) AuditorViewDetailed(ctx context.Context, rawToken string) (*AuditorDetailView, error) {
-	al, err := s.validateAuditorToken(ctx, rawToken)
-	if err != nil {
-		return nil, err
-	}
-
-	fw, err := s.repo.GetFramework(ctx, al.OrgID, al.FrameworkID)
-	if err != nil {
-		return nil, fmt.Errorf("get framework: %w", err)
-	}
-
-	controls, err := s.repo.ListControls(ctx, al.OrgID, al.FrameworkID)
-	if err != nil {
-		return nil, fmt.Errorf("list controls: %w", err)
-	}
-
-	evidenceCounts, err := s.repo.CountEvidenceByControl(ctx, al.OrgID, al.FrameworkID)
-	if err != nil {
-		return nil, fmt.Errorf("count evidence: %w", err)
-	}
-
-	report := policy.ComputeReadinessReport(fw, controls, evidenceCounts)
-
-	// Collect all control IDs for a single batch query instead of N per-control queries.
-	controlIDs := make([]string, len(controls))
-	for i, c := range controls {
-		controlIDs[i] = c.ID
-	}
-	evidenceByControl, err := s.repo.ListEvidenceByControls(ctx, al.OrgID, controlIDs)
-	if err != nil {
-		return nil, fmt.Errorf("list evidence batch: %w", err)
-	}
-
-	withEvidence := make([]ControlWithEvidence, 0, len(controls))
-	for i := range controls {
-		c := controls[i]
-		c.EvidenceCount = evidenceCounts[c.ID]
-		c.Status = policy.ResolveStatus(c)
-
-		items := evidenceByControl[c.ID]
-		if items == nil {
-			items = []Evidence{}
-		}
-		withEvidence = append(withEvidence, ControlWithEvidence{
-			Control:  c,
-			Evidence: items,
-		})
-	}
-
-	return &AuditorDetailView{
-		Framework: *fw,
-		Report:    report,
-		Controls:  withEvidence,
-	}, nil
-}
-
 // ExportAuditorBundle validates the token and writes a ZIP to w with structure:
 //
 //	<framework_name>/

@@ -179,11 +179,15 @@ type SaveWazuhConfigInput struct {
 
 // WazuhConfigResponse is returned from GET /wazuh/config (secrets masked).
 type WazuhConfigResponse struct {
-	BaseURL      string `json:"base_url"`
-	Username     string `json:"username"`
-	Password     string `json:"password"` // "****" if set
-	VerifyTLS    bool   `json:"verify_tls"`
-	IsConfigured bool   `json:"is_configured"`
+	BaseURL   string `json:"base_url"`
+	Username  string `json:"username"`
+	Password  string `json:"password"` // "****" if set
+	VerifyTLS bool   `json:"verify_tls"`
+	// AllowPrivateTarget echoes the persisted SSRF opt-in so the settings form
+	// can pre-fill the toggle (R1-SA27-01). Without it the UI always renders the
+	// switch as off, even for an on-premises target the admin already allowed.
+	AllowPrivateTarget bool `json:"allow_private_target"`
+	IsConfigured       bool `json:"is_configured"`
 }
 
 // WazuhStatus extends SyncStatus with agent counts.
@@ -218,7 +222,10 @@ type PrometheusConfigResponse struct {
 	PrometheusURL   string `json:"prometheus_url"`
 	AlertmanagerURL string `json:"alertmanager_url"`
 	Token           string `json:"token"` // "****" if set
-	IsConfigured    bool   `json:"is_configured"`
+	// AllowPrivateTarget echoes the persisted SSRF opt-in (R1-SA27-01) so the
+	// settings form can pre-fill the toggle for an on-premises target.
+	AllowPrivateTarget bool `json:"allow_private_target"`
+	IsConfigured       bool `json:"is_configured"`
 }
 
 // PrometheusStatus extends SyncStatus with target and alert counts.
@@ -318,7 +325,10 @@ type KeycloakConfigResponse struct {
 	Realm        string `json:"realm"`
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"` // "****" if set
-	IsConfigured bool   `json:"is_configured"`
+	// AllowPrivateTarget echoes the persisted SSRF opt-in (R1-SA27-01) so the
+	// settings form can pre-fill the toggle for an on-premises target.
+	AllowPrivateTarget bool `json:"allow_private_target"`
+	IsConfigured       bool `json:"is_configured"`
 }
 
 // KeycloakStatus extends SyncStatus with user metrics.
@@ -397,10 +407,13 @@ type SaveGitLabConfigInput struct {
 
 // GitLabConfigResponse is returned from GET /gitlab/config (secrets masked).
 type GitLabConfigResponse struct {
-	GitLabURL    string `json:"gitlab_url"`
-	AccessToken  string `json:"access_token"` // "****" if set
-	GroupID      string `json:"group_id"`
-	IsConfigured bool   `json:"is_configured"`
+	GitLabURL   string `json:"gitlab_url"`
+	AccessToken string `json:"access_token"` // "****" if set
+	GroupID     string `json:"group_id"`
+	// AllowPrivateTarget echoes the persisted SSRF opt-in (R1-SA27-01) so the
+	// settings form can pre-fill the toggle for a self-hosted GitLab.
+	AllowPrivateTarget bool `json:"allow_private_target"`
+	IsConfigured       bool `json:"is_configured"`
 }
 
 // GitLabStatus extends SyncStatus with project metrics.
@@ -430,9 +443,12 @@ type SaveSonarQubeConfigInput struct {
 
 // SonarQubeConfigResponse is returned from GET /sonarqube/config (secrets masked).
 type SonarQubeConfigResponse struct {
-	BaseURL      string `json:"base_url"`
-	Token        string `json:"token"` // "****" if set
-	IsConfigured bool   `json:"is_configured"`
+	BaseURL string `json:"base_url"`
+	Token   string `json:"token"` // "****" if set
+	// AllowPrivateTarget echoes the persisted SSRF opt-in (R1-SA27-01) so the
+	// settings form can pre-fill the toggle for a self-hosted SonarQube.
+	AllowPrivateTarget bool `json:"allow_private_target"`
+	IsConfigured       bool `json:"is_configured"`
 }
 
 // SonarQubeStatus extends SyncStatus with quality gate metrics.

@@ -644,31 +644,6 @@ func (r *Repository) CountDismissals(ctx context.Context, orgID, patternName, fi
 
 // --- Rotation policies ---
 
-func (r *Repository) UpsertRotationPolicy(ctx context.Context, orgID, secretID string, intervalDays int) (*RotationPolicy, error) {
-	nextRotation := time.Now().AddDate(0, 0, intervalDays)
-	row, err := r.q.UpsertSVRotationPolicy(ctx, db.UpsertSVRotationPolicyParams{
-		OrgID:          orgID,
-		SecretID:       secretID,
-		IntervalDays:   int32(intervalDays),
-		NextRotationAt: nextRotation,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("upsert rotation policy: %w", err)
-	}
-	return mapRotationPolicyRow(row), nil
-}
-
-func (r *Repository) GetRotationPolicy(ctx context.Context, orgID, secretID string) (*RotationPolicy, error) {
-	row, err := r.q.GetSVRotationPolicy(ctx, db.GetSVRotationPolicyParams{
-		SecretID: secretID,
-		OrgID:    orgID,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("get rotation policy: %w", err)
-	}
-	return mapRotationPolicyRow(row), nil
-}
-
 func (r *Repository) UpdateRotationAfterRotate(ctx context.Context, orgID, secretID string, intervalDays int) error {
 	nextRotation := time.Now().AddDate(0, 0, intervalDays)
 	return r.q.UpdateSVRotationAfterRotate(ctx, db.UpdateSVRotationAfterRotateParams{
@@ -777,27 +752,6 @@ func mapAPITokenRow(row db.CreateSVAPITokenRow) *APIToken {
 		t.RevokedAt = &ts
 	}
 	return t
-}
-
-// mapRotationPolicyRow converts a SVRotationPolicyRow to a domain RotationPolicy.
-func mapRotationPolicyRow(row db.SVRotationPolicyRow) *RotationPolicy {
-	p := &RotationPolicy{
-		ID:           row.ID,
-		OrgID:        row.OrgID,
-		SecretID:     row.SecretID,
-		IntervalDays: int(row.IntervalDays),
-		IsActive:     row.IsActive,
-		CreatedAt:    row.CreatedAt.Time,
-	}
-	if row.LastRotatedAt.Valid {
-		t := row.LastRotatedAt.Time
-		p.LastRotatedAt = &t
-	}
-	if row.NextRotationAt.Valid {
-		t := row.NextRotationAt.Time
-		p.NextRotationAt = &t
-	}
-	return p
 }
 
 // ListGitScansCursor returns git scans for orgID using keyset pagination on (created_at DESC, id DESC).

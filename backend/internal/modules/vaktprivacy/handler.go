@@ -415,6 +415,45 @@ func (h *Handler) UpdateBreach(c echo.Context) error {
 	return c.JSON(http.StatusOK, breach)
 }
 
+// UpdateBreachStatus handles PUT /api/v1/vaktprivacy/breaches/:id/status.
+// Advances the breach through the Art. 33/34 DSGVO lifecycle. Malformed :id → 400
+// (ValidateUUIDParams middleware), unknown breach → 404, illegal transition → 409,
+// missing rationale / not-yet-persistable status → 422.
+func (h *Handler) UpdateBreachStatus(c echo.Context) error {
+	var in UpdateBreachStatusInput
+	if err := c.Bind(&in); err != nil {
+		return errResp(c, http.StatusBadRequest, "invalid request body", "PO_INVALID_BODY")
+	}
+	if err := h.validate.Struct(in); err != nil {
+		return errResp(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
+	}
+	breach, err := h.service.UpdateBreachStatus(c.Request().Context(), orgID(c), c.Param("id"), in)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrBreachRationaleRequired):
+			return errResp(c, http.StatusUnprocessableEntity,
+				"ein direkter Abschluss ohne Meldung braucht eine Begründung (Art. 33 Abs. 1 DSGVO)",
+				"PO_BREACH_RATIONALE_REQUIRED")
+		case errors.Is(err, ErrBreachTransitionInvalid), errors.Is(err, ErrBreachStatusUnknown):
+			return errResp(c, http.StatusConflict, "ungültiger Statusübergang", "PO_BREACH_INVALID_TRANSITION")
+		}
+		// Repository errors: pgx.ErrNoRows → 404, malformed → 400, else 500.
+		log.Error().Err(err).Msg("update breach status")
+		return dbErr(c, err, "failed to update breach status", "PO_UPDATE_BREACH_STATUS_FAILED")
+	}
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
+		OrgID:        orgID(c),
+		UserID:       func() string { v, _ := c.Get("user_id").(string); return v }(),
+		Action:       "update",
+		ResourceType: "vakt-privacy/breach",
+		ResourceID:   breach.ID,
+		ResourceName: breach.Title,
+		Details:      map[string]string{"event": "status_transition", "status": breach.Status},
+		IPAddress:    c.RealIP(),
+	})
+	return c.JSON(http.StatusOK, breach)
+}
+
 // DeleteBreach handles DELETE /api/v1/vaktprivacy/breaches/:id.
 func (h *Handler) DeleteBreach(c echo.Context) error {
 	if err := h.service.DeleteBreach(c.Request().Context(), orgID(c), c.Param("id")); err != nil {

@@ -138,7 +138,7 @@ func TestManualEnrollmentUnchanged(t *testing.T) {
 	repo := vaktaware.NewRepository(pool)
 
 	empID := uuid.New().String()
-	require.NoError(t, repo.CreateCampaignEnrollment(ctx, orgID, campaignID, empID, vaktaware.SourceManual),
+	require.NoError(t, repo.CreateCampaignEnrollment(ctx, orgID, campaignID, empID, vaktaware.SourceManual, "", ""),
 		"manuelle Einschreibung muss unverändert schreiben")
 
 	var source string

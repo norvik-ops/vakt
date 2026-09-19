@@ -52,6 +52,17 @@ func buildScheduler(cfg *config.Config) *asynq.Scheduler {
 		log.Error().Err(err).Msg("failed to register EPSS enrich cron")
 	}
 
+	// Every minute: run due recurring scan schedules (R1-36b-SC06). Cron
+	// granularity is per-minute, so the executor ticks each minute and enqueues
+	// scans whose next_run has come due. Unique(55s) prevents two ticks from
+	// overlapping within the same minute without deduping consecutive minutes.
+	if _, err := scheduler.Register("* * * * *",
+		asynq.NewTask(vaktscan.TaskScanScheduleDue, nil),
+		asynq.Unique(55*time.Second), asynq.Queue(vaktscan.QueueScans),
+	); err != nil {
+		log.Error().Err(err).Msg("failed to register scan schedule executor cron")
+	}
+
 	// --- 02:xx window ---
 
 	// Daily at 02:07 UTC: prune expired data per org retention policy.

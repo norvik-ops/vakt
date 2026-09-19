@@ -45,9 +45,9 @@ func (c *LDAPEvidenceCollector) Collect(ctx context.Context, orgID string, cfg L
 		return 0, fmt.Errorf("ldap bind: %w", err)
 	}
 
-	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"access", "identity", "rights", "account"})
-	authControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"password", "authentication", "credential"})
-	adminControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"privileged", "admin", "access"})
+	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("access", "identity", "rights", "account"))
+	authControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("password", "authentication", "credential"))
+	adminControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("privileged", "admin", "access"))
 
 	total := 0
 	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as

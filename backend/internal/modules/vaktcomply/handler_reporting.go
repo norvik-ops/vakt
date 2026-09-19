@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -68,29 +67,21 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 		return nil
 	})
 
-	// 2. Compliance score: weighted average of implemented/total controls across all frameworks.
-	var (
-		scoreMu     sync.Mutex
-		totalWeight float64
-		weightedSum float64
-	)
+	// 2. Compliance score: canonical org-wide readiness (ADR-0086) — evidence-
+	// aware, partial at half weight, not_applicable out of the denominator. This
+	// is the SAME formula that produced d.ScorePrevious (the score_history
+	// snapshot), so the board report's delta subtracts like from like. The old
+	// path (GetBoardReportComplianceScoreRows) counted only manual_status =
+	// 'implemented' and kept not_applicable in the denominator.
 	g.Go(func() error {
-		scoreRows, err := s.repo.GetBoardReportComplianceScoreRows(gctx, orgID)
+		_, score, err := s.computeOrgReadiness(gctx, orgID)
 		if err != nil {
 			// S124-5 (TD-02): non-fatal (leave score at 0) but LOG — a silent 0
-			// reads as a clean compliance report when the query actually failed.
-			log.Warn().Err(err).Str("org_id", orgID).Msg("board-report: compliance score query failed — score shown as 0")
+			// reads as a clean compliance report when the computation actually failed.
+			log.Warn().Err(err).Str("org_id", orgID).Msg("board-report: compliance readiness failed — score shown as 0")
 			return nil //nolint:nilerr
 		}
-		for _, row := range scoreRows {
-			if row.Total > 0 {
-				score := float64(row.Implemented) / float64(row.Total) * 100
-				scoreMu.Lock()
-				weightedSum += score * float64(row.Total)
-				totalWeight += float64(row.Total)
-				scoreMu.Unlock()
-			}
-		}
+		d.Score = int(score)
 		return nil
 	})
 
@@ -167,11 +158,6 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 
 	if err := g.Wait(); err != nil {
 		return nil, err
-	}
-
-	// Apply weighted score now that goroutine 2 has finished.
-	if totalWeight > 0 {
-		d.Score = int(weightedSum / totalWeight)
 	}
 
 	return d, nil
@@ -362,6 +348,40 @@ func (h *Handler) GetDedicatedSoASummary(c echo.Context) error {
 	return c.JSON(http.StatusOK, summary)
 }
 
+// soaControlOwners resolves the responsible person for each SoA entry from its
+// linked ck_control's owner field, keyed by ck_control_id.
+//
+// R1-20-06: the dedicated SoA table (ck_soa_entries) has no owner column of its
+// own, so the XLSX/DOCX exports fell back to approved_by — the UUID of whoever
+// approved the version. That surfaced a raw UUID in the "Verantwortlicher"
+// column, and it was the wrong person (approver, not control owner). The owner
+// lives on the linked ck_control (a human-readable string), which is what the
+// auditor cross-checks against. Lookups are deduped, so at most one point-lookup
+// per distinct linked control runs. Entries without a link, or whose control has
+// no owner / cannot be loaded, get "" — an empty cell beats a misleading UUID.
+func (h *Handler) soaControlOwners(ctx context.Context, org string, entries []SoADedicatedEntry) map[string]string {
+	owners := make(map[string]string)
+	for _, e := range entries {
+		if e.CKControlID == nil || *e.CKControlID == "" {
+			continue
+		}
+		if _, seen := owners[*e.CKControlID]; seen {
+			continue
+		}
+		owners[*e.CKControlID] = "" // mark attempted so a failed lookup isn't retried
+		ctrl, err := h.service.GetControl(ctx, org, *e.CKControlID)
+		if err != nil {
+			log.Warn().Err(err).Str("org_id", org).Str("control_id", *e.CKControlID).
+				Msg("soa export: Owner nicht aufloesbar — Spalte bleibt leer")
+			continue
+		}
+		if ctrl != nil {
+			owners[*e.CKControlID] = ctrl.Owner
+		}
+	}
+	return owners
+}
+
 // ExportDedicatedSoAXLSX handles GET /api/v1/vaktcomply/soa/export.xlsx
 // Requires FeatureAuditPDF (same gate as PDF export).
 func (h *Handler) ExportDedicatedSoAXLSX(c echo.Context) error {
@@ -386,6 +406,7 @@ func (h *Handler) ExportDedicatedSoAXLSX(c echo.Context) error {
 		return errResp(c, http.StatusInternalServerError, "export failed", "CK_SOA_EXPORT_FAILED")
 	}
 
+	ownerByCtrl := h.soaControlOwners(ctx, org, entries)
 	rows := make([]xlsxexport.SoARow, len(entries))
 	for i, e := range entries {
 		justification := e.Justification
@@ -393,8 +414,8 @@ func (h *Handler) ExportDedicatedSoAXLSX(c echo.Context) error {
 			justification = e.ExclusionReason
 		}
 		owner := ""
-		if e.ApprovedBy != nil {
-			owner = *e.ApprovedBy
+		if e.CKControlID != nil {
+			owner = ownerByCtrl[*e.CKControlID]
 		}
 		rows[i] = xlsxexport.SoARow{
 			ControlRef:           e.ControlRef,
@@ -402,7 +423,7 @@ func (h *Handler) ExportDedicatedSoAXLSX(c echo.Context) error {
 			ControlGroup:         e.ControlGroup,
 			Applicable:           e.Applicable,
 			Justification:        justification,
-			ImplementationStatus: e.ImplementationStatus,
+			ImplementationStatus: SoAStatusLabel(e.ImplementationStatus),
 			Owner:                owner,
 			UpdatedAt:            e.UpdatedAt,
 		}

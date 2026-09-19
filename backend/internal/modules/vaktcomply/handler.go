@@ -83,13 +83,36 @@ func (h *Handler) BulkUpdateControls(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	if err := h.service.BulkUpdateControlStatus(c.Request().Context(), orgID(c), in.IDs, in.Status); err != nil {
+	// R1-14c-01: snapshot each control's status BEFORE the bulk update so the
+	// change is attributable per control, like the single-control path — the old
+	// bulk path wrote only one generic audit row and no per-control changelog.
+	ctx := c.Request().Context()
+	uid := userID(c)
+	uemail, _ := c.Get("user_email").(string)
+	oldStatus := make(map[string]string, len(in.IDs))
+	for _, id := range in.IDs {
+		if old, _ := h.service.GetControl(ctx, orgID(c), id); old != nil {
+			oldStatus[id] = old.Status
+		}
+	}
+
+	if err := h.service.BulkUpdateControlStatus(ctx, orgID(c), in.IDs, in.Status); err != nil {
 		log.Error().Err(err).Msg("bulk update controls")
 		return errResp(c, http.StatusInternalServerError, "failed to bulk update controls", "CK_BULK_UPDATE_FAILED")
 	}
-	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
+
+	// One changelog entry per control whose status actually changed. in.Status is
+	// the user's requested action (implemented/in_progress/not_implemented/
+	// not_applicable) — logging it keeps "who set what, per control" auditable.
+	for _, id := range in.IDs {
+		if old, ok := oldStatus[id]; ok && old != in.Status {
+			h.service.repo.AppendControlChange(ctx, orgID(c), id, uid, uemail, "status", old, in.Status)
+		}
+	}
+
+	audit.Write(ctx, h.db, audit.WriteEntry{
 		OrgID:        orgID(c),
-		UserID:       userID(c),
+		UserID:       uid,
 		Action:       "bulk_update",
 		ResourceType: "vakt-comply/control",
 		ResourceName: "bulk status update",
@@ -679,7 +702,9 @@ func (h *Handler) InstallFrameworkPlugin(c echo.Context) error {
 	fw, err := h.service.InstallFrameworkPlugin(c.Request().Context(), orgID(c), &plugin)
 	if err != nil {
 		log.Error().Err(err).Str("plugin", plugin.Name).Msg("install framework plugin")
-		return errResp(c, http.StatusInternalServerError, "failed to install framework plugin", "CK_PLUGIN_INSTALL_FAILED")
+		// R1-SA13-03: a re-install of the same framework hits UNIQUE(org_id,name)
+		// → 23505; RespondError maps that to 409 Conflict instead of a blanket 500.
+		return httputil.RespondError(c, err, "failed to install framework plugin", "CK_PLUGIN_INSTALL_FAILED")
 	}
 	return c.JSON(http.StatusCreated, fw)
 }

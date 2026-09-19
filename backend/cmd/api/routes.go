@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -131,8 +132,22 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 
 	api := e.Group("/api/v1")
 
+	// R1-B1-N1: readiness must reflect the API's REAL state. The early returns
+	// below (missing/invalid VAKT_REDIS_URL or VAKT_SECRET_KEY) skip every auth
+	// and module route, leaving an API that serves only public paths — yet a
+	// DB-only probe stayed 200, so a typo in VAKT_REDIS_URL produced a container
+	// Docker reported healthy while every authenticated route 404'd. This flag is
+	// set at those returns so /health/ready reports 503 instead of a false green.
+	var authRoutesDisabled atomic.Bool
+
 	// Readiness — checks DB connectivity (registered after pool is available).
 	e.GET("/health/ready", func(c echo.Context) error {
+		if authRoutesDisabled.Load() {
+			log.Error().Msg("health/ready: auth/module routes disabled (check VAKT_REDIS_URL / VAKT_SECRET_KEY)")
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"status": "unavailable", "component": "routes", "error": "service not fully initialised",
+			})
+		}
 		if err := pool.Ping(c.Request().Context()); err != nil {
 			log.Error().Err(err).Msg("health/ready: database ping failed")
 			return c.JSON(http.StatusServiceUnavailable, map[string]string{
@@ -189,18 +204,28 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	})
 
 	// Setup wizard — rate-limited, no auth (only works before first org exists).
-	setupRateLimiter := sharedmw.IPRateLimitRedis(rdb, "setup", 5, 5*time.Minute, true)
+	//
+	// Two limits, not one (R1-SA18-03). The strict 5/5min limiter guards the POST
+	// that creates the first org — an abuse-sensitive write. GET /status is polled
+	// by the frontend on every page load; behind the strict limiter it ran into
+	// 429s that the frontend swallowed, silently disabling the setup switch. It
+	// gets its own generous read limiter (fail-open) so a real operator setting up
+	// the instance is never locked out, while the write stays tightly bounded.
+	setupPostLimiter := sharedmw.IPRateLimitRedis(rdb, "setup", 5, 5*time.Minute, true)
+	setupStatusLimiter := sharedmw.IPRateLimitRedis(rdb, "setup_status", 60, time.Minute, false)
 	setupHandler := setup.NewHandler(pool)
-	setup.Register(api.Group("/setup", setupRateLimiter), setupHandler)
+	setup.Register(api.Group("/setup", setupStatusLimiter), setupHandler, setupPostLimiter)
 	log.Info().Msg("setup routes registered")
 
 	if cfg.RedisUrl == "" || cfg.SecretKey == "" {
 		log.Warn().Msg("VAKT_REDIS_URL or VAKT_SECRET_KEY not set — auth/module routes disabled")
+		authRoutesDisabled.Store(true) // R1-B1-N1: make /health/ready report 503, not a false green
 		return
 	}
 
 	if redisOpt == nil {
 		log.Warn().Msg("invalid Redis URL — auth/module routes disabled")
+		authRoutesDisabled.Store(true) // R1-B1-N1: a typo in VAKT_REDIS_URL must fail the readiness probe
 		return
 	}
 
@@ -309,13 +334,15 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		})
 	})
 
+	// The four credential routes carry the Redis-backed lockout (redisAuthRL) ON
+	// TOP of the group's IP rate limiter (authRateLimiter). redisAuthRL is passed
+	// into Register so it lands as per-route middleware inside the group and each
+	// route is registered exactly once. The previous shape registered these four
+	// a second time directly on `api` — that duplicate silently won in Echo's
+	// router and dropped authRateLimiter for login/register/password-reset
+	// (R1-SA08-01, regression test internal/auth/register_dedup_test.go).
 	authGroup := api.Group("/auth", authRateLimiter)
-	auth.Register(authGroup, authHandler)
-	// Apply Redis-backed rate limit specifically to the 4 credential routes.
-	api.POST("/auth/login", authHandler.Login, redisAuthRL)
-	api.POST("/auth/register", authHandler.Register, redisAuthRL)
-	api.POST("/auth/password-reset/request", authHandler.RequestPasswordReset, redisAuthRL)
-	api.POST("/auth/password-reset/confirm", authHandler.ResetPassword, redisAuthRL)
+	auth.Register(authGroup, authHandler, redisAuthRL)
 	log.Info().Msg("auth routes registered")
 
 	// All subsequent routes require a valid Paseto token
@@ -476,7 +503,11 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// Mounted on the plain api group; SCIMAuthMiddleware + feature gate are
 	// applied inside scimSvc.Register. authSvc is wired as SessionRevoker so
 	// that SCIM-driven deactivations immediately invalidate active tokens (S78-1).
-	scimSvc.Register(api.Group("/scim/v2"), pool, authSvc)
+	// R1-SA13-05/W0D-N1: SCIM lives on the plain api group, not the protected
+	// tree, so it did not inherit ValidateUUIDParams — a malformed /Users/:id or
+	// /Groups/:id reached the ::uuid cast → 22P02 → 500. Mount the guard here so
+	// a bad id is a 400 like everywhere else.
+	scimSvc.Register(api.Group("/scim/v2", sharedmw.ValidateUUIDParams()), pool, authSvc)
 	log.Info().Msg("scim routes registered")
 
 	// Outgoing webhooks — created before modules so event triggers can be wired in.
@@ -596,7 +627,10 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// Auditor portal — read-only vaktcomply access via session token (no Bearer auth).
 		// license.DBMiddleware is added so feature gates (FeatureAuditPDF etc.) resolve
 		// correctly for the auditor's org without a Paseto token in the request (S78-6c).
-		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool), license.DBMiddleware(pool, licInst, rdb)), ckHandler)
+		// R1-SA13-05/W0D-N1: the auditor DATA routes hang on the plain api group
+		// (not protected), so /auditor/vaktcomply/frameworks/:id skipped
+		// ValidateUUIDParams → 22P02 → 500 on a malformed id. Add the guard.
+		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool), license.DBMiddleware(pool, licInst, rdb), sharedmw.ValidateUUIDParams()), ckHandler)
 		// Auto-evidence inbox — GitHub, SecReflex, SecPulse
 		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		log.Info().Msg("vaktcomply routes registered")
@@ -666,7 +700,12 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// Wired unconditionally: the tables exist regardless of module toggles, and
 		// ExecuteErasure refuses to run unless an eraser for EVERY module holding
 		// subject PII is present.
-		poSvc.WithSubjectErasers(vaktaware.NewSubjectEraser(), vakthr.NewSubjectEraser())
+		// vaktcomply redacts (not deletes) the employee name/email hr_integration.go
+		// writes into ck_evidence — the evidence row stays under the retention
+		// obligation, only the PII fields are cleared (ADR-0089). Wired here, next to
+		// the hr_/sr_ erasers, and listed in requiredEraserModules so ExecuteErasure
+		// refuses a partial erasure that would leave PII in the compliance evidence.
+		poSvc.WithSubjectErasers(vaktaware.NewSubjectEraser(), vakthr.NewSubjectEraser(), vaktcomply.NewSubjectEraser())
 		poSvc.WithSubjectResolver(vakthr.NewSubjectResolver())
 		tiaSvc := vaktprivacy.NewTIAService(pool)
 		poHandler := vaktprivacy.NewHandler(poSvc).WithDB(pool).WithTIA(tiaSvc)

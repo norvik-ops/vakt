@@ -2330,19 +2330,3 @@ func (s *Service) MappingRegistry() []mappingRegistryEntry {
 }
 
 // ── Evidence Propagation ──────────────────────────────────────────────────────
-
-// PropagateControlStatus marks mapped controls in other frameworks as 'partial'
-// when a control is set to 'implemented'. Never downgrades 'implemented' → 'partial'.
-func (s *Service) PropagateControlStatus(ctx context.Context, orgID, controlID string) error {
-	mappings, err := s.GetControlMappings(ctx, orgID, controlID)
-	if err != nil {
-		return fmt.Errorf("get control mappings for propagation: %w", err)
-	}
-	for _, m := range mappings {
-		// SetControlPartialIfUnset skips 'implemented' and 'partial' controls.
-		if err := s.repo.SetControlPartialIfUnset(ctx, orgID, m.TargetControlID); err != nil {
-			log.Warn().Err(err).Str("target_control", m.TargetControlID).Msg("propagate status failed")
-		}
-	}
-	return nil
-}

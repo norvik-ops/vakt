@@ -133,9 +133,11 @@ func NewService(db *pgxpool.Pool, cfg *config.Config) *Service {
 }
 
 // Notify persists msg to the notifications table and then enqueues an Asynq
-// delivery task. If enqueue fails the error is logged but not returned —
-// the persisted record can be retried by a background sweep job. A persist
-// failure is returned as a wrapped error.
+// delivery task. If enqueue fails the error is logged and counted as a queue
+// error metric but not returned; the row stays 'pending'. There is currently
+// no sweep/requeue job, so a failed enqueue means the notification is not
+// delivered until something enqueues it again — the metric makes that
+// observable. A persist failure is returned as a wrapped error.
 func (s *Service) Notify(ctx context.Context, msg Message) error {
 	// Persist to notifications table and capture the row id so the delivery
 	// task can advance this exact row's status.
@@ -153,8 +155,10 @@ func (s *Service) Notify(ctx context.Context, msg Message) error {
 
 	task := asynq.NewTask(NotificationJobType, payload)
 	if _, err := s.queue.EnqueueContext(ctx, task); err != nil {
-		// Enqueue failure is non-fatal: the record is already in the DB and
-		// can be retried by a sweep job.
+		// Enqueue failure is non-fatal for the caller: the row is persisted as
+		// 'pending'. Note there is no sweep/requeue job that would pick it up
+		// later, so it will not be delivered until re-enqueued; the error metric
+		// below is what makes the stuck row observable.
 		queuemetrics.RecordError("default")
 		log.Error().Err(err).Str("org_id", msg.OrgID).Msg("failed to enqueue notification")
 	}

@@ -112,9 +112,9 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 		return 0, fmt.Errorf("sonarqube: list projects: %w", err)
 	}
 
-	sdlcControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"secure development", "sdlc", "sast", "code quality"})
-	vulnControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"vulnerability", "patch", "cve"})
-	assetControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"asset", "inventory", "software"})
+	sdlcControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("secure development", "sdlc", "sast", "code quality"))
+	vulnControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("vulnerability", "patch", "cve"))
+	assetControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("asset", "inventory", "software"))
 
 	total := 0
 	// F3/R-H20: accumulate sub-collector failures (see cloud collector comment).

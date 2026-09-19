@@ -38,7 +38,7 @@ import {
 } from '../../../hooks/useCloud'
 import { toast } from '../../../shared/hooks/useToast'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
-import { SyncLastBadge, RecentEvidenceList } from './shared'
+import { SyncLastBadge, RecentEvidenceList, AllowPrivateTargetToggle } from './shared'
 
 // --- AWS tab ---
 
@@ -708,6 +708,7 @@ export function WazuhTab() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [verifyTLS, setVerifyTLS] = useState(true)
+  const [allowPrivateTarget, setAllowPrivateTarget] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
   if (cfg && !initialized) {
@@ -715,13 +716,14 @@ export function WazuhTab() {
     setUsername(cfg.username)
     setPassword(cfg.password)
     setVerifyTLS(cfg.verify_tls)
+    setAllowPrivateTarget(cfg.allow_private_target)
     setInitialized(true)
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     try {
-      await saveConfig.mutateAsync({ base_url: baseURL, username, password, verify_tls: verifyTLS })
+      await saveConfig.mutateAsync({ base_url: baseURL, username, password, verify_tls: verifyTLS, allow_private_target: allowPrivateTarget })
       toast(t('integrations.page.saved'), 'success')
     } catch (err) {
       toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
@@ -804,6 +806,7 @@ export function WazuhTab() {
             className="rounded border-border" />
           <label htmlFor="wazuh-tls" className="text-xs text-secondary">Self-signed Zertifikat akzeptieren (TLS-Verifizierung deaktivieren)</label>
         </div>
+        <AllowPrivateTargetToggle id="wazuh-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
         <div className="flex gap-2 pt-1">
           <button type="submit" disabled={saveConfig.isPending}
             className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
@@ -836,19 +839,21 @@ export function PrometheusTab() {
   const [prometheusURL, setPrometheusURL] = useState('')
   const [alertmanagerURL, setAlertmanagerURL] = useState('')
   const [token, setToken] = useState('')
+  const [allowPrivateTarget, setAllowPrivateTarget] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
   if (cfg && !initialized) {
     setPrometheusURL(cfg.prometheus_url)
     setAlertmanagerURL(cfg.alertmanager_url)
     setToken(cfg.token)
+    setAllowPrivateTarget(cfg.allow_private_target)
     setInitialized(true)
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     try {
-      await saveConfig.mutateAsync({ prometheus_url: prometheusURL, alertmanager_url: alertmanagerURL, token })
+      await saveConfig.mutateAsync({ prometheus_url: prometheusURL, alertmanager_url: alertmanagerURL, token, allow_private_target: allowPrivateTarget })
       toast(t('integrations.page.saved'), 'success')
     } catch (err) {
       toast(err instanceof Error ? err.message : t('integrations.page.saveFailed'), 'error')
@@ -924,6 +929,7 @@ export function PrometheusTab() {
             placeholder={cfg?.is_configured && cfg.token === '****' ? '****' : 'Leer lassen wenn keine Auth'}
             className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono" />
         </div>
+        <AllowPrivateTargetToggle id="prometheus-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
         <div className="flex gap-2 pt-1">
           <button type="submit" disabled={saveConfig.isPending}
             className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">

@@ -51,10 +51,10 @@ type ionosDatacenter struct {
 
 // Collect runs all IONOS evidence collectors for the given org and config.
 func (c *IONOSCollector) Collect(ctx context.Context, orgID string, cfg IONOSConfig) (int, error) {
-	inventoryControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"asset", "inventory", "server"})
-	networkControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"network", "firewall", "port"})
-	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"ssh", "access", "privileged", "key"})
-	backupControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"backup", "snapshot", "recovery"})
+	inventoryControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("asset", "inventory", "server"))
+	networkControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("network", "firewall", "port"))
+	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("ssh", "access", "privileged", "key"))
+	backupControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("backup", "snapshot", "recovery"))
 
 	dcs, err := c.listDatacenters(ctx, cfg)
 	if err != nil {

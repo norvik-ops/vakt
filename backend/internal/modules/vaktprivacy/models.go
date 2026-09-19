@@ -124,6 +124,14 @@ type CreateBreachInput struct {
 	DataCategories               []string  `json:"data_categories"`
 }
 
+// UpdateBreachStatusInput drives a breach lifecycle transition (Art. 33/34 DSGVO).
+// Rationale is only mandatory for a direct open->closed (no notification duty);
+// the service enforces that rule, oneof merely rejects unknown status values.
+type UpdateBreachStatusInput struct {
+	Status    string `json:"status"    validate:"required,oneof=open authority_notified subjects_notified closed"`
+	Rationale string `json:"rationale" validate:"max=2000"`
+}
+
 // UpdateVVTInput holds validated input for updating a VVT entry.
 type UpdateVVTInput struct {
 	Name                 string   `json:"name"          validate:"required,max=255"`

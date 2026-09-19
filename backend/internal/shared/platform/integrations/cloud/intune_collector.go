@@ -117,8 +117,8 @@ func (c *IntuneCollector) Collect(ctx context.Context, orgID string, cfg IntuneC
 	}
 	posture := computePosture(devices)
 
-	endpointControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"endpoint", "device", "mobile", "end point"})
-	configControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"configuration", "hardening", "compliance", "cyber hygiene"})
+	endpointControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("endpoint", "device", "mobile", "end point"))
+	configControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("configuration", "hardening", "compliance", "cyber hygiene"))
 
 	total := 0
 	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as

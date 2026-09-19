@@ -49,48 +49,56 @@ func TestBreach_AuthorityDeadline_72hIsWallClock(t *testing.T) {
 		"72h must equal 72*3600 seconds regardless of DST")
 }
 
-// ─── Art. 12 Abs. 3 DSGVO: DSR 30-day response deadline ─────────────────────
+// ─── Art. 12 Abs. 3 DSGVO: DSR one-calendar-month response deadline ─────────
 
-// TestDSR_30DayDeadline verifies that a DSR response deadline is always 30
-// calendar days after receipt, independent of month length or leap years.
-func TestDSR_30DayDeadline(t *testing.T) {
+// TestDSRDueDate_OneCalendarMonth verifies the DSR response deadline is one
+// calendar month after receipt (§ 188 BGB), NOT a fixed 30 days (R1-14c-13):
+// the day-of-month is preserved, and a day that does not exist in the target
+// month clamps to that month's last day (Jan 31 → Feb 28/29) instead of
+// overflowing into the following month.
+func TestDSRDueDate_OneCalendarMonth(t *testing.T) {
 	cases := []struct {
 		name     string
 		received time.Time
 		want     time.Time
 	}{
 		{
-			name:     "regular month",
-			received: time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
-			want:     time.Date(2024, 7, 15, 0, 0, 0, 0, time.UTC),
+			name:     "regular month keeps the day",
+			received: time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC),
+			want:     time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			name:     "january 1",
-			received: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			want:     time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC),
+			// A month is shorter than 30 days here: +30d would land on Mar 17.
+			name:     "february is not 30 days",
+			received: time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC),
+			want:     time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			name:     "jan 31 into march (leap year 2024)",
-			received: time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC),
-			want:     time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC),
+			name:     "jan 31 clamps to feb 28 (non-leap)",
+			received: time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC),
+			want:     time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			name:     "leap day",
-			received: time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC),
-			want:     time.Date(2024, 3, 30, 0, 0, 0, 0, time.UTC),
+			name:     "jan 31 clamps to feb 29 (leap)",
+			received: time.Date(2028, 1, 31, 0, 0, 0, 0, time.UTC),
+			want:     time.Date(2028, 2, 29, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			name:     "end of year",
-			received: time.Date(2024, 12, 15, 0, 0, 0, 0, time.UTC),
-			want:     time.Date(2025, 1, 14, 0, 0, 0, 0, time.UTC),
+			name:     "mar 31 clamps to apr 30",
+			received: time.Date(2026, 3, 31, 0, 0, 0, 0, time.UTC),
+			want:     time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:     "year boundary",
+			received: time.Date(2026, 12, 15, 0, 0, 0, 0, time.UTC),
+			want:     time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := tc.received.AddDate(0, 0, 30)
-			assert.Equal(t, tc.want, got,
-				"DSR due date must be received_at + 30 calendar days (Art. 12 Abs. 3)")
+			assert.Equal(t, tc.want, dsrDueDate(tc.received),
+				"DSR due date must be one calendar month after receipt (Art. 12 Abs. 3 DSGVO / § 188 BGB)")
 		})
 	}
 }

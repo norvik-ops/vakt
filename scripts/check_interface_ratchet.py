@@ -45,11 +45,34 @@ BACKEND = ROOT / "backend"
 # gespeicherte Form ist bekannt, also gehoert sie deklariert. Zwei der
 # eingesparten Vorkommen waren Altbestand (die beiden Wazuh-Lesepfade), die bei
 # der Gelegenheit mitgezogen wurden.
-BASELINE = 406
+#
+# 2026-09-19: 406 → 376. Nicht durch Löschen von Code, sondern durch Schärfen der
+# Definition: variadic `...any` und Generics-Constraint-`any` (`[T any]`) sind
+# keine untyped-interface-Schuld und werden nicht mehr gezählt (NOT_DEBT_RE). Die
+# 30 so ausgeschlossenen Vorkommen waren Altbestand; die Zahl misst jetzt nur noch
+# `any`/`interface{}` als gespeicherten/untypisierten Wert.
+BASELINE = 376
 
 # `interface{}` (old syntax) and the `any` keyword used as a type.
 INTERFACE_RE = re.compile(r"interface\s*\{\s*\}")
 ANY_RE = re.compile(r"\bany\b")
+
+# 2026-09-19: two forms of `any` are NOT untyped-interface debt and must not be
+# counted — counting them measured syntax, not type safety (the very failure mode
+# gate-bilanz.md warns about):
+#   * variadic `...any` — the idiomatic pgx/`fmt`-style signature; there is no
+#     typed struct that replaces a variadic argument list.
+#   * a generics type-parameter constraint `[T any]` / `[K comparable, V any]` —
+#     `any` here is the widest constraint, not a stored untyped value.
+# Both are blanked before ANY_RE counts. The ratchet mechanics are unchanged; only
+# the definition of "debt" is tightened, so the baseline is lowered accordingly.
+NOT_DEBT_RE = re.compile(
+    r"""
+      \.\.\.any\b                    # variadic parameter: ...any
+    | [\[,]\s*[A-Za-z_]\w*\s+any\b   # type-param constraint: [T any / , V any
+    """,
+    re.VERBOSE,
+)
 
 # Go comments and string/rune literals. Order matters: a `//` inside a string is
 # not a comment, and a quote inside a comment does not open a string — so the
@@ -98,6 +121,9 @@ def count() -> tuple[int, int]:
             continue
         scanned += 1
         text = code_only(f.read_text(encoding="utf-8", errors="ignore"))
+        # Blank the idiomatic non-debt forms (variadic, generics constraint) so
+        # ANY_RE only counts `any` used as a stored/untyped value.
+        text = NOT_DEBT_RE.sub(" ", text)
         total += len(INTERFACE_RE.findall(text))
         total += len(ANY_RE.findall(text))
     return total, scanned

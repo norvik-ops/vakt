@@ -1642,17 +1642,18 @@ const upsertSPFindingByCVE = `-- name: UpsertSPFindingByCVE :one
 
 INSERT INTO vb_findings
   (org_id, asset_id, cve_id, title, description, severity,
-   cvss_score, status, scanner, sources, sla_due_at,
+   cvss_score, status, scanner, sources, sla_due_at, risk_score,
    reopen_count, occurrence_count, last_seen_at)
 VALUES
   ($1, $2, $3, $4, $5, $6,
-   $7, $8, $9, $10, $11,
+   $7, $8, $9, $10, $11, $12,
    0, 1, NOW())
 ON CONFLICT (org_id, asset_id, cve_id) WHERE cve_id IS NOT NULL DO UPDATE
   SET title            = EXCLUDED.title,
       description      = EXCLUDED.description,
       severity         = EXCLUDED.severity,
       cvss_score       = EXCLUDED.cvss_score,
+      risk_score       = EXCLUDED.risk_score,
       sla_due_at       = EXCLUDED.sla_due_at,
       sources          = (SELECT ARRAY(SELECT DISTINCT unnest(vb_findings.sources || EXCLUDED.sources))),
       occurrence_count = vb_findings.occurrence_count + 1,
@@ -1679,6 +1680,7 @@ type UpsertSPFindingByCVEParams struct {
 	Scanner     string             `json:"scanner"`
 	Sources     []string           `json:"sources"`
 	SlaDueAt    pgtype.Timestamptz `json:"sla_due_at"`
+	RiskScore   pgtype.Numeric     `json:"risk_score"`
 }
 
 // ── Findings Upsert (single, by cve_id) ─────────────────────────────────────
@@ -1711,6 +1713,7 @@ func (q *Queries) UpsertSPFindingByCVE(ctx context.Context, arg UpsertSPFindingB
 		arg.Scanner,
 		arg.Sources,
 		arg.SlaDueAt,
+		arg.RiskScore,
 	)
 	var i VbFindings
 	err := row.Scan(
@@ -1747,17 +1750,18 @@ const upsertSPFindingByRawID = `-- name: UpsertSPFindingByRawID :one
 
 INSERT INTO vb_findings
   (org_id, asset_id, cve_id, title, description, severity,
-   cvss_score, status, scanner, raw_id, sources, sla_due_at,
+   cvss_score, status, scanner, raw_id, sources, sla_due_at, risk_score,
    reopen_count, occurrence_count, last_seen_at)
 VALUES
   ($1, $2, $3, $4, $5, $6,
-   $7, $8, $9, $10, $11, $12,
+   $7, $8, $9, $10, $11, $12, $13,
    0, 1, NOW())
 ON CONFLICT (org_id, raw_id, scanner) WHERE raw_id IS NOT NULL DO UPDATE
   SET title            = EXCLUDED.title,
       description      = EXCLUDED.description,
       severity         = EXCLUDED.severity,
       cvss_score       = EXCLUDED.cvss_score,
+      risk_score       = EXCLUDED.risk_score,
       sla_due_at       = EXCLUDED.sla_due_at,
       occurrence_count = vb_findings.occurrence_count + 1,
       last_seen_at     = NOW(),
@@ -1784,6 +1788,7 @@ type UpsertSPFindingByRawIDParams struct {
 	RawID       pgtype.Text        `json:"raw_id"`
 	Sources     []string           `json:"sources"`
 	SlaDueAt    pgtype.Timestamptz `json:"sla_due_at"`
+	RiskScore   pgtype.Numeric     `json:"risk_score"`
 }
 
 // ── Findings Upsert (single, by raw_id) ─────────────────────────────────────
@@ -1814,6 +1819,7 @@ func (q *Queries) UpsertSPFindingByRawID(ctx context.Context, arg UpsertSPFindin
 		arg.RawID,
 		arg.Sources,
 		arg.SlaDueAt,
+		arg.RiskScore,
 	)
 	var i VbFindings
 	err := row.Scan(

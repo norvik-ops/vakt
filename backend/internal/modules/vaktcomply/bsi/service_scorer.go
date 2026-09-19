@@ -23,9 +23,12 @@ type ComplianceScorer interface {
 type KompendiumScorer struct{}
 
 func (KompendiumScorer) Score(ja, teilweise, entbehrlich, total int) float64 {
+	if total == 0 {
+		return 0.0 // R1-20-09: nothing assessed yet — an empty catalogue is 0 %, not "fully handled"
+	}
 	relevante := total - entbehrlich
 	if relevante <= 0 {
-		return 100.0 // all entbehrlich = fully handled
+		return 100.0 // all relevant controls are entbehrlich = fully handled
 	}
 	punkte := float64(ja)*1.0 + float64(teilweise)*0.5
 	return punkte / float64(relevante) * 100.0

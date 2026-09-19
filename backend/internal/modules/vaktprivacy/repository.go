@@ -44,7 +44,7 @@ type Repository struct {
 // in place, and still stamp the DSR "completed". Adding a module that stores
 // subject PII means adding it here; the wiring test in erasure_note_test.go
 // fails otherwise.
-var requiredEraserModules = []string{"vaktaware", "vakthr"}
+var requiredEraserModules = []string{"vaktaware", "vakthr", "vaktcomply"}
 
 // NewRepository creates a new PrivacyOps repository.
 func NewRepository(pool *pgxpool.Pool) *Repository {
@@ -437,6 +437,34 @@ func (r *Repository) MarkAuthorityNotified(ctx context.Context, id, orgID string
 	})
 }
 
+// SetBreachStatus advances the lifecycle status of a breach and stamps the
+// matching DSGVO timestamp in the same UPDATE. Raw SQL (not a new sqlc query) —
+// mirrors the raw-SQL pattern already used across this package (repository_retention.go)
+// and keeps the hand-maintained sqlc seam frozen (ADR-0078).
+//
+// authority_notified → stamps authority_notified_at (Art. 33); subjects_notified →
+// stamps subjects_notified_at (Art. 34). Both stamps fire only on the first entry
+// into the state (…_at IS NULL), so a re-issued transition is idempotent on the
+// timestamp. Scoped to orgID; a missing row yields pgx.ErrNoRows via MustAffect
+// so the handler maps it to 404.
+//
+// NOTE: status='subjects_notified' is rejected by the CHECK constraint (migration 014)
+// persists here — migration 268 added 'subjects_notified' to the status CHECK.
+func (r *Repository) SetBreachStatus(ctx context.Context, orgID, id, status string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE po_breaches SET
+			status                = $1,
+			authority_notified_at = CASE WHEN $1 = 'authority_notified' AND authority_notified_at IS NULL
+			                             THEN NOW() ELSE authority_notified_at END,
+			subjects_notified_at  = CASE WHEN $1 = 'subjects_notified' AND subjects_notified_at IS NULL
+			                             THEN NOW() ELSE subjects_notified_at END,
+			updated_at            = NOW()
+		WHERE org_id = $2 AND id = $3`,
+		status, orgID, id,
+	)
+	return shareddb.MustAffect(tag, err)
+}
+
 // --- VVT full CRUD ---
 
 // GetVVT fetches a single VVT entry by ID, scoped to orgID.
@@ -802,15 +830,32 @@ func (r *Repository) ListDSRs(ctx context.Context, orgID string) ([]DSR, error) 
 	return out, rows.Err()
 }
 
+// dsrDueDate returns the Art. 12 Abs. 3 DSGVO response deadline: one calendar
+// month after the request arrives (R1-14c-13, § 188 Abs. 2/3 BGB). A fixed 30-day
+// span was wrong — too long in February, too short after 31-day months. The
+// deadline is the same day-of-month one month on; if that day does not exist
+// (Jan 31 → February) it is the last day of the target month. Go's AddDate(0,1,0)
+// alone would overflow (Jan 31 → Mar 3), so the day is clamped explicitly.
+func dsrDueDate(from time.Time) time.Time {
+	y, mo, d := from.Date()
+	firstOfTarget := time.Date(y, mo+1, 1, 0, 0, 0, 0, from.Location())
+	lastDay := firstOfTarget.AddDate(0, 1, -1).Day() // last day of the target month
+	if d > lastDay {
+		d = lastDay
+	}
+	return time.Date(firstOfTarget.Year(), firstOfTarget.Month(), d,
+		from.Hour(), from.Minute(), from.Second(), from.Nanosecond(), from.Location())
+}
+
 // CreateDSR inserts a new data subject request and automatically sets due_date
-// to now + 30 calendar days, satisfying the Art. 12 Abs. 3 DSGVO response deadline.
+// to one calendar month out, satisfying the Art. 12 Abs. 3 DSGVO response deadline.
 //
 // S9/CZ-2: raw INSERT (not the generated CreatePPDSR) because in.Channel and
 // in.ReferenceID are validated CreateDSRInput fields that the generated query
 // never wrote — every DSR silently dropped its intake channel and ticket
 // reference on create, regardless of what the caller sent.
 func (r *Repository) CreateDSR(ctx context.Context, orgID string, in CreateDSRInput) (*DSR, error) {
-	due := pgtype.Date{Time: time.Now().UTC().AddDate(0, 0, 30), Valid: true}
+	due := pgtype.Date{Time: dsrDueDate(time.Now().UTC()), Valid: true}
 	var f dsrFields
 	err := r.db.QueryRow(ctx,
 		`INSERT INTO po_dsr (org_id, requester_name, requester_email, type, description, due_date, channel, reference_id)
@@ -1128,7 +1173,7 @@ func (r *Repository) CreatePortalDSR(ctx context.Context, orgID string, in Porta
 		dsrType = "rectification"
 	}
 
-	due := pgtype.Date{Time: time.Now().UTC().AddDate(0, 0, 30), Valid: true}
+	due := pgtype.Date{Time: dsrDueDate(time.Now().UTC()), Valid: true}
 	id, err := r.q.CreatePortalPPDSR(ctx, db.CreatePortalPPDSRParams{
 		OrgID:           orgID,
 		RequesterName:   in.FirstName + " " + in.LastName,

@@ -692,6 +692,55 @@ func deadlineInfo(deadline, reportedAt *time.Time, now time.Time) *DeadlineInfo 
 	return info
 }
 
+// computeDORAAmpelStatus builds the DORA Ampel (traffic-light) status map for one
+// incident from its PERSISTED deadlines (Deadline24h/72h/30d) — never from a
+// reconstructed anchor.
+//
+// R1-W3B-N1: the previous version derived detectedAt = Deadline24h - 24h and then
+// recomputed 24h/72h/30d from that anchor (30d as 30*24h). That made the displayed
+// deadline drift from the stored one — most visibly across a DST boundary, where
+// AddDate(0,0,30) (used at creation, see computeDeadlines) and 30*24h differ by an
+// hour — so the same incident showed different end dates in the Ampel view and in
+// the persisted record. Reflecting the stored pointers keeps one source of truth.
+//
+// Keys stay "h24"/"h72"/"d30". A nil persisted deadline is skipped (there is no
+// stored value to reflect), matching computeDeadlineStatus which also guards on nil.
+func computeDORAAmpelStatus(inc *Incident, now time.Time) map[string]string {
+	type deadlineEntry struct {
+		deadline   time.Time
+		reportedAt *time.Time
+		key        string
+	}
+	var entries []deadlineEntry
+	if inc.Deadline24h != nil {
+		entries = append(entries, deadlineEntry{*inc.Deadline24h, inc.Reported24hAt, "h24"})
+	}
+	if inc.Deadline72h != nil {
+		entries = append(entries, deadlineEntry{*inc.Deadline72h, inc.Reported72hAt, "h72"})
+	}
+	if inc.Deadline30d != nil {
+		entries = append(entries, deadlineEntry{*inc.Deadline30d, inc.Reported30dAt, "d30"})
+	}
+
+	status := make(map[string]string, len(entries))
+	for _, e := range entries {
+		if e.reportedAt != nil {
+			status[e.key] = "done"
+			continue
+		}
+		hoursLeft := e.deadline.Sub(now).Hours()
+		switch {
+		case now.After(e.deadline):
+			status[e.key] = "red"
+		case hoursLeft <= 6:
+			status[e.key] = "yellow"
+		default:
+			status[e.key] = "green"
+		}
+	}
+	return status
+}
+
 // UpdateDORADeadlineStatus recomputes the DORA Ampel-Status for all DORA IKT-incidents
 // in one org and persists it to dora_deadline_status JSONB. S37-4.
 func (s *Service) UpdateDORADeadlineStatus(ctx context.Context, orgID string) error {
@@ -708,42 +757,7 @@ func (s *Service) UpdateDORADeadlineStatus(ctx context.Context, orgID string) er
 	for i := range incidents {
 		inc := &incidents[i]
 
-		// Use first_detected_at if set, otherwise discovered_at.
-		detectedAt := inc.DiscoveredAt
-		// (first_detected_at is stored as dora_classification["first_detected_at"] in JSONB or deadline_4h-1h)
-		// For now derive from existing Deadline24h if set: detectedAt = deadline_24h - 24h.
-		if inc.Deadline24h != nil {
-			derived := inc.Deadline24h.Add(-24 * time.Hour)
-			detectedAt = derived
-		}
-
-		type deadlineEntry struct {
-			deadline   time.Time
-			reportedAt *time.Time
-			key        string
-		}
-		entries := []deadlineEntry{
-			{detectedAt.Add(24 * time.Hour), inc.Reported24hAt, "h24"},
-			{detectedAt.Add(72 * time.Hour), inc.Reported72hAt, "h72"},
-			{detectedAt.Add(30 * 24 * time.Hour), inc.Reported30dAt, "d30"},
-		}
-
-		status := make(map[string]string, 3)
-		for _, e := range entries {
-			if e.reportedAt != nil {
-				status[e.key] = "done"
-				continue
-			}
-			hoursLeft := e.deadline.Sub(now).Hours()
-			switch {
-			case now.After(e.deadline):
-				status[e.key] = "red"
-			case hoursLeft <= 6:
-				status[e.key] = "yellow"
-			default:
-				status[e.key] = "green"
-			}
-		}
+		status := computeDORAAmpelStatus(inc, now)
 
 		if err := s.repo.UpdateIncidentDORADeadlineStatus(ctx, inc.ID, status); err != nil {
 			log.Warn().Err(err).Str("incident_id", inc.ID).Msg("dora_deadline_status: update failed")

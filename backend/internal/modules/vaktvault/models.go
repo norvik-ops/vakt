@@ -146,18 +146,6 @@ type RotateInput struct {
 	Length int    `json:"length,omitempty"`
 }
 
-// RotationPolicy defines the automatic rotation schedule for a single secret.
-type RotationPolicy struct {
-	ID             string     `json:"id"`
-	OrgID          string     `json:"org_id"`
-	SecretID       string     `json:"secret_id"`
-	IntervalDays   int        `json:"interval_days"`
-	LastRotatedAt  *time.Time `json:"last_rotated_at,omitempty"`
-	NextRotationAt *time.Time `json:"next_rotation_at,omitempty"`
-	IsActive       bool       `json:"is_active"`
-	CreatedAt      time.Time  `json:"created_at"`
-}
-
 // --- Git scanner ---
 
 // GitScan represents a single git repository scan run.

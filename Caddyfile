@@ -32,7 +32,9 @@
 	# Backend API + health check → api service.
 	# flush_interval -1 keeps SSE streams (AI chat, control explanations)
 	# unbuffered so tokens arrive live.
-	@api path /api/* /health
+	# /health* (not just /health) so readiness/liveness sub-paths like
+	# /health/ready reach the API instead of falling through to the SPA.
+	@api path /api/* /health*
 	handle @api {
 		reverse_proxy api:8080 {
 			flush_interval -1

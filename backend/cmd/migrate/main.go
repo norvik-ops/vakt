@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
@@ -35,11 +36,44 @@ func main() {
 	}
 	migrationsDir := filepath.Join(filepath.Dir(filename), "..", "..", "db", "migrations")
 
-	log.Info().Str("dir", migrationsDir).Msg("running migrations")
-	if err := shareddb.RunMigrations(dbURL, migrationsDir); err != nil {
-		log.Fatal().Err(err).Msg("migration failed")
+	// R1-B0-N2: Die Argumente wurden frueher GAR NICHT gelesen. Damit wendete
+	// der dokumentierte Rueckweg `migrate down 1` alle ausstehenden
+	// Up-Migrationen an — das Gegenteil dessen, was ein Operator im Fehlerfall
+	// will, und ohne jeden Hinweis darauf. Ein unbekanntes Argument bricht
+	// jetzt ab, statt still etwas anderes zu tun.
+	args := os.Args[1:]
+	switch {
+	case len(args) == 0 || args[0] == "up":
+		if len(args) > 1 {
+			log.Fatal().Strs("args", args).Msg("`up` nimmt keine weiteren Argumente")
+		}
+		log.Info().Str("dir", migrationsDir).Msg("running migrations")
+		if err := shareddb.RunMigrations(dbURL, migrationsDir); err != nil {
+			log.Fatal().Err(err).Msg("migration failed")
+		}
+		log.Info().Msg("all migrations applied successfully")
+
+	case args[0] == "down":
+		// Die Schrittzahl ist Pflicht. Es gibt bewusst kein "down all": ein
+		// Rollback ist destruktiv, und die Zahl ist die einzige Bremse
+		// zwischen einem gezielten Rueckweg und einem leeren Schema.
+		if len(args) != 2 {
+			log.Fatal().Msg("`down` braucht genau eine Schrittzahl, z. B. `migrate down 1`")
+		}
+		n, err := strconv.Atoi(args[1])
+		if err != nil || n <= 0 {
+			log.Fatal().Str("arg", args[1]).Msg("die Schrittzahl muss eine positive Ganzzahl sein")
+		}
+		log.Warn().Int("steps", n).Str("dir", migrationsDir).
+			Msg("rolling migrations BACK — this is destructive and cannot be undone")
+		if err := shareddb.MigrateDown(dbURL, migrationsDir, n); err != nil {
+			log.Fatal().Err(err).Msg("rollback failed")
+		}
+		log.Info().Int("steps", n).Msg("rollback applied successfully")
+
+	default:
+		log.Fatal().Str("arg", args[0]).Msg("unbekanntes Kommando — erlaubt sind `up` (Vorgabe) und `down <n>`")
 	}
-	log.Info().Msg("all migrations applied successfully")
 }
 
 // buildDBURLFromComponents assembles a postgres DSN from VAKT_DB_PASSWORD_FILE

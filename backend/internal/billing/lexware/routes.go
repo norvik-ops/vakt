@@ -65,7 +65,18 @@ func Register(g *echo.Group, h *Handler, corsOrigins []string) {
 		return c.NoContent(http.StatusNoContent)
 	}, cors)
 	g.GET("/billing/quote-request/:id/approve", h.Approve)
-	g.POST("/billing/lexware/webhook", h.Webhook)
+
+	// Rate-limit the webhook (R1-SA10-V4). A well-formed payment.changed event
+	// spawns an outbound Lexware PaymentStatus call (Handler.settle), so an
+	// unauthenticated flood turns into a flood of outbound API calls — a cost and
+	// abuse vector. The forgery itself is already harmless (every claim is
+	// re-verified against Lexware before a key is minted), but the outbound calls
+	// are not free. This caps per source IP with the same in-memory limiter the
+	// sibling public routes use; legitimate Lexware traffic (a handful of payments
+	// a day) is far below the limit. Per-IP is the file's established pattern and
+	// does not stop distributed abuse — a global cap would need shared state this
+	// process does not carry.
+	g.POST("/billing/lexware/webhook", h.Webhook, newWebhookRateLimiter())
 
 	// The endpoint behind VAKT_LICENSE_TOKEN: a customer's instance polls it once
 	// a day and swaps in the key it gets back, so a renewal needs no manual step.
@@ -91,6 +102,18 @@ func Register(g *echo.Group, h *Handler, corsOrigins []string) {
 
 	log.Info().Strs("cors_origins", corsOrigins).
 		Msg("billing: direct-sale routes registered (quote-request, approve, lexware webhook, license refresh)")
+}
+
+// newWebhookRateLimiter builds the per-IP limiter for the Lexware webhook.
+// 60/h sustained with a burst of 10 sits far above legitimate payment traffic
+// and far below anything useful for driving outbound-call abuse. Extracted so
+// the limit is unit-testable (webhook_ratelimit_test.go).
+func newWebhookRateLimiter() echo.MiddlewareFunc {
+	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
+		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
+			middleware.RateLimiterMemoryStoreConfig{Rate: 60.0 / 3600.0, Burst: 10, ExpiresIn: 10 * time.Minute},
+		),
+	})
 }
 
 // EnsureWebhook registers the payment.changed subscription with Lexware at boot.

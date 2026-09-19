@@ -111,32 +111,6 @@ func CollectGitHubEvidence(ctx context.Context, db *pgxpool.Pool, orgID, integra
 	return rows.Err()
 }
 
-// CollectGitHubGHASEvidence collects Dependabot, Secret Scanning and Code Scanning
-// alerts from GitHub GHAS and writes them as ck_evidence entries.
-// Called after a successful GitHub sync. Returns silently if GHAS is not enabled.
-func CollectGitHubGHASEvidence(ctx context.Context, db *pgxpool.Pool, orgID, integrationID string) error {
-	// Load integration: token (encrypted hex) + owner/repo
-	var repoOwner, repoName, encToken string
-	err := db.QueryRow(ctx, `
-		SELECT repo_owner, repo_name, access_token
-		FROM integrations_github
-		WHERE id = $1::uuid AND org_id = $2::uuid`,
-		integrationID, orgID,
-	).Scan(&repoOwner, &repoName, &encToken)
-	if err != nil {
-		return fmt.Errorf("load github integration for ghas: %w", err)
-	}
-	_ = encToken // token is already embedded in the existing Client via the calling service
-
-	// We can't decrypt the token here (no masterKey), so we create a noop client and fall back
-	// to the stored check results for GHAS counts. Full GHAS alert collection is triggered
-	// by the GitHub service which calls us with a pre-created client.
-	// The token is already decrypted by the caller; we just reference a pre-fetched collection.
-	// NOTE: this function variant takes pre-fetched alerts from the caller to avoid storing
-	// the master key in this package.
-	return nil
-}
-
 // CollectGitHubGHASAlerts writes pre-fetched GHAS alerts as ck_evidence entries.
 // Called by the GitHub service after decrypting the token and fetching alerts.
 func CollectGitHubGHASAlerts(

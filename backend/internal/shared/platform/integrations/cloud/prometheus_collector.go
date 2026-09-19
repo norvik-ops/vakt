@@ -51,8 +51,8 @@ func (c *PrometheusCollector) clientFor(allowPrivate bool) *http.Client {
 func (c *PrometheusCollector) Collect(ctx context.Context, orgID string, cfg PrometheusConfig) (int, error) {
 	client := c.clientFor(cfg.AllowPrivateTarget)
 
-	availabilityControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"availability", "capacity", "uptime"})
-	monitoringControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"monitoring", "alerting", "observability"})
+	availabilityControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("availability", "capacity", "uptime"))
+	monitoringControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("monitoring", "alerting", "observability"))
 
 	total := 0
 	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as

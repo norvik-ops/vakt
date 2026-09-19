@@ -1,8 +1,51 @@
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertCircle, AlertTriangle } from 'lucide-react'
 import { useGitHubCheckResults, type GitHubCheckResult } from '../../../hooks/useGitHub'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import { type CloudEvidenceItem } from '../../../hooks/useCloud'
+
+// --- SSRF private-target opt-in toggle ---
+
+// AllowPrivateTargetToggle renders the opt-in that lets a collector dial an
+// RFC1918 / private-network address (R1-SA27-01). It is OFF by default and its
+// own warning: enabling it is a deliberate relaxation of the outbound SSRF guard
+// for a trusted on-premises target, so the risk sits directly next to the switch
+// rather than in documentation the operator never reads. `id` keeps the label's
+// htmlFor unique when several tabs mount their form on the same page.
+export function AllowPrivateTargetToggle({
+  id,
+  checked,
+  onChange,
+}: {
+  id: string
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5">
+      <div className="flex items-start gap-2">
+        <input
+          type="checkbox"
+          id={id}
+          checked={checked}
+          onChange={(e) => { onChange(e.target.checked); }}
+          className="mt-0.5 rounded border-amber-400"
+        />
+        <label htmlFor={id} className="text-xs text-amber-900">
+          <span className="font-medium">Private / interne Ziele erlauben (RFC1918)</span>
+          <span className="mt-1 flex items-start gap-1 text-[11px] text-amber-800">
+            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+            <span>
+              Hebt den SSRF-Schutz für dieses Ziel auf und lässt Verbindungen in
+              private Netze (z.&nbsp;B. 10.0.0.0/8, 192.168.0.0/16) zu. Nur für
+              vertrauenswürdige, selbst betriebene On-Premises-Systeme aktivieren.
+            </span>
+          </span>
+        </label>
+      </div>
+    </div>
+  )
+}
 
 // --- Status badge ---
 

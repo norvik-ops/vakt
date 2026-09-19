@@ -33,7 +33,7 @@ Free-to-self-host alternative to Vanta, Drata, or DataGuard. Those vendors don't
 |---|---|
 | 📊 **Vakt Comply** | Compliance hub: control tracking, gap analysis, risk register, incident register, policy templates (10 German templates), auditor portal, audit package export (ZIP), AI-generated reports, NIS2 registration wizard, Trust Center |
 | 🔍 **Vakt Scan** | Scanner orchestration: Trivy, Nuclei, OpenVAS. Finding deduplication, SLA tracking, daily BSI CERT-Bund advisory feed, automatic evidence on resolved findings |
-| 🔐 **Vakt Vault** | Secrets management: AES-256-GCM storage, Git repo scanning (gitleaks), automatic rotation, CI/CD integration |
+| 🔐 **Vakt Vault** | Secrets management: AES-256-GCM storage, Git repo scanning (gitleaks), on-demand rotation with due-date reminders, CI/CD integration |
 | 📧 **Vakt Aware** | Security awareness: internal phishing simulations, micro-trainings, SMTP campaigns, anonymised reporting (Betriebsrats-konform), automatic evidence on training completion |
 | 📋 **Vakt Privacy** | GDPR documentation hub: VVT (Art. 30), DPIA (Art. 35), AVV management (Art. 28), DSR workflows, breach notification records (Art. 33/34) |
 | 👥 **Vakt HR** | Employee lifecycle management: onboarding and offboarding checklists, checklist runs per employee, employee directory with status tracking. Audit-ready evidence that access provisioning and revocation steps were completed. |
@@ -115,10 +115,10 @@ Caddy will automatically fetch a Let's Encrypt certificate for your domain (port
 **Just want to try it out first?** Run with demo mode — no user account setup needed:
 
 ```bash
-VAKT_DEMO=true docker compose --profile demo up -d
+VAKT_DEMO=true docker compose up -d
 ```
 
-The login screen will show ready-to-use credentials automatically. When you're ready to set up your real instance, stop the demo (`docker compose --profile demo down`) and run the standard setup above.
+The login screen will show ready-to-use credentials automatically. When you're ready to set up your real instance, stop the demo (`docker compose down`) and run the standard setup above.
 
 > **Migrations** run automatically on every `docker compose up -d` — a dedicated `migrate` container applies all pending migrations before the API and worker start.
 
@@ -179,7 +179,7 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 
 > **Basis** — these modules are usable in Community with their core functionality. **Pro** unlocks the advanced features per module:
 > - **Vakt Scan** — SBOM scanning, EOL tracking, report generation & export, Wazuh import
-> - **Vakt Vault** — Git repo secret scanning, automatic rotation, access reviews
+> - **Vakt Vault** — Git repo secret scanning, on-demand rotation, access reviews
 > - **Vakt Aware** — phishing campaigns, template library, target groups
 > - **Vakt Privacy** — DPIA workflows, deletion-reminder automation, PDF exports
 

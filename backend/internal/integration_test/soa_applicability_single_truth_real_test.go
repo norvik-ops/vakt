@@ -57,14 +57,21 @@ import (
 // ck_soa_entries — eine eigene, versionierte und freigebbare Fassung
 // (Migration 181: version, is_approved, approved_by/at, manually_set), die aus
 // einem statischen ISO-27001-Annex-A-Katalog befuellt wird
-// (policy/soa_controls_seed.go) und ck_controls nur ueber
-// SyncSoAImplementationStatus beruehrt — und dort ausschliesslich den
-// Umsetzungsstand, nie die Anwendbarkeit. Das ist ein bewusst getrenntes
-// Dokument, kein dritter Zufall, und bleibt deshalb aussen vor.
+// (policy/soa_controls_seed.go). Der fruehere automatische Abgleich nach
+// ck_controls (SyncSoAImplementationStatus) war tot und wurde entfernt
+// (R1-SA25-02); ck_soa_entries ist damit ein bewusst getrenntes Dokument, das
+// die Anwendbarkeit in ck_controls nie beruehrt, und bleibt deshalb aussen vor.
 //
 // Nicht-Vakuitaet: dreht man Migration 264 zurueck (soa_applicable wieder als
 // frei beschreibbare Spalte) und laesst UpdateSoAApplicability wieder
 // soa_applicable schreiben, faellt die Zusicherung fuer CTRL-B in der PDF.
+//
+// Hinweis (2026-09-18, R1-36a-D02 / ADR-0091): Seit ck_soa_entries als kanonische
+// SoA gilt, liest /frameworks/:id/soa.pdf aus ck_soa_entries, SOBALD eine dedizierte
+// SoA initialisiert ist. Dieser Test initialisiert sie bewusst NICHT und prueft
+// damit den Fallback-Pfad, in dem der Framework-Export weiter aus ck_controls
+// ableitet und mit der CSV uebereinstimmen muss. Die Konvergenz auf die kanonische
+// Quelle im initialisierten Fall pinnt TestFrameworkSoAExport_ServesCanonicalSource.
 func TestSoAApplicability_AllExportsAgree(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: -short mode")

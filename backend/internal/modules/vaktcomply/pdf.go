@@ -1814,7 +1814,12 @@ func GenerateNIS2ReportFormPDF(incident *Incident, reportType, orgName string) (
 
 // GenerateSoAPDF renders an ISO 27001 Statement of Applicability as a PDF document.
 // Controls are grouped by domain (A.5, A.6, A.7, A.8).
-func GenerateSoAPDF(rows []SoARow, frameworkName, orgName string, generatedAt time.Time) ([]byte, error) {
+//
+// draft marks the output as a non-approved draft derived from control status. It is
+// set only when no canonical SoA (ck_soa_entries) has been initialised yet — see
+// R1-36a-D02 / ADR-0091. When true, a visible banner keeps this document from being
+// mistaken for the canonical, versioned Statement of Applicability.
+func GenerateSoAPDF(rows []SoARow, frameworkName, orgName string, generatedAt time.Time, draft bool) ([]byte, error) {
 	pdf := pdfutil.New("L") // Landscape for the wide table
 	pdf.SetMargins(12, 12, 12)
 	pdf.SetAutoPageBreak(true, 14)
@@ -1844,6 +1849,21 @@ func GenerateSoAPDF(rows []SoARow, frameworkName, orgName string, generatedAt ti
 		"", "L", false)
 
 	pdf.SetY(pdf.GetY() + 3)
+
+	// R1-36a-D02 / ADR-0091: stamp the draft fallback unmistakably. The canonical
+	// SoA lives in ck_soa_entries; this control-status-derived variant is only a
+	// draft and must never look like the approved document.
+	if draft {
+		pdf.SetFillColor(254, 226, 226)
+		pdf.SetTextColor(153, 27, 27)
+		pdf.SetFont("Helvetica", "B", 8)
+		pdf.CellFormat(273, 6,
+			"  ENTWURF — nicht die freigegebene SoA. Aus dem Control-Status abgeleitet, "+
+				"solange keine kanonische SoA (Seite „Statement of Applicability“) initialisiert ist.",
+			"1", 1, "L", true, 0, "")
+		pdf.SetTextColor(30, 30, 40)
+		pdf.SetY(pdf.GetY() + 2)
+	}
 
 	// Group rows by domain
 	seen := make(map[string]bool)

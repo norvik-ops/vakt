@@ -796,9 +796,9 @@ func (r *Repository) ListControlsCursor(ctx context.Context, orgID, frameworkID 
 // BulkUpdateControlStatus sets manual_status for all controls in ids that belong to the org.
 func (r *Repository) BulkUpdateControlStatus(ctx context.Context, orgID string, ids []string, status string) error {
 	if err := r.q.BulkUpdateCKControlStatus(ctx, db.BulkUpdateCKControlStatusParams{
-		ManualStatus: ckOptText(status),
-		Ids:          ids,
-		OrgID:        orgID,
+		Status: status,
+		Ids:    ids,
+		OrgID:  orgID,
 	}); err != nil {
 		return fmt.Errorf("bulk update control status: %w", err)
 	}
@@ -903,18 +903,4 @@ func (r *Repository) GetFrameworkMappingCounts(ctx context.Context, orgID string
 		out = append(out, p)
 	}
 	return out, rows.Err()
-}
-
-// SetControlPartialIfUnset sets manual_status = 'partial' on a control if it
-// is currently unset (NULL or empty). Never overwrites 'implemented' or 'partial'.
-func (r *Repository) SetControlPartialIfUnset(ctx context.Context, orgID, controlID string) error {
-	_, err := r.db.Exec(ctx, `
-		UPDATE ck_controls
-		SET manual_status = 'partial'
-		WHERE id = $1::uuid
-		  AND org_id = $2::uuid
-		  AND (manual_status IS NULL OR manual_status = '')`,
-		controlID, orgID,
-	)
-	return err
 }

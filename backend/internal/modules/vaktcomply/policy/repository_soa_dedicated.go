@@ -336,38 +336,3 @@ func (r *Repository) CountExcludedWithoutReason(ctx context.Context, orgID strin
 	).Scan(&count)
 	return count, err
 }
-
-// SyncSoAImplementationStatus updates implementation_status based on evidence count,
-// but only if manually_set = false for the entry.
-func (r *Repository) SyncSoAImplementationStatus(ctx context.Context, orgID, controlID string) error {
-	// Count non-stale evidence for this control
-	var evidenceCount int
-	r.db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM ck_evidence
-		WHERE org_id = $1 AND control_id = $2
-		  AND (expires_at IS NULL OR expires_at > NOW())`,
-		orgID, controlID,
-	).Scan(&evidenceCount) //nolint:errcheck
-
-	status := "not_started"
-	switch {
-	case evidenceCount >= 3:
-		status = "implemented"
-	case evidenceCount >= 1:
-		status = "partial"
-	}
-
-	// Get current version
-	version, err := r.GetCurrentSoAVersion(ctx, orgID)
-	if err != nil || version == 0 {
-		return err
-	}
-
-	// Update only if not manually_set
-	_, err = r.db.Exec(ctx, `
-		UPDATE ck_soa_entries SET implementation_status = $1, updated_at = NOW()
-		WHERE org_id = $2 AND version = $3 AND ck_control_id = $4 AND manually_set = false`,
-		status, orgID, version, controlID,
-	)
-	return err
-}

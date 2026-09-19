@@ -96,9 +96,9 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		return 0, fmt.Errorf("gitlab: list projects: %w", err)
 	}
 
-	sdlcControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"secure development", "sdlc", "code", "source"})
-	changeControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"change management", "approval", "review"})
-	assetControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"asset", "inventory", "software"})
+	sdlcControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("secure development", "sdlc", "code", "source"))
+	changeControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("change management", "approval", "review"))
+	assetControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("asset", "inventory", "software"))
 
 	total := 0
 	// F3/R-H20: accumulate sub-collector failures (see cloud collector comment).

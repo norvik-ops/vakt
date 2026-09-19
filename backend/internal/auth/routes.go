@@ -16,9 +16,24 @@ import (
 )
 
 // Register mounts the auth routes onto the given echo Group.
-func Register(g *echo.Group, h *Handler) {
-	g.POST("/register", h.Register)
-	g.POST("/login", h.Login)
+//
+// credentialLimiter is applied as an extra per-route middleware to the four
+// credential routes (register, login, password-reset request+confirm) on top of
+// whatever middleware the group already carries. It is registered here, exactly
+// once, rather than re-registering the same path on the parent group in the
+// composition root: a second POST of an identical path silently wins in Echo's
+// router and drops the group's middleware for that route — the login/register/
+// password-reset routes then ran WITHOUT the group's IP rate limiter, and any
+// middleware later hung on the auth group would silently miss them (R1-SA08-01).
+// Pass nil to mount the credential routes with the group middleware only.
+func Register(g *echo.Group, h *Handler, credentialLimiter echo.MiddlewareFunc) {
+	var cred []echo.MiddlewareFunc
+	if credentialLimiter != nil {
+		cred = []echo.MiddlewareFunc{credentialLimiter}
+	}
+
+	g.POST("/register", h.Register, cred...)
+	g.POST("/login", h.Login, cred...)
 	g.POST("/refresh", h.Refresh)
 	g.POST("/logout", h.Logout)
 
@@ -34,8 +49,8 @@ func Register(g *echo.Group, h *Handler) {
 	g.POST("/saml/acs", h.SAMLDirectACS, features.Require(features.FeatureSAMLAuth))
 
 	// Password reset — local auth only, no auth middleware required.
-	g.POST("/password-reset/request", h.RequestPasswordReset)
-	g.POST("/password-reset/confirm", h.ResetPassword)
+	g.POST("/password-reset/request", h.RequestPasswordReset, cred...)
+	g.POST("/password-reset/confirm", h.ResetPassword, cred...)
 }
 
 // RegisterAdminRoutes mounts admin-only auth management routes onto g.

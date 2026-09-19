@@ -46,12 +46,12 @@ func (c *AzureCollector) Collect(ctx context.Context, orgID string, cfg AzureCon
 		return 0, fmt.Errorf("azure auth: %w", err)
 	}
 
-	securityControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"security", "cloud", "monitoring", "azure"})
+	securityControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("security", "cloud", "monitoring", "azure"))
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("azure_collector: no security controls found")
 	}
 
-	policyControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"policy", "compliance", "configuration"})
+	policyControls, err := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("policy", "compliance", "configuration"))
 	if err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("azure_collector: no policy controls found")
 	}

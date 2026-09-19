@@ -10,6 +10,7 @@ import {
   useChecklists,
   useChecklistRuns,
   useStartChecklistRun,
+  useStartOffboarding,
   useUpdateChecklistRun,
 } from '../hooks/useHR'
 import type { Employee } from '../types'
@@ -24,6 +25,7 @@ vi.mock('../hooks/useHR', () => ({
   useDeleteChecklist: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useChecklistRuns: vi.fn(),
   useStartChecklistRun: vi.fn(),
+  useStartOffboarding: vi.fn(),
   useUpdateChecklistRun: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
@@ -53,7 +55,8 @@ beforeEach(() => {
   vi.mocked(useDeleteEmployee).mockReturnValue({ mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false } as unknown as R<typeof useDeleteEmployee>)
   vi.mocked(useChecklists).mockReturnValue({ data: [] } as unknown as R<typeof useChecklists>)
   vi.mocked(useChecklistRuns).mockReturnValue({ data: [] } as unknown as R<typeof useChecklistRuns>)
-  vi.mocked(useStartChecklistRun).mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as unknown as R<typeof useStartChecklistRun>)
+  vi.mocked(useStartChecklistRun).mockReturnValue({ mutateAsync: vi.fn().mockResolvedValue({ id: 'run-1' }), isPending: false } as unknown as R<typeof useStartChecklistRun>)
+  vi.mocked(useStartOffboarding).mockReturnValue({ mutateAsync: vi.fn().mockResolvedValue({ id: 'run-off' }), isPending: false } as unknown as R<typeof useStartOffboarding>)
   vi.mocked(useUpdateChecklistRun).mockReturnValue({ mutate: vi.fn(), isPending: false } as unknown as R<typeof useUpdateChecklistRun>)
   mockMutateAsync.mockClear()
 })
@@ -133,5 +136,53 @@ describe('EmployeesPage — create mutation', () => {
       expect(mockMutateAsync).not.toHaveBeenCalled()
       expect(screen.getAllByText('Dieses Feld ist erforderlich.').length).toBeGreaterThan(0)
     })
+  })
+})
+
+// ── offboarding trigger sets employee status (R1-36c-03 Teil A) ──────────────────
+
+describe('EmployeesPage — starting a checklist run', () => {
+  const ONBOARD = { id: 'cl-on', name: 'Standard Onboarding', type: 'onboarding' } as unknown as import('../types').Checklist
+  const OFFBOARD = { id: 'cl-off', name: 'Standard Offboarding', type: 'offboarding' } as unknown as import('../types').Checklist
+
+  function wireStartMocks() {
+    const startRun = vi.fn().mockResolvedValue({ id: 'run-1' })
+    const startOffboarding = vi.fn().mockResolvedValue({ id: 'run-off' })
+    vi.mocked(useEmployees).mockReturnValue({ data: [EMPLOYEE], isLoading: false, pagination: undefined } as unknown as R<typeof useEmployees>)
+    vi.mocked(useChecklistRuns).mockReturnValue({ data: [] } as unknown as R<typeof useChecklistRuns>)
+    vi.mocked(useChecklists).mockReturnValue({ data: [ONBOARD, OFFBOARD] } as unknown as R<typeof useChecklists>)
+    vi.mocked(useStartChecklistRun).mockReturnValue({ mutateAsync: startRun, isPending: false } as unknown as R<typeof useStartChecklistRun>)
+    vi.mocked(useStartOffboarding).mockReturnValue({ mutateAsync: startOffboarding, isPending: false } as unknown as R<typeof useStartOffboarding>)
+    return { startRun, startOffboarding }
+  }
+
+  it('routes an offboarding checklist through the offboard endpoint (sets status)', async () => {
+    const { startRun, startOffboarding } = wireStartMocks()
+    renderWithProviders(<EmployeesPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: /checkliste starten/i }))
+    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('option', { name: /Standard Offboarding/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Starten$/ }))
+
+    await waitFor(() => {
+      expect(startOffboarding).toHaveBeenCalledWith('emp-1')
+    })
+    expect(startRun).not.toHaveBeenCalled()
+  })
+
+  it('keeps the generic start for an onboarding checklist', async () => {
+    const { startRun, startOffboarding } = wireStartMocks()
+    renderWithProviders(<EmployeesPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: /checkliste starten/i }))
+    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('option', { name: /Standard Onboarding/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Starten$/ }))
+
+    await waitFor(() => {
+      expect(startRun).toHaveBeenCalledWith(expect.objectContaining({ employee_id: 'emp-1', checklist_id: 'cl-on' }))
+    })
+    expect(startOffboarding).not.toHaveBeenCalled()
   })
 })

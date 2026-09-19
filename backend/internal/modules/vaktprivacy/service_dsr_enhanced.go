@@ -24,11 +24,14 @@ import (
 // This runs daily via the privacy:dsr_deadline_check Asynq task.
 func (s *Service) CheckOverdueRequests(ctx context.Context) error {
 	// orgid-lint: global — daily background job: intentionally marks overdue DSRs across all orgs
-	// Mark all non-closed requests past their deadline as overdue
+	// Mark all non-closed requests past their deadline as overdue.
+	// R1-14c-14: 'extended' must NOT be excluded, and the effective deadline is
+	// extension_due_at when set — an extended request (Art. 12 Abs. 3, +2 months)
+	// otherwise never became overdue because its own extension deadline was never read.
 	_, err := s.db.Exec(ctx, `
 		UPDATE po_dsr SET status = 'overdue', updated_at = NOW()
-		WHERE status NOT IN ('completed', 'rejected', 'extended', 'overdue')
-		  AND due_date < CURRENT_DATE`)
+		WHERE status NOT IN ('completed', 'rejected', 'overdue')
+		  AND COALESCE(extension_due_at::date, due_date) < CURRENT_DATE`)
 	if err != nil {
 		return fmt.Errorf("mark overdue dsrs: %w", err)
 	}
@@ -196,12 +199,13 @@ func (s *Service) GetDSRSummary(ctx context.Context, orgID string) (*DSRSummary,
 		return nil, fmt.Errorf("get dsr summary: %w", err)
 	}
 
-	// On-time rate: fulfilled in time (completed_at <= due_date)
+	// On-time rate: fulfilled in time. R1-14c-14: for extended requests the
+	// effective deadline is extension_due_at, so compare against COALESCE.
 	var total, onTime int
 	s.db.QueryRow(ctx, `
 		SELECT
 			COUNT(*),
-			COUNT(*) FILTER (WHERE completed_at::date <= due_date)
+			COUNT(*) FILTER (WHERE completed_at::date <= COALESCE(extension_due_at::date, due_date))
 		FROM po_dsr
 		WHERE org_id = $1
 		  AND status IN ('completed','fulfilled','rejected','extended')

@@ -50,9 +50,9 @@ func (c *EntraIDCollector) Collect(ctx context.Context, orgID string, cfg EntraI
 		return 0, fmt.Errorf("entraid auth: %w", err)
 	}
 
-	identityControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"mfa", "authentication", "access", "identity"})
-	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"privileged", "admin", "access", "rights"})
-	monitoringControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"monitoring", "risk", "incident"})
+	identityControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("mfa", "authentication", "access", "identity"))
+	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("privileged", "admin", "access", "rights"))
+	monitoringControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("monitoring", "risk", "incident"))
 
 	total := 0
 	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as

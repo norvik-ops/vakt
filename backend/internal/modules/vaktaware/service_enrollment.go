@@ -72,11 +72,19 @@ func enrollmentSourceFor(triggerType string) (string, error) {
 }
 
 // AutoEnrollmentPayload is the Asynq task payload for auto-enrollment jobs.
+//
+// Email and FullName (ADR-0088) carry the new employee's contact PII so the
+// enrollment row is written addressable. They are optional and additive: the
+// phishing_click path leaves them empty, and the row then stores NULL — that
+// employee is already a target of the campaign they clicked in, so no
+// materialisation is needed for them.
 type AutoEnrollmentPayload struct {
 	OrgID       string `json:"org_id"`
 	TriggerType string `json:"trigger_type"`
 	EmployeeID  string `json:"employee_id,omitempty"`
 	CampaignID  string `json:"campaign_id,omitempty"`
+	Email       string `json:"email,omitempty"`
+	FullName    string `json:"full_name,omitempty"`
 }
 
 // ListEnrollmentRules returns all enrollment rules for the org.
@@ -148,7 +156,7 @@ func (s *Service) HandleAutoEnrollment(ctx context.Context, payload AutoEnrollme
 			continue
 		}
 		matched++
-		created, err := s.enrollIfNotAlready(ctx, payload.OrgID, *rule.TargetCampaignID, payload.EmployeeID, source)
+		created, err := s.enrollIfNotAlready(ctx, payload.OrgID, *rule.TargetCampaignID, payload.EmployeeID, source, payload.Email, payload.FullName)
 		if err != nil {
 			// Still logged with the rule id — but ALSO collected, so the caller
 			// learns that the work did not happen.
@@ -184,7 +192,7 @@ func (s *Service) HandleAutoEnrollment(ctx context.Context, payload AutoEnrollme
 //
 // `source` is an already-translated sr_campaign_enrollments.source value, never
 // a trigger type — see enrollmentSourceFor.
-func (s *Service) enrollIfNotAlready(ctx context.Context, orgID, campaignID, employeeID, source string) (bool, error) {
+func (s *Service) enrollIfNotAlready(ctx context.Context, orgID, campaignID, employeeID, source, email, fullName string) (bool, error) {
 	already, err := s.repo.IsEnrolledInCampaign(ctx, orgID, campaignID, employeeID)
 	if err != nil {
 		return false, fmt.Errorf("check enrollment: %w", err)
@@ -192,7 +200,7 @@ func (s *Service) enrollIfNotAlready(ctx context.Context, orgID, campaignID, emp
 	if already {
 		return false, nil
 	}
-	if err := s.repo.CreateCampaignEnrollment(ctx, orgID, campaignID, employeeID, source); err != nil {
+	if err := s.repo.CreateCampaignEnrollment(ctx, orgID, campaignID, employeeID, source, email, fullName); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -246,6 +254,8 @@ func (t *EnrollmentTrigger) TriggerNewEmployeeEnrollment(ctx context.Context, in
 		OrgID:       in.OrgID,
 		TriggerType: TriggerNewEmployee,
 		EmployeeID:  in.EmployeeID,
+		Email:       in.Email,
+		FullName:    in.Name,
 	})
 }
 

@@ -76,14 +76,22 @@ func SCIMAuthMiddleware(db *pgxpool.Pool) echo.MiddlewareFunc {
 			sum := sha256.Sum256([]byte(token))
 			tokenHash := hex.EncodeToString(sum[:])
 
+			// R1-SA21-D9: the auto-revocation worker (TaskSCIMTokenExpiry) sets
+			// revoked_at lazily, so between a token's expires_at and the next worker
+			// run (up to 24h — or never, if no worker is deployed) an expired token
+			// would still authenticate. Enforce expiry here at the auth boundary so
+			// a lapsed token is rejected immediately, independent of the sweep job.
+			// NULL expires_at means "never expires" (migration 147 semantics).
 			var orgID string
 			err := db.QueryRow(c.Request().Context(),
 				`SELECT org_id::text FROM scim_tokens
-				  WHERE token_hash = $1 AND revoked_at IS NULL`,
+				  WHERE token_hash = $1
+				    AND revoked_at IS NULL
+				    AND (expires_at IS NULL OR expires_at > NOW())`,
 				tokenHash,
 			).Scan(&orgID)
 			if err != nil {
-				log.Warn().Str("remote_ip", c.RealIP()).Msg("scim: invalid or revoked token")
+				log.Warn().Str("remote_ip", c.RealIP()).Msg("scim: invalid, revoked, or expired token")
 				return scimError(c, http.StatusUnauthorized, "unauthorized", "Invalid or revoked SCIM token")
 			}
 

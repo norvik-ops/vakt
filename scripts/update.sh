@@ -293,7 +293,11 @@ echo "    Services restarting..."
 echo ""
 echo "==> Step 6/${TOTAL_STEPS}: Waiting for health check (${HEALTH_URL})..."
 for i in $(seq 1 "$HEALTH_RETRIES"); do
-	if curl -sfL "$HEALTH_URL" >/dev/null 2>&1; then
+	# -k: Caddy redirects http://localhost → https with its INTERNAL CA cert,
+	#     which curl does not trust (exit 60). The probe is loopback-only, so
+	#     skipping cert verification is safe and avoids a false rollback advice
+	#     after a successful upgrade.
+	if curl -sfkL "$HEALTH_URL" >/dev/null 2>&1; then
 		echo "    Health check passed after $((i * HEALTH_WAIT))s."
 		echo ""
 		echo "Update complete! Vakt is running with the new version."

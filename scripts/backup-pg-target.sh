@@ -244,6 +244,40 @@ vakt_pg_dump_to() {
 	esac
 }
 
+# vakt_pg_exec_sql <sql>
+# Fuehrt eine SQL-Anweisung gegen die Datenbank aus — ueber denselben in
+# vakt_pg_require_valid_mode aufgeloesten Weg wie der Dump (Container per
+# `docker exec … psql` ODER Host per `psql "$VAKT_PG_URL"`). rc != 0 = die
+# Ausfuehrung schlug fehl; die BEWERTUNG (Abbruch oder Warnung) faellt beim
+# Aufrufer — der backup_log-Schreiber in backup.sh behandelt sie best-effort.
+#
+# Die SQL kommt ueber STDIN (`psql -f -`), NICHT als `-c`-Argument. Damit gibt es
+# keine zweite Shell-Quoting-Ebene um die Anweisung und keine Injektionsflaeche
+# durch Sonderzeichen (der DELETE-Zweig des Schreibers enthaelt z. B. `'90 days'`).
+# `-v ON_ERROR_STOP=1`: bei mehreren Statements in einem Aufruf muss das erste
+# fehlschlagende den rc setzen, sonst meldet psql faelschlich Erfolg.
+vakt_pg_exec_sql() {
+	local sql="$1" cid="" rc=0
+	cid="$(_vakt_pg_pick)" || rc=$?
+	case "$rc" in
+	0)
+		printf '%s' "$sql" | docker exec -i "$cid" sh -c 'exec psql \
+			-v ON_ERROR_STOP=1 -q \
+			-U "${POSTGRES_USER:?POSTGRES_USER ist im postgres-Container nicht gesetzt}" \
+			-d "${POSTGRES_DB:?POSTGRES_DB ist im postgres-Container nicht gesetzt}" \
+			-f -'
+		;;
+	1)
+		command -v psql >/dev/null 2>&1 || return 1
+		printf '%s' "$sql" | psql -v ON_ERROR_STOP=1 -q "${VAKT_PG_URL:?VAKT_PG_URL nicht gesetzt}" -f -
+		;;
+	*)
+		# Nicht aufgeloest — wie ueberall in dieser Datei kein stiller Rueckfall.
+		return "$rc"
+		;;
+	esac
+}
+
 # vakt_pg_restore_from <dumpdatei>
 # Faehrt `pg_restore --clean --if-exists`. Gibt pg_restores Exit-Code zurueck —
 # die BEWERTUNG dieses Codes passiert beim Aufrufer (restore.sh), weil nur der

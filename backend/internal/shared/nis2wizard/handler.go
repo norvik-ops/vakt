@@ -164,8 +164,9 @@ func (h *Handler) ExportPDF(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "run not found or expired"})
 	}
 
-	// Org-Name aus dem Kontext holen (gesetzt von AuthMiddleware), Fallback auf orgID.
-	orgName, _ := c.Get("org_name").(string)
+	// R1-W8A-N1: resolve the org name here — nothing sets "org_name" in the
+	// context, so the fallback used to win every time. DB failure keeps the fallback.
+	orgName := h.svc.OrgName(c.Request().Context(), orgID)
 	if orgName == "" {
 		orgName = fmt.Sprintf("Organisation %s", orgID[:8])
 	}

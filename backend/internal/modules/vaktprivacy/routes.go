@@ -76,6 +76,7 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.PUT("/breaches/:id", h.UpdateBreach, rw)
 	g.DELETE("/breaches/:id", h.DeleteBreach, admin)
 	g.POST("/breaches/:id/notify-authority", h.MarkAuthorityNotified, rw)
+	g.PUT("/breaches/:id/status", h.UpdateBreachStatus, rw)
 	g.GET("/breaches/:id/notification-pdf", h.ExportBreachNotification)
 
 	// DSR — Data Subject Requests (Art. 15-21 DSGVO)

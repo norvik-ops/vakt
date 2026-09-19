@@ -700,7 +700,18 @@ func (h *Handler) ListPendingApprovals(c echo.Context) error {
 
 // CountPendingApprovals handles GET /api/v1/vaktcomply/approvals/count.
 // Returns the number of pending approvals — used for the nav badge.
+// Admin-only: mirrors ListPendingApprovals. Without this gate a non-admin could
+// read the pending-approval count (R1-W7C-N2).
 func (h *Handler) CountPendingApprovals(c echo.Context) error {
+	admin, err := h.isOrgAdmin(c)
+	if err != nil {
+		log.Error().Err(err).Msg("check admin role for count approvals")
+		return errResp(c, http.StatusInternalServerError, "role check failed", "CK_INTERNAL")
+	}
+	if !admin {
+		return errResp(c, http.StatusForbidden, "admin role required", "CK_FORBIDDEN")
+	}
+
 	count, err := h.service.Audit.CountPendingApprovals(c.Request().Context(), orgID(c))
 	if err != nil {
 		log.Error().Err(err).Msg("count pending approvals")
@@ -1600,6 +1611,34 @@ func (h *Handler) PortalGetAssessment(c echo.Context) error {
 	return c.JSON(http.StatusOK, a)
 }
 
+// supplierFileURLPrefix is the only shape PortalUploadFile ever emits for an
+// answer's file_url (see the fileURL assignment in PortalUploadFile). Answers
+// arrive on an UNAUTHENTICATED portal route and their file_url is later rendered
+// as an <a href> in the internal reviewer's UI (AssessmentReviewView.tsx), so an
+// unconstrained value is a phishing/redirect vector: "javascript:" is stopped by
+// the CSP, but "https://evil/" is not stopped by anything. We therefore accept
+// only the app-relative upload path this server itself produced.
+const supplierFileURLPrefix = "/uploads/supplier-assessments/"
+
+// validateSupplierAnswerURLs rejects any answer whose file_url is not the
+// app-relative upload path produced by PortalUploadFile (R1-SA22-03). Empty
+// file_url is allowed (not every answer carries a file). The prefix check alone
+// rejects absolute URLs ("https://evil/"), scheme URLs ("javascript:…") and
+// protocol-relative URLs ("//evil/…") because none of them begin with a single
+// "/uploads/supplier-assessments/"; the explicit ".." check blocks path
+// traversal within the allowed prefix.
+func validateSupplierAnswerURLs(in SaveAnswersInput) bool {
+	for _, ans := range in.Answers {
+		if ans.FileURL == "" {
+			continue
+		}
+		if !strings.HasPrefix(ans.FileURL, supplierFileURLPrefix) || strings.Contains(ans.FileURL, "..") {
+			return false
+		}
+	}
+	return true
+}
+
 // PortalSaveAnswers handles POST /supplier/:token/save (public, no auth).
 func (h *Handler) PortalSaveAnswers(c echo.Context) error {
 	token := c.Param("token")
@@ -1608,6 +1647,9 @@ func (h *Handler) PortalSaveAnswers(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
+	}
+	if !validateSupplierAnswerURLs(in) {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
 	if err := h.service.SaveAnswers(c.Request().Context(), token, in); err != nil {
@@ -1628,6 +1670,9 @@ func (h *Handler) PortalSubmitAssessment(c echo.Context) error {
 		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_BAD_REQUEST")
 	}
 	if err := h.validate.Struct(in); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
+	}
+	if !validateSupplierAnswerURLs(in) {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
 	clientIP := c.RealIP()

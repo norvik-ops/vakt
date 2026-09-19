@@ -25,7 +25,7 @@ import (
 // vaktcomply_freigabe_real_test.go gegen echtes Postgres.
 
 // TestManagementReviewOverdue_NoReviews verifies that isOverdue=true when no review exists.
-// Tests the pure overdue logic from GetLastManagementReviewDate (nil result path).
+// Tests the pure management-review-overdue logic (ManagementReviewOverdueDays, nil path).
 func TestManagementReviewOverdue_NoReviews(t *testing.T) {
 	// Replicate the nil-review path logic directly.
 	var mr *ManagementReview // nil = no review exists

@@ -12,6 +12,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/matharnica/vakt/internal/shared/httputil"
+	"github.com/matharnica/vakt/internal/shared/password"
 )
 
 // Handler holds HTTP handler methods for the setup endpoints.
@@ -213,39 +214,30 @@ func (h *Handler) PostSetup(c echo.Context) error {
 }
 
 // Register attaches setup routes to the provided Echo group.
-func Register(g *echo.Group, h *Handler) {
+//
+// The two routes have very different call patterns and must not share one limit
+// (R1-SA18-03): GET /status is polled by the frontend on every page load to
+// decide whether to show the setup wizard, while POST is the one-shot org
+// creation. The group's limiter is sized for the polling read; the strict
+// write limiter is applied to POST only, via postLimiter. Mounting both under a
+// single 5/5min limiter starved /status (the frontend swallows its errors with
+// an empty .catch), which silently disabled the setup switch. postLimiter may be
+// nil (then POST carries the group limiter only).
+func Register(g *echo.Group, h *Handler, postLimiter echo.MiddlewareFunc) {
 	g.GET("/status", h.GetStatus)
-	g.POST("", h.PostSetup)
+	if postLimiter != nil {
+		g.POST("", h.PostSetup, postLimiter)
+	} else {
+		g.POST("", h.PostSetup)
+	}
 }
 
-// validateSetupPassword enforces the same password complexity policy as the auth
-// service (auth.validatePasswordStrength), which is unexported and cannot be
-// called cross-package. Minimum: 10 chars, one uppercase, one digit, one special char.
+// validateSetupPassword enforces the canonical Vakt password policy. It
+// delegates to the shared package so setup, auth, admin and usermgmt all apply
+// the identical rule set (R1-W7C-N2). Previously this held a private copy whose
+// special-character set diverged from the canonical one.
 func validateSetupPassword(pw string) error {
-	if len(pw) < 10 {
-		return fmt.Errorf("password must be at least 10 characters")
-	}
-	var hasUpper, hasDigit, hasSpecial bool
-	for _, r := range pw {
-		switch {
-		case r >= 'A' && r <= 'Z':
-			hasUpper = true
-		case r >= '0' && r <= '9':
-			hasDigit = true
-		case strings.ContainsRune("!@#$%^&*()_+-=[]{}|;':\",./<>?", r):
-			hasSpecial = true
-		}
-	}
-	if !hasUpper {
-		return fmt.Errorf("password must contain at least one uppercase letter")
-	}
-	if !hasDigit {
-		return fmt.Errorf("password must contain at least one digit")
-	}
-	if !hasSpecial {
-		return fmt.Errorf("password must contain at least one special character")
-	}
-	return nil
+	return password.ValidateStrength(pw)
 }
 
 // slugify converts a display name to a URL-safe slug.

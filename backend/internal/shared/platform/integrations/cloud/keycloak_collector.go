@@ -60,8 +60,8 @@ func (c *KeycloakCollector) Collect(ctx context.Context, orgID string, cfg Keycl
 	}
 
 	baseURL := strings.TrimRight(cfg.KeycloakURL, "/") + "/admin/realms/" + cfg.Realm
-	identityControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"mfa", "authentication", "password", "access"})
-	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, []string{"privileged", "admin", "access", "rights"})
+	identityControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("mfa", "authentication", "password", "access"))
+	accessControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("privileged", "admin", "access", "rights"))
 
 	total := 0
 	// F3/R-H20: accumulate sub-collector failures so a total failure surfaces as

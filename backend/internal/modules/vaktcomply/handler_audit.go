@@ -14,6 +14,7 @@ import (
 	auditmod "github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/shared/artifact"
 	"github.com/matharnica/vakt/internal/shared/audit"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -148,7 +149,10 @@ func (h *Handler) CreateAuditProgramAudit(c echo.Context) error {
 	auditRec, err := h.service.Audit.CreateAuditProgramAudit(c.Request().Context(), orgID(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("create audit program audit")
-		return errResp(c, http.StatusInternalServerError, "failed to create audit", "CK_AUDIT_CREATE_FAILED")
+		// R1-SA14-02: a well-formed but nonexistent audit_plan_id/auditor id is an
+		// FK violation (23503) → 409, not 500; malformed ids that slip past the
+		// validator (22P02) → 400. RespondError maps both, else falls back to 500.
+		return httputil.RespondError(c, err, "failed to create audit", "CK_AUDIT_CREATE_FAILED")
 	}
 	return c.JSON(http.StatusCreated, auditRec)
 }

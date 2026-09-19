@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/modules/vakthr"
 	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
 )
@@ -81,7 +82,7 @@ func TestExecuteErasureDeletesCampaignEnrollments(t *testing.T) {
 	// Wire the module-owned erasers (module isolation, ADR-0079). Order is
 	// deliberately IRRELEVANT — see TestExecuteErasure_OrderIndependent below.
 	repo := vaktprivacy.NewRepository(pool).
-		WithSubjectErasers(vaktaware.NewSubjectEraser(), vakthr.NewSubjectEraser()).
+		WithSubjectErasers(vaktaware.NewSubjectEraser(), vakthr.NewSubjectEraser(), vaktcomply.NewSubjectEraser()).
 		WithSubjectResolver(vakthr.NewSubjectResolver())
 
 	_, err = repo.ExecuteErasure(ctx, orgID, dsrID)
@@ -146,7 +147,7 @@ func TestExecuteErasure_OrderIndependent(t *testing.T) {
 
 	// REVERSED on purpose: vakthr (deletes hr_employees) wired FIRST.
 	repo := vaktprivacy.NewRepository(pool).
-		WithSubjectErasers(vakthr.NewSubjectEraser(), vaktaware.NewSubjectEraser()).
+		WithSubjectErasers(vakthr.NewSubjectEraser(), vaktaware.NewSubjectEraser(), vaktcomply.NewSubjectEraser()).
 		WithSubjectResolver(vakthr.NewSubjectResolver())
 
 	_, err = repo.ExecuteErasure(ctx, orgID, dsrID)

@@ -112,6 +112,12 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 
 	mux := asynq.NewServeMux()
 
+	// R1-W19-10: classify terminal (non-retryable) errors so they are archived
+	// once instead of retried up to 25× (deleted row, FK violation, malformed
+	// UUID). Outermost so its SkipRetry rewrite reaches the processor. See
+	// terminal_errors.go.
+	mux.Use(terminalErrorMiddleware)
+
 	// S58-1: emit per-task-type duration + result into Redis so /metrics on the
 	// API side can publish Prometheus counters without needing a worker scrape
 	// endpoint. Best-effort — Redis failures never affect task execution.
@@ -173,6 +179,8 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 	mux.HandleFunc(vaktscan.TaskCertScan, handleCertScan(pool))
 	// ── S69-3: SLA check (daily) ──────────────────────────────────────────
 	mux.HandleFunc(vaktscan.TaskSLACheck, handleSLACheck(pool))
+	// ── R1-36b-SC06: recurring scan schedule executor (every minute) ──────
+	mux.HandleFunc(vaktscan.TaskScanScheduleDue, handleProcessDueScanSchedules(pool, enqueueClient))
 
 	// ── Alerting: scheduled overdue checks ────────────────────────────────────
 	mux.HandleFunc(alerting.TaskSLAOverdueCheck, handleSLAOverdueCheck(cfg, pool))

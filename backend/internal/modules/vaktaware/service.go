@@ -930,6 +930,15 @@ func (s *Service) SendCampaignEmails(ctx context.Context, orgID, campaignID stri
 		return s.failCampaign(ctx, orgID, campaignID, fmt.Errorf("get template: %w", err))
 	}
 
+	// ADR-0088: auto-enrolled employees live only in sr_campaign_enrollments and
+	// would never receive the campaign. Materialise the addressable ones into
+	// this group's sr_targets first, so ListTargets below returns them and the
+	// whole send+tracking path reaches them unchanged. Idempotent + deduped
+	// against sr_targets.email, so a re-run mails no one twice.
+	if err := s.repo.MaterializeEnrollmentsAsTargets(ctx, orgID, campaignID, *campaign.GroupID); err != nil {
+		return s.failCampaign(ctx, orgID, campaignID, fmt.Errorf("materialize enrollments: %w", err))
+	}
+
 	targets, err := s.repo.ListTargets(ctx, orgID, *campaign.GroupID)
 	if err != nil {
 		return s.failCampaign(ctx, orgID, campaignID, fmt.Errorf("list targets: %w", err))

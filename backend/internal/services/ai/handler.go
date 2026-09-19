@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/license"
+	"github.com/matharnica/vakt/internal/shared/httputil"
 )
 
 type Handler struct {
@@ -635,7 +636,12 @@ func (h *Handler) ListOllamaModels(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusOK, map[string]any{"models": []string{}})
 	}
-	httpClient := &http.Client{Timeout: 5 * time.Second}
+	// R1-SA22-05: baseURL is the org-overridable AI provider host
+	// (ai_base_url_override), so this dial is the same DNS-rebinding/SSRF surface
+	// as the three chat clients in client.go — use the same GuardedClient (resolve
+	// and dial the same IP) instead of a raw http.Client. allowPrivate stays true
+	// because the default provider is the local Ollama container (see client.go).
+	httpClient := httputil.GuardedClient(5*time.Second, aiAllowsPrivateTargets)
 	resp, err := httpClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return c.JSON(http.StatusOK, map[string]any{"models": []string{}})

@@ -2,11 +2,20 @@ package retention
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
+
+// execer is the subset of *pgxpool.Pool that the prune step needs. It exists so
+// unit tests can inject a fake that forces a delete to fail and assert the error
+// is propagated rather than swallowed. *pgxpool.Pool satisfies it.
+type execer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
 
 // sqlAuditLogSoftDelete is the retention query for audit_log. Exported as a
 // package-level constant so unit tests can assert it uses UPDATE (soft-delete)
@@ -26,6 +35,15 @@ func RunRetention(ctx context.Context, db *pgxpool.Pool, orgID string) error {
 	if err != nil {
 		return fmt.Errorf("retention: get config for %s: %w", orgID, err)
 	}
+	return pruneRetention(ctx, db, cfg, orgID)
+}
+
+// pruneRetention runs the per-category deletes for one org. It attempts every
+// enabled category even when an earlier one fails, then returns all delete
+// errors joined together — so the worker sees a failure instead of "success"
+// when a prune did not happen. A category-level failure is still logged.
+func pruneRetention(ctx context.Context, db execer, cfg *RetentionConfig, orgID string) error {
+	var errs []error
 
 	if cfg.AuditLogDays > 0 {
 		// Soft-delete instead of hard-delete to preserve the SHA-256 hash chain
@@ -39,6 +57,7 @@ func RunRetention(ctx context.Context, db *pgxpool.Pool, orgID string) error {
 		)
 		if err != nil {
 			log.Error().Err(err).Str("org_id", orgID).Msg("retention: soft-delete audit_log")
+			errs = append(errs, fmt.Errorf("audit_log: %w", err))
 		} else {
 			log.Info().Str("org_id", orgID).Int64("soft_deleted", tag.RowsAffected()).Msg("retention: audit_log pruned")
 		}
@@ -54,6 +73,7 @@ func RunRetention(ctx context.Context, db *pgxpool.Pool, orgID string) error {
 		)
 		if err != nil {
 			log.Error().Err(err).Str("org_id", orgID).Msg("retention: delete vb_findings")
+			errs = append(errs, fmt.Errorf("vb_findings: %w", err))
 		} else {
 			log.Info().Str("org_id", orgID).Int64("deleted", tag.RowsAffected()).Msg("retention: vb_findings pruned")
 		}
@@ -69,12 +89,13 @@ func RunRetention(ctx context.Context, db *pgxpool.Pool, orgID string) error {
 		)
 		if err != nil {
 			log.Error().Err(err).Str("org_id", orgID).Msg("retention: delete user_notifications")
+			errs = append(errs, fmt.Errorf("user_notifications: %w", err))
 		} else {
 			log.Info().Str("org_id", orgID).Int64("deleted", tag.RowsAffected()).Msg("retention: user_notifications pruned")
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 // RunRetentionAllOrgs iterates over all orgs that have a retention_config row
@@ -86,15 +107,23 @@ func RunRetentionAllOrgs(ctx context.Context, db *pgxpool.Pool) error {
 	}
 	defer rows.Close()
 
+	var errs []error
 	for rows.Next() {
 		var orgID string
 		if err := rows.Scan(&orgID); err != nil {
 			log.Error().Err(err).Msg("retention: scan org_id")
+			errs = append(errs, fmt.Errorf("scan org_id: %w", err))
 			continue
 		}
+		// Keep going across orgs — one bad org must not stop the rest — but
+		// collect failures so the worker reports a failure instead of success.
 		if err := RunRetention(ctx, db, orgID); err != nil {
 			log.Error().Err(err).Str("org_id", orgID).Msg("retention: run failed")
+			errs = append(errs, fmt.Errorf("org %s: %w", orgID, err))
 		}
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		errs = append(errs, err)
+	}
+	return errors.Join(errs...)
 }

@@ -43,17 +43,52 @@ func TestVakthrEraser_DeletesOnlyHRPrefix(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.Len(t, fx.stmts, 1)
-	norm := strings.ToUpper(strings.Join(strings.Fields(fx.stmts[0]), " "))
-	require.Contains(t, norm, "DELETE FROM HR_EMPLOYEES",
+	// Two hr_ tables carry subject PII: hr_employees and hr_contractors.
+	require.Len(t, fx.stmts, 2)
+	joined := strings.ToUpper(strings.Join(fx.stmts, " | "))
+	joined = strings.Join(strings.Fields(joined), " ")
+	require.Contains(t, joined, "DELETE FROM HR_EMPLOYEES",
 		"vakthr eraser must delete hr_employees (its own prefix)")
 	// It must not write any foreign module prefix.
 	for _, foreign := range []string{"SR_", "VB_", "CK_", "SO_", "PO_"} {
-		require.NotContains(t, norm, "DELETE FROM "+foreign,
+		require.NotContains(t, joined, "DELETE FROM "+foreign,
 			"vakthr eraser must only write the hr_ prefix")
 	}
 
 	require.Equal(t, int64(3), counts["hr_employees"])
+}
+
+// TestVakthrEraser_DeletesContractors pins R1-36c-02: hr_contractors stores a
+// contractor's first_name/last_name/email (Migration 190). Before the fix the
+// eraser only touched hr_employees, so a contractor's PII survived an Art. 17
+// erasure. Removing the hr_contractors DELETE from EraseSubjectPII turns this
+// test red (both the statement assertion and the count).
+func TestVakthrEraser_DeletesContractors(t *testing.T) {
+	fx := &fakeExecer{}
+	counts, err := SubjectEraser{}.EraseSubjectPII(context.Background(), fx, sharedevents.SubjectRef{
+		OrgID: "org-1", Email: "victim@example.com",
+	})
+	require.NoError(t, err)
+
+	joined := strings.ToUpper(strings.Join(fx.stmts, " | "))
+	joined = strings.Join(strings.Fields(joined), " ")
+	require.Contains(t, joined, "DELETE FROM HR_CONTRACTORS",
+		"vakthr eraser must also erase hr_contractors PII (R1-36c-02)")
+
+	// The contractor delete must be keyed on org_id + email, like the employee
+	// delete — never an unscoped table wipe.
+	var contractorStmt string
+	for _, s := range fx.stmts {
+		if strings.Contains(strings.ToUpper(s), "HR_CONTRACTORS") {
+			contractorStmt = strings.ToUpper(strings.Join(strings.Fields(s), " "))
+		}
+	}
+	require.Contains(t, contractorStmt, "ORG_ID = $1",
+		"contractor erasure must be org-scoped")
+	require.Contains(t, contractorStmt, "LOWER(EMAIL) = LOWER($2)",
+		"contractor erasure must target the subject's email")
+
+	require.Equal(t, int64(3), counts["hr_contractors"])
 }
 
 func TestVakthrEraser_ModuleName(t *testing.T) {

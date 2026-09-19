@@ -6,7 +6,6 @@ package vaktprivacy
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -175,19 +174,4 @@ func (s *Service) RetentionCompletionRate(ctx context.Context, orgID string) (co
 		FROM po_processing_activities WHERE org_id = $1`, orgID,
 	).Scan(&complete, &total)
 	return complete, total, err
-}
-
-// RunRetentionEvidenceSync writes an evidence entry for VVT retention completeness.
-func (s *Service) RunRetentionEvidenceSync(ctx context.Context, orgID string) error {
-	complete, total, err := s.RetentionCompletionRate(ctx, orgID)
-	if err != nil {
-		return fmt.Errorf("retention evidence sync: %w", err)
-	}
-	status := "ok"
-	if total > 0 && float64(complete)/float64(total) < 0.9 {
-		status = "warning"
-	}
-	log.Info().Str("org_id", orgID).Int("complete", complete).Int("total", total).Str("status", status).Msg("retention evidence sync")
-	_ = time.Now() // evidence write would go here
-	return nil
 }

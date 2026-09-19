@@ -341,20 +341,21 @@ func (s *Service) RunReport(ctx context.Context, r ScheduledReport) error {
 
 	switch {
 	case r.ReportType == "findings" && r.Format == "csv":
-		csvData, err := s.buildFindingsCSV(ctx, r.OrgID)
+		csvData, buildErr := s.buildFindingsCSV(ctx, r.OrgID)
+		af, err := findingsAttachment(csvData, buildErr)
 		if err != nil {
-			log.Error().Err(err).Str("report_id", r.ID).Msg("scheduled_reports: build findings CSV failed")
-			csvData = []byte("id,title,severity,status,asset_id,created_at\n")
+			// Abort: sending a bare header row would deliver an "empty" report
+			// that looks legitimate and hides the failure. Surface the error so
+			// the caller records the run as failed and it can be retried.
+			log.Error().Err(buildErr).Str("report_id", r.ID).Msg("scheduled_reports: build findings CSV failed")
+			return fmt.Errorf("scheduled_reports: report %s: %w", r.ID, err)
 		}
 		body = fmt.Sprintf(
 			"<p>Ihr geplanter Findings-Bericht <strong>%s</strong> ist beigefügt.</p>"+
 				"<p>Format: CSV | Zeitraum: %s</p>",
 			r.Name, r.Schedule,
 		)
-		csvBytes := csvData
-		attachFn = func() ([]byte, string, error) {
-			return csvBytes, "findings.csv", nil
-		}
+		attachFn = af
 	case r.ReportType == "board_report":
 		body = fmt.Sprintf(
 			"<p>Ihr geplanter Management-Board-Bericht <strong>%s</strong> ist beigefügt.</p>"+
@@ -400,6 +401,21 @@ func (s *Service) RunReport(ctx context.Context, r ScheduledReport) error {
 		}
 	}
 	return nil
+}
+
+// findingsAttachment turns the result of buildFindingsCSV into the attachment
+// closure for a findings report. A non-nil buildErr means the CSV could not be
+// produced: it returns an error so RunReport aborts delivery instead of sending
+// a bare-header "empty" report that hides the failure. On success it returns a
+// closure yielding exactly the built bytes under the name findings.csv.
+func findingsAttachment(csvData []byte, buildErr error) (func() ([]byte, string, error), error) {
+	if buildErr != nil {
+		return nil, fmt.Errorf("build findings CSV: %w", buildErr)
+	}
+	data := csvData
+	return func() ([]byte, string, error) {
+		return data, "findings.csv", nil
+	}, nil
 }
 
 // buildFindingsCSV queries open findings for the org and returns a CSV byte slice.

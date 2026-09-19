@@ -516,6 +516,18 @@ func (r *Repository) GetEmployeePersonioFields(ctx context.Context, orgID, emplo
 	return personioID, departureDate, nil
 }
 
+// personioPlaceholderEmail builds a deterministic, unique placeholder address for a
+// Personio-provisioned employee that Vakt has not seen before. The Personio webhook
+// carries no PII (only the numeric employee id), so there is no real email to store
+// yet — but hr_employees enforces UNIQUE(org_id, email) (migration 063). Deriving the
+// address from the Personio id keeps it unique per employee within the org and marks
+// it clearly as a stand-in: the .invalid TLD is reserved by RFC 6761 and can never
+// resolve or be mailed. A real email later supplied through the employee-edit path
+// differs from this value, so it can replace the placeholder without a collision.
+func personioPlaceholderEmail(personioEmployeeID int) string {
+	return fmt.Sprintf("personio-%d@placeholder.invalid", personioEmployeeID)
+}
+
 // UpsertEmployeeByPersonioID inserts or updates an hr_employees row for the given
 // Personio employee ID. Returns the Vakt employee UUID, whether a new row was created,
 // and any error. Only personio_employee_id and departure_date are stored — no PII.
@@ -538,14 +550,17 @@ func (r *Repository) UpsertEmployeeByPersonioID(ctx context.Context, orgID strin
 		return employeeID, false, err
 	}
 
-	// Not found — create placeholder (no name or email)
+	// Not found — create placeholder (no name; a unique per-Personio-id placeholder
+	// email, NOT '': hr_employees enforces UNIQUE(org_id, email) and an empty string
+	// is a value, not a gap. The second unknown departure in the same org would
+	// otherwise collide on '' and 500 the rest of the webhook batch.
 	err = r.db.QueryRow(ctx, `
 		INSERT INTO hr_employees
 			(org_id, first_name, last_name, email, status, personio_employee_id, departure_date)
 		VALUES
-			($1::uuid, '', '', '', 'offboarding', $2, $3)
+			($1::uuid, '', '', $2, 'offboarding', $3, $4)
 		RETURNING id::text`,
-		orgID, personioEmployeeID, departureDate.Format("2006-01-02"),
+		orgID, personioPlaceholderEmail(personioEmployeeID), personioEmployeeID, departureDate.Format("2006-01-02"),
 	).Scan(&employeeID)
 	if err != nil {
 		return "", false, fmt.Errorf("create placeholder employee for personio_id %d: %w", personioEmployeeID, err)

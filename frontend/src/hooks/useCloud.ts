@@ -323,6 +323,7 @@ export interface WazuhConfig {
   username: string
   password: string // "****" if set
   verify_tls: boolean
+  allow_private_target: boolean
   is_configured: boolean
 }
 
@@ -331,6 +332,7 @@ export interface SaveWazuhConfigInput {
   username: string
   password: string
   verify_tls: boolean
+  allow_private_target: boolean
 }
 
 export interface WazuhStatus extends CloudSyncStatus {
@@ -392,6 +394,7 @@ export interface PrometheusConfig {
   prometheus_url: string
   alertmanager_url: string
   token: string // "****" if set
+  allow_private_target: boolean
   is_configured: boolean
 }
 
@@ -399,6 +402,7 @@ export interface SavePrometheusConfigInput {
   prometheus_url: string
   alertmanager_url: string
   token: string
+  allow_private_target: boolean
 }
 
 export interface PrometheusStatus extends CloudSyncStatus {
@@ -597,6 +601,7 @@ export interface KeycloakConfig {
   realm: string
   client_id: string
   client_secret: string // "****" if set
+  allow_private_target: boolean
   is_configured: boolean
 }
 
@@ -605,6 +610,7 @@ export interface SaveKeycloakConfigInput {
   realm: string
   client_id: string
   client_secret: string
+  allow_private_target: boolean
 }
 
 export interface KeycloakStatus extends CloudSyncStatus {
@@ -745,6 +751,7 @@ export interface GitLabConfig {
   gitlab_url: string
   access_token: string // "****" if set
   group_id: string
+  allow_private_target: boolean
   is_configured: boolean
 }
 
@@ -752,6 +759,7 @@ export interface SaveGitLabConfigInput {
   gitlab_url: string
   access_token: string
   group_id: string
+  allow_private_target: boolean
 }
 
 export interface GitLabStatus extends CloudSyncStatus {
@@ -812,12 +820,14 @@ export function useGitLabEvidence() {
 export interface SonarQubeConfig {
   base_url: string
   token: string // "****" if set
+  allow_private_target: boolean
   is_configured: boolean
 }
 
 export interface SaveSonarQubeConfigInput {
   base_url: string
   token: string
+  allow_private_target: boolean
 }
 
 export interface SonarQubeStatus extends CloudSyncStatus {

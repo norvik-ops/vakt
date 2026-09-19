@@ -331,19 +331,23 @@ WHERE id = $1 AND org_id = $2 AND status = 'completed';
 -- `sources` sammelt (Vereinigung), `scanner` bleibt beim Erstfinder: sonst wäre
 -- nach dem Zusammenführen nicht mehr erkennbar, wer den Fund zuerst meldete.
 -- Gleiches Muster wie der CVE-Zweig in repository_sbom.go (BatchUpsertFindings).
+-- R1-36b-SC02(a): risk_score wird vom Aufrufer (UpsertImportedFinding via
+-- ComputeRiskScore) berechnet und als $12 uebergeben — ohne diese Spalte blieben
+-- importierte Findings dauerhaft NULL und sanken in der Priorisierung nach unten.
 INSERT INTO vb_findings
   (org_id, asset_id, cve_id, title, description, severity,
-   cvss_score, status, scanner, sources, sla_due_at,
+   cvss_score, status, scanner, sources, sla_due_at, risk_score,
    reopen_count, occurrence_count, last_seen_at)
 VALUES
   ($1, $2, $3, $4, $5, $6,
-   $7, $8, $9, $10, $11,
+   $7, $8, $9, $10, $11, $12,
    0, 1, NOW())
 ON CONFLICT (org_id, asset_id, cve_id) WHERE cve_id IS NOT NULL DO UPDATE
   SET title            = EXCLUDED.title,
       description      = EXCLUDED.description,
       severity         = EXCLUDED.severity,
       cvss_score       = EXCLUDED.cvss_score,
+      risk_score       = EXCLUDED.risk_score,
       sla_due_at       = EXCLUDED.sla_due_at,
       sources          = (SELECT ARRAY(SELECT DISTINCT unnest(vb_findings.sources || EXCLUDED.sources))),
       occurrence_count = vb_findings.occurrence_count + 1,
@@ -373,19 +377,22 @@ RETURNING id, org_id, asset_id, scan_id, cve_id,
 -- nicht, die Inferenz laeuft erst im Planner; Regressionstest deshalb
 -- ausfuehrend in internal/modules/vaktscan/upsert_rawid_arbiter_real_test.go.
 -- Gleiches Muster wie repository_sbom.go:191/:222 und die Collector-Upserts.
+-- R1-36b-SC02(a): risk_score als $13 vom Aufrufer (ComputeRiskScore) uebergeben,
+-- damit importierte raw_id-Findings nicht mit NULL-risk_score unten haengen bleiben.
 INSERT INTO vb_findings
   (org_id, asset_id, cve_id, title, description, severity,
-   cvss_score, status, scanner, raw_id, sources, sla_due_at,
+   cvss_score, status, scanner, raw_id, sources, sla_due_at, risk_score,
    reopen_count, occurrence_count, last_seen_at)
 VALUES
   ($1, $2, $3, $4, $5, $6,
-   $7, $8, $9, $10, $11, $12,
+   $7, $8, $9, $10, $11, $12, $13,
    0, 1, NOW())
 ON CONFLICT (org_id, raw_id, scanner) WHERE raw_id IS NOT NULL DO UPDATE
   SET title            = EXCLUDED.title,
       description      = EXCLUDED.description,
       severity         = EXCLUDED.severity,
       cvss_score       = EXCLUDED.cvss_score,
+      risk_score       = EXCLUDED.risk_score,
       sla_due_at       = EXCLUDED.sla_due_at,
       occurrence_count = vb_findings.occurrence_count + 1,
       last_seen_at     = NOW(),

@@ -26,7 +26,7 @@ import {
 } from '../../../hooks/useCloud'
 import { toast } from '../../../shared/hooks/useToast'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
-import { SyncLastBadge, RecentEvidenceList } from './shared'
+import { SyncLastBadge, RecentEvidenceList, AllowPrivateTargetToggle } from './shared'
 
 // --- Entra ID tab ---
 
@@ -285,6 +285,7 @@ export function KeycloakTab() {
   const [realm, setRealm] = useState('')
   const [clientID, setClientID] = useState('')
   const [clientSecret, setClientSecret] = useState('')
+  const [allowPrivateTarget, setAllowPrivateTarget] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
   if (cfg && !initialized) {
@@ -292,6 +293,7 @@ export function KeycloakTab() {
     setRealm(cfg.realm)
     setClientID(cfg.client_id)
     setClientSecret(cfg.client_secret)
+    setAllowPrivateTarget(cfg.allow_private_target)
     setInitialized(true)
   }
 
@@ -303,6 +305,7 @@ export function KeycloakTab() {
         realm,
         client_id: clientID,
         client_secret: clientSecret,
+        allow_private_target: allowPrivateTarget,
       })
       toast(t('integrations.page.saved'), 'success')
     } catch (err) {
@@ -388,6 +391,7 @@ export function KeycloakTab() {
             className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
             required />
         </div>
+        <AllowPrivateTargetToggle id="keycloak-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
         <div className="flex gap-2 pt-1">
           <button type="submit" disabled={saveConfig.isPending}
             className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">

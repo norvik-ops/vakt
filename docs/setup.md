@@ -269,8 +269,8 @@ docker compose ps
 
    > **Hinweis für Profile-basierte Deployments (Demo/Staging):** Wenn deine `docker-compose.yml` Docker Compose Profiles verwendet (`profiles: [demo]`, `profiles: [staging]`), muss das `--profile`-Flag bei jedem Befehl angegeben werden:
    > ```bash
-   > docker compose --profile demo pull
-   > docker compose --profile demo up -d
+   > docker compose pull
+   > VAKT_DEMO=true docker compose up -d
    > ```
    > Ohne `--profile` werden nur die Default-Services (z. B. Caddy) gestartet — die App-Container werden ignoriert.
 

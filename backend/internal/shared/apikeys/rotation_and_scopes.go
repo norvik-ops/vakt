@@ -7,62 +7,17 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"net/http"
-	"strings"
 	"time"
-
-	"github.com/labstack/echo/v4"
 )
 
-// Sprint 20 / S20-1 + S20-2: API-Key-Scopes-Middleware + Rotation.
-
-// RequireScope ist die Echo-Middleware, die einen API-Key-Scope verlangt.
-// Funktioniert NUR für API-Key-authentifizierte Requests (markiert via
-// echo.Context-Key "auth_method"="api_key"). Reguläre Cookie-Auth (User-
-// Session) passiert die Middleware unverändert — RBAC läuft dort über
-// RequirePermission.
+// Sprint 20 / S20-2: API-Key-Rotation.
 //
-// Wildcards in api_keys.scopes:
-//
-//	"*"               → erlaubt alles
-//	"vaktcomply.*"     → erlaubt alle vaktcomply-Scopes
-//	"vaktvault.secrets.read" → exakt
-func RequireScope(required string) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			method, _ := c.Get("auth_method").(string)
-			if method != "api_key" {
-				// Cookie-Auth: durchwinken, RequirePermission ist verantwortlich.
-				return next(c)
-			}
-			scopes, _ := c.Get("api_key_scopes").([]string)
-			if !ScopeAllows(scopes, required) {
-				return c.JSON(http.StatusForbidden, map[string]string{
-					"error": fmt.Sprintf("api key lacks required scope %q", required),
-					"code":  "AUTH_INSUFFICIENT_SCOPE",
-				})
-			}
-			return next(c)
-		}
-	}
-}
-
-// ScopeAllows prüft mit Wildcard-Logik. Exportiert, damit der Auth-Layer
-// es während des Key-Lookups verwenden kann.
-func ScopeAllows(scopes []string, required string) bool {
-	for _, s := range scopes {
-		if s == "*" || s == required {
-			return true
-		}
-		if strings.HasSuffix(s, ".*") {
-			prefix := strings.TrimSuffix(s, "*")
-			if strings.HasPrefix(required, prefix) {
-				return true
-			}
-		}
-	}
-	return false
-}
+// Hinweis (2026-09-18): Die zweite, „Punkt-Grammatik"-Scope-Prüfung
+// (RequireScope-Middleware + ScopeAllows-Helper, `vaktcomply.*` / exakt / `*`)
+// wurde entfernt (R1-W7C-N2). Sie war an keine Route gemountet — die aktive
+// Scope-Autorisierung läuft ausschließlich über die Pfad-Präfix-Grammatik in
+// internal/auth/middleware.go (`scopePathPrefixes`, `:ro`/`.*`-Suffixe). Zwei
+// divergierende Grammatiken für dasselbe Feld sind eine stille Fehlerquelle.
 
 // RotateKey generiert einen neuen Schlüssel-Hash, schreibt den alten in
 // `previous_key_hash` mit `previous_key_grace_expires_at = NOW() + 24h`.

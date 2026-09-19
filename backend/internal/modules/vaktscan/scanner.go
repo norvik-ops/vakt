@@ -17,11 +17,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/shared/httputil"
 )
+
+// epssTouchedFinding carries the columns needed to recompute risk_score after an
+// EPSS update. cvss_score and severity are per-row, so the recompute cannot be a
+// single scalar — see UpdateEPSSScores.
+type epssTouchedFinding struct {
+	id       string
+	cvss     pgtype.Numeric
+	severity string
+}
 
 // ErrNotConfigured is returned when a scanner is not configured in the environment.
 var ErrNotConfigured = errors.New("scanner not configured")
@@ -773,7 +783,13 @@ func UpdateEPSSScores(ctx context.Context, db *pgxpool.Pool, orgID string) error
 				continue
 			}
 
-			_, updateErr := db.Exec(ctx, `
+			// Update the EPSS fields AND recompute risk_score. The priority
+			// ranking blends CVSS, severity and the fresh EPSS percentile
+			// (ComputeRiskScore); leaving risk_score stale after an EPSS refresh
+			// would hide exactly the findings EPSS just re-scored as more
+			// exploitable (R1-36b-SC02). RETURNING the affected rows lets us
+			// reuse ComputeRiskScore instead of duplicating its formula in SQL.
+			updRows, updateErr := db.Query(ctx, `
 				UPDATE vb_findings
 				SET epss_score      = $1,
 				    epss_percentile = $2,
@@ -781,9 +797,41 @@ func UpdateEPSSScores(ctx context.Context, db *pgxpool.Pool, orgID string) error
 				WHERE org_id = $3::uuid
 				  AND cve_id = $4
 				  AND status NOT IN ('resolved', 'false_positive')
+				RETURNING id::text, cvss_score, severity
 			`, epssScore, epssPercentile, orgID, entry.CVE)
 			if updateErr != nil {
 				log.Warn().Err(updateErr).Str("cve", entry.CVE).Msg("epss: update finding failed")
+				continue
+			}
+
+			var touched []epssTouchedFinding
+			for updRows.Next() {
+				var tf epssTouchedFinding
+				if scanErr := updRows.Scan(&tf.id, &tf.cvss, &tf.severity); scanErr != nil {
+					continue
+				}
+				touched = append(touched, tf)
+			}
+			updRows.Close()
+
+			// Recompute per touched row: cvss_score and severity vary per finding,
+			// so a single scalar update would be wrong. pct is copied out of the
+			// loop variable to take a stable address.
+			pct := epssPercentile
+			for _, tf := range touched {
+				f := Finding{
+					CVSSScore:      numericToFloat64Ptr(tf.cvss),
+					EPSSPercentile: &pct,
+					Severity:       tf.severity,
+				}
+				ComputeRiskScore(&f)
+				if _, rsErr := db.Exec(ctx, `
+					UPDATE vb_findings
+					SET risk_score = $1,
+					    updated_at = NOW()
+					WHERE id = $2::uuid AND org_id = $3::uuid`, f.RiskScore, tf.id, orgID); rsErr != nil {
+					log.Warn().Err(rsErr).Str("id", tf.id).Msg("epss: risk_score recompute failed")
+				}
 			}
 		}
 

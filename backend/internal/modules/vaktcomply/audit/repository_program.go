@@ -322,7 +322,7 @@ func (r *Repository) CreateCAPAFromAuditFinding(ctx context.Context, orgID, find
 	var capaID string
 	err := r.db.QueryRow(ctx, `
 		INSERT INTO ck_capas (org_id, title, nc_classification, source_type, source_id, status)
-		VALUES ($1, $2, $3, 'internal_audit', $4, 'open')
+		VALUES ($1, $2, $3, 'audit', $4, 'open')
 		RETURNING id`,
 		orgID, "Audit-Befund: "+title, severity, findingID,
 	).Scan(&capaID)
@@ -360,7 +360,7 @@ func (r *Repository) GetAuditProgramSummary(ctx context.Context, orgID string) (
 	// and not yet closed. Previously never assigned → constant 0 (S131-G2/R-M02).
 	r.db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM ck_capas
-		WHERE org_id = $1 AND source_type = 'internal_audit'
+		WHERE org_id = $1 AND source_type = 'audit'
 		  AND status <> 'closed' AND due_date IS NOT NULL AND due_date < CURRENT_DATE`, orgID,
 	).Scan(&s.OverdueCAPAsFromAudits) //nolint:errcheck
 	return &s, nil

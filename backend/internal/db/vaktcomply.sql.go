@@ -273,19 +273,20 @@ func (q *Queries) BulkUpdateCKCAPAStatus(ctx context.Context, arg BulkUpdateCKCA
 const bulkUpdateCKControlStatus = `-- name: BulkUpdateCKControlStatus :exec
 
 UPDATE ck_controls
-SET manual_status = $1
-WHERE id = ANY($3::uuid[]) AND org_id = $2
+SET manual_status  = CASE WHEN $1::text = 'not_applicable' THEN NULL ELSE $1::text END,
+    not_applicable = ($1::text = 'not_applicable')
+WHERE id = ANY($2::uuid[]) AND org_id = $3
 `
 
 type BulkUpdateCKControlStatusParams struct {
-	ManualStatus pgtype.Text `json:"manual_status"`
-	OrgID        string      `json:"org_id"`
-	Ids          []string    `json:"ids"`
+	Status string   `json:"status"`
+	Ids    []string `json:"ids"`
+	OrgID  string   `json:"org_id"`
 }
 
 // ── Bulk-Control-Status ─────────────────────────────────────────────────────
 func (q *Queries) BulkUpdateCKControlStatus(ctx context.Context, arg BulkUpdateCKControlStatusParams) error {
-	_, err := q.db.Exec(ctx, bulkUpdateCKControlStatus, arg.ManualStatus, arg.OrgID, arg.Ids)
+	_, err := q.db.Exec(ctx, bulkUpdateCKControlStatus, arg.Status, arg.Ids, arg.OrgID)
 	return err
 }
 
@@ -2230,7 +2231,8 @@ FROM ck_controls
 WHERE org_id = $1
   AND not_applicable = false
   AND (lower(title) ILIKE ANY($2::text[])
-       OR lower(domain) ILIKE ANY($2::text[]))
+       OR lower(domain) ILIKE ANY($2::text[])
+       OR lower(description) ILIKE ANY($2::text[]))
 LIMIT 10
 `
 

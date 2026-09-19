@@ -5,9 +5,12 @@ package vaktcomply
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
+	"strings"
 	"time"
+
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 
 	"github.com/rs/zerolog/log"
 )
@@ -33,24 +36,53 @@ func (s *Service) ExportFrameworkPDF(ctx context.Context, orgID, frameworkID str
 	return pdfBytes, filename, nil
 }
 
+// isISO27001Framework reports whether a framework name denotes ISO 27001, the only
+// framework for which a dedicated (canonical) SoA in ck_soa_entries exists. The match
+// mirrors the frontend heuristic in useFrameworks.ts so both sides agree on which
+// framework the "SoA exportieren" button belongs to.
+func isISO27001Framework(name string) bool {
+	n := strings.ToLower(name)
+	return strings.Contains(n, "iso 27001") || strings.Contains(n, "iso27001")
+}
+
 // ExportSoAPDF generates an ISO 27001 Statement of Applicability PDF for the given framework.
 // Returns (pdfBytes, filename, error).
+//
+// R1-36a-D02 / ADR-0091: the dedicated SoA (ck_soa_entries) is the canonical, versioned,
+// approvable Statement of Applicability. For ISO 27001 this framework export serves exactly
+// that document, so the "SoA exportieren" button on the checklist page and the SoA page can
+// never diverge. Only when no canonical SoA has been initialised yet do we fall back to a
+// control-status-derived PDF — and that fallback is stamped as a non-approved draft so the
+// source of every SoA stays unambiguous.
 func (s *Service) ExportSoAPDF(ctx context.Context, orgID, frameworkID string) ([]byte, string, error) {
 	fw, err := s.repo.GetFramework(ctx, orgID, frameworkID)
 	if err != nil {
 		return nil, "", fmt.Errorf("get framework: %w", err)
 	}
+	filename := fw.Name + " — Statement of Applicability.pdf"
+
+	if isISO27001Framework(fw.Name) {
+		data, err := s.ExportDedicatedSoAPDF(ctx, orgID)
+		switch {
+		case err == nil:
+			return data, filename, nil
+		case errors.Is(err, ErrSoANotInitialized):
+			// Canonical SoA not initialised yet → fall through to the draft below.
+		default:
+			return nil, "", fmt.Errorf("export canonical soa pdf: %w", err)
+		}
+	}
+
 	rows, err := s.repo.ListControlsForSoA(ctx, orgID, frameworkID)
 	if err != nil {
 		return nil, "", fmt.Errorf("list controls for soa: %w", err)
 	}
 	orgName := fetchOrgName(ctx, s.db, orgID)
 
-	pdfBytes, err := GenerateSoAPDF(rows, fw.Name, orgName, time.Now())
+	pdfBytes, err := GenerateSoAPDF(rows, fw.Name, orgName, time.Now(), true)
 	if err != nil {
 		return nil, "", fmt.Errorf("generate soa pdf: %w", err)
 	}
-	filename := fw.Name + " — Statement of Applicability.pdf"
 	return pdfBytes, filename, nil
 }
 
@@ -425,6 +457,13 @@ func (s *Service) recordOrgScoreSnapshot(ctx context.Context, orgID string) erro
 	}
 
 	var totalAll, implementedAll int
+	// Canonical org-wide aggregation (ADR-0086): pool covered/partial over the
+	// applicable controls and apply policy.ReadinessScore ONCE — the same
+	// formula the per-framework snapshot uses. The old code divided Σcovered by
+	// Σtotal (not_applicable in the denominator, partial ignored), so the
+	// org-wide snapshot — read back as the board report's ScorePrevious — used a
+	// different formula than the per-framework rows and than the live score.
+	var sumCovered, sumPartial, sumApplicable int
 
 	for _, fw := range frameworks {
 		controls, err := s.repo.ListControls(ctx, orgID, fw.ID)
@@ -438,9 +477,13 @@ func (s *Service) recordOrgScoreSnapshot(ctx context.Context, orgID string) erro
 			continue
 		}
 
+		fw := fw
 		report := policy.ComputeReadinessReport(&fw, controls, evidenceCounts)
 		totalAll += report.TotalControls
 		implementedAll += report.Covered
+		sumCovered += report.Covered
+		sumPartial += report.Partial
+		sumApplicable += report.TotalControls - report.NotApplicable
 
 		// Per-framework snapshot.
 		fwID := fw.ID
@@ -449,15 +492,82 @@ func (s *Service) recordOrgScoreSnapshot(ctx context.Context, orgID string) erro
 		}
 	}
 
-	// Org-wide snapshot (framework_id = NULL).
-	var orgScore float64
-	if totalAll > 0 {
-		orgScore = float64(implementedAll) / float64(totalAll) * 100
-	}
+	// Org-wide snapshot (framework_id = NULL). controls_total / controls_implemented
+	// stay as raw counts for the trend chart; the score itself is canonical.
+	orgScore := policy.ReadinessScore(sumCovered, sumPartial, sumApplicable)
 	if insertErr := s.repo.InsertScoreSnapshot(ctx, orgID, nil, orgScore, totalAll, implementedAll); insertErr != nil {
 		return fmt.Errorf("insert org-wide snapshot: %w", insertErr)
 	}
 	return nil
+}
+
+// canonicalFrameworkReadiness is one framework's readiness computed the single
+// canonical way (ADR-0086): via policy.ComputeReadinessReport, i.e. evidence-
+// aware (ResolveStatus), partial controls at half weight, not_applicable
+// excluded from the denominator. It is the shared shape behind the board report,
+// the executive summary and the daily score snapshot.
+type canonicalFrameworkReadiness struct {
+	Name       string
+	Score      float64 // 0–100, policy.ReadinessScore over the applicable controls
+	Covered    int     // effective status covered/implemented
+	Partial    int     // effective status partial/in_progress
+	Applicable int     // TotalControls minus NotApplicable
+	Total      int     // all controls, incl. not_applicable ("Gesamt: N")
+}
+
+// poolOrgReadiness aggregates per-framework readiness into one org-wide score
+// with the canonical formula: sum covered/partial/applicable across frameworks
+// and apply policy.ReadinessScore once. Pooling (not averaging the per-framework
+// percentages) keeps a framework's weight proportional to its applicable size,
+// and — because it reuses policy.ReadinessScore — the org number sits on the
+// exact same formula as its parts. Pure, so it is unit-testable without a DB.
+func poolOrgReadiness(rows []canonicalFrameworkReadiness) float64 {
+	var covered, partial, applicable int
+	for _, r := range rows {
+		covered += r.Covered
+		partial += r.Partial
+		applicable += r.Applicable
+	}
+	return policy.ReadinessScore(covered, partial, applicable)
+}
+
+// computeOrgReadiness loads every framework's controls and evidence counts and
+// returns the canonical per-framework readiness plus the pooled org-wide score.
+// This is the one place the board report and the executive summary get their
+// compliance figures from, replacing two divergent manual_status-only SQL
+// aggregates (GetBoardReportComplianceScoreRows / GetExecutiveFrameworkScores)
+// that ignored evidence and kept not_applicable controls in the denominator
+// (R1-20-03, R1-W3C-N2, ADR-0086).
+func (s *Service) computeOrgReadiness(ctx context.Context, orgID string) ([]canonicalFrameworkReadiness, float64, error) {
+	frameworks, err := s.repo.ListFrameworks(ctx, orgID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list frameworks: %w", err)
+	}
+
+	rows := make([]canonicalFrameworkReadiness, 0, len(frameworks))
+	for _, fw := range frameworks {
+		controls, err := s.repo.ListControls(ctx, orgID, fw.ID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("list controls (framework %s): %w", fw.ID, err)
+		}
+		evidenceCounts, err := s.repo.CountEvidenceByControl(ctx, orgID, fw.ID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("count evidence (framework %s): %w", fw.ID, err)
+		}
+
+		fw := fw
+		report := policy.ComputeReadinessReport(&fw, controls, evidenceCounts)
+		rows = append(rows, canonicalFrameworkReadiness{
+			Name:       fw.Name,
+			Score:      report.ReadinessScore,
+			Covered:    report.Covered,
+			Partial:    report.Partial,
+			Applicable: report.TotalControls - report.NotApplicable,
+			Total:      report.TotalControls,
+		})
+	}
+
+	return rows, poolOrgReadiness(rows), nil
 }
 
 // GetScoreHistory returns daily score history for an organisation (org-wide snapshots).
@@ -514,28 +624,24 @@ func (s *Service) GetExecutiveSummaryData(ctx context.Context, orgID string) (*E
 		d.OrgName = orgID
 	}
 
-	// Framework scores
-	fwScores, err := s.repo.GetExecutiveFrameworkScores(ctx, orgID)
+	// Framework scores — canonical readiness (ADR-0086): evidence-aware, partial
+	// at half weight, not_applicable out of the denominator. Score is the
+	// per-framework readiness; Implemented/Total stay as raw counts (Covered and
+	// the "Gesamt: N" total) for the table. OverallScore is the pooled org score,
+	// identical to the board report's live score.
+	fwRows, overall, err := s.computeOrgReadiness(ctx, orgID)
 	if err != nil {
-		log.Warn().Err(err).Msg("executive summary: frameworks query")
+		log.Warn().Err(err).Str("org_id", orgID).Msg("executive summary: readiness computation failed")
 	} else {
-		var totalWeight, weightedSum float64
-		for _, row := range fwScores {
-			r := ExecutiveFrameworkRow{
+		for _, row := range fwRows {
+			d.Frameworks = append(d.Frameworks, ExecutiveFrameworkRow{
 				Name:        row.Name,
+				Score:       row.Score,
+				Implemented: row.Covered,
 				Total:       row.Total,
-				Implemented: row.Implemented,
-			}
-			if r.Total > 0 {
-				r.Score = float64(r.Implemented) / float64(r.Total) * 100
-			}
-			d.Frameworks = append(d.Frameworks, r)
-			weightedSum += r.Score * float64(r.Total)
-			totalWeight += float64(r.Total)
+			})
 		}
-		if totalWeight > 0 {
-			d.OverallScore = weightedSum / totalWeight
-		}
+		d.OverallScore = overall
 	}
 
 	// Top 5 risks by score (likelihood * impact)

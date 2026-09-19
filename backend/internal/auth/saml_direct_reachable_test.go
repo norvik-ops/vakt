@@ -111,7 +111,7 @@ func mountPublicAuthRoutes(t *testing.T, pool *pgxpool.Pool) (*echo.Echo, *auth.
 			return next(c)
 		}
 	})
-	auth.Register(g, h)
+	auth.Register(g, h, nil)
 	return e, h
 }
 

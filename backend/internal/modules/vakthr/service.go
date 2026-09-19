@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -157,9 +158,14 @@ func (s *Service) CreateEmployee(ctx context.Context, actor Actor, in CreateEmpl
 	// discarded — a silent enrolment failure is exactly what made BSI ORP.3
 	// report an induction that never happened.
 	if s.onboarding != nil {
+		// Email + Name come from the employee record vakthr just created — the
+		// producer already holds this PII, so the consumer never has to read
+		// hr_employees to address the auto-enrolled recipient (ADR-0088).
 		if obErr := s.onboarding.TriggerNewEmployeeEnrollment(ctx, NewEmployeeInput{
 			OrgID:      actor.OrgID,
 			EmployeeID: emp.ID,
+			Email:      emp.Email,
+			Name:       strings.TrimSpace(emp.FirstName + " " + emp.LastName),
 		}); obErr != nil {
 			log.Error().Err(obErr).
 				Str("org_id", actor.OrgID).

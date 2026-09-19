@@ -174,3 +174,82 @@ func TestListCodeScanningAlerts_FiltersLowSeverity(t *testing.T) {
 	assert.Equal(t, "critical", result[0].Severity)
 	assert.Equal(t, "CodeQL", result[0].Tool)
 }
+
+func TestParseGHASLinkNext(t *testing.T) {
+	cases := []struct {
+		name string
+		link string
+		want string
+	}{
+		{"empty", "", ""},
+		{
+			"next present with last",
+			`<https://api.github.com/x?page=2>; rel="next", <https://api.github.com/x?page=9>; rel="last"`,
+			"https://api.github.com/x?page=2",
+		},
+		{
+			"only prev and last (no next)",
+			`<https://api.github.com/x?page=1>; rel="prev", <https://api.github.com/x?page=9>; rel="last"`,
+			"",
+		},
+		{
+			"next with extra segment",
+			`<https://api.github.com/x?page=3>; rel="next"; foo="bar"`,
+			"https://api.github.com/x?page=3",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := parseGHASLinkNext(tc.link); got != tc.want {
+				t.Fatalf("parseGHASLinkNext(%q) = %q, want %q", tc.link, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestListSecretScanningAlerts_FollowsPagination proves R1-W0A-V1 through the
+// public API: page 1 carries a Link: rel="next" header (an absolute api.github.com
+// URL, as GitHub returns it — rewritten to the test server by rewriteTransport),
+// and both pages' alerts must be collected. A single-request implementation would
+// return only page 1's two alerts.
+func TestListSecretScanningAlerts_FollowsPagination(t *testing.T) {
+	var srv *httptest.Server
+	mux := http.NewServeMux()
+	mux.HandleFunc("/repos/myorg/myrepo/secret-scanning/alerts", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("page") == "2" {
+			// Last page — no Link header.
+			_, _ = w.Write([]byte(`[{"number":3,"state":"open","secret_type":"stripe_key"}]`))
+			return
+		}
+		// First page points at page 2 via an absolute GitHub URL.
+		w.Header().Set("Link", `<https://api.github.com/repos/myorg/myrepo/secret-scanning/alerts?state=open&per_page=100&page=2>; rel="next"`)
+		_, _ = w.Write([]byte(`[{"number":1,"state":"open","secret_type":"aws_access_key"},
+		                        {"number":2,"state":"open","secret_type":"github_pat"}]`))
+	})
+	srv = httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := &Client{token: "test", httpClient: rewriteURLClient(srv)}
+	result, err := client.ListSecretScanningAlerts(context.Background(), "myorg", "myrepo")
+
+	require.NoError(t, err)
+	require.Len(t, result, 3, "both pages must be collected")
+	assert.Equal(t, 1, result[0].Number)
+	assert.Equal(t, 3, result[2].Number)
+	assert.Equal(t, "stripe_key", result[2].SecretType, "second page item parsed")
+}
+
+// TestFetchGHASList_ForbiddenIsSkipped keeps the historical behaviour on the
+// generic helper: 403 (GHAS not enabled) returns nil, nil rather than an error.
+func TestFetchGHASList_ForbiddenIsSkipped(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer srv.Close()
+
+	c := &Client{httpClient: srv.Client()}
+	items, err := fetchGHASList[rawSecretScanningItem](context.Background(), c, srv.URL, "secret scanning alerts")
+	require.NoError(t, err, "403 should be skipped silently")
+	assert.Nil(t, items, "403 should yield nil items")
+}

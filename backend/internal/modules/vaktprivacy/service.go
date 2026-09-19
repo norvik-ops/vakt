@@ -422,6 +422,34 @@ func (s *Service) UpdateBreach(ctx context.Context, orgID, id string, in UpdateB
 	return s.repo.UpdateBreach(ctx, orgID, id, in)
 }
 
+// UpdateBreachStatus advances a breach through the confirmed Art. 33/34 DSGVO
+// lifecycle (open → authority_notified → subjects_notified → closed), enforcing
+// forward-only order server-side and stamping the matching timestamp.
+//
+// Before this existed the status column was write-once at 'open' (UpdateBreachStatus
+// had no callers, subjects_notified_at was never written) — a reported breach could
+// never leave the register open. Fixes R1-36c-04.
+//
+// Returns the sentinel errors from breach_status.go for the 4xx boundary; the
+// handler maps them (invalid → 409, rationale-missing/unsupported → 422). A missing
+// breach surfaces as pgx.ErrNoRows → 404.
+func (s *Service) UpdateBreachStatus(ctx context.Context, orgID, id string, in UpdateBreachStatusInput) (*Breach, error) {
+	current, err := s.repo.GetBreach(ctx, orgID, id)
+	if err != nil {
+		return nil, err // pgx.ErrNoRows → 404 at the handler
+	}
+	if err := ValidateBreachTransition(current.Status, in.Status, in.Rationale); err != nil {
+		return nil, err
+	}
+	// R1-36c-04 / migration 268: 'subjects_notified' (Art. 34) is now a persistable
+	// status — the CHECK constraint on po_breaches.status was extended to include it,
+	// so the full open->authority_notified->subjects_notified->closed chain runs.
+	if err := s.repo.SetBreachStatus(ctx, orgID, id, in.Status); err != nil {
+		return nil, err
+	}
+	return s.repo.GetBreach(ctx, orgID, id)
+}
+
 // DeleteBreach permanently removes a breach record.
 func (s *Service) DeleteBreach(ctx context.Context, orgID, id string) error {
 	return s.repo.DeleteBreach(ctx, orgID, id)

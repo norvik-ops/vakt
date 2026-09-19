@@ -452,9 +452,16 @@ def main() -> int:
     print(f"undocumented: {n}   baseline: {len(baseline)}")
 
     if SKIPPED:
-        print(f"\nskipped: {len(SKIPPED)} route(s)/mount(s) the parser could not resolve — "
+        # R1-SA11-06: der Zaehler MUSS dasselbe zaehlen, was er darunter
+        # auflistet. Vorher stand hier len(SKIPPED) — die Rohliste mit
+        # Dubletten — waehrend die Aufzaehlung ueber sorted(set(...)) lief.
+        # Das Gate meldete "skipped: 4" und benannte zwei. Eine Zahl, die
+        # groesser ist als ihre eigene Begruendung, laesst den Leser nach zwei
+        # Faellen suchen, die es nicht gibt.
+        skipped_unique = sorted(set(SKIPPED))
+        print(f"\nskipped: {len(skipped_unique)} route(s)/mount(s) the parser could not resolve — "
               f"they are NOT part of the numbers above:")
-        for item in sorted(set(SKIPPED)):
+        for item in skipped_unique:
             print(f"  - {item}")
 
     new = sorted(undocumented - baseline)

@@ -10,6 +10,7 @@ import {
   Plug, ClipboardCheck, CalendarClock, Inbox, Menu, X, ArrowUpCircle, ScrollText, CalendarDays,
   ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronDown,
   LayoutGrid, FileBarChart, Globe, ActivitySquare, Phone, DatabaseBackup,
+  Layers,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ProBadge } from './ProBadge'
@@ -97,6 +98,7 @@ const MODULES_NAV: NavItem[] = [
           { path: '/vaktcomply/ccm',                 label: 'nav.comply.ccm',           icon: Cloud },
           { path: '/vaktcomply/dora/dashboard',      label: 'nav.comply.dora',          icon: Banknote, pro: true, tier: 'unsold' },
           { path: '/vaktcomply/eu-ai-act/dashboard', label: 'nav.comply.euAiAct',       icon: Bot, pro: true },
+          { path: '/nis2-check/multi',               label: 'nav.comply.multiFramework', icon: Layers, pro: true },
         ],
       },
       {

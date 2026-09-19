@@ -40,6 +40,7 @@ import {
   useChecklistRuns,
   useChecklists,
   useStartChecklistRun,
+  useStartOffboarding,
 } from '../hooks/useHR'
 import type { Employee, CreateEmployeeInput, UpdateEmployeeInput } from '../types'
 
@@ -49,6 +50,7 @@ function ChecklistRunCell({ employee }: { employee: Employee }) {
   const { data: runs } = useChecklistRuns(employee.id)
   const { data: checklists } = useChecklists()
   const startRun = useStartChecklistRun()
+  const startOffboarding = useStartOffboarding()
   const [pickOpen, setPickOpen] = useState(false)
   const [selectedChecklistId, setSelectedChecklistId] = useState('')
 
@@ -66,7 +68,13 @@ function ChecklistRunCell({ employee }: { employee: Employee }) {
 
   async function handleStart() {
     if (!selectedChecklistId) return
-    const run = await startRun.mutateAsync({ employee_id: employee.id, checklist_id: selectedChecklistId })
+    const selected = (checklists ?? []).find((c) => c.id === selectedChecklistId)
+    // An offboarding run must set the employee to 'offboarding' — that only happens
+    // on the dedicated endpoint, which starts the offboarding checklist run itself.
+    // Onboarding keeps the generic start (no status side-effect needed).
+    const run = selected?.type === 'offboarding'
+      ? await startOffboarding.mutateAsync(employee.id)
+      : await startRun.mutateAsync({ employee_id: employee.id, checklist_id: selectedChecklistId })
     setPickOpen(false)
     navigate(`/vakthr/checklist-runs/${run.id}`)
   }
@@ -109,9 +117,9 @@ function ChecklistRunCell({ employee }: { employee: Employee }) {
             <Button variant="outline" onClick={() => { setPickOpen(false) }}>{t('common.cancel')}</Button>
             <Button
               onClick={() => { void handleStart() }}
-              disabled={!selectedChecklistId || startRun.isPending}
+              disabled={!selectedChecklistId || startRun.isPending || startOffboarding.isPending}
             >
-              {startRun.isPending ? t('vakthr.checklistRun.starting') : t('vakthr.checklistRun.startButton')}
+              {startRun.isPending || startOffboarding.isPending ? t('vakthr.checklistRun.starting') : t('vakthr.checklistRun.startButton')}
             </Button>
           </DialogFooter>
         </DialogContent>

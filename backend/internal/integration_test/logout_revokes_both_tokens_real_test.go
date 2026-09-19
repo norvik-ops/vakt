@@ -243,7 +243,7 @@ func TestLogoutDoesNotClaimSuccessWhenRevocationFails(t *testing.T) {
 func postLogoutThroughRealRoute(t *testing.T, svc *auth.Service, accessToken string) *httptest.ResponseRecorder {
 	t.Helper()
 	e := echo.New()
-	auth.Register(e.Group("/api/v1/auth"), auth.NewHandler(svc, &config.Config{}))
+	auth.Register(e.Group("/api/v1/auth"), auth.NewHandler(svc, &config.Config{}), nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)

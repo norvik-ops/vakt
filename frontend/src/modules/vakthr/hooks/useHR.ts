@@ -112,6 +112,24 @@ export function useStartChecklistRun() {
   })
 }
 
+// useStartOffboarding starts the offboarding process for an employee via the
+// dedicated endpoint. Unlike the generic checklist-run start, this ALSO sets the
+// employee's status to 'offboarding' server-side (POST /employees/:id/offboard →
+// StartOffboarding) and returns the started run. Without this the offboarding
+// status was never set: the generic POST /checklist-runs only creates a run.
+export function useStartOffboarding() {
+  const queryClient = useQueryClient()
+  return useMutation<ChecklistRun, Error, string>({
+    mutationFn: (employeeId) =>
+      apiFetch<ChecklistRun>(`/vakthr/employees/${employeeId}/offboard`, { method: 'POST' }),
+    onSuccess: (_data, employeeId) => {
+      void queryClient.invalidateQueries({ queryKey: ['vakthr', 'checklist-runs', employeeId] })
+      // The status badge in the employee list must reflect the new 'offboarding' state.
+      void queryClient.invalidateQueries({ queryKey: ['vakthr', 'employees'] })
+    },
+  })
+}
+
 export function useUpdateChecklistRun() {
   const queryClient = useQueryClient()
   return useMutation<ChecklistRun, Error, { id: string; input: UpdateChecklistRunInput; employeeId?: string }>({

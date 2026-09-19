@@ -46,6 +46,15 @@ type NewEmployeeInput struct {
 	OrgID string
 	// EmployeeID is the hr_employees id of the newly created employee.
 	EmployeeID string
+	// Email and Name carry the employee's contact PII, filled by the HR producer
+	// from the record it already holds. They exist so the consumer (vaktaware)
+	// can PERSIST an addressable recipient without ever reading hr_employees
+	// itself (ADR-0088 / ADR-0079). Both are optional and additive: a producer
+	// that leaves them empty reproduces the previous behaviour, and the consumer
+	// stores NULL — an unaddressable enrollment, exactly as before this event
+	// carried PII.
+	Email string
+	Name  string
 }
 
 // EmployeeOnboardingTrigger is called when a new employee record is created.

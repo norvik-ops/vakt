@@ -618,16 +618,6 @@ func (s *Service) RotateSecret(ctx context.Context, orgID, envID, key string, in
 	return nil
 }
 
-// SetRotationPolicy upserts a rotation policy for a secret.
-func (s *Service) SetRotationPolicy(ctx context.Context, orgID, secretID string, intervalDays int) (*RotationPolicy, error) {
-	return s.repo.UpsertRotationPolicy(ctx, orgID, secretID, intervalDays)
-}
-
-// GetRotationPolicy returns the rotation policy for a secret.
-func (s *Service) GetRotationPolicy(ctx context.Context, orgID, secretID string) (*RotationPolicy, error) {
-	return s.repo.GetRotationPolicy(ctx, orgID, secretID)
-}
-
 // --- Git Scanner ---
 
 // gitScanPayload is the Asynq task payload for a git scan job.

@@ -112,9 +112,11 @@ func (h *AgentHandler) AgentRun(c echo.Context) error {
 	if orgID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
-	// Permissions aus Context. Wenn nichts gesetzt: leere Liste = Agent darf
-	// nur Tools mit RequireScope="" nutzen.
-	perms, _ := c.Get("permissions").([]string)
+	// R1-W8A-N1(b): derive the caller's tool scopes from their module RBAC.
+	// Nothing set the "permissions" context key, so the agent could previously
+	// only ever use unscoped tools; a privileged user's scoped tools were dead.
+	// Fail-closed on DB error (nil = no scoped tools).
+	perms := h.derivePermissions(c.Request().Context(), orgID, userID)
 
 	var input struct {
 		Goal          string   `json:"goal"`

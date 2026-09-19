@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/modules/vakthr"
 	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
 )
@@ -94,7 +95,7 @@ func seedDSR(t *testing.T, pool *pgxpool.Pool, orgID, dsrType, email string) str
 // Without them ExecuteErasure refuses to run at all (ADR-0079).
 func newPrivacyService(pool *pgxpool.Pool) *vaktprivacy.Service {
 	return vaktprivacy.NewService(pool, asynq.RedisClientOpt{}).
-		WithSubjectErasers(vaktaware.NewSubjectEraser(), vakthr.NewSubjectEraser()).
+		WithSubjectErasers(vaktaware.NewSubjectEraser(), vakthr.NewSubjectEraser(), vaktcomply.NewSubjectEraser()).
 		WithSubjectResolver(vakthr.NewSubjectResolver())
 }
 

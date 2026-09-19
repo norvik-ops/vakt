@@ -109,6 +109,12 @@ func SeedPolicyTemplates(ctx context.Context, db *pgxpool.Pool) error {
 	return policy.SeedPolicyTemplates(ctx, db)
 }
 
+// SoAStatusLabel re-exports policy.SoAStatusLabel so the SoA XLSX/DOCX export
+// handlers in this package translate implementation_status to German — the same
+// mapping the SoA PDF uses — without importing the policy package directly
+// (R1-20-07).
+func SoAStatusLabel(s string) string { return policy.SoAStatusLabel(s) }
+
 // GetControl returns a single control by ID for the given org.
 func (s *Service) GetControl(ctx context.Context, orgID, controlID string) (*Control, error) {
 	return s.Policy.GetControl(ctx, orgID, controlID)

@@ -3,8 +3,6 @@ package alerting
 import (
 	"bytes"
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -24,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
+	sharedcrypto "github.com/matharnica/vakt/internal/shared/crypto"
 	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/matharnica/vakt/internal/shared/mailhdr"
 	"github.com/matharnica/vakt/internal/shared/safego"
@@ -84,43 +83,21 @@ func (s *Service) WithDispatchBudget(d time.Duration) *Service {
 	return s
 }
 
-// encrypt encrypts plaintext with AES-256-GCM. The 12-byte nonce is prepended to the ciphertext.
+// encrypt encrypts plaintext with AES-256-GCM via the shared crypto primitive.
+// The output format is [nonce (12 bytes) | ciphertext+tag] with no marker —
+// byte-identical to the previous inline implementation, so ciphertexts written
+// before this consolidation stay decryptable (R1-W9B-N1). The old duplicated
+// aes.NewCipher/cipher.NewGCM path is removed in favour of sharedcrypto.Encrypt.
 func (s *Service) encrypt(plaintext []byte) ([]byte, error) {
-	block, err := aes.NewCipher(s.masterKey)
-	if err != nil {
-		return nil, fmt.Errorf("aes new cipher: %w", err)
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, fmt.Errorf("new gcm: %w", err)
-	}
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, fmt.Errorf("generate nonce: %w", err)
-	}
-	return gcm.Seal(nonce, nonce, plaintext, nil), nil
+	return sharedcrypto.Encrypt(s.masterKey, plaintext)
 }
 
-// decrypt decrypts AES-256-GCM ciphertext where the nonce is prepended.
+// decrypt decrypts AES-256-GCM ciphertext where the 12-byte nonce is prepended.
+// sharedcrypto.Decrypt reads exactly the legacy [nonce | ciphertext+tag] layout
+// this service has always produced, so existing stored channel URLs and HMAC
+// secrets keep decrypting unchanged.
 func (s *Service) decrypt(ciphertext []byte) ([]byte, error) {
-	block, err := aes.NewCipher(s.masterKey)
-	if err != nil {
-		return nil, fmt.Errorf("aes new cipher: %w", err)
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, fmt.Errorf("new gcm: %w", err)
-	}
-	nonceSize := gcm.NonceSize()
-	if len(ciphertext) < nonceSize {
-		return nil, fmt.Errorf("ciphertext too short")
-	}
-	nonce, ct := ciphertext[:nonceSize], ciphertext[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ct, nil)
-	if err != nil {
-		return nil, fmt.Errorf("gcm open: %w", err)
-	}
-	return plaintext, nil
+	return sharedcrypto.Decrypt(s.masterKey, ciphertext)
 }
 
 // validateAlertingURL rejects URLs that resolve to loopback, private, link-local,

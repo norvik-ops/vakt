@@ -27,6 +27,23 @@ type Service struct {
 
 func NewService(db *pgxpool.Pool) *Service { return &Service{db: db} }
 
+// OrgName returns the organization's display name, or "" if it cannot be read.
+// R1-W8A-N1: the assessment PDF relied on "org_name" being set in the request
+// context by AuthMiddleware — but nothing sets it, so the "Organisation <id>"
+// fallback always won. Resolving it here restores the real name in the header.
+func (s *Service) OrgName(ctx context.Context, orgID string) string {
+	if s.db == nil || orgID == "" {
+		return ""
+	}
+	var name string
+	if err := s.db.QueryRow(ctx,
+		`SELECT name FROM organizations WHERE id = $1::uuid`, orgID,
+	).Scan(&name); err != nil {
+		return ""
+	}
+	return name
+}
+
 // Run ist der API-View eines anonymen Runs.
 type Run struct {
 	Token       string                 `json:"token"`

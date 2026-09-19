@@ -36,6 +36,7 @@ var writeRoutes = []struct {
 	{http.MethodPut, "/vaktprivacy/breaches/1"},
 	{http.MethodDelete, "/vaktprivacy/breaches/1"},
 	{http.MethodPost, "/vaktprivacy/breaches/1/notify-authority"},
+	{http.MethodPut, "/vaktprivacy/breaches/1/status"},
 	{http.MethodPost, "/vaktprivacy/dsr"},
 	{http.MethodPut, "/vaktprivacy/dsr/1"},
 	{http.MethodDelete, "/vaktprivacy/dsr/1"},
