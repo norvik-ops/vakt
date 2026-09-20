@@ -317,6 +317,10 @@ EXPECTED_JOBS = {
         "integration": "Integration Tests",
         "frontend": "Frontend (TypeScript)",
         "helm-chart": "Helm chart lint & template",
+        # PROCESS.md P7c: der automatische Pruefer der Ziellinie. Neu am 2026-09-19 —
+        # der Kontext "Kernwege" muss im Ruleset protected-flow nachgetragen werden,
+        # sonst laeuft er, ohne den Merge zu sperren.
+        "kernwege": "Kernwege",
     },
     ".github/workflows/docs.yml": {
         "doc-consistency": "Doc consistency (drift + links)",
@@ -359,6 +363,10 @@ REQUIRED_STEPS = {
         "Gate — jeder Integrations-Test liegt im Selektor",
         "Integration tests (testcontainers)",
         "Coverage floor — vaktaware / vaktscan (S126)",
+    ],
+    (".github/workflows/ci.yml", "kernwege"): [
+        "Playwright-Browser (Chromium)",
+        "Kernwege (make kernwege)",
     ],
     (".github/workflows/ci.yml", "helm-chart"): [
         "helm lint",

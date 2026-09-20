@@ -1,0 +1,28 @@
+# Lokaler Stub fuer den Lizenz-Verlaengerungsdienst (Kernweg 1, Grenze api.norvikops.de).
+# Vertrag wie internal/license/autorefresh.go fetchKey():
+#   GET /api/v1/billing/license, Authorization: Bearer <renewal token>
+#   -> 200 {"key": "<signierter Schluessel>"}
+# Der Test legt renewal.json in ${KW_DIR}/licstub/ ab, bevor er die API neu startet.
+{
+	admin off
+	auto_https off
+}
+
+:8000 {
+	log
+	@renew {
+		method GET
+		path /api/v1/billing/license
+		header Authorization "Bearer {$KW_RENEWAL_TOKEN}"
+	}
+	handle @renew {
+		rewrite * /renewal.json
+		header Content-Type application/json
+		file_server {
+			root /stub
+		}
+	}
+	handle {
+		respond "unauthorized" 401
+	}
+}

@@ -1,4 +1,4 @@
-.PHONY: dev api-local frontend-local stop stop-local test lint build migrate seed seed-local backup public-mirror rotate-key install-hooks test-restore test-backup test-deploy-gate test-backup-wiring test-offsite-order
+.PHONY: kernwege dev api-local frontend-local stop stop-local test lint build migrate seed seed-local backup public-mirror rotate-key install-hooks test-restore test-backup test-deploy-gate test-backup-wiring test-offsite-order
 
 # Lokale Overrides fuer interne Ops-Ziele (z.B. BILLING_HOST). Gitignored und NICHT
 # im oeffentlichen Mirror — Infra-Namen gehoeren nicht ins Kunden-Repo.
@@ -94,6 +94,17 @@ test:
 	bash scripts/backup_restore_wiring_test.sh
 	@for t in $(INTERNAL_TEST_SUITES); do echo "bash $$t"; bash "$$t" || exit 1; done
 	@echo "interner Sites-Stack: $(words $(INTERNAL_TEST_SUITES))/$(words $(INTERNAL_TEST_SUITES_EXPECTED)) Suiten gelaufen · skipped: $(words $(INTERNAL_TEST_SUITES_MISSING)) $(INTERNAL_TEST_SUITES_MISSING)"
+
+# ── Kernwege — der automatische Pruefer der Ziellinie (PROCESS.md P7c) ──────
+# Baut die Images aus dem Arbeitsbaum, startet eine FRISCHE Instanz ueber das
+# Kunden-docker-compose.yml (Port 127.0.0.1:18480, Projekt vakt-kw), faehrt je
+# Kernweg aus docs/launch-gate.md Playwright-Tests dagegen und raeumt ab.
+# Exit 0 nur, wenn alles gruen ist oder genau so rot wie per test.fail() erwartet.
+# Braucht Docker (Compose >= 2.24), Go, Node (frontend/node_modules) und Chromium
+# (`cd frontend && npx playwright install chromium`). Laufzeit ~15 min.
+# Optionen (Umgebung): KW_KEEP=1 KW_SKIP_BUILD=1 KW_UPDATE=0 — siehe scripts/kernwege/kernwege.sh.
+kernwege: ## Kernwege 1-9 Ende-zu-Ende gegen frische Instanz (CI-Job "Kernwege")
+	@bash scripts/kernwege/kernwege.sh
 
 test-restore: ## S89-1: restore.sh hardening shell test (key-leak + tamper checks)
 	@bash scripts/restore_test.sh

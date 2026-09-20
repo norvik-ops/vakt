@@ -11,6 +11,11 @@ export default tseslint.config(
       'node_modules',
       'e2e/**',
       'playwright.config.ts',
+      // Kernwege (make kernwege): Playwright-Prüfer gegen eine echte Instanz, nicht Teil
+      // des SPA-Builds — wie e2e/ ohne typgeprüftes Projekt.
+      'kernwege/**',
+      'kernwege-results/**',
+      'playwright.kernwege.config.ts',
       'src/api/generated.ts',
       'src/components/ui/**',
     ],

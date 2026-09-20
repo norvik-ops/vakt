@@ -97,6 +97,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
-    exclude: ['**/node_modules/**', '**/e2e/**'],
+    // e2e/ und kernwege/ sind Playwright-Suiten (eigener Runner), keine Vitest-Tests.
+    exclude: ['**/node_modules/**', '**/e2e/**', '**/kernwege/**'],
   },
 })

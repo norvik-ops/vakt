@@ -1,0 +1,75 @@
+# Kernwege-Overlay auf das Kunden-docker-compose.yml (PROCESS.md P7c, docs/launch-gate.md).
+#
+# Wird NUR von scripts/kernwege/kernwege.sh geladen, immer zusammen mit dem Root-
+# docker-compose.yml. Es aendert am Kunden-Stack so wenig wie moeglich — jede
+# Abweichung steht hier mit Grund, damit "frische Instanz nach Anleitung" ehrlich bleibt:
+#
+#   1. caddy lauscht auf 127.0.0.1:${KW_HTTP_PORT} statt 0.0.0.0:80/443.
+#      Grund: auf dem Entwickler-Host sind 80/443 belegt, und ein Port ohne
+#      127.0.0.1 ist wegen Docker/ufw sofort weltweit offen (docs/lessons.md,
+#      Vorfall 07/2026). VAKT_DOMAIN=:80 = der dokumentierte Modus "hinter eigenem
+#      TLS-Terminator" (Caddyfile, Variante 3), damit kein Zertifikat noetig ist.
+#   2. env_file zeigt auf die .env, die kernwege.sh nach README erzeugt hat — nicht
+#      auf eine .env im Repo-Root (die gehoert dem Entwickler).
+#   3. api und worker verlieren das Netz `egress`. Damit KANN die Instanz keinen
+#      Fremddienst erreichen (api.norvikops.de, Lexware, EPSS, Mail-Relays). Jede
+#      externe Grenze ist ein lokaler Stub auf dem internen Netz app-net.
+#   4. mailpit (SMTP-Senke) und licstub (Lizenz-Verlaengerung) kommen dazu. Beide
+#      stehen nur auf internen Netzen; mailpit veroeffentlicht seine Web-API auf
+#      127.0.0.1, damit die Tests Einladungs-Mails lesen koennen.
+#   5. ollama/ollama-init werden nicht gestartet (VAKT_AI_PROVIDER=disabled in der
+#      .env) — ein 4,5-GB-Modell-Download hat mit keinem Kernweg zu tun.
+services:
+  caddy:
+    ports: !override
+      - "127.0.0.1:${KW_HTTP_PORT:?}:80"
+    environment:
+      VAKT_DOMAIN: ":80"
+
+  migrate:
+    env_file: !override
+      - ${KW_ENV_FILE:?}
+
+  api:
+    image: ${KW_API_IMAGE:?}
+    env_file: !override
+      - ${KW_ENV_FILE:?}
+    networks: !override
+      - app-net
+      - db-net
+
+  worker:
+    env_file: !override
+      - ${KW_ENV_FILE:?}
+    networks: !override
+      - app-net
+      - db-net
+
+  mailpit:
+    # Derselbe Digest wie in backend/internal/integration_test/images_test.go
+    # (check_image_tags.py Invariante F: ein Repository, ein Digest).
+    image: axllent/mailpit:v1.30.6@sha256:7f33095f80e901f6ad08028f06ca284aa58fe84942be5496008d041d3b9f4d4d
+    networks:
+      - app-net
+      - kw-host
+    ports:
+      - "127.0.0.1:${KW_MAIL_PORT:?}:8025"
+
+  # Lizenz-Verlaengerungs-Stub an der Grenze zu api.norvikops.de (Kernweg 1).
+  # Antwortet auf GET /api/v1/billing/license NUR mit dem richtigen Renewal-Token
+  # und liefert dann die Datei, die der Test in ${KW_DIR}/licstub/ ablegt.
+  licstub:
+    # Digest-gepinnt wie jede Test-/CI-Referenz (check_image_tags.py, Invariante E).
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    networks:
+      - app-net
+    environment:
+      KW_RENEWAL_TOKEN: ${KW_RENEWAL_TOKEN:?}
+    volumes:
+      - ${KW_DIR:?}/licstub:/stub:ro
+      - ./scripts/kernwege/licstub.Caddyfile:/etc/caddy/Caddyfile:ro
+
+networks:
+  # Nur fuer die Mailpit-Web-API auf 127.0.0.1 — ein Container nur an internen
+  # Netzen kann keinen Port veroeffentlichen. api/worker haengen NICHT daran.
+  kw-host: {}
