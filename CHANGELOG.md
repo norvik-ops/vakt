@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ---
+## [0.44.1] — 2026-10-13
+
+### Sicherheit
+
+- **Abhängigkeiten aktualisiert, 11 Sicherheitslücken der Stufe „hoch“ geschlossen.** Die Excel-Bibliothek (excelize) konnte durch präparierte Excel-Dateien zum Absturz gebracht oder zu übermäßigem Speicher- und CPU-Verbrauch gezwungen werden (CVE-2026-107211 bis -107223). Dazu kommen eine Lücke in der HTTP/2-Verarbeitung (golang.org/x/net, CVE-2026-78669) und eine in der OpenTelemetry-Anbindung (GO-2026-6505). Funktional ändert sich nichts; ein Update wird empfohlen.
+
+---
 ## [0.44.0] — 2026-09-19
 
 ### Behoben
