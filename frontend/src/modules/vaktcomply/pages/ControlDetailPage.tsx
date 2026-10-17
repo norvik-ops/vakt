@@ -29,6 +29,7 @@ import { useFrameworkControls, useFramework } from '../hooks/useFrameworks'
 import { useControlTasks, useCreateControlTask, useToggleControlTask, useDeleteControlTask } from '../hooks/useControlTasks'
 import { MeasuresList } from '../components/MeasuresList'
 import { VVTLinksCard } from '../components/VVTLinksCard'
+import { isPathVisible } from '../../../shared/moduleVisibility'
 import { TasksPanel } from '../components/TasksPanel'
 import { Comments } from '../../../shared/components/Comments'
 import { EvidenceFileUpload } from '../components/EvidenceFileUpload'
@@ -1001,8 +1002,8 @@ export default function ControlDetailPage() {
         {/* Measures catalogue */}
         <MeasuresList controlId={controlId} />
 
-        {/* S88-9: VVT (processing activity) links */}
-        <VVTLinksCard controlId={controlId} />
+        {/* S88-9: VVT (processing activity) links — VVT liegt in Privacy, das ausgeblendet sein kann */}
+        {isPathVisible('/vaktprivacy/vvt') && <VVTLinksCard controlId={controlId} />}
 
         {/* Control Review Cycle */}
         {control && (

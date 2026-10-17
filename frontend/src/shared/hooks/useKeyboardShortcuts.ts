@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { isPathVisible } from '../moduleVisibility'
 
 function isInputFocused(): boolean {
   const el = document.activeElement
@@ -62,7 +63,7 @@ export function useKeyboardShortcuts({ onOpenHelp }: UseKeyboardShortcutsOptions
         if (e.key === 'd') {
           e.preventDefault()
           navigate('/')
-        } else if (e.key === 'f') {
+        } else if (e.key === 'f' && isPathVisible('/vaktscan/findings')) {
           e.preventDefault()
           navigate('/vaktscan/findings')
         } else if (e.key === 'r') {

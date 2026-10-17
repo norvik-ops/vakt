@@ -9,6 +9,7 @@ import {
 import { useSearch, SearchResult } from '../../hooks/useSearch'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { isPathVisible } from '../moduleVisibility'
 
 interface QuickNavItem {
   label: string
@@ -89,7 +90,8 @@ export function GlobalSearch() {
   const debouncedQuery          = useDebounce(query, 300)
   const { data, isFetching }    = useSearch(debouncedQuery)
 
-  const results   = data?.results ?? []
+  // Treffer aus ausgeblendeten Modulen (shared/moduleVisibility.ts) würden auf das Dashboard umleiten.
+  const results   = (data?.results ?? []).filter((r) => isPathVisible(r.url))
   const showRecent = debouncedQuery.length < 2 && recent.length > 0
   const displayList: SearchResult[] = debouncedQuery.length >= 2 ? results : (showRecent ? recent : [])
 
@@ -248,7 +250,7 @@ export function GlobalSearch() {
           <div className="px-4 pt-3 pb-1">
             <p className="text-xs text-secondary font-medium mb-2">{t('globalSearch.quickNav')}</p>
             <div className="grid grid-cols-2 gap-1">
-              {QUICK_NAV.map((item) => (
+              {QUICK_NAV.filter((item) => isPathVisible(item.path)).map((item) => (
                 <button
                   key={item.path}
                   onClick={() => { navigate(item.path); setOpen(false) }}

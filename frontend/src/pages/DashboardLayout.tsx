@@ -9,6 +9,7 @@ import { Label } from '../components/ui/label'
 import { scoreStrokeColor } from './DashboardComponents'
 import { WIDGET_LABELS } from './WidgetConfigPanel'
 import type { WidgetKey } from './WidgetConfigPanel'
+import { isPathVisible } from '../shared/moduleVisibility'
 
 // SVG horseshoe-style progress ring for the Security Score.
 // 270° arc (25% gap at bottom), starts at 7:30 o'clock.
@@ -170,7 +171,7 @@ export function DashboardLayout({
       icon: Flame, color: openBreachCount ? 'text-severity-critical' : 'text-secondary',
       path: '/vaktprivacy?filter=breach&status=open', loading: breachLoading,
     },
-  ]
+  ].filter((s) => isPathVisible(s.path))
 
   return (
     <div className="w-full lg:w-[260px] lg:shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-surface flex flex-col">

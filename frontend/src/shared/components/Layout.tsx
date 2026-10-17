@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { ProBadge } from './ProBadge'
 import { ModuleBetaBadge } from './BetaBadge'
+import { isPathVisible } from '../moduleVisibility'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import { cn } from '../../lib/utils'
@@ -105,6 +106,8 @@ const MODULES_NAV: NavItem[] = [
         label: 'nav.comply.group.operations',
         items: [
           { path: '/vaktcomply/risks',           label: 'nav.comply.risks',       icon: ShieldAlert },
+          // Asset-Inventar: technisch Scan, fachlich ISMS (siehe shared/moduleVisibility.ts).
+          { path: '/vaktscan/assets',            label: 'nav.scan.assets',        icon: Server },
           { path: '/vaktcomply/incidents',       label: 'nav.comply.incidents',   icon: Siren },
           { path: '/vaktcomply/audits',          label: 'nav.comply.audits',      icon: ClipboardList },
           { path: '/vaktcomply/capas',           label: 'nav.comply.capas',       icon: ClipboardCheck },
@@ -489,8 +492,11 @@ export default function Layout() {
             </p>
           )}
           <div className="space-y-[2px] mb-4">
-            {MODULES_NAV.map(({ path, label, icon: Icon, exact, beta, children, childGroups }) => {
-              const active = isActive(path, exact)
+            {MODULES_NAV.filter((m) => isPathVisible(m.path)).map(({ path, label, icon: Icon, exact, beta, children, childGroups }) => {
+              // Ein Modul klappt auch auf, wenn einer seiner Einträge außerhalb des eigenen Pfads
+              // liegt und gerade aktiv ist (Assets unter Comply).
+              const childActive = childGroups?.some((g) => g.items.some((i) => isActive(i.path))) ?? false
+              const active = isActive(path, exact) || childActive
               const hasChildren = (children?.length ?? 0) > 0 || (childGroups?.length ?? 0) > 0
               const expanded = active && hasChildren
               return (
@@ -790,7 +796,7 @@ export default function Layout() {
           { label: 'Comply',  path: '/vaktcomply',  icon: ShieldCheck },
           { label: 'Scan',    path: '/vaktscan',   icon: Bug },
           { label: 'Privacy', path: '/vaktprivacy', icon: Eye },
-        ].map(({ label, path, icon: Icon, exact }) => {
+        ].filter(({ path }) => isPathVisible(path)).map(({ label, path, icon: Icon, exact }) => {
           const active = isActive(path, exact)
           return (
             <Link

@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Geändert
+- Die Oberfläche konzentriert sich auf das ISMS (Vakt Comply). Scan, Vault, Aware, Privacy und HR sind
+  ausgeblendet: Seitenleiste, Dashboard, Suche, Tastenkürzel und Querverweise zeigen sie nicht mehr,
+  Direktaufrufe leiten auf das Dashboard. Daten, API und Hintergrund-Jobs bleiben unverändert. Das
+  Asset-Inventar steht jetzt unter Comply → Betrieb.
+
 ---
 ## [0.44.1] — 2026-10-13
 

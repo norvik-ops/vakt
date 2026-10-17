@@ -29,6 +29,7 @@ import { useAuditReport } from '../../../shared/hooks/useAuditReport'
 import { ProGate } from '../../../shared/components/ProGate'
 import { useUpdateCheck, useToggleUpdateCheck } from '../../../shared/hooks/useUpdateCheck'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { isModuleVisible } from '../../../shared/moduleVisibility'
 
 // ─── Retention / Digest hooks (used by DigestToggleSection) ──────────────────
 
@@ -782,7 +783,8 @@ function SectorSection() {
 function ModulesSection() {
   const { t } = useTranslation()
   const { data, isLoading, isError } = useModules()
-  const modules = data?.data ?? []
+  // Ausgeblendete Module (shared/moduleVisibility.ts) nicht als „aktiviert" anzeigen.
+  const modules = (data?.data ?? []).filter((m) => isModuleVisible(m.name))
 
   return (
     <SectionCard title={t('settingsPage.modulesTitle')} icon={Layers}>

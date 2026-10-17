@@ -20,6 +20,7 @@ import { apiFetch } from '../../../api/client'
 import { toast } from '../../../shared/hooks/useToast'
 import { useCreatePolicy } from '../hooks/usePolicies'
 import { handleApiError } from '../../../shared/utils/errorMessages'
+import { isPathVisible } from '../../../shared/moduleVisibility'
 
 interface DBTemplate {
   id: string
@@ -219,7 +220,7 @@ function TemplateCategoryTab({ category }: { category: Category }) {
 export default function PolicyTemplatesPage() {
   const [activeCategory, setActiveCategory] = useState<Category>('policy')
 
-  const categories: Category[] = ['policy', 'dpia', 'avv']
+  const categories = (['policy', 'dpia', 'avv'] as Category[]).filter((c) => isPathVisible(CATEGORY_DESTINATIONS[c]))
 
   return (
     <div className="flex flex-col h-full">

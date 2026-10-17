@@ -7,6 +7,7 @@ import { apiFetch } from '../../api/client'
 import type { ApiResponse } from '../../api/contract'
 import { useFrameworks } from '../../modules/vaktcomply/hooks/useFrameworks'
 import { useTeamMembers } from '../../hooks/useTeam'
+import { isPathVisible } from '../moduleVisibility'
 
 const DISMISS_KEY = 'vakt_onboarding_dismissed'
 
@@ -47,9 +48,10 @@ export function useHasEvidence() {
   })
 }
 
-export function useHasVvt() {
+export function useHasVvt(enabled = true) {
   return useQuery<boolean>({
     queryKey: ['checklist', 'vvt'],
+    enabled,
     queryFn: async () => {
       const res = await apiFetch<ApiResponse<'/vaktprivacy/vvt', 'get'>>('/vaktprivacy/vvt?limit=1')
       // pagination.total, not data.length: with limit=1 the page is capped at
@@ -79,9 +81,9 @@ export function GettingStartedChecklist() {
   const { data: members } = useTeamMembers()
   const { data: totpStatus } = useTOTPStatus()
   const { data: hasEvidence } = useHasEvidence()
-  const { data: hasVvt } = useHasVvt()
+  const { data: hasVvt } = useHasVvt(isPathVisible('/vaktprivacy/vvt'))
 
-  const steps: Step[] = [
+  const allSteps: Step[] = [
     {
       id: 'framework',
       labelKey: 'framework',
@@ -114,6 +116,8 @@ export function GettingStartedChecklist() {
     },
   ]
 
+  // Schritte in ausgeblendeten Modulen (z. B. VVT in Privacy) zählen nicht mit.
+  const steps = allSteps.filter((s) => isPathVisible(s.to))
   const completedCount = steps.filter((s) => s.done).length
   const allDone = completedCount === steps.length
 

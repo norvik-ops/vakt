@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
 import { ExternalLink, Sparkles } from 'lucide-react'
+import { isPathVisible } from '../../../shared/moduleVisibility'
 
 interface NIS2Requirement {
   id: string
@@ -164,13 +165,17 @@ export default function NIS2ChecklistPage() {
               <Badge className={`text-xs border ${moduleBadgeClass(req.module)}`}>
                 {req.module}
               </Badge>
-              <Link
-                to={req.path}
-                className="flex items-center gap-1 text-xs text-brand hover:underline"
-              >
-                {t('nis2Checklist.openModule')}
-                <ExternalLink className="w-3 h-3" />
-              </Link>
+              {/* Liegt der Nachweis in einem ausgeblendeten Modul, bleibt die Anforderung stehen,
+                  nur der Link entfällt (shared/moduleVisibility.ts). */}
+              {isPathVisible(req.path) && (
+                <Link
+                  to={req.path}
+                  className="flex items-center gap-1 text-xs text-brand hover:underline"
+                >
+                  {t('nis2Checklist.openModule')}
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              )}
               <p className="text-[11px] text-secondary text-right leading-snug max-w-[200px]">
                 {req.checkHint}
               </p>

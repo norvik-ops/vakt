@@ -29,6 +29,10 @@ Free-to-self-host alternative to Vanta, Drata, or DataGuard. Those vendors don't
 
 ## Modules
 
+> **Focus (2026-10):** The web UI currently shows **Vakt Comply** only — the ISMS. The other modules
+> below keep running in the backend (API, data, jobs) but are hidden in the UI until they are ready.
+> The asset inventory stays visible under Comply.
+
 | Module | Description |
 |---|---|
 | 📊 **Vakt Comply** | Compliance hub: control tracking, gap analysis, risk register, incident register, policy templates (10 German templates), auditor portal, audit package export (ZIP), AI-generated reports, NIS2 registration wizard, Trust Center |

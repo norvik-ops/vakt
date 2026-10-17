@@ -1,10 +1,11 @@
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
+import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { apiFetch } from './api/client'
 import { useAuthStore } from './shared/stores/auth'
 import Layout from './shared/components/Layout'
 import { ErrorBoundary } from './shared/components/ErrorBoundary'
 import { Spinner } from './components/Spinner'
+import { isPathVisible } from './shared/moduleVisibility'
 
 // Eager-loaded: Auth-Flows (Login/Setup), Dashboard (initial Landing),
 // öffentliche Pages mit Magic-Link-Tokens (auditor/policy/invite/dsr —
@@ -115,6 +116,9 @@ function AuthGuard() {
 }
 
 function ModuleShell({ children, moduleKey }: { children: React.ReactNode; moduleKey?: string }) {
+  // Ausgeblendete Module (shared/moduleVisibility.ts) sind auch per Direktaufruf nicht erreichbar.
+  const location = useLocation()
+  if (!isPathVisible(location.pathname)) return <Navigate to="/" replace />
   return (
     <ErrorBoundary key={moduleKey}>
       <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>

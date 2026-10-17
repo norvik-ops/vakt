@@ -21,6 +21,7 @@ import type { DashboardAggregate } from '../hooks/useDashboard'
 import type { ScoreHistoryEntry } from '../modules/vaktcomply/hooks/useScoreHistory'
 import type { RecentPage } from '../shared/hooks/useRecentPages'
 import type { AuditMilestone } from '../modules/vaktcomply/types'
+import { isPathVisible } from '../shared/moduleVisibility'
 
 interface WidgetGridProps {
   widgetOrder: string[]
@@ -89,7 +90,7 @@ export function WidgetGrid({
       badgeColor: openBreachCount ? 'text-severity-critical' : 'text-secondary',
       path: '/vaktprivacy',
     },
-  ]
+  ].filter((m) => isPathVisible(m.path))
 
   return (
     <div className="flex-1 overflow-auto p-6 space-y-6">
