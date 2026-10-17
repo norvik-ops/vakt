@@ -139,11 +139,10 @@ test.describe('KW3 Anmeldung & Rechte', () => {
     await saveSession(v, 'viewer')
   })
 
-  // Der Dialog „2FA aktivieren" holt das Secret in handleOpen() — das hängt an Radix'
+  // R1-KW-3 (behoben): Der Dialog „2FA aktivieren" holte das Secret über Radix'
   // onOpenChange, das nur feuert, wenn der Dialog SICH SELBST öffnet, nicht wenn die
-  // Seite `open` setzt (AccountSettingsPage.tsx). POST /auth/2fa/setup geht nie raus,
-  // „Weiter" bleibt gesperrt. Seit dem Monorepo-Start (3f0a6610) kann niemand MFA
-  // per Oberfläche einschalten.
+  // Seite `open` setzt. POST /auth/2fa/setup ging nie raus. Dieser Test hält fest,
+  // dass MFA per Oberfläche einschaltbar bleibt.
   test('KW3 R1-KW-3 Viewer schaltet 2FA in den Konto-Einstellungen ein', async ({ browser }) => {
     const v = await openAs(browser, 'viewer')
     await v.goto('/account')
@@ -152,7 +151,6 @@ test.describe('KW3 Anmeldung & Rechte', () => {
     const setup = v.getByRole('dialog', { name: 'Zwei-Faktor-Authentifizierung einrichten' })
     await expect(setup).toBeVisible()
 
-    test.fail(true, 'R1-KW-3: 2FA-Dialog lädt nie ein Secret (handleOpen hängt an onOpenChange) — MFA per Oberfläche nicht einschaltbar')
     const secret = (await setup.locator('code').first().innerText({ timeout: 10_000 })).trim()
     expect(secret).toMatch(/^[A-Z2-7]{16,}=*$/)
     await setup.getByRole('button', { name: 'Weiter' }).click()
@@ -168,11 +166,11 @@ test.describe('KW3 Anmeldung & Rechte', () => {
     test.setTimeout(240_000) // bis zu 30 s aufs nächste TOTP-Fenster + Login-Abstand + Rate-Budget
     let s = loadState()
     if (!s.viewer?.totpSecret) {
-      // Solange R1-KW-3 offen ist, schaltet der Test MFA mit denselben zwei Aufrufen
-      // ein, die der Dialog machen müsste (setup → confirm) — damit der LOGIN mit MFA
-      // geprüft bleibt. Grenze: das Einschalten per Oberfläche ist R1-KW-3.
-      // Bewusst ohne Umweg über /account: jede 2FA-Anfrage zählt gegen ein Budget von
-      // 5 in 5 Minuten je IP, auch das Lesen des Status (R1-KW-13).
+      // Nur wenn der Oberflächen-Test oben gescheitert ist (dann ist der Lauf ohnehin
+      // rot): MFA mit denselben zwei Aufrufen einschalten, die der Dialog macht
+      // (setup → confirm), damit der LOGIN mit MFA trotzdem geprüft bleibt.
+      // Bewusst ohne Umweg über /account: jede 2FA-Anfrage mit Code zählt gegen ein
+      // Budget von 5 in 5 Minuten je IP.
       const v = await openAs(browser, 'viewer')
       const r = await apiWrite(v.context(), 'POST', '/api/v1/auth/2fa/setup')
       expect(r.status(), await r.text()).toBe(200)
@@ -187,11 +185,10 @@ test.describe('KW3 Anmeldung & Rechte', () => {
     await saveSession(v2, 'viewer')
   })
 
-  // Das 2FA-Limit (TOTPRateLimit, 5 Anfragen je 5 Minuten und IP) zählt JEDE Route der
-  // /auth/2fa-Gruppe mit — auch GET /2fa/status, das die Konto-Seite beim Öffnen lädt.
-  // Wer MFA gerade eingeschaltet hat (Status, Setup, Bestätigen, Login) und sich beim
-  // nächsten Login einmal vertippt, ist für 5 Minuten ausgesperrt; die Meldung sagt
-  // „bitte 1 Sekunden warten". Hinter einem Büro-NAT teilen sich alle dieses Budget.
+  // R1-KW-13 (behoben): Das 2FA-Limit (TOTPRateLimit, 5 Anfragen je 5 Minuten und IP)
+  // zählte auch GET /2fa/status, das die Konto-Seite beim Öffnen lädt. Wer MFA gerade
+  // eingeschaltet hatte und sich beim nächsten Login einmal vertippte, war 5 Minuten
+  // ausgesperrt. Jetzt zählen nur Anfragen mit Code; der Status ist frei.
   test('KW3 R1-KW-13 nach einem Tippfehler im 2FA-Code kommt der richtige Code durch', async ({ browser }) => {
     const s = loadState()
     const v = await freshPage(browser)
@@ -203,7 +200,6 @@ test.describe('KW3 Anmeldung & Rechte', () => {
     await expect(v.getByLabel('Authentifizierungscode')).toBeVisible()
     await expect(v.getByRole('heading', { name: 'Dashboard', level: 1 })).toHaveCount(0)
 
-    test.fail(true, 'R1-KW-13: 2FA-Limit 5/5 min je IP zählt auch GET /2fa/status — ein Tippfehler nach dem Einrichten sperrt 5 min („bitte 1 Sekunden warten")')
     await v.getByLabel('Authentifizierungscode').fill('000000')
     await v.getByRole('button', { name: 'Bestätigen' }).click()
     await expect(v.getByRole('alert').filter({ hasText: /Ungültig|invalid/i })).toBeVisible({ timeout: 5000 })

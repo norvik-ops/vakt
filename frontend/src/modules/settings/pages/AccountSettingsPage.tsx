@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck, ShieldOff, Copy, Check, RefreshCw, Monitor, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -109,13 +109,23 @@ function SetupDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
   const setup = useSetup2FA()
   const confirm = useConfirm2FA()
 
-  function handleOpen() {
-    if (step === 'qr' && !setupData) {
-      setup.mutate(undefined, {
-        onSuccess: (data) => { setSetupData(data); },
-      })
+  // R1-KW-3: Das Secret wird geholt, sobald die Seite den Dialog öffnet. Radix'
+  // onOpenChange feuert bei einem kontrollierten Dialog nur, wenn er sich SELBST
+  // öffnet — dort angehängt ging POST /2fa/setup nie raus. Der Ref verhindert einen
+  // zweiten Aufruf (StrictMode, Re-Render), der ein anderes Secret erzeugen würde.
+  const { mutate: startSetup } = setup
+  const setupRequested = useRef(false)
+  useEffect(() => {
+    if (!open) {
+      setupRequested.current = false
+      return
     }
-  }
+    if (setupRequested.current) return
+    setupRequested.current = true
+    startSetup(undefined, {
+      onSuccess: (data) => { setSetupData(data); },
+    })
+  }, [open, startSetup])
 
   function handleConfirm() {
     setCodeError('')
@@ -164,7 +174,6 @@ function SetupDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
       open={open}
       onOpenChange={(o) => {
         if (!o) handleClose()
-        else handleOpen()
       }}
     >
       <DialogContent className="max-w-md">

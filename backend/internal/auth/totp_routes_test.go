@@ -117,3 +117,50 @@ func TestRegisterTOTP_CSRF_S132S11(t *testing.T) {
 		})
 	}
 }
+
+// TestRegisterTOTP_StatusNotRateLimited_RKW13 is the R1-KW-13 regression guard:
+// the TOTP limiter (5 per 5 min per IP) must count code-bearing requests only.
+// GET /2fa/status is loaded on every visit to the account page; counting it
+// left a user who just enabled MFA without budget for one typo at login.
+func TestRegisterTOTP_StatusNotRateLimited_RKW13(t *testing.T) {
+	counted := map[string]int{}
+	countingLimiter := func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			counted[c.Request().Method+" "+c.Path()]++
+			return echo.NewHTTPError(http.StatusTooManyRequests)
+		}
+	}
+
+	e := echo.New()
+	RegisterTOTP(e.Group("/auth"), nil, nil, noopAuthMW, nil, countingLimiter)
+
+	serve := func(method, path string) int {
+		req := httptest.NewRequest(method, path, strings.NewReader(`{"code":"123456"}`))
+		req.Header.Set("Content-Type", "application/json")
+		token := GenerateCSRFToken()
+		req.AddCookie(&http.Cookie{Name: CSRFCookieName, Value: token})
+		req.Header.Set(CSRFHeaderName, token)
+		rec := httptest.NewRecorder()
+		func() {
+			defer func() { _ = recover() }() // nil DB pool: reaching the handler panics
+			e.ServeHTTP(rec, req)
+		}()
+		return rec.Code
+	}
+
+	serve(http.MethodGet, "/auth/2fa/status")
+	assert.Zero(t, counted["GET /auth/2fa/status"], "GET /2fa/status must not consume the TOTP budget")
+
+	for _, path := range []string{
+		"/auth/2fa/login-verify",
+		"/auth/2fa/setup",
+		"/auth/2fa/confirm",
+		"/auth/2fa/disable",
+		"/auth/2fa/verify",
+		"/auth/2fa/recovery",
+		"/auth/2fa/recovery-codes/regenerate",
+	} {
+		assert.Equal(t, http.StatusTooManyRequests, serve(http.MethodPost, path), path+" must stay behind the TOTP limiter")
+		assert.Equal(t, 1, counted["POST "+path], path)
+	}
+}

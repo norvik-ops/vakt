@@ -26,9 +26,10 @@ func RegisterTOTP(g *echo.Group, db *pgxpool.Pool, masterKey []byte, authMiddlew
 	// protected's CSRFMiddleware. Without this, all six write routes below
 	// (/setup, /confirm, /disable, /verify, /recovery, /recovery-codes/regenerate)
 	// reached their handlers without a valid X-CSRF-Token.
-	middlewares := []echo.MiddlewareFunc{authMiddleware, CSRFMiddleware()}
+	baseMW := []echo.MiddlewareFunc{authMiddleware, CSRFMiddleware()}
+	middlewares := baseMW
 	if len(rateLimiter) > 0 && rateLimiter[0] != nil {
-		middlewares = append(middlewares, rateLimiter[0])
+		middlewares = append(append([]echo.MiddlewareFunc{}, baseMW...), rateLimiter[0])
 	}
 
 	// S124-1: /2fa/login-verify is the PUBLIC second stage of the two-stage login
@@ -40,8 +41,13 @@ func RegisterTOTP(g *echo.Group, db *pgxpool.Pool, masterKey []byte, authMiddlew
 	}
 	g.POST("/2fa/login-verify", h.LoginVerify, publicMW...)
 
+	// R1-KW-13: GET /2fa/status liest nur den eigenen Status, ist keine Rate-Fläche
+	// für Codes — und die Konto-Seite lädt ihn bei jedem Öffnen. Hing er am
+	// TOTP-Limiter (5 je 5 min und IP), hatte ein Nutzer nach dem Einrichten kein
+	// Budget mehr für einen Tippfehler beim nächsten Login. Deshalb nur Auth + CSRF.
+	g.GET("/2fa/status", h.Status, baseMW...)
+
 	twoFA := g.Group("/2fa", middlewares...)
-	twoFA.GET("/status", h.Status)
 	twoFA.POST("/setup", h.Setup)
 	twoFA.POST("/confirm", h.Confirm)
 	twoFA.POST("/disable", h.Disable)
