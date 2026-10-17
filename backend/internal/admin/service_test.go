@@ -20,9 +20,9 @@ func TestWithNotifyService_returnsReceiver(t *testing.T) {
 }
 
 func TestListModules_allEnabled(t *testing.T) {
-	svc := NewService(nil, "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy")
+	svc := NewService(nil, "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr")
 	mods := svc.ListModules()
-	require.Len(t, mods, 5)
+	require.Len(t, mods, 6)
 	for _, m := range mods {
 		assert.True(t, m.Enabled, "module %q should be enabled", m.Name)
 	}
@@ -31,7 +31,7 @@ func TestListModules_allEnabled(t *testing.T) {
 func TestListModules_noneEnabled(t *testing.T) {
 	svc := NewService(nil, "")
 	mods := svc.ListModules()
-	require.Len(t, mods, 5)
+	require.Len(t, mods, 6)
 	for _, m := range mods {
 		assert.False(t, m.Enabled, "module %q should be disabled", m.Name)
 	}

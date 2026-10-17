@@ -75,6 +75,6 @@ test.describe('KW2 Installation', () => {
 
     await page.goto('/')
     await expect(page).toHaveURL(/\/setup$/)
-    await expect(page.getByRole('heading', { name: /Schritt 1 von 3 — Organisation/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Schritt 1 von 2 — Organisation/ })).toBeVisible()
   })
 })

@@ -8,7 +8,7 @@
 
 Vakt gibt es in zwei frei bestellbaren Editionen — Community und Pro:
 
-**Community Edition (CE)** — kostenlos, für immer. Alle 6 Module in der Basis nutzbar (inkl. KI-Berater lokal via Ollama, NIS2 & ISO 27001, VVT/AVV/DSR, Secrets-Speicher, On-/Offboarding). Kein Ablaufdatum, keine Kreditkarte, keine Registrierung. Einzige Voraussetzung: eigener Server.
+**Community Edition (CE)** — kostenlos, für immer. Das komplette ISMS in der Basis (Vakt Comply mit Asset-Inventar, Risiken, Richtlinien, Audit-Export, NIS2 & ISO 27001, KI-Berater lokal via Ollama). Die weiteren Module (Scan, Vault, Aware, Privacy, HR) gehören nicht zum geprüften Launch-Umfang und lassen sich über `VAKT_MODULES_ENABLED` dazuschalten. Kein Ablaufdatum, keine Kreditkarte, keine Registrierung. Einzige Voraussetzung: eigener Server.
 
 **Pro** — 299 €/Monat oder 2.990 €/Jahr, jeweils netto\*. Schaltet spezialisierte Frameworks und erweiterte Workflows frei: BSI IT-Grundschutz (Modellierung, Grundschutz-Check, 200-3-Risiken, Cockpit, Berichte), EU AI Act, CRA, DSGVO-TOM, CIS Controls v8, KRITIS-DachG, BSI C5, ISO 27017/27018, Audit-PDF-Export, NIS2-Meldungsassistent, Lieferantenportal, erweiterte Scan-/Aware-/Vault-/Privacy-Workflows (Reports & Importe, Phishing-Kampagnen, Secret-Rotation & Access Reviews, DPIA & TIA), SSO (OIDC/SAML), SCIM-Provisionierung, SIEM-Export, granulare Berechtigungen und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
 

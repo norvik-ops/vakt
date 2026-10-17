@@ -6,10 +6,34 @@ import (
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
-// Register wires VulnBoard routes under the provided group.
+// RegisterAssets wires the asset registry. It is mounted even when vaktscan is
+// disabled: the inventory belongs to the ISMS (ISO 27001 A.5.9) — protection
+// needs, risk↔asset links, BSI modelling and onboarding read it — and only
+// lives in this package for historical reasons. The caller decides which
+// module permission guards the group (cmd/api/routes.go).
+func RegisterAssets(g *echo.Group, h *Handler) {
+	rw := auth.RequireRole("Admin", "SecurityAnalyst")
+	ro := auth.RequireRole("Admin", "SecurityAnalyst", "Viewer", "AuditorReadOnly")
+
+	assets := g.Group("", ro)
+	assets.POST("/assets", h.CreateAsset, rw)
+	assets.GET("/assets", h.ListAssets)
+	assets.GET("/assets/classification-summary", h.GetClassificationSummary)
+	assets.GET("/assets/:id/protection-need", h.GetAssetProtectionNeed)
+	assets.GET("/assets/:id", h.GetAsset)
+	assets.PUT("/assets/:id", h.UpdateAsset, rw)
+	assets.DELETE("/assets/:id", h.DeleteAsset, rw)
+	assets.POST("/assets/import", h.ImportAssets, rw)
+	// Pro: extended CSV format (name,type,ip,owner,criticality)
+	assets.POST("/assets/import/csv", h.ImportAssetsCSVNew, rw, features.Require(features.FeatureSecPulse))
+}
+
+// Register wires the scanning routes (scans, findings, SLA, reports, SBOM …)
+// under the provided group. The asset registry is registered separately via
+// RegisterAssets.
 //
 // Feature gating:
-//   - Community: asset registry, basic findings list/update, scan triggers, suppressions, SLA dashboard
+//   - Community: basic findings list/update, scan triggers, suppressions, SLA dashboard
 //   - Pro (FeatureSecPulse): SBOM scanning, EOL tracking, report generation and export,
 //     findings bulk export/import, Wazuh import
 func Register(g *echo.Group, h *Handler) {
@@ -17,18 +41,6 @@ func Register(g *echo.Group, h *Handler) {
 	ro := auth.RequireRole("Admin", "SecurityAnalyst", "Viewer", "AuditorReadOnly")
 
 	assets := g.Group("", ro)
-
-	// --- Community: Asset registry ---
-	assets.POST("/assets", h.CreateAsset, rw)
-	assets.GET("/assets", h.ListAssets)
-	// CRITICAL: static paths must be registered BEFORE /assets/:id to avoid route conflict
-	assets.GET("/assets/classification-summary", h.GetClassificationSummary)
-	// Sub-resource routes must be registered BEFORE /:id to avoid shadowing.
-	assets.GET("/assets/:id/protection-need", h.GetAssetProtectionNeed)
-	assets.GET("/assets/:id", h.GetAsset)
-	assets.PUT("/assets/:id", h.UpdateAsset, rw)
-	assets.DELETE("/assets/:id", h.DeleteAsset, rw)
-	assets.POST("/assets/import", h.ImportAssets, rw)
 
 	// --- Community: Scan triggers and schedules ---
 	assets.POST("/assets/:id/scans", h.TriggerScan, rw)
@@ -50,8 +62,6 @@ func Register(g *echo.Group, h *Handler) {
 	assets.POST("/findings/import/csv", h.ImportFindingsCSV, rw, features.Require(features.FeatureSecPulse))
 	assets.POST("/import/wazuh", h.ImportWazuh, rw, features.Require(features.FeatureSecPulse))
 
-	// --- Pro: Assets CSV import (extended format: name,type,ip,owner,criticality) ---
-	assets.POST("/assets/import/csv", h.ImportAssetsCSVNew, rw, features.Require(features.FeatureSecPulse))
 	// Community: basic findings list and individual finding management
 	assets.GET("/findings/bulk", h.ListFindings) // keep as list
 	assets.POST("/findings/bulk", h.BulkUpdateFindings, rw)

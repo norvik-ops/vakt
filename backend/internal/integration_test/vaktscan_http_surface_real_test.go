@@ -54,7 +54,9 @@ func vaktscanHTTP(t *testing.T, pool *pgxpool.Pool, orgID, userID string) *echo.
 		// testing a configuration that does not exist.
 		sharedmw.ValidateUUIDParams(),
 	)
-	vaktscan.Register(g, vaktscan.NewHandler(vaktscan.NewService(pool, asynq.RedisClientOpt{})))
+	h := vaktscan.NewHandler(vaktscan.NewService(pool, asynq.RedisClientOpt{}))
+	vaktscan.RegisterAssets(g, h)
+	vaktscan.Register(g, h)
 	return e
 }
 

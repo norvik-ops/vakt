@@ -2239,7 +2239,7 @@
     "modulesNotLoadable": "Non chargeable — droits administrateur requis.",
     "moduleEnabled": "Actif",
     "moduleDisabled": "Désactivé",
-    "modulesEnvHint": "Activation via .env — redémarrage requis.",
+    "modulesEnvHint": "Activation via VAKT_MODULES_ENABLED dans .env — puis docker compose up -d.",
     "digestTitle": "Digest de sécurité",
     "digestToggleTitle": "Digest de sécurité hebdomadaire",
     "digestToggleDesc": "Chaque lundi, un récapitulatif des vulnérabilités ouvertes et des échéances est envoyé par e-mail à tous les administrateurs.",
@@ -2407,6 +2407,7 @@
     "moduleVaktvaultDesc": "Gestion des secrets & scan Git",
     "moduleVaktawareDesc": "Simulations de phishing & formation de sensibilisation",
     "moduleVaktprivacyDesc": "Documentation RGPD (RdT, AIPD, DPA, violations)",
+    "moduleVakthrDesc": "Intégration et départ, annuaire des employés",
     "licenseAutoRenewal": "Renouvellement automatique actif",
     "licenseValidUntil": "Valide jusqu'au {{date}}",
     "licenseProComingSoon": "Commander Vakt Pro",
@@ -3009,46 +3010,22 @@
   "setup": {
     "title": "Vakt",
     "subtitle": "Assistant de configuration",
-    "step1Title": "Étape 1 sur 3 — Organisation",
+    "step1Title": "Étape 1 sur 2 — Organisation",
     "step1Desc": "Saisissez le nom de votre organisation. Il est utilisé uniquement à des fins d'affichage.",
     "orgNameLabel": "Nom de l'organisation",
     "orgNamePlaceholder": "Acme Corp",
-    "step2Title": "Étape 2 sur 3 — Compte administrateur",
+    "step2Title": "Étape 2 sur 2 — Compte administrateur",
     "step2Desc": "Créez le compte administrateur initial. Des utilisateurs supplémentaires peuvent être ajoutés après la configuration.",
     "adminEmailLabel": "Adresse e-mail",
     "adminEmailPlaceholder": "admin@exemple.com",
     "adminPasswordLabel": "Mot de passe",
-    "adminPasswordHint": "(min. 8 caractères)",
+    "adminPasswordHint": "(min. 10 caractères)",
     "adminPasswordPlaceholder": "••••••••",
-    "step3Title": "Étape 3 sur 3 — Modules",
-    "step3Desc": "Sélectionnez les modules à activer. Cela peut être modifié ultérieurement via les variables d'environnement.",
     "next": "Continuer",
     "back": "Retour",
     "finish": "Terminer la configuration",
     "finishing": "Configuration…",
-    "setupFailed": "Échec de la configuration. Veuillez réessayer.",
-    "modules": {
-      "vaktscan": {
-        "label": "Vakt Scan — Gestion des vulnérabilités",
-        "description": "Orchestre les scanners existants (Trivy, Nuclei, OpenVAS), déduplique les vulnérabilités et les priorise par risque. Les résultats sont automatiquement intégrés comme preuves de conformité dans Vakt Comply."
-      },
-      "vaktcomply": {
-        "label": "Vakt Comply — Conformité & Gouvernance",
-        "description": "Guide à travers NIS2, ISO 27001 et la protection de base BSI. Gère les contrôles, les lacunes et la progression. Stocke les preuves versionnées et produit une documentation prête pour l'audit."
-      },
-      "vaktvault": {
-        "label": "Vakt Vault — Secrets & Analyse Git",
-        "description": "Gestion sécurisée des secrets avec chiffrement AES-256-GCM. Analyse les dépôts Git à la recherche d'identifiants exposés et supporte la rotation automatique."
-      },
-      "vaktaware": {
-        "label": "Vakt Aware — Simulations de phishing",
-        "description": "Simulations de phishing internes et micro-formations pour les employés. Conforme au comité d'entreprise via des rapports anonymisés. Les formations terminées sont intégrées comme preuves dans Vakt Comply."
-      },
-      "vaktprivacy": {
-        "label": "Vakt Privacy — Documentation RGPD",
-        "description": "Documentation RGPD complète : Registre des activités de traitement (Art. 30), Analyses d'impact relatives à la protection des données (Art. 35), contrats DPA (Art. 28), et registre des violations de données avec obligation de notification 72h (Art. 33/34)."
-      }
-    }
+    "setupFailed": "Échec de la configuration. Veuillez réessayer."
   },
   "errors": {
     "loadFailed": "Échec du chargement",

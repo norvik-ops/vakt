@@ -2239,7 +2239,7 @@
     "modulesNotLoadable": "Niet laadbaar — beheerdersrechten vereist.",
     "moduleEnabled": "Actief",
     "moduleDisabled": "Uitgeschakeld",
-    "modulesEnvHint": "Activering via .env — herstart vereist.",
+    "modulesEnvHint": "Activering via VAKT_MODULES_ENABLED in .env — daarna docker compose up -d.",
     "digestTitle": "Beveiligingsdigest",
     "digestToggleTitle": "Wekelijkse beveiligingsdigest",
     "digestToggleDesc": "Elke maandag wordt een samenvatting van openstaande bevindingen en deadlines per e-mail verzonden aan alle beheerders.",
@@ -2407,6 +2407,7 @@
     "moduleVaktvaultDesc": "Secretsbeheer & git-scanning",
     "moduleVaktawareDesc": "Phishing-simulaties & bewustzijnstraining",
     "moduleVaktprivacyDesc": "AVG-documentatie (VVT, DPIA, AVV, datalekken)",
+    "moduleVakthrDesc": "On- en offboarding, medewerkersoverzicht",
     "licenseAutoRenewal": "Automatische verlenging actief",
     "licenseValidUntil": "Geldig tot {{date}}",
     "licenseProComingSoon": "Vakt Pro bestellen",
@@ -3009,46 +3010,22 @@
   "setup": {
     "title": "Vakt",
     "subtitle": "Installatiewizard",
-    "step1Title": "Stap 1 van 3 — Organisatie",
+    "step1Title": "Stap 1 van 2 — Organisatie",
     "step1Desc": "Voer de naam van uw organisatie in. Deze wordt alleen gebruikt voor weergavedoeleinden.",
     "orgNameLabel": "Organisatienaam",
     "orgNamePlaceholder": "Acme Corp",
-    "step2Title": "Stap 2 van 3 — Beheerdersaccount",
+    "step2Title": "Stap 2 van 2 — Beheerdersaccount",
     "step2Desc": "Maak het initiële beheerdersaccount aan. Aanvullende gebruikers kunnen na de installatie worden toegevoegd.",
     "adminEmailLabel": "E-mailadres",
     "adminEmailPlaceholder": "admin@voorbeeld.nl",
     "adminPasswordLabel": "Wachtwoord",
-    "adminPasswordHint": "(min. 8 tekens)",
+    "adminPasswordHint": "(min. 10 tekens)",
     "adminPasswordPlaceholder": "••••••••",
-    "step3Title": "Stap 3 van 3 — Modules",
-    "step3Desc": "Selecteer de te activeren modules. Dit kan later worden gewijzigd via omgevingsvariabelen.",
     "next": "Doorgaan",
     "back": "Terug",
     "finish": "Installatie voltooien",
     "finishing": "Instellen…",
-    "setupFailed": "Installatie mislukt. Probeer het opnieuw.",
-    "modules": {
-      "vaktscan": {
-        "label": "Vakt Scan — Kwetsbaarheidsbeheer",
-        "description": "Orkestreert bestaande scanners (Trivy, Nuclei, OpenVAS), dedupliceert bevindingen en prioriteert op risico. Resultaten worden automatisch als nalevingsbewijs overgebracht naar Vakt Comply."
-      },
-      "vaktcomply": {
-        "label": "Vakt Comply — Naleving & Governance",
-        "description": "Begeleidt door NIS2, ISO 27001 en BSI Basisbeveiliging. Beheert beheersmaatregelen, hiaten en voortgang. Slaat versioned bewijsmateriaal op en produceert auditklare documentatie."
-      },
-      "vaktvault": {
-        "label": "Vakt Vault — Geheimen & Git-scanning",
-        "description": "Veilig geheimenbeheer met AES-256-GCM-versleuteling. Scant Git-repositories op gelekte inloggegevens en ondersteunt automatische rotatie."
-      },
-      "vaktaware": {
-        "label": "Vakt Aware — Phishing-simulaties",
-        "description": "Interne phishing-simulaties en microtrainingen voor medewerkers. Conform ondernemingsraadvereisten via geanonimiseerde rapporten. Voltooide trainingen worden als bewijs overgebracht naar Vakt Comply."
-      },
-      "vaktprivacy": {
-        "label": "Vakt Privacy — AVG-documentatie",
-        "description": "Volledige AVG-documentatie: Register van verwerkingsactiviteiten (Art. 30), gegevensbeschermingseffectbeoordelingen (Art. 35), verwerkersovereenkomsten (Art. 28) en datalekkenregister met meldingsplicht 72u (Art. 33/34)."
-      }
-    }
+    "setupFailed": "Installatie mislukt. Probeer het opnieuw."
   },
   "errors": {
     "loadFailed": "Laden mislukt",

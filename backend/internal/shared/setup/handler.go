@@ -31,12 +31,11 @@ func NewHandler(db *pgxpool.Pool) *Handler {
 
 // SetupInput is the request body for POST /api/v1/setup.
 type SetupInput struct {
-	OrgName        string   `json:"org_name"        validate:"required,min=2,max=120"`
-	AdminEmail     string   `json:"admin_email"     validate:"required,email"`
-	AdminPassword  string   `json:"admin_password"  validate:"required,min=10,max=72"`
-	ModulesEnabled []string `json:"modules_enabled"`
-	SMTPHost       string   `json:"smtp_host"`
-	SMTPPort       string   `json:"smtp_port"`
+	OrgName       string `json:"org_name"        validate:"required,min=2,max=120"`
+	AdminEmail    string `json:"admin_email"     validate:"required,email"`
+	AdminPassword string `json:"admin_password"  validate:"required,min=10,max=72"`
+	SMTPHost      string `json:"smtp_host"`
+	SMTPPort      string `json:"smtp_port"`
 }
 
 // SetupResponse is returned on successful first-run setup.

@@ -3193,6 +3193,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the modules enabled on this instance
+         * @description Returns the modules from VAKT_MODULES_ENABLED in display order, for every
+         *     signed-in user. The SPA derives navigation, routes and dashboard from
+         *     this list; a module that is missing here has no API routes either.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Enabled modules */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            modules: ("vaktcomply" | "vaktscan" | "vaktvault" | "vaktaware" | "vaktprivacy" | "vakthr")[];
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/notifications/preferences": {
         parameters: {
             query?: never;
@@ -23623,7 +23673,6 @@ export interface paths {
                         admin_email: string;
                         /** @description Min. 10 characters, at least one uppercase letter, one digit and one special character */
                         admin_password: string;
-                        modules_enabled?: string[];
                         smtp_host?: string;
                         smtp_port?: string;
                     };

@@ -4,7 +4,7 @@ import type { Campaign, CreateCampaignInput, CampaignStats } from '../types'
 
 const BASE = '/vaktaware'
 
-export function useCampaigns() {
+export function useCampaigns(enabled = true) {
   return useQuery<Campaign[]>({
     queryKey: ['vaktaware', 'campaigns'],
     queryFn: async () => {
@@ -12,6 +12,7 @@ export function useCampaigns() {
       return Array.isArray(resp) ? resp : resp.data
     },
     staleTime: 30_000,
+    enabled,
   })
 }
 

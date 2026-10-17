@@ -116,7 +116,7 @@ export function GettingStartedChecklist() {
     },
   ]
 
-  // Schritte in ausgeblendeten Modulen (z. B. VVT in Privacy) zählen nicht mit.
+  // Schritte in abgeschalteten Modulen (z. B. VVT in Privacy) zählen nicht mit.
   const steps = allSteps.filter((s) => isPathVisible(s.to))
   const completedCount = steps.filter((s) => s.done).length
   const allDone = completedCount === steps.length

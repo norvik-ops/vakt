@@ -3,11 +3,12 @@ import { apiFetch } from '../../../api/client'
 import type { Breach, CreateBreachInput, UpdateBreachInput } from '../types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
 
-export function useBreaches(page = 1, limit = 25) {
+export function useBreaches(page = 1, limit = 25, enabled = true) {
   const query = useQuery<PaginatedResponse<Breach>>({
     queryKey: ['vaktprivacy', 'breaches', page, limit],
     queryFn: () => apiFetch<PaginatedResponse<Breach>>(`/vaktprivacy/breaches?page=${String(page)}&limit=${String(limit)}`),
     staleTime: 5 * 60 * 1000,
+    enabled,
   })
   return {
     ...query,

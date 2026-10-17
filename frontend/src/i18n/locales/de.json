@@ -2239,7 +2239,7 @@
     "modulesNotLoadable": "Nicht ladbar — Admin-Rechte erforderlich.",
     "moduleEnabled": "Aktiv",
     "moduleDisabled": "Deaktiviert",
-    "modulesEnvHint": "Aktivierung über .env — Neustart erforderlich.",
+    "modulesEnvHint": "Aktivierung über VAKT_MODULES_ENABLED in der .env — danach docker compose up -d.",
     "digestTitle": "Sicherheits-Digest",
     "digestToggleTitle": "Wöchentlicher Sicherheits-Digest",
     "digestToggleDesc": "Jeden Montag eine Zusammenfassung offener Findings und Fristen per E-Mail an alle Admins.",
@@ -2407,6 +2407,7 @@
     "moduleVaktvaultDesc": "Secrets-Verwaltung & Git-Scanning",
     "moduleVaktawareDesc": "Phishing-Simulationen & Awareness-Training",
     "moduleVaktprivacyDesc": "DSGVO-Dokumentation (VVT, DSFA, AVV, Datenpannen)",
+    "moduleVakthrDesc": "On- und Offboarding, Mitarbeiterverzeichnis",
     "licenseAutoRenewal": "Auto-Renewal aktiv",
     "licenseValidUntil": "Gültig bis {{date}}",
     "licenseProComingSoon": "Vakt Pro bestellen",
@@ -3009,46 +3010,22 @@
   "setup": {
     "title": "Vakt",
     "subtitle": "Ersteinrichtungs-Assistent",
-    "step1Title": "Schritt 1 von 3 — Organisation",
+    "step1Title": "Schritt 1 von 2 — Organisation",
     "step1Desc": "Geben Sie den Namen Ihrer Organisation ein. Dieser wird nur zur Anzeige verwendet.",
     "orgNameLabel": "Organisationsname",
     "orgNamePlaceholder": "Muster GmbH",
-    "step2Title": "Schritt 2 von 3 — Admin-Konto",
+    "step2Title": "Schritt 2 von 2 — Admin-Konto",
     "step2Desc": "Erstellen Sie das initiale Administrator-Konto. Weitere Benutzer können nach der Einrichtung hinzugefügt werden.",
     "adminEmailLabel": "E-Mail-Adresse",
     "adminEmailPlaceholder": "admin@example.com",
     "adminPasswordLabel": "Passwort",
-    "adminPasswordHint": "(mind. 8 Zeichen)",
+    "adminPasswordHint": "(mind. 10 Zeichen)",
     "adminPasswordPlaceholder": "••••••••",
-    "step3Title": "Schritt 3 von 3 — Module",
-    "step3Desc": "Wählen Sie die zu aktivierenden Module. Dies kann später über Umgebungsvariablen geändert werden.",
     "next": "Weiter",
     "back": "Zurück",
     "finish": "Einrichtung abschließen",
     "finishing": "Wird eingerichtet…",
-    "setupFailed": "Einrichtung fehlgeschlagen. Bitte versuchen Sie es erneut.",
-    "modules": {
-      "vaktscan": {
-        "label": "Vakt Scan — Schwachstellenmanagement",
-        "description": "Orchestriert bestehende Scanner (Trivy, Nuclei, OpenVAS), dedupliziert Findings und priorisiert nach Risiko. Ergebnisse fließen automatisch als Compliance-Nachweis in Vakt Comply."
-      },
-      "vaktcomply": {
-        "label": "Vakt Comply — Compliance & Governance",
-        "description": "Führt durch NIS2, ISO 27001 und BSI-Grundschutz. Verwaltet Controls, Lücken und Fortschritt. Speichert versionierte Nachweise und erstellt prüfungsfertige Dokumentation."
-      },
-      "vaktvault": {
-        "label": "Vakt Vault — Secrets & Git-Scanning",
-        "description": "Sichere Secrets-Verwaltung mit AES-256-GCM-Verschlüsselung. Scannt Git-Repositories auf durchgesickerte Zugangsdaten und unterstützt automatische Rotation."
-      },
-      "vaktaware": {
-        "label": "Vakt Aware — Phishing-Simulationen",
-        "description": "Interne Phishing-Simulationen und Micro-Trainings für Mitarbeiter. Betriebsratskonform durch anonymisierte Berichte. Abgeschlossene Trainings fließen als Nachweis in Vakt Comply."
-      },
-      "vaktprivacy": {
-        "label": "Vakt Privacy — DSGVO-Dokumentation",
-        "description": "Vollständige DSGVO-Dokumentation: Verzeichnis von Verarbeitungstätigkeiten (Art. 30), Datenschutz-Folgenabschätzungen (Art. 35), AV-Verträge (Art. 28) und Datenpannen-Register mit 72h-Meldepflicht (Art. 33/34)."
-      }
-    }
+    "setupFailed": "Einrichtung fehlgeschlagen. Bitte versuchen Sie es erneut."
   },
   "errors": {
     "loadFailed": "Fehler beim Laden",

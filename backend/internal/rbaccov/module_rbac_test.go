@@ -93,6 +93,7 @@ func TestVaktscanModuleRBAC(t *testing.T) {
 		{http.MethodPost, "/vaktscan/findings/import"}, // Pro (SecPulse)
 	}
 	runModuleRBAC(t, "/vaktscan", func(g *echo.Group) {
+		vaktscan.RegisterAssets(g, &vaktscan.Handler{})
 		vaktscan.Register(g, &vaktscan.Handler{})
 	}, routes)
 }

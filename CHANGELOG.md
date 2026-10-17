@@ -7,10 +7,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Geändert
-- Die Oberfläche konzentriert sich auf das ISMS (Vakt Comply). Scan, Vault, Aware, Privacy und HR sind
-  ausgeblendet: Seitenleiste, Dashboard, Suche, Tastenkürzel und Querverweise zeigen sie nicht mehr,
-  Direktaufrufe leiten auf das Dashboard. Daten, API und Hintergrund-Jobs bleiben unverändert. Das
-  Asset-Inventar steht jetzt unter Comply → Betrieb.
+- **Neue Installationen starten nur mit dem ISMS (Vakt Comply).** `.env.example` und das Helm-Chart
+  setzen `VAKT_MODULES_ENABLED=vaktcomply`. Scan, Vault, Aware, Privacy und HR lassen sich über diese
+  Variable dazuschalten. Ein abgeschaltetes Modul hat keine API-Routen und keine Hintergrund-Jobs mehr
+  und erscheint nirgends in der Oberfläche (Seitenleiste, Dashboard, Suche, Tastenkürzel, Querverweise);
+  seine Daten bleiben erhalten. Der Sicherheits-Score zählt Findings und Datenpannen nur bei aktivem
+  Modul. **Bestehende Installationen ändern sich nicht** — ihre `.env` bleibt, und ohne gesetzte
+  Variable laufen weiterhin alle Module.
+- Das Asset-Inventar gehört zum ISMS: Es steht unter Comply → Betrieb, ist immer verfügbar und an die
+  Berechtigung für Vakt Comply gebunden (vorher: Vakt Scan).
+- Neuer Endpunkt `GET /api/v1/modules` liefert die aktiven Module für jeden angemeldeten Nutzer.
+- Die Moduleinstellungen zeigen jetzt auch Vakt HR.
+
+### Behoben
+- Der Einrichtungsassistent bot in Schritt 3 eine Modulauswahl an, die nichts bewirkte. Der Schritt
+  entfällt; der Assistent hat jetzt zwei Schritte. Der Passworthinweis nennt die tatsächliche
+  Mindestlänge von 10 Zeichen statt 8.
 
 ---
 ## [0.44.1] — 2026-10-13

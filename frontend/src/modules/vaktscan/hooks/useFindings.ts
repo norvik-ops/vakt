@@ -20,7 +20,7 @@ export interface BulkUpdateInput {
   status: Finding['status']
 }
 
-export function useFindings(filter: FindingsFilter = {}, page = 1, limit = 25) {
+export function useFindings(filter: FindingsFilter = {}, page = 1, limit = 25, enabled = true) {
   const params = new URLSearchParams()
   if (filter.severity) params.set('severity', filter.severity)
   if (filter.status) params.set('status', filter.status)
@@ -35,6 +35,7 @@ export function useFindings(filter: FindingsFilter = {}, page = 1, limit = 25) {
     queryKey: ['vaktscan', 'findings', filter, page, limit],
     queryFn: () => apiFetch<FindingsListResponse>(path),
     staleTime: 30_000,
+    enabled,
   })
 }
 

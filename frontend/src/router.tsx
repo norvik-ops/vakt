@@ -5,7 +5,7 @@ import { useAuthStore } from './shared/stores/auth'
 import Layout from './shared/components/Layout'
 import { ErrorBoundary } from './shared/components/ErrorBoundary'
 import { Spinner } from './components/Spinner'
-import { isPathVisible } from './shared/moduleVisibility'
+import { isPathVisible, useEnabledModules } from './shared/moduleVisibility'
 
 // Eager-loaded: Auth-Flows (Login/Setup), Dashboard (initial Landing),
 // öffentliche Pages mit Magic-Link-Tokens (auditor/policy/invite/dsr —
@@ -105,6 +105,11 @@ function SetupPageGuard() {
 function AuthGuard() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
   const hydrating = useAuthStore((s) => s.hydrating)
+  const modules = useEnabledModules((s) => s.modules)
+  const loadModules = useEnabledModules((s) => s.load)
+  useEffect(() => {
+    if (isAuthenticated && modules === null) void loadModules()
+  }, [isAuthenticated, modules, loadModules])
   // While the initial /auth/me query is in flight, render the spinner instead
   // of bouncing to /login — the user IS logged in (cookie present), we just
   // haven't confirmed identity yet (audit F032: no localStorage snapshot).
@@ -112,11 +117,14 @@ function AuthGuard() {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
+  // Navigation und Modul-Routen hängen an der Modulliste des Servers — erst rendern, wenn sie da ist,
+  // sonst leitet ModuleShell einen Direktaufruf eines aktiven Moduls fälschlich aufs Dashboard.
+  if (modules === null) return <LoadingSpinner />
   return <Outlet />
 }
 
 function ModuleShell({ children, moduleKey }: { children: React.ReactNode; moduleKey?: string }) {
-  // Ausgeblendete Module (shared/moduleVisibility.ts) sind auch per Direktaufruf nicht erreichbar.
+  // Abgeschaltete Module (shared/moduleVisibility.ts) sind auch per Direktaufruf nicht erreichbar.
   const location = useLocation()
   if (!isPathVisible(location.pathname)) return <Navigate to="/" replace />
   return (

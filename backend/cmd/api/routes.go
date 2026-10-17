@@ -522,12 +522,23 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		log.Info().Int("migrated", migrated).Msg("webhooks: legacy plaintext secrets upgraded to enc:v1:")
 	}
 
-	// Module routes — all behind auth middleware, sharing the same DB pool
+	// GET /modules: the active modules for every signed-in user. The frontend
+	// builds navigation, routes and dashboard from it, so VAKT_MODULES_ENABLED
+	// is the only switch — there is no second list in the UI.
+	protected.GET("/modules", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string][]string{"modules": cfg.EnabledModules()})
+	})
+
+	// Module routes — all behind auth middleware, sharing the same DB pool.
+	// The asset registry is ISMS core and stays mounted when vaktscan is off;
+	// it is guarded by the vaktcomply permission it serves (see RegisterAssets).
+	vbSvc := vaktscan.NewService(pool, asynqOpt)
+	vbSvc.WithRedis(rdb)
+	vbSvc.WithWebhooks(webhookSvc)
+	vbHandler := vaktscan.NewHandler(vbSvc)
+	vaktscan.RegisterAssets(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), vbHandler)
 	if cfg.IsModuleEnabled("vaktscan") {
-		vbSvc := vaktscan.NewService(pool, asynqOpt)
-		vbSvc.WithRedis(rdb)
-		vbSvc.WithWebhooks(webhookSvc)
-		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb)), vaktscan.NewHandler(vbSvc))
+		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb)), vbHandler)
 		log.Info().Msg("vaktscan routes registered")
 	}
 
@@ -839,13 +850,13 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// Dashboard — shared cross-module score endpoint (aggregate cached in Redis for 60 s).
 	// S121-B3 (R3): mounted on `protected` (not bare `api`) so state-changing routes
 	// get CSRF/MFA/OrgRL; UpdateScoreConfig is additionally Admin-gated inside Register.
-	dashboard.Register(protected.Group("/dashboard"), pool, rdb)
+	dashboard.Register(protected.Group("/dashboard"), pool, rdb, cfg.IsModuleEnabled)
 	log.Info().Msg("dashboard routes registered")
 
 	// Global search — cross-module text search
 	// S131-C2 (R-H22): mount on `protected`, not the bare `api` group, so /search
 	// inherits org-wide MFA enforcement (and auth/allowlist) instead of bypassing it.
-	search.Register(protected, pool)
+	search.Register(protected, pool, cfg.IsModuleEnabled)
 
 	// Retention config API — data-pruning settings per org.
 	// S121-B5 (R5): mounted on `protected` for CSRF; UpdateConfig is Admin-gated.

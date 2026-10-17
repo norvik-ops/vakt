@@ -29,9 +29,11 @@ Free-to-self-host alternative to Vanta, Drata, or DataGuard. Those vendors don't
 
 ## Modules
 
-> **Focus (2026-10):** The web UI currently shows **Vakt Comply** only — the ISMS. The other modules
-> below keep running in the backend (API, data, jobs) but are hidden in the UI until they are ready.
-> The asset inventory stays visible under Comply.
+> **Focus (2026-10):** A new installation runs **Vakt Comply** only — the ISMS, including the asset
+> inventory. The other modules below are not part of the tested launch scope and are switched off by
+> default (`VAKT_MODULES_ENABLED=vaktcomply` in `.env.example`). Add them to that variable if you
+> need them; a disabled module has no API routes, no background jobs and no UI, and keeps its data.
+> See [docs/wiki/configuration.md](docs/wiki/configuration.md#module-einzeln-deaktivieren).
 
 | Module | Description |
 |---|---|
@@ -233,7 +235,7 @@ The most important environment variables:
 | `VAKT_DB_URL` | — | PostgreSQL connection string (required) |
 | `VAKT_REDIS_URL` | — | Redis connection string (required) |
 | `VAKT_SECRET_KEY` | — | 32-byte hex master encryption key (required) |
-| `VAKT_MODULES_ENABLED` | all | Comma-separated list of enabled modules |
+| `VAKT_MODULES_ENABLED` | all (`.env.example`: `vaktcomply`) | Comma-separated list of enabled modules |
 | `AUTO_MIGRATE` | `false` | Run DB migrations automatically on startup |
 | `VAKT_DEMO` | `false` | Enable demo mode for local try-out (auto-generates login credentials) |
 | `VAKT_AI_PROVIDER` | `ollama` | AI provider: `ollama` (default, local) · `openai` (OpenAI-compatible) · `disabled` |

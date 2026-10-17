@@ -83,7 +83,7 @@ Die vollständige Referenz aller Variablen findest du in der [Konfigurationsrefe
 
 | Variable | Standard | Beschreibung |
 |----------|----------|--------------|
-| `VAKT_MODULES_ENABLED` | alle | Kommagetrennte Liste aktiver Module |
+| `VAKT_MODULES_ENABLED` | alle (`.env.example`: `vaktcomply`) | Kommagetrennte Liste aktiver Module |
 | `AUTO_MIGRATE` | `false` | Migrationen automatisch beim Start ausführen |
 | `VAKT_FRONTEND_URL` | `http://localhost:5173` | Öffentliche URL des Frontends (für E-Mail-Links) |
 | `VAKT_AI_PROVIDER` | `ollama` | KI-Provider: `ollama` (Standard, lokal) · `openai` (OpenAI-kompatibel) · `disabled` |

@@ -2667,6 +2667,8 @@ tags:
     description: Vakt HR — employee lifecycle and onboarding/offboarding checklists
   - name: admin
     description: Administration endpoints
+  - name: platform
+    description: Instance-wide information for signed-in users
 
 paths:
   # ── Health ────────────────────────────────────────────────────────────────
@@ -4526,6 +4528,31 @@ paths:
                     type: integer
 
   # ── Notifications ─────────────────────────────────────────────────────────
+  /modules:
+    get:
+      summary: List the modules enabled on this instance
+      description: |
+        Returns the modules from VAKT_MODULES_ENABLED in display order, for every
+        signed-in user. The SPA derives navigation, routes and dashboard from
+        this list; a module that is missing here has no API routes either.
+      tags: [platform]
+      responses:
+        '200':
+          description: Enabled modules
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [modules]
+                properties:
+                  modules:
+                    type: array
+                    items:
+                      type: string
+                      enum: [vaktcomply, vaktscan, vaktvault, vaktaware, vaktprivacy, vakthr]
+        '401':
+          description: Unauthorized
+
   /notifications/preferences:
     get:
       summary: Get notification preferences for the current user
@@ -20825,10 +20852,6 @@ paths:
                   maxLength: 72
                   description: Min. 10 characters, at least one uppercase letter, one digit and one special
                     character
-                modules_enabled:
-                  type: array
-                  items:
-                    type: string
                 smtp_host:
                   type: string
                 smtp_port:

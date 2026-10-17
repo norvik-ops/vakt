@@ -52,15 +52,15 @@ test.describe('KW3 Anmeldung & Rechte', () => {
   test('KW3 frische Instanz leitet auf /setup, Setup legt ersten Admin an, Admin meldet sich an', async ({ page }) => {
     await page.goto('/')
     await expect(page).toHaveURL(/\/setup$/)
-    await expect(page.getByRole('heading', { name: /Schritt 1 von 3/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Schritt 1 von 2/ })).toBeVisible()
 
     await page.getByLabel('Organisationsname').fill(ORG)
     await page.getByRole('button', { name: 'Weiter' }).click()
+    await expect(page.getByRole('heading', { name: /Schritt 2 von 2/ })).toBeVisible()
     await page.getByLabel('E-Mail-Adresse').fill(ADMIN.email)
     await page.getByLabel('Passwort').fill(ADMIN.password)
-    await page.getByRole('button', { name: 'Weiter' }).click()
-    await expect(page.getByRole('heading', { name: /Schritt 3 von 3/ })).toBeVisible()
-    await expect(page.getByRole('checkbox', { name: /^Vakt Comply/ })).toBeChecked()
+    // Keine Modulauswahl mehr (R1-KW-15): welche Module laufen, entscheidet VAKT_MODULES_ENABLED.
+    await expect(page.getByRole('checkbox')).toHaveCount(0)
     await page.getByRole('button', { name: 'Einrichtung abschließen' }).click()
 
     // Nach dem Setup: Anmeldemaske, und /setup ist zu (Setup läuft genau einmal).
@@ -73,6 +73,13 @@ test.describe('KW3 Anmeldung & Rechte', () => {
     await login(page, ADMIN.email, ADMIN.password)
     await expect(page.getByRole('link', { name: /Benutzerprofil öffnen/ })).toContainText(ADMIN.email)
     await saveSession(page, 'admin')
+
+    // Eine Instanz nach README-Anleitung läuft nur mit dem ISMS (.env.example: VAKT_MODULES_ENABLED=vaktcomply).
+    const mods = await page.request.get('/api/v1/modules')
+    expect(mods.status()).toBe(200)
+    expect(((await mods.json()) as { modules: string[] }).modules).toEqual(['vaktcomply'])
+    expect((await page.request.get('/api/v1/vaktscan/findings')).status()).toBe(404)
+    expect((await page.request.get('/api/v1/vaktscan/assets')).status()).toBe(200)
   })
 
   // Die Einladung ist der Weg, den launch-gate.md nennt. Sie scheitert an der

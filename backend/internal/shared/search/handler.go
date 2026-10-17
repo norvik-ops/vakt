@@ -28,10 +28,19 @@ type SearchResponse struct {
 }
 
 // Handler holds the DB pool for search queries.
-type Handler struct{ db *pgxpool.Pool }
+type Handler struct {
+	db       *pgxpool.Pool
+	moduleOn func(module string) bool
+}
 
-// NewHandler creates a new search Handler.
-func NewHandler(db *pgxpool.Pool) *Handler { return &Handler{db: db} }
+// NewHandler creates a new search Handler. moduleOn may be nil, which treats
+// every module as enabled.
+func NewHandler(db *pgxpool.Pool, moduleOn func(module string) bool) *Handler {
+	if moduleOn == nil {
+		moduleOn = func(string) bool { return true }
+	}
+	return &Handler{db: db, moduleOn: moduleOn}
+}
 
 // Search handles GET /api/v1/search?q=<term>&limit=<n>
 func (h *Handler) Search(c echo.Context) error {
@@ -60,16 +69,26 @@ func (h *Handler) Search(c echo.Context) error {
 
 	type fetcher func(context.Context, *pgxpool.Pool, string, string, int) []SearchResult
 
-	sources := []fetcher{
-		searchControls,
-		searchRisks,
-		searchPolicies,
-		searchIncidents,
-		searchCAPAs,
-		searchAssets,
-		searchFindings,
-		searchDSRs,
-		searchBreaches,
+	// module "" marks the ISMS core (incl. the asset registry), always searched.
+	candidates := []struct {
+		module string
+		fetch  fetcher
+	}{
+		{"", searchControls},
+		{"", searchRisks},
+		{"", searchPolicies},
+		{"", searchIncidents},
+		{"", searchCAPAs},
+		{"", searchAssets},
+		{"vaktscan", searchFindings},
+		{"vaktprivacy", searchDSRs},
+		{"vaktprivacy", searchBreaches},
+	}
+	var sources []fetcher
+	for _, src := range candidates {
+		if src.module == "" || h.moduleOn(src.module) {
+			sources = append(sources, src.fetch)
+		}
 	}
 
 	var (

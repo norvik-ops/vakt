@@ -29,7 +29,6 @@ import { useAuditReport } from '../../../shared/hooks/useAuditReport'
 import { ProGate } from '../../../shared/components/ProGate'
 import { useUpdateCheck, useToggleUpdateCheck } from '../../../shared/hooks/useUpdateCheck'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
-import { isModuleVisible } from '../../../shared/moduleVisibility'
 
 // ─── Retention / Digest hooks (used by DigestToggleSection) ──────────────────
 
@@ -309,6 +308,7 @@ const MODULE_META: Record<string, { label: string; descKey: string } | undefined
   vaktvault:   { label: 'Vakt Vault',   descKey: 'moduleVaktvaultDesc' },
   vaktaware:   { label: 'Vakt Aware',   descKey: 'moduleVaktawareDesc' },
   vaktprivacy: { label: 'Vakt Privacy', descKey: 'moduleVaktprivacyDesc' },
+  vakthr:      { label: 'Vakt HR',      descKey: 'moduleVakthrDesc' },
 }
 
 // ─── License ─────────────────────────────────────────────────────────────────
@@ -783,8 +783,7 @@ function SectorSection() {
 function ModulesSection() {
   const { t } = useTranslation()
   const { data, isLoading, isError } = useModules()
-  // Ausgeblendete Module (shared/moduleVisibility.ts) nicht als „aktiviert" anzeigen.
-  const modules = (data?.data ?? []).filter((m) => isModuleVisible(m.name))
+  const modules = data?.data ?? []
 
   return (
     <SectionCard title={t('settingsPage.modulesTitle')} icon={Layers}>

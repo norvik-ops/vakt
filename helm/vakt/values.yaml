@@ -115,7 +115,9 @@ api:
     type: ClusterIP
     port: 8080
   env:
-    VAKT_MODULES_ENABLED: "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr"
+    # Vakt Comply (ISMS) is the core; add vaktscan, vaktvault, vaktaware, vaktprivacy,
+    # vakthr comma-separated if needed (see docs/wiki/configuration.md).
+    VAKT_MODULES_ENABLED: "vaktcomply"
     VAKT_LOG_LEVEL: "info"
     # Per-pod pgx connection pool size (default 25). IMPORTANT (S90-6): the total
     # connections to Postgres is VAKT_DB_MAX_CONNS × api.replicaCount (+ worker

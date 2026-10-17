@@ -228,6 +228,24 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+// KnownModules lists every module in display order. EnabledModules and the
+// admin module overview iterate over it, so an unknown name in
+// VAKT_MODULES_ENABLED is ignored instead of reaching the frontend.
+var KnownModules = []string{"vaktcomply", "vaktscan", "vaktvault", "vaktaware", "vaktprivacy", "vakthr"}
+
+// EnabledModules returns the active modules from KnownModules, in that order.
+// The frontend derives its navigation from this list (GET /modules), so the
+// environment variable is the only place that decides what a user sees.
+func (c *Config) EnabledModules() []string {
+	out := make([]string, 0, len(KnownModules))
+	for _, m := range KnownModules {
+		if c.IsModuleEnabled(m) {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
 // IsModuleEnabled reports whether the named module (e.g. "vaktscan") appears in
 // the ModulesEnabled CSV list.  Comparison is case-insensitive.
 func (c *Config) IsModuleEnabled(name string) bool {

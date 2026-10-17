@@ -90,7 +90,7 @@ export function GlobalSearch() {
   const debouncedQuery          = useDebounce(query, 300)
   const { data, isFetching }    = useSearch(debouncedQuery)
 
-  // Treffer aus ausgeblendeten Modulen (shared/moduleVisibility.ts) würden auf das Dashboard umleiten.
+  // Treffer aus abgeschalteten Modulen (shared/moduleVisibility.ts) würden auf das Dashboard umleiten.
   const results   = (data?.results ?? []).filter((r) => isPathVisible(r.url))
   const showRecent = debouncedQuery.length < 2 && recent.length > 0
   const displayList: SearchResult[] = debouncedQuery.length >= 2 ? results : (showRecent ? recent : [])

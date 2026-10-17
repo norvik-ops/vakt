@@ -1002,7 +1002,7 @@ export default function ControlDetailPage() {
         {/* Measures catalogue */}
         <MeasuresList controlId={controlId} />
 
-        {/* S88-9: VVT (processing activity) links — VVT liegt in Privacy, das ausgeblendet sein kann */}
+        {/* S88-9: VVT (processing activity) links — VVT liegt in Privacy, das abgeschaltet sein kann */}
         {isPathVisible('/vaktprivacy/vvt') && <VVTLinksCard controlId={controlId} />}
 
         {/* Control Review Cycle */}

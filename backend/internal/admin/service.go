@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/shared/notify"
 	"github.com/matharnica/vakt/internal/shared/password"
 )
@@ -357,72 +358,10 @@ func (s *Service) DisableOIDCConfig(ctx context.Context, orgID string) error {
 
 // ListModules returns the enabled/disabled state for each known module.
 func (s *Service) ListModules() []ModuleStatus {
-	known := []string{"vaktscan", "vaktcomply", "vaktvault", "vaktaware", "vaktprivacy"}
-	result := make([]ModuleStatus, 0, len(known))
-
-	for _, name := range known {
-		enabled := false
-		for _, mod := range splitCSV(s.modulesEnabled) {
-			if equalFold(mod, name) {
-				enabled = true
-				break
-			}
-		}
-		result = append(result, ModuleStatus{Name: name, Enabled: enabled})
+	cfg := config.Config{ModulesEnabled: s.modulesEnabled}
+	result := make([]ModuleStatus, 0, len(config.KnownModules))
+	for _, name := range config.KnownModules {
+		result = append(result, ModuleStatus{Name: name, Enabled: cfg.IsModuleEnabled(name)})
 	}
 	return result
-}
-
-func splitCSV(s string) []string {
-	var out []string
-	for _, part := range splitOn(s, ',') {
-		trimmed := trimSpace(part)
-		if trimmed != "" {
-			out = append(out, trimmed)
-		}
-	}
-	return out
-}
-
-// Tiny string helpers to avoid importing "strings" at package init.
-func splitOn(s string, sep rune) []string {
-	var result []string
-	start := 0
-	for i, r := range s {
-		if r == sep {
-			result = append(result, s[start:i])
-			start = i + 1
-		}
-	}
-	result = append(result, s[start:])
-	return result
-}
-
-func trimSpace(s string) string {
-	for len(s) > 0 && (s[0] == ' ' || s[0] == '\t') {
-		s = s[1:]
-	}
-	for len(s) > 0 && (s[len(s)-1] == ' ' || s[len(s)-1] == '\t') {
-		s = s[:len(s)-1]
-	}
-	return s
-}
-
-func equalFold(a, b string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		ca, cb := a[i], b[i]
-		if ca >= 'A' && ca <= 'Z' {
-			ca += 'a' - 'A'
-		}
-		if cb >= 'A' && cb <= 'Z' {
-			cb += 'a' - 'A'
-		}
-		if ca != cb {
-			return false
-		}
-	}
-	return true
 }

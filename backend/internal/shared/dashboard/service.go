@@ -18,11 +18,20 @@ import (
 // Handlers call Service methods exclusively — no direct pgxpool usage in handlers.
 type Service struct {
 	db *pgxpool.Pool
+	// moduleOn reports whether an optional module is enabled. The score only
+	// counts findings (vaktscan) and breaches (vaktprivacy) of active modules:
+	// a user cannot see or close data of a disabled module, so it must not
+	// pull the score down.
+	moduleOn func(module string) bool
 }
 
 // NewService creates a Service backed by the provided connection pool.
-func NewService(db *pgxpool.Pool) *Service {
-	return &Service{db: db}
+// moduleOn may be nil, which treats every module as enabled.
+func NewService(db *pgxpool.Pool, moduleOn func(module string) bool) *Service {
+	if moduleOn == nil {
+		moduleOn = func(string) bool { return true }
+	}
+	return &Service{db: db, moduleOn: moduleOn}
 }
 
 // ScoreInputs holds the raw counts used to compute the security health score.
@@ -90,20 +99,24 @@ func (s *Service) UpsertScoreConfig(ctx context.Context, orgID string, cfg Score
 // LoadScoreInputs fetches the raw finding / breach / framework counts used in the score formula.
 func (s *Service) LoadScoreInputs(ctx context.Context, orgID string, cfg ScoreConfig) ScoreInputs {
 	inp := ScoreInputs{Cfg: cfg}
-	if err := s.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM vb_findings WHERE org_id=$1::uuid AND severity='critical' AND status NOT IN ('resolved','false_positive')`,
-		orgID).Scan(&inp.CritCount); err != nil {
-		log.Error().Err(err).Msg("dashboard: count critical findings")
+	if s.moduleOn("vaktscan") {
+		if err := s.db.QueryRow(ctx,
+			`SELECT COUNT(*) FROM vb_findings WHERE org_id=$1::uuid AND severity='critical' AND status NOT IN ('resolved','false_positive')`,
+			orgID).Scan(&inp.CritCount); err != nil {
+			log.Error().Err(err).Msg("dashboard: count critical findings")
+		}
+		if err := s.db.QueryRow(ctx,
+			`SELECT COUNT(*) FROM vb_findings WHERE org_id=$1::uuid AND severity='high' AND status NOT IN ('resolved','false_positive')`,
+			orgID).Scan(&inp.HighCount); err != nil {
+			log.Error().Err(err).Msg("dashboard: count high findings")
+		}
 	}
-	if err := s.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM vb_findings WHERE org_id=$1::uuid AND severity='high' AND status NOT IN ('resolved','false_positive')`,
-		orgID).Scan(&inp.HighCount); err != nil {
-		log.Error().Err(err).Msg("dashboard: count high findings")
-	}
-	if err := s.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM po_breaches WHERE org_id=$1::uuid AND status='open'`,
-		orgID).Scan(&inp.BreachCount); err != nil {
-		log.Error().Err(err).Msg("dashboard: count breaches")
+	if s.moduleOn("vaktprivacy") {
+		if err := s.db.QueryRow(ctx,
+			`SELECT COUNT(*) FROM po_breaches WHERE org_id=$1::uuid AND status='open'`,
+			orgID).Scan(&inp.BreachCount); err != nil {
+			log.Error().Err(err).Msg("dashboard: count breaches")
+		}
 	}
 	if err := s.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM ck_frameworks WHERE org_id=$1::uuid`,

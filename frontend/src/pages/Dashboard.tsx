@@ -8,6 +8,7 @@ import { useBreaches } from '../modules/vaktprivacy/hooks/useBreaches'
 import { useScoreHistory } from '../modules/vaktcomply/hooks/useScoreHistory'
 import { useNextMilestone } from '../modules/vaktcomply/hooks/useMilestones'
 import { useRecentPages } from '../shared/hooks/useRecentPages'
+import { isModuleVisible } from '../shared/moduleVisibility'
 import { useDashboardOrder, DEFAULT_WIDGET_ORDER } from './useDashboardOrder'
 import { loadWidgets, WIDGETS_KEY } from './WidgetConfigPanel'
 import type { WidgetKey } from './WidgetConfigPanel'
@@ -18,11 +19,12 @@ export default function Dashboard() {
   const { data: scoreData, isLoading: scoreLoading, isError: scoreError } = useDashboardScore()
   const { data: agg, isLoading: aggLoading, isError: aggError } = useDashboardAggregate()
   const { data: scoreHistory } = useScoreHistory(30)
-  const { data: critFindings, isLoading: findingsLoading } = useFindings({ severity: 'critical' })
+  // Abgeschaltete Module haben keine API-Routen — ihre Abfragen laufen gar nicht erst.
+  const { data: critFindings, isLoading: findingsLoading } = useFindings({ severity: 'critical' }, 1, 25, isModuleVisible('vaktscan'))
   const { data: frameworks, isLoading: fwLoading } = useFrameworks()
-  const { data: projects, isLoading: projLoading } = useProjects()
-  const { data: campaigns, isLoading: campLoading } = useCampaigns()
-  const { data: breaches, isLoading: breachLoading } = useBreaches()
+  const { data: projects, isLoading: projLoading } = useProjects(isModuleVisible('vaktvault'))
+  const { data: campaigns, isLoading: campLoading } = useCampaigns(isModuleVisible('vaktaware'))
+  const { data: breaches, isLoading: breachLoading } = useBreaches(1, 25, isModuleVisible('vaktprivacy'))
   const { data: nextMilestone } = useNextMilestone()
   const recentPages = useRecentPages()
 

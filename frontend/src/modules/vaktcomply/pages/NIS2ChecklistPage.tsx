@@ -165,7 +165,7 @@ export default function NIS2ChecklistPage() {
               <Badge className={`text-xs border ${moduleBadgeClass(req.module)}`}>
                 {req.module}
               </Badge>
-              {/* Liegt der Nachweis in einem ausgeblendeten Modul, bleibt die Anforderung stehen,
+              {/* Liegt der Nachweis in einem abgeschalteten Modul, bleibt die Anforderung stehen,
                   nur der Link entfällt (shared/moduleVisibility.ts). */}
               {isPathVisible(req.path) && (
                 <Link

@@ -4,11 +4,12 @@ import type { Project, ProjectHealth } from '../types'
 
 const BASE = '/vaktvault'
 
-export function useProjects() {
+export function useProjects(enabled = true) {
   return useQuery<Project[]>({
     queryKey: ['vaktvault', 'projects'],
     queryFn: () => apiFetch<Project[]>(`${BASE}/projects`),
     staleTime: 30_000,
+    enabled,
   })
 }
 
