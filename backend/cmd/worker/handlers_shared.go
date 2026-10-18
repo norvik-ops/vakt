@@ -155,7 +155,11 @@ func handleWeeklyDigest(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 			smtpCfg.Pass = cfg.SMTPPass
 			smtpCfg.From = cfg.SMTPFrom
 		}
-		return emaildigest.SendDigestForAllOrgs(ctx, pool, smtpCfg)
+		var moduleOn func(string) bool
+		if cfg != nil {
+			moduleOn = cfg.IsModuleEnabled
+		}
+		return emaildigest.SendDigestForAllOrgs(ctx, pool, smtpCfg, moduleOn)
 	}
 }
 
@@ -190,14 +194,18 @@ func handleBSIFeedSync(pool *pgxpool.Pool) asynq.HandlerFunc {
 func handleNotifyDeadlines(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		m := notifications.NewMailer(cfg)
-		if err := notifications.CheckBreachDeadlines(ctx, pool, m); err != nil {
-			log.Error().Err(err).Msg("breach deadline check failed")
-		}
-		if err := notifications.CheckDSRDeadlines(ctx, pool, m); err != nil {
-			log.Error().Err(err).Msg("dsr deadline check failed")
-		}
-		if err := notifications.CheckAVVExpiry(ctx, pool, m); err != nil {
-			log.Error().Err(err).Msg("avv expiry check failed")
+		// Breach, DSR and AVV deadlines belong to Vakt Privacy; no mails about a
+		// switched-off module.
+		if cfg == nil || cfg.IsModuleEnabled("vaktprivacy") {
+			if err := notifications.CheckBreachDeadlines(ctx, pool, m); err != nil {
+				log.Error().Err(err).Msg("breach deadline check failed")
+			}
+			if err := notifications.CheckDSRDeadlines(ctx, pool, m); err != nil {
+				log.Error().Err(err).Msg("dsr deadline check failed")
+			}
+			if err := notifications.CheckAVVExpiry(ctx, pool, m); err != nil {
+				log.Error().Err(err).Msg("avv expiry check failed")
+			}
 		}
 		if err := notifications.CheckCCMFailures(ctx, pool, m); err != nil {
 			log.Error().Err(err).Msg("ccm failure check failed")
@@ -220,7 +228,8 @@ func handleProcessScheduledReports(cfg *config.Config, pool *pgxpool.Pool) asynq
 			smtpCfg.Pass = cfg.SMTPPass
 			smtpCfg.From = cfg.SMTPFrom
 		}
-		svc := scheduledreports.NewService(pool, smtpCfg)
+		svc := scheduledreports.NewService(pool, smtpCfg).
+			WithoutScan(cfg != nil && !cfg.IsModuleEnabled("vaktscan"))
 		// Wire the vaktcomply service as the board report provider so that
 		// scheduled reports of type "board_report" can generate a PDF attachment.
 		svc.WithBoardReportProvider(newComplyService(cfg, pool))

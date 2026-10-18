@@ -10,8 +10,7 @@ import (
 )
 
 // EvidenceWriter abstracts writing compliance evidence so the HR module does not
-// depend directly on the vaktcomply module. When vaktcomply is disabled, a noop
-// writer is used.
+// depend directly on the vaktcomply module. Tests use the noop writer.
 type EvidenceWriter interface {
 	WriteChecklistCompletion(ctx context.Context, in events.ChecklistCompletionEvidence) error
 	WritePersonioOffboardingEvidence(ctx context.Context, in events.PersonioOffboardingEvidence) error

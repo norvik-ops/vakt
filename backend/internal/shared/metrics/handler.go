@@ -30,11 +30,14 @@ type Handler struct {
 	// redisOpt are the full parsed connection options — optional; when nil the
 	// queue-depth and per-task Asynq metrics are omitted entirely.
 	redisOpt *redis.Options
+	// moduleOn hides the findings and DSR families while Vakt Scan or Vakt
+	// Privacy is switched off — a 0 there would read as "measured, nothing open".
+	moduleOn func(string) bool
 }
 
 // NewHandler constructs a Handler.
 func NewHandler(db *pgxpool.Pool) *Handler {
-	return &Handler{db: db}
+	return &Handler{db: db, moduleOn: func(string) bool { return true }}
 }
 
 // WithRedis sets the Redis connection used by the queue-depth and per-task
@@ -72,23 +75,26 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	w.WriteHeader(http.StatusOK)
 
 	// ── vakt_findings_total ───────────────────────────────────────────────────
-	fmt.Fprintln(w, "# HELP vakt_findings_total Total open findings by severity")
-	fmt.Fprintln(w, "# TYPE vakt_findings_total gauge")
-	// orgid-lint: global — Prometheus /metrics endpoint: intentional cross-org aggregate for instance-level monitoring
-	rows, err := h.db.Query(ctx, `
-		SELECT severity, COUNT(*) AS cnt
-		FROM   vb_findings
-		WHERE  status NOT IN ('resolved','false_positive')
-		GROUP  BY severity`)
-	if err != nil {
-		log.Error().Err(err).Msg("metrics: query findings")
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			var severity string
-			var count int64
-			if err := rows.Scan(&severity, &count); err == nil {
-				fmt.Fprintf(w, "vakt_findings_total{severity=%q} %d\n", severity, count)
+	var err error
+	if h.moduleOn("vaktscan") {
+		fmt.Fprintln(w, "# HELP vakt_findings_total Total open findings by severity")
+		fmt.Fprintln(w, "# TYPE vakt_findings_total gauge")
+		// orgid-lint: global — Prometheus /metrics endpoint: intentional cross-org aggregate for instance-level monitoring
+		rows, err := h.db.Query(ctx, `
+			SELECT severity, COUNT(*) AS cnt
+			FROM   vb_findings
+			WHERE  status NOT IN ('resolved','false_positive')
+			GROUP  BY severity`)
+		if err != nil {
+			log.Error().Err(err).Msg("metrics: query findings")
+		} else {
+			defer rows.Close()
+			for rows.Next() {
+				var severity string
+				var count int64
+				if err := rows.Scan(&severity, &count); err == nil {
+					fmt.Fprintf(w, "vakt_findings_total{severity=%q} %d\n", severity, count)
+				}
 			}
 		}
 	}
@@ -108,34 +114,36 @@ func (h *Handler) ServeMetrics(c echo.Context) error {
 	}
 	fmt.Fprintf(w, "vakt_score_current %g\n", score)
 
-	// ── vakt_dsr_open_total ───────────────────────────────────────────────────
-	fmt.Fprintln(w, "# HELP vakt_dsr_open_total Open DSRs")
-	fmt.Fprintln(w, "# TYPE vakt_dsr_open_total gauge")
-	var dsrOpen int64
-	// orgid-lint: global — Prometheus /metrics: cross-org aggregate for instance monitoring
-	err = h.db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM po_dsr
-		WHERE  status NOT IN ('completed','rejected')`).Scan(&dsrOpen)
-	if err != nil {
-		log.Error().Err(err).Msg("metrics: query dsr_open")
-		dsrOpen = 0
-	}
-	fmt.Fprintf(w, "vakt_dsr_open_total %d\n", dsrOpen)
+	// ── vakt_dsr_open_total ─────────────────────────────────────────────────── (and vakt_dsr_overdue_total)
+	if h.moduleOn("vaktprivacy") {
+		fmt.Fprintln(w, "# HELP vakt_dsr_open_total Open DSRs")
+		fmt.Fprintln(w, "# TYPE vakt_dsr_open_total gauge")
+		var dsrOpen int64
+		// orgid-lint: global — Prometheus /metrics: cross-org aggregate for instance monitoring
+		err = h.db.QueryRow(ctx, `
+			SELECT COUNT(*) FROM po_dsr
+			WHERE  status NOT IN ('completed','rejected')`).Scan(&dsrOpen)
+		if err != nil {
+			log.Error().Err(err).Msg("metrics: query dsr_open")
+			dsrOpen = 0
+		}
+		fmt.Fprintf(w, "vakt_dsr_open_total %d\n", dsrOpen)
 
-	// ── vakt_dsr_overdue_total ────────────────────────────────────────────────
-	fmt.Fprintln(w, "# HELP vakt_dsr_overdue_total Overdue DSRs (past due_date)")
-	fmt.Fprintln(w, "# TYPE vakt_dsr_overdue_total gauge")
-	var dsrOverdue int64
-	// orgid-lint: global — Prometheus /metrics: cross-org aggregate for instance monitoring
-	err = h.db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM po_dsr
-		WHERE  status NOT IN ('completed','rejected')
-		  AND  due_date < CURRENT_DATE`).Scan(&dsrOverdue)
-	if err != nil {
-		log.Error().Err(err).Msg("metrics: query dsr_overdue")
-		dsrOverdue = 0
+		// ── vakt_dsr_overdue_total ────────────────────────────────────────────────
+		fmt.Fprintln(w, "# HELP vakt_dsr_overdue_total Overdue DSRs (past due_date)")
+		fmt.Fprintln(w, "# TYPE vakt_dsr_overdue_total gauge")
+		var dsrOverdue int64
+		// orgid-lint: global — Prometheus /metrics: cross-org aggregate for instance monitoring
+		err = h.db.QueryRow(ctx, `
+			SELECT COUNT(*) FROM po_dsr
+			WHERE  status NOT IN ('completed','rejected')
+			  AND  due_date < CURRENT_DATE`).Scan(&dsrOverdue)
+		if err != nil {
+			log.Error().Err(err).Msg("metrics: query dsr_overdue")
+			dsrOverdue = 0
+		}
+		fmt.Fprintf(w, "vakt_dsr_overdue_total %d\n", dsrOverdue)
 	}
-	fmt.Fprintf(w, "vakt_dsr_overdue_total %d\n", dsrOverdue)
 
 	// ── vakt_backup_age_hours ─────────────────────────────────────────────────
 	fmt.Fprintln(w, "# HELP vakt_backup_age_hours Hours since last backup (999 if never)")

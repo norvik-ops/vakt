@@ -189,6 +189,22 @@ func (t *addControlNoteTool) Execute(ctx context.Context, orgID string, args jso
 	return result, nil
 }
 
+// agentTools ist DefaultAgentTools ohne das Findings-Tool, solange Vakt Scan
+// abgeschaltet ist.
+func agentTools(db *pgxpool.Pool, withoutScan bool) []AgentTool {
+	all := DefaultAgentTools(db)
+	if !withoutScan {
+		return all
+	}
+	out := make([]AgentTool, 0, len(all))
+	for _, t := range all {
+		if _, scan := t.(*listOpenFindingsTool); !scan {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
 // DefaultAgentTools liefert die Tool-Liste, die im Standard-Wiring an den
 // AgentRunner gegeben wird. Wer neue Tools registrieren will, erweitert
 // diese Liste in ai/routes.go.

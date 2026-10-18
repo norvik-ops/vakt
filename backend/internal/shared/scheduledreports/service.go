@@ -79,6 +79,7 @@ type BoardReportProvider interface {
 // Service manages scheduled report CRUD and delivery.
 type Service struct {
 	db          *pgxpool.Pool
+	withoutScan bool // Vakt Scan is switched off: no findings reports (see WithoutScan)
 	smtp        SMTPConfig
 	boardReport BoardReportProvider
 }
@@ -86,6 +87,14 @@ type Service struct {
 // NewService creates a new scheduled reports service.
 func NewService(db *pgxpool.Pool, smtpCfg SMTPConfig) *Service {
 	return &Service{db: db, smtp: smtpCfg}
+}
+
+// WithoutScan marks Vakt Scan as switched off (VAKT_MODULES_ENABLED). Findings
+// reports can then not be created, and existing ones are skipped instead of
+// mailing an empty findings.csv.
+func (s *Service) WithoutScan(off bool) *Service {
+	s.withoutScan = off
+	return s
 }
 
 // WithBoardReportProvider attaches a board report provider to the service.
@@ -327,6 +336,10 @@ func (s *Service) ProcessDue(ctx context.Context) error {
 // For findings+csv it fetches findings and sends a CSV attachment.
 // For other types it sends a placeholder email.
 func (s *Service) RunReport(ctx context.Context, r ScheduledReport) error {
+	if r.ReportType == "findings" && s.withoutScan {
+		log.Warn().Str("report_id", r.ID).Msg("scheduled_reports: findings report skipped — Vakt Scan is switched off")
+		return nil
+	}
 	if len(r.Recipients) == 0 {
 		log.Warn().Str("report_id", r.ID).Msg("scheduled_reports: no recipients configured")
 		return nil

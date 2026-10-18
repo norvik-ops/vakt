@@ -98,6 +98,9 @@ type RegisterOptions struct {
 	// MetricsToken is the Bearer token required to access /metrics.
 	// When empty, only the IP allowlist applies.
 	MetricsToken string
+	// ModuleOn reports whether a module is enabled (config.IsModuleEnabled).
+	// Metric families of switched-off modules are omitted; nil means all on.
+	ModuleOn func(string) bool
 }
 
 // S121-F2 (T6): removed the deprecated Register(e, db) — it had no callers
@@ -106,6 +109,9 @@ type RegisterOptions struct {
 // RegisterWithOptions mounts the /metrics endpoint with extended options.
 func RegisterWithOptions(e *echo.Echo, db *pgxpool.Pool, opts RegisterOptions) {
 	h := NewHandler(db)
+	if opts.ModuleOn != nil {
+		h.moduleOn = opts.ModuleOn
+	}
 	if opts.Redis != nil && opts.Redis.Addr != "" {
 		h.WithRedis(opts.Redis)
 	}

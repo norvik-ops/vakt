@@ -92,18 +92,21 @@ export function WidgetGrid({
     },
   ].filter((m) => isPathVisible(m.path))
 
+  // Zweite Sicherung neben useRecentPages: recentPages ist eine Prop und kann auch anders befüllt werden.
+  const visibleRecentPages = recentPages.filter((p) => isPathVisible(p.path))
+
   return (
     <div className="flex-1 overflow-auto p-6 space-y-6">
       {/* S89-5: guided "first 30 days" path (self-hides when dismissed/complete). */}
       <OnboardingChecklist />
 
-      {widgets.recent_pages && recentPages.length > 0 && (
+      {widgets.recent_pages && visibleRecentPages.length > 0 && (
         <section>
           <p className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-2 opacity-60">
             {t('dashboard.recentlyVisited')}
           </p>
           <div className="flex flex-wrap gap-2">
-            {recentPages.map((page) => (
+            {visibleRecentPages.map((page) => (
               <Link
                 key={page.path}
                 to={page.path}

@@ -92,8 +92,10 @@ export function GlobalSearch() {
 
   // Treffer aus abgeschalteten Modulen (shared/moduleVisibility.ts) würden auf das Dashboard umleiten.
   const results   = (data?.results ?? []).filter((r) => isPathVisible(r.url))
-  const showRecent = debouncedQuery.length < 2 && recent.length > 0
-  const displayList: SearchResult[] = debouncedQuery.length >= 2 ? results : (showRecent ? recent : [])
+  // Verlauf bleibt gespeichert; Treffer aus abgeschalteten Modulen werden nur nicht angezeigt.
+  const visibleRecent = recent.filter((r) => isPathVisible(r.url))
+  const showRecent = debouncedQuery.length < 2 && visibleRecent.length > 0
+  const displayList: SearchResult[] = debouncedQuery.length >= 2 ? results : (showRecent ? visibleRecent : [])
 
   // Reset keyboard selection when list changes.
   useEffect(() => { setActiveIdx(-1) }, [displayList.length, debouncedQuery])

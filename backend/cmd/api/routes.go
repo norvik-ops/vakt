@@ -546,23 +546,23 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	auditorRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auditor", 30, time.Minute, false)
 	auditorAcceptRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auditor_accept", 10, time.Minute, false)
 
-	// cloudEvidence bridges vaktcomply → cloud integration without a direct import.
-	// It is set inside the vaktcomply block and falls back to a no-op when vaktcomply is disabled.
-	var cloudEvidence = cloudintegration.NoopEvidenceWriter()
-
-	// hrEvidence bridges hr → vaktcomply without a direct import.
-	// Set inside the vaktcomply block; falls back to a no-op when vaktcomply is disabled.
-	hrEvidence := vakthr.EvidenceWriter(vakthr.NoopEvidenceWriter())
-
+	// The bridges below connect other modules to vaktcomply without a direct import
+	// and are assigned in the vaktcomply block.
+	// cloudEvidence: cloud integration → vaktcomply evidence.
+	var cloudEvidence cloudintegration.EvidenceWriter
+	// hrEvidence: hr → vaktcomply evidence.
+	var hrEvidence vakthr.EvidenceWriter
 	// hrAccessReview triggers an access-review campaign in vaktcomply when an offboarding run completes.
-	// Set inside the vaktcomply block; falls back to a no-op when vaktcomply is disabled.
-	hrAccessReview := vakthr.AccessReviewTrigger(&vakthr.NoopAccessReviewTrigger{})
+	var hrAccessReview vakthr.AccessReviewTrigger
 
-	if cfg.IsModuleEnabled("vaktcomply") {
+	// vaktcomply is the core module (config.CoreModule) and always registered; the
+	// block only scopes its local variables.
+	{
 		ckSvc := vaktcomply.NewService(pool)
 		ckSvc.WithRedis(rdb)
 		ckSvc.WithNotifyService(notify.NewService(pool, cfg))
 		ckSvc.WithWebhooks(webhookSvc)
+		ckSvc.Reporting.WithoutScan(!cfg.IsModuleEnabled("vaktscan"))
 		// Reverse protection_need_id link on vb_assets is owned by vaktscan
 		// (module isolation, ADR-0079); vaktcomply writes it via this linker
 		// instead of the vb_ prefix directly. Wired unconditionally — vb_assets
@@ -615,7 +615,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// Policy acceptance — public token routes (no Bearer auth), rate-limited
 		vaktcomply.RegisterPolicyAcceptPublic(api.Group(""), ckHandler, portalRateLimiter)
 		// Audit package export
-		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
+		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool, cfg.IsModuleEnabled("vaktscan"))
 		// One-click audit report PDF
 		audit.RegisterReport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		// AI-generated reports via OpenAI-compatible provider.
@@ -634,6 +634,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 			CostPerMTokenIn:  cfg.AICostPerMTokenIn,
 			CostPerMTokenOut: cfg.AICostPerMTokenOut,
 			FailOpenOnOutage: aiFailOpen,
+			WithoutScan:      !cfg.IsModuleEnabled("vaktscan"),
 		})
 		// Auditor portal — read-only vaktcomply access via session token (no Bearer auth).
 		// license.DBMiddleware is added so feature gates (FeatureAuditPDF etc.) resolve
@@ -771,6 +772,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// (13 providers × PUT /config). A SecurityAnalyst could store AWS keys. Admin-only.
 	if cfg.SecretKey != "" {
 		cloudSvc := cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud", auth.RequireRole("Admin")), pool, cloudKey, cloudEvidence)
+		cloudSvc.WithScanFindings(cfg.IsModuleEnabled("vaktscan"))
 		log.Info().Msg("cloud integration routes registered")
 
 		// Inject Personio secret provider into the HR handler so the webhook can verify HMAC sigs.
@@ -796,6 +798,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		Pass: cfg.SMTPPass,
 		From: cfg.SMTPFrom,
 	})
+	srSvc.WithoutScan(!cfg.IsModuleEnabled("vaktscan"))
 	scheduledreports.Register(protected.Group("/reports"), scheduledreports.NewHandler(srSvc))
 	log.Info().Msg("scheduled reports routes registered")
 
@@ -818,7 +821,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	log.Info().Msg("audit log routes registered")
 
 	// Full data export — DSGVO Art. 20 portability + migration safety
-	dataexport.RegisterRoutes(protected.Group("/export"), pool, cfg.ModulesEnabled, cfg.Version)
+	dataexport.RegisterRoutes(protected.Group("/export"), pool, cfg.Version)
 	log.Info().Msg("data export routes registered")
 
 	// Auditor portal — invite management (admin) + public accept route
@@ -929,6 +932,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 			// waehrend der Worker in DB N arbeitete.
 			Redis:        redisOpt,
 			MetricsToken: metricsToken,
+			ModuleOn:     cfg.IsModuleEnabled,
 		})
 		log.Info().Msg("metrics endpoint registered")
 	}

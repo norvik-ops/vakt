@@ -26,3 +26,27 @@ func TestBuildAIDigestBody(t *testing.T) {
 	assert.Contains(t, body, "Acme GmbH")
 	assert.True(t, strings.HasPrefix(body, "<!DOCTYPE html>"), "body must be valid HTML")
 }
+
+// TestBuildEmail_OnlyEnabledModules covers the R1-KW-15 follow-up: with only the
+// ISMS enabled the digest reports risks and CAPAs, and no findings or DSR section
+// for the switched-off Scan and Privacy modules.
+func TestBuildEmail_OnlyEnabledModules(t *testing.T) {
+	ismsOnly := digestContent{Comply: complySummary{OpenRisks: 3, OpenCAPAs: 2}}
+	_, body := buildEmail("org-1", ismsOnly, "de")
+	assert.Contains(t, body, "Offene Risiken</td><td>3")
+	assert.Contains(t, body, "Offene CAPAs</td><td>2")
+	assert.NotContains(t, body, "Offene Findings")
+	assert.NotContains(t, body, "DSR-Anfragen")
+
+	all := digestContent{
+		Comply:       complySummary{OpenRisks: 1},
+		ShowFindings: true,
+		Findings:     []findingSeverityCount{{Severity: "critical", Count: 4}},
+		ShowDSR:      true,
+		DSR:          dsrSummary{Overdue: 1},
+	}
+	_, body = buildEmail("org-1", all, "de")
+	assert.Contains(t, body, "Offene Findings")
+	assert.Contains(t, body, ">critical</td><td>4")
+	assert.Contains(t, body, "DSR-Anfragen")
+}

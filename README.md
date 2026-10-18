@@ -32,7 +32,9 @@ Free-to-self-host alternative to Vanta, Drata, or DataGuard. Those vendors don't
 > **Focus (2026-10):** A new installation runs **Vakt Comply** only — the ISMS, including the asset
 > inventory. The other modules below are not part of the tested launch scope and are switched off by
 > default (`VAKT_MODULES_ENABLED=vaktcomply` in `.env.example`). Add them to that variable if you
-> need them; a disabled module has no API routes, no background jobs and no UI, and keeps its data.
+> need them. Vakt Comply is the core and always on, even if it is missing from that variable. A disabled
+> module has no API routes, no background jobs and no UI; its data is not deleted (retention policies keep
+> applying), and the GDPR org export still contains it.
 > See [docs/wiki/configuration.md](docs/wiki/configuration.md#module-einzeln-deaktivieren).
 
 | Module | Description |
@@ -47,13 +49,13 @@ Free-to-self-host alternative to Vanta, Drata, or DataGuard. Those vendors don't
 **Shared features across all modules:**
 
 - Webhook alerting — Slack, Teams, generic webhooks with HMAC signing
-- In-app notifications and weekly email digest
+- In-app notifications and weekly email digest (open risks and CAPAs always; findings only with Vakt Scan, DSR deadlines only with Vakt Privacy)
 - Prometheus metrics endpoint
-- Global search across all modules
+- Global search across all enabled modules
 - Data retention policies
 - 2FA / TOTP
 - Session management
-- BSI CERT-Bund advisory feed
+- BSI CERT-Bund advisory feed (runs only when Vakt Scan is enabled)
 - Cross-module evidence automation (e.g. resolved findings and completed trainings flow into Vakt Comply)
 - Admin CLI
 - Public Trust Pages
@@ -183,7 +185,7 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 | Vakt Aware (training assignment & tracking) | ✅ Basis | ✅ |
 | Vakt Privacy (VVT, AVV, DSR, breach records) | ✅ Basis | ✅ |
 
-> **Basis** — these modules are usable in Community with their core functionality. **Pro** unlocks the advanced features per module:
+> **Basis** — these modules are usable in Community with their core functionality. **Pro** unlocks the advanced features per module. Vakt Scan, Vault, Aware, Privacy and HR are optional modules, switched off by default — their features (Community or Pro) are only available after adding the module to `VAKT_MODULES_ENABLED`:
 > - **Vakt Scan** — SBOM scanning, EOL tracking, report generation & export, Wazuh import
 > - **Vakt Vault** — Git repo secret scanning, on-demand rotation, access reviews
 > - **Vakt Aware** — phishing campaigns, template library, target groups
@@ -235,7 +237,7 @@ The most important environment variables:
 | `VAKT_DB_URL` | — | PostgreSQL connection string (required) |
 | `VAKT_REDIS_URL` | — | Redis connection string (required) |
 | `VAKT_SECRET_KEY` | — | 32-byte hex master encryption key (required) |
-| `VAKT_MODULES_ENABLED` | all (`.env.example`: `vaktcomply`) | Comma-separated list of enabled modules |
+| `VAKT_MODULES_ENABLED` | all (`.env.example`: `vaktcomply`) | Comma-separated list of enabled modules; `vaktcomply` is always on |
 | `AUTO_MIGRATE` | `false` | Run DB migrations automatically on startup |
 | `VAKT_DEMO` | `false` | Enable demo mode for local try-out (auto-generates login credentials) |
 | `VAKT_AI_PROVIDER` | `ollama` | AI provider: `ollama` (default, local) · `openai` (OpenAI-compatible) · `disabled` |
@@ -306,8 +308,8 @@ graph TD
 All services run in Docker containers. **No telemetry, no usage tracking, no analytics.** Vakt makes exactly three outbound calls of its own, all of them switchable, none of them carrying your compliance data — the complete list, with what each one sends, is in [SECURITY.md](SECURITY.md#data-protection):
 
 - `api.norvikops.de` — fetches the next licence key when yours is running out. **Only in the last quarter of the key's life** — about **one call a year** on an annual plan, none in between. Sends the licence token, nothing else. `VAKT_LICENSE_AUTORENEW=false` to switch it off; we then mail you the key. **Community Edition never calls at all.**
-- `www.bsi.bund.de` — BSI CERT-Bund advisories. On by default, `VAKT_BSI_FEED_ENABLED=false` to stop it. Sends nothing.
-- `endoflife.date` — is a component in your SBOM out of support? On by default, `VAKT_EOL_CHECK_ENABLED=false` to stop it. Sends the names of components you run.
+- `www.bsi.bund.de` — BSI CERT-Bund advisories. On by default **when Vakt Scan is enabled** (the shipped ISMS-only configuration never calls it), `VAKT_BSI_FEED_ENABLED=false` to stop it. Sends nothing.
+- `endoflife.date` — is a component in your SBOM out of support? Part of Vakt Scan, so only when Scan is enabled; on by default there, `VAKT_EOL_CHECK_ENABLED=false` to stop it. Sends the names of components you run.
 
 Everything else that leaves your network is something you configured yourself: your cloud, your GitHub, your LLM. Turn all the switches off and Vakt makes no outbound connection at all.
 

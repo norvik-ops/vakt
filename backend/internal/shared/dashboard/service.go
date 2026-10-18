@@ -12,6 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/matharnica/vakt/internal/config"
 )
 
 // Service encapsulates all database access for the dashboard package.
@@ -174,15 +176,29 @@ func (s *Service) LastBackupAt(ctx context.Context, orgID string) (*time.Time, e
 	return lastBackup, err
 }
 
-// LoadNotifications returns the 50 most recent notifications for the org.
+// disabledModules lists the switched-off modules. Notifications carry their
+// module name; hints of a disabled module (old scan alerts, DSR reminders)
+// would point to pages that no longer exist.
+func (s *Service) disabledModules() []string {
+	off := []string{}
+	for _, m := range config.KnownModules {
+		if !s.moduleOn(m) {
+			off = append(off, m)
+		}
+	}
+	return off
+}
+
+// LoadNotifications returns the 50 most recent notifications for the org,
+// without those of disabled modules.
 func (s *Service) LoadNotifications(ctx context.Context, orgID string) ([]UserNotification, error) {
 	rows, err := s.db.Query(ctx,
 		`SELECT id, title, body, type, module, read, created_at
          FROM user_notifications
-         WHERE org_id=$1::uuid
+         WHERE org_id=$1::uuid AND NOT (module = ANY($2::text[]))
          ORDER BY created_at DESC
          LIMIT 50`,
-		orgID)
+		orgID, s.disabledModules())
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { useFrameworks, useDownloadAuditPackage, useDownloadSoAPDF } from '../hooks/useFrameworks'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
+import { isPathVisible } from '../../../shared/moduleVisibility'
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
@@ -183,6 +184,12 @@ function moduleLabel(module: ModuleKey): string {
   return labels[module]
 }
 
+// Ein Control, dessen Modul abgeschaltet ist, wird in Comply dokumentiert — kein Verweis auf eine
+// Seite, die es nicht gibt (R1-KW-15).
+function effectiveModule(module: ModuleKey): ModuleKey {
+  return isPathVisible(moduleToPath(module)) ? module : 'vaktcomply'
+}
+
 function moduleBadgeClass(module: ModuleKey): string {
   if (module.startsWith('vaktscan'))   return 'bg-blue-900/40 text-blue-300 border-blue-800'
   if (module.startsWith('vaktvault'))   return 'bg-purple-900/40 text-purple-300 border-purple-800'
@@ -214,7 +221,9 @@ function ClauseCard({ clause, expanded, onToggle }: {
           <span className="text-xs text-secondary">({clause.count} Controls)</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-secondary hidden sm:block">{clause.module}</span>
+          <span className="text-xs text-secondary hidden sm:block">
+            {isPathVisible(clause.modulePath) ? clause.module : 'Vakt Comply'}
+          </span>
           {expanded
             ? <ChevronDown className="w-4 h-4 text-secondary" />
             : <ChevronRight className="w-4 h-4 text-secondary" />
@@ -225,7 +234,9 @@ function ClauseCard({ clause, expanded, onToggle }: {
       {/* Controls list */}
       {expanded && (
         <div className="border-t border-border divide-y divide-border">
-          {clause.controls.map((control) => (
+          {clause.controls.map((control) => {
+            const module = effectiveModule(control.module)
+            return (
             <div
               key={control.id}
               className="flex items-center justify-between gap-3 px-4 py-2.5"
@@ -237,13 +248,14 @@ function ClauseCard({ clause, expanded, onToggle }: {
                 <span className="text-[13px] text-primary truncate">{control.title}</span>
               </div>
               <Link
-                to={moduleToPath(control.module)}
-                className={`shrink-0 text-[11px] px-2 py-0.5 rounded border font-medium transition-opacity hover:opacity-80 ${moduleBadgeClass(control.module)}`}
+                to={moduleToPath(module)}
+                className={`shrink-0 text-[11px] px-2 py-0.5 rounded border font-medium transition-opacity hover:opacity-80 ${moduleBadgeClass(module)}`}
               >
-                {moduleLabel(control.module)}
+                {moduleLabel(module)}
               </Link>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

@@ -127,7 +127,7 @@ func TestCSVFormulaInjection_SoAAndAuditPackage(t *testing.T) {
 			`UPDATE ck_controls SET title = $1 WHERE org_id = $2::uuid AND id = $3::uuid`, payload, orgID, ctrlID)
 		require.NoError(t, err)
 
-		pkg, err := audit.GeneratePackage(ctx, pool, orgID)
+		pkg, err := audit.GeneratePackage(ctx, pool, orgID, true)
 		require.NoError(t, err)
 		zr, err := zip.NewReader(bytes.NewReader(pkg.Zip), int64(len(pkg.Zip)))
 		require.NoError(t, err)

@@ -14,7 +14,7 @@ import (
 
 // AccessReviewTrigger is called when an offboarding checklist run completes.
 // The real implementation lives in vaktcomply (HRAccessReviewTrigger); the noop
-// is used in tests and when vaktcomply is disabled.
+// is used in tests.
 type AccessReviewTrigger interface {
 	TriggerOffboardingReview(ctx context.Context, in OffboardingReviewInput) error
 }

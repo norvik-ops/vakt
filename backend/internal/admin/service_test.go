@@ -28,12 +28,13 @@ func TestListModules_allEnabled(t *testing.T) {
 	}
 }
 
-func TestListModules_noneEnabled(t *testing.T) {
+func TestListModules_emptyKeepsCore(t *testing.T) {
 	svc := NewService(nil, "")
 	mods := svc.ListModules()
 	require.Len(t, mods, 6)
 	for _, m := range mods {
-		assert.False(t, m.Enabled, "module %q should be disabled", m.Name)
+		// vaktcomply is the core module and always on (config.CoreModule).
+		assert.Equal(t, m.Name == "vaktcomply", m.Enabled, "module %q", m.Name)
 	}
 }
 
@@ -46,7 +47,7 @@ func TestListModules_partial(t *testing.T) {
 	}
 	assert.True(t, byName["vaktscan"])
 	assert.True(t, byName["vaktprivacy"])
-	assert.False(t, byName["vaktcomply"])
+	assert.True(t, byName["vaktcomply"], "core module is always on")
 	assert.False(t, byName["vaktvault"])
 	assert.False(t, byName["vaktaware"])
 }

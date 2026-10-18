@@ -17,7 +17,7 @@ import (
 //
 // The AccessReviewTrigger interface is injected into Service via
 // WithAccessReviewTrigger. The real implementation lives in vaktcomply
-// (HRAccessReviewTrigger); the noop is used when vaktcomply is disabled.
+// (HRAccessReviewTrigger); the noop is used in tests.
 // ---------------------------------------------------------------------------
 
 // captureAccessReviewTrigger records calls for pure-Go assertion.

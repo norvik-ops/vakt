@@ -23,9 +23,10 @@ const sonarqubeSource = "sonarqube-collector"
 
 // SonarQubeCollector collects compliance evidence from a SonarQube or SonarCloud instance.
 type SonarQubeCollector struct {
-	db         *pgxpool.Pool
-	evidence   EvidenceWriter
-	httpClient *http.Client // injectable for tests; nil in production (see clientFor)
+	db             *pgxpool.Pool
+	evidence       EvidenceWriter
+	noScanFindings bool         // see Service.noScanFindings
+	httpClient     *http.Client // injectable for tests; nil in production (see clientFor)
 }
 
 // NewSonarQubeCollector creates a new SonarQubeCollector.
@@ -172,22 +173,26 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 		}
 	}
 
-	// Security Hotspots → vaktscan findings
-	hotspotCount, err := c.collectSecurityHotspots(ctx, client, orgID, cfg)
-	if err != nil {
-		log.Warn().Err(err).Msg("sonarqube_collector: hotspot collection failed")
-		errs = append(errs, err)
-	} else {
-		total += hotspotCount
-	}
+	// Security Hotspots and Critical/Blocker vulnerabilities → vaktscan findings.
+	// Skipped while Vakt Scan is off; the summary evidence below then stays out too.
+	var hotspotCount, vulnCount int
+	if !c.noScanFindings {
+		var err error
+		hotspotCount, err = c.collectSecurityHotspots(ctx, client, orgID, cfg)
+		if err != nil {
+			log.Warn().Err(err).Msg("sonarqube_collector: hotspot collection failed")
+			errs = append(errs, err)
+		} else {
+			total += hotspotCount
+		}
 
-	// Critical/Blocker vulnerabilities → vaktscan findings
-	vulnCount, err := c.collectVulnerabilities(ctx, client, orgID, cfg)
-	if err != nil {
-		log.Warn().Err(err).Msg("sonarqube_collector: vulnerability collection failed")
-		errs = append(errs, err)
-	} else {
-		total += vulnCount
+		vulnCount, err = c.collectVulnerabilities(ctx, client, orgID, cfg)
+		if err != nil {
+			log.Warn().Err(err).Msg("sonarqube_collector: vulnerability collection failed")
+			errs = append(errs, err)
+		} else {
+			total += vulnCount
+		}
 	}
 
 	// Hotspot summary evidence

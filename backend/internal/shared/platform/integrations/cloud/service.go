@@ -22,6 +22,10 @@ type Service struct {
 	repo      *Repository
 	masterKey []byte
 	evidence  EvidenceWriter
+	// noScanFindings stops the GitLab and SonarQube collectors from importing
+	// vulnerabilities as vb_findings while Vakt Scan is switched off. Their ISMS
+	// evidence (branch protection, quality gates, …) is collected either way.
+	noScanFindings bool
 }
 
 // NewService creates a new cloud integration service.
@@ -32,6 +36,13 @@ func NewService(db *pgxpool.Pool, masterKey []byte, evidence EvidenceWriter) *Se
 		masterKey: masterKey,
 		evidence:  evidence,
 	}
+}
+
+// WithScanFindings tells the collectors whether Vakt Scan is enabled
+// (config.IsModuleEnabled("vaktscan")). Without the call findings are imported.
+func (s *Service) WithScanFindings(enabled bool) *Service {
+	s.noScanFindings = !enabled
+	return s
 }
 
 // maskedSecret is the placeholder the API returns instead of a stored secret.
@@ -1665,6 +1676,7 @@ func (s *Service) SyncGitLab(ctx context.Context, orgID string) (int, error) {
 		return 0, fmt.Errorf("GitLab nicht konfiguriert")
 	}
 	collector := NewGitLabCollector(s.db, s.evidence)
+	collector.noScanFindings = s.noScanFindings
 	count, syncErr := collector.Collect(ctx, orgID, *cfg)
 	status := "success"
 	if syncErr != nil {
@@ -1805,6 +1817,7 @@ func (s *Service) SyncSonarQube(ctx context.Context, orgID string) (int, error) 
 		return 0, fmt.Errorf("SonarQube nicht konfiguriert")
 	}
 	collector := NewSonarQubeCollector(s.db, s.evidence)
+	collector.noScanFindings = s.noScanFindings
 	count, syncErr := collector.Collect(ctx, orgID, *cfg)
 	status := "success"
 	if syncErr != nil {

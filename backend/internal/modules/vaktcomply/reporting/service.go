@@ -15,13 +15,21 @@ import (
 // Service handles the reporting domain of vaktcomply. It owns Continuous
 // Control Monitoring (CCM), KPI dashboards, and NIS2 Art.23 stage reporting.
 type Service struct {
-	db   *pgxpool.Pool
-	repo *Repository
+	db      *pgxpool.Pool
+	repo    *Repository
+	scanOff bool
 }
 
 // NewService creates a new reporting-domain service.
 func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{db: pool, repo: NewRepository(pool)}
+}
+
+// WithoutScan marks Vakt Scan as switched off: Trivy CCM checks then report
+// "unknown" instead of reading vb_findings.
+func (s *Service) WithoutScan(off bool) *Service {
+	s.scanOff = off
+	return s
 }
 
 // ListCCMChecks returns all CCM checks for the given organisation.
@@ -63,7 +71,7 @@ func (s *Service) RunCCMCheck(ctx context.Context, orgID, id string) (*CCMResult
 		return nil, fmt.Errorf("get ccm check: %w", err)
 	}
 
-	status, output, runErr := RunCheck(ctx, s.db, *check)
+	status, output, runErr := RunCheck(ctx, s.db, *check, !s.scanOff)
 	if runErr != nil {
 		// Execution itself failed (should rarely happen — runners handle errors internally).
 		status = "unknown"
@@ -115,7 +123,7 @@ func (s *Service) RunDueCCMChecks(ctx context.Context) error {
 	log.Info().Int("count", len(checks)).Msg("ccm: running due checks")
 
 	for _, check := range checks {
-		status, output, runErr := RunCheck(ctx, s.db, check)
+		status, output, runErr := RunCheck(ctx, s.db, check, !s.scanOff)
 		if runErr != nil {
 			status = "unknown"
 			output = runErr.Error()

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { isPathVisible } from '../moduleVisibility'
 
 const STORAGE_KEY = 'vakt_recent_pages'
 const MAX_ENTRIES = 5
@@ -46,5 +47,7 @@ export function useRecentPages(): RecentPage[] {
     return () => { window.removeEventListener('vakt:recent-pages-updated', refresh); }
   }, [refresh])
 
-  return pages
+  // Einträge aus einem inzwischen abgeschalteten Modul bleiben gespeichert (kommt das Modul zurück,
+  // erscheinen sie wieder), werden aber nicht angezeigt.
+  return pages.filter((p) => isPathVisible(p.path))
 }

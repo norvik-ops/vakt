@@ -90,8 +90,8 @@ Vakt is a self-hosted platform. Key security properties:
 | Destination | Purpose | Opt-in variable | Data sent |
 |---|---|---|---|
 | `api.norvikops.de` | Fetching the **next licence key** when the current one is running out | on for Pro; `VAKT_LICENSE_AUTORENEW=false` | The licence's renewal token, nothing else. **Only inside the last quarter of the key's life** — on a yearly plan that is roughly **one call per year**, and none at all in between. No instance identifier, no user count, no usage data, no compliance content. Switch it off and we mail you the key instead; your instance then never contacts us. **The Community Edition has no key and never calls at all.** |
-| `www.bsi.bund.de` | BSI CERT-Bund advisory RSS feed | default-on; disable with `VAKT_BSI_FEED_ENABLED=false` | None (GET request) |
-| `endoflife.date` | Is a component in your SBOM past its end of life? | default-on; disable with `VAKT_EOL_CHECK_ENABLED=false` | **The names of components you run** (e.g. `openssl`, `postgresql`). Not your compliance data — but it does say something about your stack. Only during an SBOM scan you started. |
+| `www.bsi.bund.de` | BSI CERT-Bund advisory RSS feed | default-on while Vakt Scan is enabled (not in the ISMS-only default); disable with `VAKT_BSI_FEED_ENABLED=false` | None (GET request) |
+| `endoflife.date` | Is a component in your SBOM past its end of life? | default-on while Vakt Scan is enabled (not in the ISMS-only default); disable with `VAKT_EOL_CHECK_ENABLED=false` | **The names of components you run** (e.g. `openssl`, `postgresql`). Not your compliance data — but it does say something about your stack. Only during an SBOM scan you started. |
 | `api.first.org` | EPSS vulnerability scores | `VAKT_EPSS_ENABLED=true` | CVE IDs |
 | `api.github.com` | Update availability check | `VAKT_UPDATE_CHECK=true` | None (GET request) |
 | Operator-configured LLM provider | AI features | `VAKT_AI_PROVIDER=openai` + `VAKT_AI_BASE_URL` | Compliance document excerpts — **data leaves your instance!** Ensure a DSGVO-compliant AVV with the provider. |

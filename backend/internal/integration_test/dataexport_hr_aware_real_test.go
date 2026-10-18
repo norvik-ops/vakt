@@ -42,21 +42,22 @@ func readZipFiles(t *testing.T, data []byte) map[string]string {
 	return out
 }
 
-func runExport(t *testing.T, pool *pgxpool.Pool, orgID, modules string) map[string]string {
+func runExport(t *testing.T, pool *pgxpool.Pool, orgID string) map[string]string {
 	t.Helper()
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/export", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("org_id", orgID)
-	require.NoError(t, dataexport.ExportHandler(pool, modules, "0.42.99-test")(c))
+	require.NoError(t, dataexport.ExportHandler(pool, "0.42.99-test")(c))
 	require.Equal(t, http.StatusOK, rec.Code)
 	return readZipFiles(t, rec.Body.Bytes())
 }
 
 // TestDataExport_HRAndAwarePII is the S89-2 (PRIV-001) acceptance test: the
 // org-takeout includes HR PII and pseudonymises Aware phishing results, is
-// org-scoped, and respects module toggles.
+// org-scoped, and contains HR/Aware data regardless of VAKT_MODULES_ENABLED —
+// switching a module off keeps its data, so the Art. 20 export must keep it too.
 func TestDataExport_HRAndAwarePII(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: -short mode")
@@ -107,10 +108,8 @@ func TestDataExport_HRAndAwarePII(t *testing.T) {
 	_, err = pool.Exec(ctx, `INSERT INTO sr_events (org_id, campaign_id, target_id, type, tracking_token) VALUES ($1::uuid,$2::uuid,$3::uuid,'click','tok123')`, orgA, campaignID, targetID)
 	require.NoError(t, err)
 
-	allModules := "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr"
-
 	// ── Full export of org A ──────────────────────────────────────────────
-	files := runExport(t, pool, orgA, allModules)
+	files := runExport(t, pool, orgA)
 
 	require.Contains(t, files, "hr_employees.json")
 	assert.Contains(t, files["hr_employees.json"], "alice@acme.test", "HR PII must be in the export")
@@ -125,15 +124,12 @@ func TestDataExport_HRAndAwarePII(t *testing.T) {
 	assert.Contains(t, files["sr_events.json"], "anon_", "target_id must be pseudonymised")
 
 	// ── Org scoping: org B export has no org A data ───────────────────────
-	bFiles := runExport(t, pool, orgB, allModules)
+	bFiles := runExport(t, pool, orgB)
 	assert.Contains(t, bFiles["hr_employees.json"], "bob@beta.test")
 	assert.NotContains(t, bFiles["hr_employees.json"], "alice@acme.test", "cross-org leak")
 	assert.NotContains(t, bFiles["sr_targets.json"], "alice@acme.test", "cross-org aware leak")
 
-	// ── Module toggle: vakthr/vaktaware off → no HR/Aware files ───────────
-	noHR := runExport(t, pool, orgA, "vaktscan,vaktcomply,vaktprivacy")
-	assert.NotContains(t, noHR, "hr_employees.json", "HR file omitted when vakthr disabled")
-	assert.NotContains(t, noHR, "sr_targets.json", "Aware file omitted when vaktaware disabled")
-	// Core comply file still present.
-	assert.Contains(t, noHR, "controls.json")
+	// The handler no longer takes the module list at all, so a switched-off module
+	// cannot drop files; the core comply file sits next to HR/Aware files.
+	assert.Contains(t, files, "controls.json")
 }

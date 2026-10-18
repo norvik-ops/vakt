@@ -132,3 +132,28 @@ func TestSonarQube_URLHash(t *testing.T) {
 	assert.Equal(t, h1, h2, "URL hash must be slash-insensitive")
 	assert.NotEmpty(t, h1)
 }
+
+// TestSonarQube_NoScanFindingsWhileScanOff covers the R1-KW-15 follow-up: with
+// Vakt Scan switched off the collector must not import hotspots or
+// vulnerabilities as vb_findings, but still writes its ISMS evidence.
+func TestSonarQube_NoScanFindingsWhileScanOff(t *testing.T) {
+	findingCalls := 0
+	inner := sonarTestServer(t, "OK", []map[string]any{{"key": "h1", "message": "x", "vulnerabilityProbability": "HIGH"}})
+	defer inner.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/hotspots/search" || r.URL.Path == "/api/issues/search" {
+			findingCalls++
+		}
+		inner.Config.Handler.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+
+	c, mock := newTestSonarCollector(srv)
+	c.noScanFindings = true
+	_, err := c.Collect(context.Background(), "00000000-0000-0000-0000-000000000001",
+		SonarQubeConfig{BaseURL: srv.URL, Token: "test-token"})
+
+	require.NoError(t, err)
+	assert.Zero(t, findingCalls, "no finding import while vaktscan is off")
+	assert.NotEmpty(t, mock.added, "quality gate evidence is still collected")
+}

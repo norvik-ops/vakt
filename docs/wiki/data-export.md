@@ -29,8 +29,11 @@ es werden niemals Daten anderer Organisationen ausgeleitet.
 | `sr_completions.json` | Trainings-Abschlüsse (kein direkter Personenbezug) | Vakt Aware |
 | `audit_log.json` | Manipulationssicheres Audit-Log (org-scoped) | — |
 
-**Modul-Abhängigkeit:** HR-Dateien erscheinen nur, wenn `vakthr` in
-`VAKT_MODULES_ENABLED` aktiv ist; Aware-Dateien nur bei aktivem `vaktaware`.
+**Abgeschaltete Module:** Das Archiv enthält immer alle Dateien, auch für Module,
+die per `VAKT_MODULES_ENABLED` abgeschaltet sind. Abschalten blendet ein Modul aus,
+löscht aber keine Daten — und eine Auskunft nach Art. 15/20 DSGVO darf gespeicherte
+personenbezogene Daten nicht stillschweigend weglassen. Ein nie genutztes Modul
+erscheint als leeres Array `[]`.
 
 ## Format-Version
 

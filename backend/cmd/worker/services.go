@@ -54,6 +54,7 @@ import (
 func newComplyService(cfg *config.Config, pool *pgxpool.Pool) *vaktcomply.Service {
 	svc := vaktcomply.NewService(pool)
 	svc.WithNotifyService(notify.NewService(pool, cfg))
+	svc.Reporting.WithoutScan(cfg != nil && !cfg.IsModuleEnabled("vaktscan"))
 	return svc
 }
 
@@ -86,10 +87,7 @@ func newComplyService(cfg *config.Config, pool *pgxpool.Pool) *vaktcomply.Servic
 // gebaute vaktaware-Dienst hat bewusst keinen Asynq-Client, und ein
 // Warteschlangen-Weg würde an dieser Stelle genau wieder still nichts tun.
 func newHRService(cfg *config.Config, pool *pgxpool.Pool) *vakthr.Service {
-	evidence := vakthr.EvidenceWriter(vakthr.NoopEvidenceWriter())
-	if cfg != nil && cfg.IsModuleEnabled("vaktcomply") {
-		evidence = vaktcomply.NewHREvidenceWriter(pool)
-	}
+	evidence := vakthr.EvidenceWriter(vaktcomply.NewHREvidenceWriter(pool))
 	var onboarding vakthr.EmployeeOnboardingTrigger = &vakthr.NoopEmployeeOnboardingTrigger{}
 	if cfg != nil && cfg.IsModuleEnabled("vaktaware") {
 		onboarding = vaktaware.NewEnrollmentTrigger(vaktaware.NewService(pool, vaktaware.SMTPConfig{}))
@@ -109,9 +107,7 @@ func newHRService(cfg *config.Config, pool *pgxpool.Pool) *vakthr.Service {
 // Noop ist für den Fall gedacht, dass vaktcomply abgeschaltet ist; der Worker
 // benutzte ihn unbedingt.
 func newCloudService(cfg *config.Config, pool *pgxpool.Pool) *cloudintegration.Service {
-	evidence := cloudintegration.NoopEvidenceWriter()
-	if cfg != nil && cfg.IsModuleEnabled("vaktcomply") {
-		evidence = vaktcomply.NewCloudEvidenceWriter(newComplyService(cfg, pool).Repo())
-	}
-	return cloudintegration.NewService(pool, workerKey(cfg, "vakt-cloud-v1"), evidence)
+	evidence := vaktcomply.NewCloudEvidenceWriter(newComplyService(cfg, pool).Repo())
+	return cloudintegration.NewService(pool, workerKey(cfg, "vakt-cloud-v1"), evidence).
+		WithScanFindings(cfg == nil || cfg.IsModuleEnabled("vaktscan"))
 }

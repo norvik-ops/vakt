@@ -114,6 +114,12 @@ var sourceKeywords = map[string][]string{
 	},
 }
 
+// evidenceSourceEnabled reports whether the module that emitted a cross-module
+// event is enabled. Sources are module names (events.Source*).
+func evidenceSourceEnabled(cfg *config.Config, source string) bool {
+	return cfg == nil || cfg.IsModuleEnabled(source)
+}
+
 // handleRecordEvidence records cross-module compliance evidence in SecVitals.
 // Triggered by vaktaware (training), vaktprivacy (DSR), and vaktvault (rotation) events.
 func handleRecordEvidence(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
@@ -121,6 +127,15 @@ func handleRecordEvidence(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerF
 		var payload crossevidence.EvidencePayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 			return fmt.Errorf("parse evidence payload: %w", err)
+		}
+
+		// The task type is "vaktcomply:…" for every producer, so the module guard
+		// cannot see the source. Drop events of a module switched off after they
+		// were queued, like every other task of that module (module_guard.go).
+		if !evidenceSourceEnabled(cfg, payload.Source) {
+			log.Warn().Str("org_id", payload.OrgID).Str("source", payload.Source).
+				Msg("crossevidence: Ereignis verworfen — Quellmodul ist per VAKT_MODULES_ENABLED abgeschaltet")
+			return nil
 		}
 
 		// S88-8: scanner finding-created events use the dedicated, idempotent

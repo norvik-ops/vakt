@@ -4,38 +4,54 @@ import { Button } from './ui/button'
 import { ProGate } from '../shared/components/ProGate'
 import { FeatureLockedError } from '../api/client'
 import { useUserPermissions, useUpdateUserPermissions, type ModulePermission } from '../hooks/useUserPermissions'
+import { isModuleVisible, useEnabledModules } from '../shared/moduleVisibility'
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
+// vakthr fehlt im Typ des Hooks, das Backend akzeptiert es aber (ModulePermissionInput, oneof … vakthr).
 type ModuleKey = ModulePermission['module']
 
-const MODULES: ModuleKey[] = ['vaktscan', 'vaktcomply', 'vaktvault', 'vaktaware', 'vaktprivacy']
-
-const MODULE_LABELS: Record<ModuleKey, string> = {
-  vaktscan:   'Vakt Scan',
-  vaktcomply:  'Vakt Comply',
-  vaktvault:   'Vakt Vault',
-  vaktaware:  'Vakt Aware',
-  vaktprivacy: 'Vakt Privacy',
+interface PermissionRow {
+  module: ModuleKey
+  can_read: boolean
+  can_write: boolean
 }
 
-const DEFAULT_PERMISSIONS: ModulePermission[] = MODULES.map((module) => ({
-  module,
-  can_read:  false,
-  can_write: false,
-}))
+// Reihenfolge der Zeilen; angezeigt wird davon nur, was der Server aktiviert hat (GET /modules).
+const ALL_MODULES: ModuleKey[] = ['vaktcomply', 'vaktscan', 'vaktvault', 'vaktaware', 'vaktprivacy', 'vakthr']
+
+const MODULE_LABELS: Record<ModuleKey, string> = {
+  vaktscan:    'Vakt Scan',
+  vaktcomply:  'Vakt Comply',
+  vaktvault:   'Vakt Vault',
+  vaktaware:   'Vakt Aware',
+  vaktprivacy: 'Vakt Privacy',
+  vakthr:      'Vakt HR',
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function mergeWithDefaults(loaded: ModulePermission[]): ModulePermission[] {
-  return DEFAULT_PERMISSIONS.map((def) => {
-    const match = loaded.find((p) => p.module === def.module)
-    return match ?? def
+/** visibleRows baut je aktiviertem Modul eine Zeile — gespeicherter Wert oder „kein Zugriff". */
+function visibleRows(loaded: readonly PermissionRow[]): PermissionRow[] {
+  return ALL_MODULES.filter((m) => isModuleVisible(m)).map((module) => {
+    const match = loaded.find((p) => p.module === module)
+    return match ? { module, can_read: match.can_read, can_write: match.can_write } : { module, can_read: false, can_write: false }
   })
+}
+
+/**
+ * buildPayload ergänzt die sichtbaren Zeilen um die gespeicherten Rechte abgeschalteter Module.
+ * PUT /admin/users/:id/permissions ersetzt alle Zeilen des Nutzers (DELETE + INSERT). Ohne diese
+ * Ergänzung würde das Speichern Rechte für ein abgeschaltetes Modul still löschen — beim
+ * Wiedereinschalten hätte der Nutzer sie nicht mehr.
+ */
+function buildPayload(rows: readonly PermissionRow[], loaded: readonly PermissionRow[]): PermissionRow[] {
+  const shown = new Set(rows.map((r) => r.module))
+  return [...rows, ...loaded.filter((p) => !shown.has(p.module))]
 }
 
 // ---------------------------------------------------------------------------
@@ -48,13 +64,15 @@ interface EditorBodyProps {
 }
 
 function EditorBody({ userId, initial }: EditorBodyProps) {
-  const [rows, setRows] = useState<ModulePermission[]>(() => mergeWithDefaults(initial))
+  // Abonniert die Modulliste, damit sich die Zeilen nach GET /modules neu aufbauen.
+  const enabled = useEnabledModules((s) => s.modules)
+  const [rows, setRows] = useState<PermissionRow[]>(() => visibleRows(initial))
   const update = useUpdateUserPermissions(userId)
 
   // Keep local state in sync if data reloads (e.g. after save)
   useEffect(() => {
-    setRows(mergeWithDefaults(initial))
-  }, [initial])
+    setRows(visibleRows(initial))
+  }, [initial, enabled])
 
   function setRead(module: ModuleKey, value: boolean) {
     setRows((prev) =>
@@ -77,7 +95,7 @@ function EditorBody({ userId, initial }: EditorBodyProps) {
   }
 
   function handleSave() {
-    update.mutate(rows)
+    update.mutate(buildPayload(rows, initial))
   }
 
   return (

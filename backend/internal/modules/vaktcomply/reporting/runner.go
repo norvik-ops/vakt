@@ -16,12 +16,17 @@ import (
 )
 
 // RunCheck executes a CCM check and returns the status and output.
-// status is one of "pass", "fail", "unknown".
-func RunCheck(ctx context.Context, db *pgxpool.Pool, check CCMCheck) (status string, output string, err error) {
+// status is one of "pass", "fail", "unknown". scanOn reports whether Vakt Scan
+// is enabled: without it no scanner runs, so "no open critical findings" would
+// be a false pass (R1-KW-15 follow-up).
+func RunCheck(ctx context.Context, db *pgxpool.Pool, check CCMCheck, scanOn bool) (status string, output string, err error) {
 	switch check.CheckType {
 	case "http_endpoint":
 		return runHTTPEndpointCheck(ctx, check)
 	case "trivy_no_critical":
+		if !scanOn {
+			return "unknown", "Vakt Scan ist abgeschaltet (VAKT_MODULES_ENABLED) — ohne Scanner keine Aussage", nil
+		}
 		return runTrivyNoCriticalCheck(ctx, db, check)
 	case "evidence_freshness":
 		return runEvidenceFreshnessCheck(ctx, db, check)

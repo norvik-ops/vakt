@@ -2648,15 +2648,15 @@ tags:
   - name: auth
     description: Authentication
   - name: vaktscan
-    description: Vakt Scan — asset and vulnerability management
+    description: Vakt Scan — asset and vulnerability management. Only available when the module is enabled in VAKT_MODULES_ENABLED (off by default); /vaktscan/assets is always available.
   - name: vaktcomply
     description: Vakt Comply — compliance frameworks and controls
   - name: vaktprivacy
-    description: Vakt Privacy — GDPR documentation
+    description: Vakt Privacy — GDPR documentation. Only available when the module is enabled in VAKT_MODULES_ENABLED (off by default).
   - name: vaktaware
-    description: Vakt Aware — phishing simulations
+    description: Vakt Aware — phishing simulations. Only available when the module is enabled in VAKT_MODULES_ENABLED (off by default).
   - name: vaktvault
-    description: Vakt Vault — secrets management
+    description: Vakt Vault — secrets management. Only available when the module is enabled in VAKT_MODULES_ENABLED (off by default).
   - name: integrations
     description: Cloud provider integrations — evidence collection
   - name: webhooks
@@ -2664,7 +2664,7 @@ tags:
   - name: notifications
     description: Notification preferences
   - name: hr
-    description: Vakt HR — employee lifecycle and onboarding/offboarding checklists
+    description: Vakt HR — employee lifecycle and onboarding/offboarding checklists. Only available when the module is enabled in VAKT_MODULES_ENABLED (off by default).
   - name: admin
     description: Administration endpoints
   - name: platform

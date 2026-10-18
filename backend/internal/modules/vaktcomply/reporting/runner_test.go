@@ -81,7 +81,7 @@ func TestRunHTTPEndpointCheck_BlockedURL(t *testing.T) {
 // TestRunCheck_UnknownType ensures an unrecognised check type yields "unknown"
 // rather than an error, keeping batch runs resilient.
 func TestRunCheck_UnknownType(t *testing.T) {
-	status, output, err := RunCheck(context.Background(), nil, CCMCheck{CheckType: "nope"})
+	status, output, err := RunCheck(context.Background(), nil, CCMCheck{CheckType: "nope"}, true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestRunCheck_UnknownType(t *testing.T) {
 // TestRunCheck_CustomScriptUnsupported documents that custom_script is a no-op
 // stub in this build (returns unknown, no error).
 func TestRunCheck_CustomScriptUnsupported(t *testing.T) {
-	status, _, err := RunCheck(context.Background(), nil, CCMCheck{CheckType: "custom_script"})
+	status, _, err := RunCheck(context.Background(), nil, CCMCheck{CheckType: "custom_script"}, true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -116,5 +116,18 @@ func TestUnmarshalCCMConfig(t *testing.T) {
 	}
 	if got := unmarshalCCMConfig([]byte("not json")); got == nil {
 		t.Fatal("unmarshalCCMConfig(garbage) = nil map, want empty non-nil map")
+	}
+}
+
+// TestRunCheck_TrivyUnknownWhileScanOff pins the R1-KW-15 follow-up: without
+// Vakt Scan no scanner runs, so the check must not report "pass". The nil pool
+// proves vb_findings is not read at all.
+func TestRunCheck_TrivyUnknownWhileScanOff(t *testing.T) {
+	status, output, err := RunCheck(context.Background(), nil, CCMCheck{CheckType: "trivy_no_critical"}, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if status != "unknown" {
+		t.Fatalf("status = %q, want unknown (output %q)", status, output)
 	}
 }

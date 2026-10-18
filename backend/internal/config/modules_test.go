@@ -15,7 +15,9 @@ func TestEnabledModules(t *testing.T) {
 		{" VaktHR , vaktcomply,vaktscan", []string{"vaktcomply", "vaktscan", "vakthr"}},
 		// Unbekannte Namen erreichen das Frontend nicht.
 		{"vaktcomply,vaktfoo", []string{"vaktcomply"}},
-		{"", []string{}},
+		// Das ISMS lässt sich nicht abschalten.
+		{"", []string{"vaktcomply"}},
+		{"vaktscan", []string{"vaktcomply", "vaktscan"}},
 	}
 	for _, tc := range cases {
 		got := (&Config{ModulesEnabled: tc.csv}).EnabledModules()

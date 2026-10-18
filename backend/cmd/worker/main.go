@@ -118,6 +118,9 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 	// terminal_errors.go.
 	mux.Use(terminalErrorMiddleware)
 
+	// Tasks of switched-off modules are dropped before any handler runs.
+	mux.Use(moduleGuardMiddleware(cfg))
+
 	// S58-1: emit per-task-type duration + result into Redis so /metrics on the
 	// API side can publish Prometheus counters without needing a worker scrape
 	// endpoint. Best-effort — Redis failures never affect task execution.

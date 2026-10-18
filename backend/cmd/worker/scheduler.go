@@ -212,7 +212,8 @@ func registerCrons(scheduler cronRegistrar, cfg *config.Config) {
 
 	// Daily at 06:02 UTC: sync BSI CERT-Bund advisories and match to assets.
 	// Opt-out via VAKT_BSI_FEED_ENABLED=false for air-gapped environments.
-	if cfg != nil && cfg.BSIFeedEnabled {
+	// The feed writes vb_findings, so it belongs to Vakt Scan.
+	if cfg != nil && cfg.BSIFeedEnabled && moduleOn("vaktscan") {
 		if _, err := scheduler.Register("2 6 * * *",
 			bsi.NewBSIFeedSyncTask(),
 			asynq.Unique(23*time.Hour),
@@ -220,7 +221,7 @@ func registerCrons(scheduler cronRegistrar, cfg *config.Config) {
 			log.Error().Err(err).Msg("failed to register BSI feed sync cron")
 		}
 	} else {
-		log.Info().Msg("BSI CERT-Bund feed sync disabled (VAKT_BSI_FEED_ENABLED=false)")
+		log.Info().Msg("BSI CERT-Bund feed sync disabled (VAKT_BSI_FEED_ENABLED=false or vaktscan off)")
 	}
 
 	// S61-7: daily at 06:05 UTC — compute and persist ISMS KPI snapshots for all orgs.

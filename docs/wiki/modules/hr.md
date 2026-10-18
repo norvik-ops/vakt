@@ -6,11 +6,14 @@ Vakt HR verwaltet den Mitarbeiter-Lebenszyklus aus Security-Perspektive: Onboard
 
 ## Aktivierung
 
-Das Modul ist standardmäßig aktiv. Zum Deaktivieren:
+Das Modul ist optional und in neuen Installationen abgeschaltet (`.env.example` aktiviert nur
+`vaktcomply`). Zum Einschalten in der `.env` ergänzen und danach `docker compose up -d` ausführen:
 
 ```env
-VAKT_MODULES_ENABLED=vaktcomply,vaktscan,vaktvault,vaktaware,vaktprivacy
+VAKT_MODULES_ENABLED=vaktcomply,vakthr
 ```
+
+Was beim Abschalten wegfällt und was bleibt: [Konfiguration → Module einzeln deaktivieren](../configuration.md#module-einzeln-deaktivieren).
 
 ---
 

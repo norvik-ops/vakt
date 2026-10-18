@@ -160,10 +160,10 @@ func (h *Handler) fetchNotificationsSince(ctx context.Context, orgID string, sin
 	rows, err := h.svc.db.Query(ctx, `
 		SELECT id::text, title, body, type, module, created_at, read
 		FROM user_notifications
-		WHERE org_id = $1::uuid AND created_at > $2
+		WHERE org_id = $1::uuid AND created_at > $2 AND NOT (module = ANY($3::text[]))
 		ORDER BY created_at ASC
 		LIMIT 50`,
-		orgID, since,
+		orgID, since, h.svc.disabledModules(),
 	)
 	if err != nil {
 		return nil, since, fmt.Errorf("query notifications: %w", err)

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
 
 export interface ModulePermission {
-  module: 'vaktscan' | 'vaktcomply' | 'vaktvault' | 'vaktaware' | 'vaktprivacy'
+  module: 'vaktscan' | 'vaktcomply' | 'vaktvault' | 'vaktaware' | 'vaktprivacy' | 'vakthr'
   can_read: boolean
   can_write: boolean
 }

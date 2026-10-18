@@ -24,9 +24,10 @@ const gitlabSource = "gitlab-collector"
 
 // GitLabCollector collects compliance evidence from a GitLab instance (self-managed or GitLab.com).
 type GitLabCollector struct {
-	db         *pgxpool.Pool
-	evidence   EvidenceWriter
-	httpClient *http.Client // injectable for tests; nil in production (see clientFor)
+	db             *pgxpool.Pool
+	evidence       EvidenceWriter
+	noScanFindings bool         // see Service.noScanFindings
+	httpClient     *http.Client // injectable for tests; nil in production (see clientFor)
 }
 
 // NewGitLabCollector creates a new GitLabCollector.
@@ -141,12 +142,14 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		}
 
 		// Vulnerability findings (GitLab EE/Ultimate only — 403 = skip)
-		n, err := c.collectVulnerabilityFindings(ctx, client, orgID, cfg, p)
-		if err != nil {
-			log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: vuln findings failed")
-			errs = append(errs, err)
-		} else {
-			total += n
+		if !c.noScanFindings {
+			n, err := c.collectVulnerabilityFindings(ctx, client, orgID, cfg, p)
+			if err != nil {
+				log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: vuln findings failed")
+				errs = append(errs, err)
+			} else {
+				total += n
+			}
 		}
 	}
 

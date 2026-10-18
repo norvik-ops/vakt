@@ -246,9 +246,18 @@ func (c *Config) EnabledModules() []string {
 	return out
 }
 
+// CoreModule is the ISMS. Login, setup, dashboard and the asset register are built
+// around it, so it cannot be switched off: IsModuleEnabled reports it as enabled even
+// when VAKT_MODULES_ENABLED omits it.
+const CoreModule = "vaktcomply"
+
 // IsModuleEnabled reports whether the named module (e.g. "vaktscan") appears in
-// the ModulesEnabled CSV list.  Comparison is case-insensitive.
+// the ModulesEnabled CSV list.  Comparison is case-insensitive. CoreModule is
+// always enabled.
 func (c *Config) IsModuleEnabled(name string) bool {
+	if strings.EqualFold(name, CoreModule) {
+		return true
+	}
 	for _, mod := range strings.Split(c.ModulesEnabled, ",") {
 		if strings.EqualFold(strings.TrimSpace(mod), name) {
 			return true

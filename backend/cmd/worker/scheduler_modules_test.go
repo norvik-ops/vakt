@@ -12,6 +12,7 @@ import (
 	"github.com/matharnica/vakt/internal/modules/vaktscan"
 	"github.com/matharnica/vakt/internal/modules/vaktvault"
 	"github.com/matharnica/vakt/internal/services/alerting"
+	"github.com/matharnica/vakt/internal/shared/bsi"
 )
 
 type recordingRegistrar struct{ types map[string]bool }
@@ -34,10 +35,11 @@ var optionalModuleTasks = []string{
 	vaktscan.TaskCertScan, vaktscan.TaskSLACheck, alerting.TaskSLAOverdueCheck,
 	alerting.TaskDSROverdueCheck, vaktprivacy.TaskAVVExpiryCheck, vaktprivacy.TaskDSRDeadlineCheck,
 	vaktprivacy.TaskDeletionReminderCheck, vakthr.TaskContractorExpiryCheck, vaktvault.TaskQuarterlyAccessReview,
+	bsi.TaskBSIFeedSync,
 }
 
 func TestRegisterCrons_SkipsDisabledModules(t *testing.T) {
-	got := scheduledTypes(&config.Config{ModulesEnabled: "vaktcomply"})
+	got := scheduledTypes(&config.Config{ModulesEnabled: "vaktcomply", BSIFeedEnabled: true})
 	for _, task := range optionalModuleTasks {
 		if got[task] {
 			t.Errorf("cron %q is scheduled although its module is disabled", task)
@@ -50,10 +52,22 @@ func TestRegisterCrons_SkipsDisabledModules(t *testing.T) {
 }
 
 func TestRegisterCrons_SchedulesEnabledModules(t *testing.T) {
-	got := scheduledTypes(&config.Config{ModulesEnabled: "vaktcomply,vaktscan,vaktvault,vaktaware,vaktprivacy,vakthr"})
+	got := scheduledTypes(&config.Config{ModulesEnabled: "vaktcomply,vaktscan,vaktvault,vaktaware,vaktprivacy,vakthr", BSIFeedEnabled: true})
 	for _, task := range optionalModuleTasks {
 		if !got[task] {
 			t.Errorf("cron %q is missing although its module is enabled", task)
+		}
+	}
+}
+
+// TestRegisterCrons_NoModuleTaskWithOnlyCore ties the scheduler to the worker's
+// module guard: with only the core enabled, no scheduled task may belong to an
+// optional module (taskModule). A new cron with a module prefix that forgets its
+// moduleOn check fails here instead of being dropped silently at runtime.
+func TestRegisterCrons_NoModuleTaskWithOnlyCore(t *testing.T) {
+	for task := range scheduledTypes(&config.Config{ModulesEnabled: "vaktcomply", BSIFeedEnabled: true}) {
+		if m := taskModule(task); m != "" {
+			t.Errorf("cron %q (module %s) is scheduled with only vaktcomply enabled", task, m)
 		}
 	}
 }

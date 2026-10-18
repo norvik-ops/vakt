@@ -3,6 +3,7 @@ import { X, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useWhatsNew } from '../hooks/useWhatsNew'
+import { isPathVisible } from '../moduleVisibility'
 
 const TOUR_COMPLETED_KEY = 'vakt_tour_completed'
 
@@ -10,6 +11,8 @@ interface TourStep {
   id: string
   /** CSS selector of the element to highlight */
   selector: string
+  /** App route the step points at — steps into a switched-off module are skipped. */
+  route: string
   title: string
   text: string
 }
@@ -19,34 +22,39 @@ function getTourSteps(t: TFunction): TourStep[] {
     {
       id: 'dashboard',
       selector: 'a[href="/"][aria-current="page"], a[href="/"]',
+      route: '/',
       title: t('tour.steps.dashboard.title'),
       text: t('tour.steps.dashboard.text'),
     },
     {
       id: 'frameworks',
       selector: 'a[href="/vaktcomply/frameworks"]',
+      route: '/vaktcomply/frameworks',
       title: t('tour.steps.frameworks.title'),
       text: t('tour.steps.frameworks.text'),
     },
     {
       id: 'findings',
       selector: 'a[href="/vaktscan/findings"]',
+      route: '/vaktscan/findings',
       title: t('tour.steps.findings.title'),
       text: t('tour.steps.findings.text'),
     },
     {
       id: 'policies',
       selector: 'a[href="/vaktcomply/policies"]',
+      route: '/vaktcomply/policies',
       title: t('tour.steps.policies.title'),
       text: t('tour.steps.policies.text'),
     },
     {
       id: 'checklist',
       selector: '[data-tour="getting-started"]',
+      route: '/',
       title: t('tour.steps.checklist.title'),
       text: t('tour.steps.checklist.text'),
     },
-  ]
+  ].filter((s) => isPathVisible(s.route))
 }
 
 interface HighlightRect {
@@ -153,6 +161,7 @@ export function AppTour() {
     }
   }, [active])
 
+  // Die Modulliste steht beim Rendern fest (AuthGuard wartet auf GET /modules), daher reicht [t].
   const steps = useMemo(() => getTourSteps(t), [t])
 
   const updatePosition = useCallback(() => {
@@ -166,7 +175,7 @@ export function AppTour() {
       const th = tooltipRef.current.offsetHeight || 120
       setTooltipPos(computeTooltipPosition(r, tw, th))
     }
-  }, [active, step])
+  }, [active, step, steps])
 
   useEffect(() => {
     if (!active) return

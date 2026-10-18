@@ -113,7 +113,7 @@ func TestDataExport_ForeignKeysAreResolvable(t *testing.T) {
 		t.Skip("integration: -short mode")
 	}
 	f := setupExportTypes(t)
-	files := runExport(t, f.pool, f.orgID, "vaktcomply,vakthr,vaktaware,vaktprivacy")
+	files := runExport(t, f.pool, f.orgID)
 
 	controls := decodeRows(t, files, "controls.json")
 	require.Len(t, controls, 1)
@@ -156,7 +156,7 @@ func TestDataExport_ColumnTypeRendering(t *testing.T) {
 		t.Skip("integration: -short mode")
 	}
 	f := setupExportTypes(t)
-	files := runExport(t, f.pool, f.orgID, "vaktcomply,vakthr,vaktaware,vaktprivacy")
+	files := runExport(t, f.pool, f.orgID)
 
 	controls := decodeRows(t, files, "controls.json")
 	require.Len(t, controls, 1)
@@ -193,7 +193,7 @@ func TestDataExport_MetaStatesVersions(t *testing.T) {
 		t.Skip("integration: -short mode")
 	}
 	f := setupExportTypes(t)
-	files := runExport(t, f.pool, f.orgID, "vaktcomply")
+	files := runExport(t, f.pool, f.orgID)
 
 	var meta map[string]string
 	require.NoError(t, json.Unmarshal([]byte(files["meta.json"]), &meta))
@@ -213,7 +213,7 @@ func TestDataExport_AllFilesAreValidJSON(t *testing.T) {
 		t.Skip("integration: -short mode")
 	}
 	f := setupExportTypes(t)
-	files := runExport(t, f.pool, f.orgID, "vaktcomply,vakthr,vaktaware,vaktprivacy")
+	files := runExport(t, f.pool, f.orgID)
 
 	want := []string{
 		"meta.json",

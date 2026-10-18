@@ -31,6 +31,9 @@ type RegisterOptions struct {
 	// OrgSettings resolves per-org model/URL overrides (S79-7).
 	// When nil the system-wide model/URL is used for all orgs.
 	OrgSettings OrgSettingsFunc
+	// WithoutScan is true when Vakt Scan is switched off (VAKT_MODULES_ENABLED):
+	// reports then leave out the findings count and the agent gets no findings tool.
+	WithoutScan bool
 }
 
 // Register mounts AI report endpoints.
@@ -56,6 +59,7 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 		return
 	}
 	svc := NewService(db, baseURL, apiKey, model)
+	svc.withoutScan = opts.WithoutScan
 	if opts.Redis != nil {
 		tracker := NewUsageTracker(opts.Redis, db, UsageTrackerConfig{
 			RateLimitRPM:     opts.RateLimitRPM,
@@ -100,7 +104,7 @@ func RegisterWithOptions(g *echo.Group, db *pgxpool.Pool, provider, baseURL, api
 	// Sprint 18 / S18-3: Agent-Run-Endpoint (Plan/Execute/Reflect, SSE).
 	// S32-2: runMgr für Write-Tool-Approval-Flow (ApproveCard im Frontend).
 	runMgr := &AgentRunManager{}
-	runner := NewAgentRunnerWithManager(svc.client, svc.model, db, svc.usage, DefaultAgentTools(db), runMgr)
+	runner := NewAgentRunnerWithManager(svc.client, svc.model, db, svc.usage, agentTools(db, opts.WithoutScan), runMgr)
 	agentH := NewAgentHandler(svc.client, svc.model, runner, runMgr, db)
 	// Agent run is itself a (chain of) LLM call(s) — same CE gate applies.
 	// Approve/Reject are not LLM-generating, so they only run after the

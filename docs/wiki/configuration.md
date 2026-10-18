@@ -133,7 +133,7 @@ VAKT_FORCE_SECURE_COOKIES=true            # Produktion hinter HTTPS-Proxy
 | `VAKT_INTERNAL_PORT` | — | `8081` | Interner Port für `/api/v1/internal/*`-Routen (z. B. Backup-Config). Niemals über den Reverse-Proxy exponieren — Docker-interner Zugriff (z. B. `backup-cron.sh`) via `VAKT_INTERNAL_API_URL`. |
 | `VAKT_INTERNAL_API_URL` | — | `http://vakt-api:8081` | URL des internen API-Ports. Nur in `backup-cron.sh` relevant — überschreiben wenn das Skript außerhalb des Docker-Netzwerks läuft (z. B. Host-Cron). |
 | `APP_VERSION` | — | `0.1.0` | Versionsnummer. Wird im `/health`-Endpunkt zurückgegeben. |
-| `VAKT_MODULES_ENABLED` | — | alle (`.env.example`: `vaktcomply`) | Kommagetrennte Liste aktiver Module. Mögliche Werte: `vaktcomply`, `vaktscan`, `vaktvault`, `vaktaware`, `vaktprivacy`, `vakthr`. Ein abgeschaltetes Modul hat keine API-Routen, keine Worker-Jobs und erscheint nirgends in der Oberfläche; seine Daten bleiben erhalten. Das Asset-Inventar gehört zum ISMS und bleibt immer verfügbar. Siehe [Module einzeln deaktivieren](#module-einzeln-deaktivieren). |
+| `VAKT_MODULES_ENABLED` | — | alle (`.env.example`: `vaktcomply`) | Kommagetrennte Liste aktiver Module. Mögliche Werte: `vaktcomply`, `vaktscan`, `vaktvault`, `vaktaware`, `vaktprivacy`, `vakthr`. Vakt Comply ist immer aktiv, auch wenn es fehlt. Ein abgeschaltetes Modul hat keine API-Routen, keine Worker-Jobs und erscheint nirgends in der Oberfläche; seine Daten werden nicht gelöscht (Aufbewahrungsrichtlinien gelten aber weiter). Das Asset-Inventar gehört zum ISMS und bleibt immer verfügbar. Siehe [Module einzeln deaktivieren](#module-einzeln-deaktivieren). |
 | `AUTO_MIGRATE` | — | `false` | Wenn `true`, führt der API-Container beim Start automatisch ausstehende Datenbankmigrationen aus. |
 | `VAKT_DEMO` | — | `false` | Wenn `true`: Beispieldaten + öffentlich erreichbarer `/api/v1/demo/start`-Endpoint. **Nur für Test-/Demo-Umgebungen — niemals mit echten Compliance-Daten.** |
 | `VAKT_FRONTEND_URL` | — | `http://localhost:5173` | Öffentlich erreichbare URL des Frontends. Wird für E-Mail-Links in Benachrichtigungen, Vakt-Aware-Kampagnen und Policy-Akzeptanz-E-Mails verwendet. In Produktion auf die echte Domain setzen. |
@@ -414,9 +414,9 @@ VAKT_LICENSE_TOKEN=550e8400-e29b-41d4-a716-446655440000
 
 **Datenschutz-Hinweis zu `VAKT_LICENSE_TOKEN`:** Die Instanz stellt einmal täglich eine ausgehende HTTPS-Verbindung zu `api.norvikops.de` her. Dabei wird ausschließlich der Token übertragen — keine Geschäftsdaten, keine Nutzungsdaten. Wer ausgehende Verbindungen in der Firewall kontrolliert (typisch für ISO 27001 / NIS2 Umgebungen), muss `api.norvikops.de:443` in der Egress-Whitelist eintragen oder `VAKT_LICENSE_TOKEN` weglassen und die manuelle Aktivierung nutzen.
 
-**Datenschutz-Hinweis zu `VAKT_BSI_FEED_ENABLED`:** Wenn aktiviert (Standard), ruft Vakt einmal täglich den BSI CERT-Bund RSS-Feed (`www.bsi.bund.de`) ab, um aktuelle Sicherheitswarnungen in das Dashboard einzuspeisen. Dabei werden **keine Inhaltsdaten übertragen** — es ist ein reiner HTTP GET-Abruf des öffentlichen Feeds. Wer diese ausgehende Verbindung unterbinden möchte (Air-Gap-Umgebungen, strikte Egress-Policies), setzt `VAKT_BSI_FEED_ENABLED=false`. Das Sicherheitshinweis-Widget im Dashboard bleibt dann leer.
+**Datenschutz-Hinweis zu `VAKT_BSI_FEED_ENABLED`:** Wenn aktiviert (Standard) **und Vakt Scan eingeschaltet ist**, ruft Vakt einmal täglich den BSI CERT-Bund RSS-Feed (`www.bsi.bund.de`) ab, um aktuelle Sicherheitswarnungen in das Dashboard einzuspeisen. Dabei werden **keine Inhaltsdaten übertragen** — es ist ein reiner HTTP GET-Abruf des öffentlichen Feeds. Wer diese ausgehende Verbindung unterbinden möchte (Air-Gap-Umgebungen, strikte Egress-Policies), setzt `VAKT_BSI_FEED_ENABLED=false`. Das Sicherheitshinweis-Widget im Dashboard bleibt dann leer.
 
-**Datenschutz-Hinweis zu `VAKT_EOL_CHECK_ENABLED`:** **Standardmäßig an.** Nach einem SBOM-Scan fragt Vakt bei `endoflife.date` nach, ob eine gefundene Komponente noch Support hat. **Übertragen wird dabei der Komponentenname** (z. B. `openssl`, `postgresql`) — keine Compliance-Daten, keine Versionsstände deiner Systeme, keine Organisationsdaten. Es ist die einzige ausgehende Verbindung, die überhaupt etwas über deinen Stack aussagt, und sie passiert nur bei einem Scan, den du gestartet hast. Wer sie unterbinden will (Air-Gap, strikte Egress-Policy), setzt `VAKT_EOL_CHECK_ENABLED=false`; der Scan läuft dann ohne EOL-Spalte weiter.
+**Datenschutz-Hinweis zu `VAKT_EOL_CHECK_ENABLED`:** **Standardmäßig an**, wirkt aber nur mit eingeschaltetem Vakt Scan (SBOM-Scans gehören zu Scan). Nach einem SBOM-Scan fragt Vakt bei `endoflife.date` nach, ob eine gefundene Komponente noch Support hat. **Übertragen wird dabei der Komponentenname** (z. B. `openssl`, `postgresql`) — keine Compliance-Daten, keine Versionsstände deiner Systeme, keine Organisationsdaten. Es ist die einzige ausgehende Verbindung, die überhaupt etwas über deinen Stack aussagt, und sie passiert nur bei einem Scan, den du gestartet hast. Wer sie unterbinden will (Air-Gap, strikte Egress-Policy), setzt `VAKT_EOL_CHECK_ENABLED=false`; der Scan läuft dann ohne EOL-Spalte weiter.
 
 **Datenschutz-Hinweis zu `VAKT_EPSS_ENABLED`:** **Standardmäßig aus.** Wenn auf `true` gesetzt, reichert Vakt Findings mit EPSS-Scores (Exploit Prediction Scoring System) aus einer externen API an — eine ausgehende Verbindung. Bewusst opt-in, um das No-Phone-Home-Versprechen nicht zu unterlaufen. In Air-Gap-/strikten Egress-Umgebungen auf `false` (Default) belassen.
 
@@ -635,9 +635,11 @@ Der opt-in `backup`-Service läuft `backup-cron.sh` auf `VAKT_BACKUP_SCHEDULE`.
 
 ### Module einzeln deaktivieren
 
-Jedes Modul kann unabhängig deaktiviert werden. Die Modul-Namen sind case-insensitiv.
+Vakt Comply ist der Kern und immer aktiv — auch wenn `vaktcomply` in `VAKT_MODULES_ENABLED`
+fehlt. Die übrigen Module (`vaktscan`, `vaktvault`, `vaktaware`, `vaktprivacy`, `vakthr`) sind
+optional und lassen sich einzeln ein- und ausschalten. Die Modul-Namen sind case-insensitiv.
 Neue Installationen starten laut `.env.example` nur mit Vakt Comply, dem ISMS inklusive
-Asset-Inventar. Die übrigen Module gehören nicht zum geprüften Launch-Umfang und lassen sich
+Asset-Inventar. Die optionalen Module gehören nicht zum geprüften Launch-Umfang und lassen sich
 bei Bedarf dazuschalten:
 
 ```env
@@ -649,10 +651,28 @@ Danach `docker compose up -d` — ein `restart` liest die geänderte `.env` nich
 
 Was „abgeschaltet" bedeutet:
 
-- **Weg:** API-Routen, Worker-Jobs (z. B. SLA-, DSR- und AVV-Erinnerungen), Navigation,
-  Dashboard-Kacheln, Suchtreffer und Verweise aus Comply. Der Sicherheits-Score zählt
-  Findings (Scan) und Datenpannen (Privacy) nur bei aktivem Modul.
-- **Bleibt:** alle gespeicherten Daten. Schaltet man das Modul wieder ein, ist alles wieder da.
+- **Weg:** API-Routen, zeitgesteuerte Worker-Jobs, Navigation, Dashboard-Kacheln, Suchtreffer
+  und Verweise aus Comply. Der Sicherheits-Score zählt Findings (Scan) und Datenpannen
+  (Privacy) nur bei aktivem Modul.
+- **Verworfen:** Aufgaben, die vor dem Abschalten schon in der Warteschlange lagen. Der Worker
+  protokolliert sie und führt sie nicht mehr aus, auch nicht später. Beispiel: Eine bereits
+  eingereihte Phishing-Kampagne wird nach dem Abschalten von Vakt Aware nicht verschickt. Das gilt
+  auch für SLA-/DSR-Überfälligkeitsalarme und für Nachweise, die ein Modul an Comply meldet.
+- **Hängt am zuständigen Modul:**
+  - Fristen-Mails zu Datenpannen, Betroffenenanfragen (DSR) und AVVs laufen nur mit `vaktprivacy`.
+  - Der BSI-CERT-Bund-Feed läuft nur mit `vaktscan`.
+  - Die CCM-Prüfung „Trivy — keine kritischen CVEs“ meldet ohne `vaktscan` „unbekannt“, nie „bestanden“.
+  - Benachrichtigungen (Glocke) abgeschalteter Module werden ausgeblendet, nicht gelöscht.
+  - Cloud-, GitLab- und SonarQube-Integrationen sammeln weiter Nachweise für das ISMS. Ohne
+    `vaktscan` legen sie aber keine Scan-Findings an.
+  - Der Wochen-Digest enthält immer offene Risiken und CAPAs (Korrektur- und Vorbeugemaßnahmen).
+    Findings kommen nur mit `vaktscan` dazu, DSR-Fristen nur mit `vaktprivacy`.
+- **Bleibt:** alle gespeicherten Daten. Abschalten löscht nichts. Schaltet man das Modul wieder
+  ein, ist alles wieder da — mit einer Ausnahme: Aufbewahrungsrichtlinien (z. B. „erledigte
+  Findings nach N Tagen löschen") gelten auch für Daten abgeschalteter Module weiter.
+  Abschalten friert die Aufbewahrung nicht ein.
+- **Im DSGVO-Export:** Der Org-Export enthält immer die Daten aller Module, auch abgeschalteter
+  (siehe [Datenexport](data-export.md)).
 - **Immer da:** das Asset-Inventar (`/vaktscan/assets`), weil Schutzbedarf, Risiken und
   BSI-Modellierung darauf aufbauen. Es ist an die Berechtigung für Vakt Comply gebunden.
 - Ist die Variable gar nicht gesetzt, sind alle Module aktiv — bestehende Installationen

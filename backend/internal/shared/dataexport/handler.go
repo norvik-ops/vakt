@@ -102,24 +102,14 @@ func ExportedTables() []string {
 	return append(out, awareTargetsEntry.table, awareCompletionsEntry.table, auditEntry.table)
 }
 
-// moduleEnabled reports whether the named module appears in the comma-separated
-// VAKT_MODULES_ENABLED value (case-insensitive). Mirrors config.IsModuleEnabled
-// without importing config, so the export respects per-module activation.
-func moduleEnabled(csv, name string) bool {
-	for _, m := range strings.Split(csv, ",") {
-		if strings.EqualFold(strings.TrimSpace(m), name) {
-			return true
-		}
-	}
-	return false
-}
-
 // ExportHandler returns an Echo handler that streams a full-data ZIP to the client.
-// modulesEnabled is the VAKT_MODULES_ENABLED CSV; HR/Aware files are only included
-// when the respective module is active (S89-2). version is the running Vakt version
+// The archive always contains every module's tables, also for modules switched off via
+// VAKT_MODULES_ENABLED: switching a module off hides it but keeps its data, and an
+// Art. 20 export must not silently drop personal data that is still stored (R1-KW-15
+// follow-up). version is the running Vakt version
 // (cfg.Version, injected at build time) and is recorded in meta.json so a restored
 // archive states which release produced it.
-func ExportHandler(db *pgxpool.Pool, modulesEnabled, version string) echo.HandlerFunc {
+func ExportHandler(db *pgxpool.Pool, version string) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		orgID, ok := c.Get("org_id").(string)
 		if !ok || orgID == "" {
@@ -137,7 +127,7 @@ func ExportHandler(db *pgxpool.Pool, modulesEnabled, version string) echo.Handle
 			orgName = orgID
 		}
 
-		zipBytes, err := buildZip(ctx, db, orgID, orgName, modulesEnabled, version)
+		zipBytes, err := buildZip(ctx, db, orgID, orgName, version)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "export failed"})
 		}
@@ -152,7 +142,7 @@ func ExportHandler(db *pgxpool.Pool, modulesEnabled, version string) echo.Handle
 }
 
 // buildZip assembles all entity JSON files into a single ZIP archive.
-func buildZip(ctx context.Context, db *pgxpool.Pool, orgID, orgName, modulesEnabled, version string) ([]byte, error) {
+func buildZip(ctx context.Context, db *pgxpool.Pool, orgID, orgName, version string) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 
@@ -194,15 +184,13 @@ func buildZip(ctx context.Context, db *pgxpool.Pool, orgID, orgName, modulesEnab
 		return nil, err
 	}
 
-	// Only exported when the vakthr module is enabled (S89-2, PRIV-001).
-	// These carry identifying PII (names, e-mails) and belong in an Art. 20 export.
-	if moduleEnabled(modulesEnabled, "vakthr") {
-		if err := writeEntries(hrEntries); err != nil {
-			return nil, err
-		}
+	// HR tables carry identifying PII (names, e-mails) and belong in an Art. 20
+	// export (S89-2, PRIV-001).
+	if err := writeEntries(hrEntries); err != nil {
+		return nil, err
 	}
 
-	// Vakt Aware tables (sr_ prefix). Only exported when vaktaware is enabled.
+	// Vakt Aware tables (sr_ prefix).
 	//
 	// §87 BetrVG / Betriebsrat: the awareness module promises that the org admin
 	// can never see WHICH person clicked a phishing simulation. This org-takeout
@@ -218,31 +206,29 @@ func buildZip(ctx context.Context, db *pgxpool.Pool, orgID, orgName, modulesEnab
 	//   - sr_completions has no direct person column (it links via assignment_id
 	//     to the already-pseudonymised sr_assignments), so it is exported raw.
 	// A true per-person DSAR (out of scope here) would export these fully.
-	if moduleEnabled(modulesEnabled, "vaktaware") {
-		salt := make([]byte, 16)
-		_, _ = rand.Read(salt)
+	salt := make([]byte, 16)
+	_, _ = rand.Read(salt)
 
-		// Directory PII — raw.
-		if err := writeEntries([]entry{awareTargetsEntry}); err != nil {
-			return nil, err
-		}
+	// Directory PII — raw.
+	if err := writeEntries([]entry{awareTargetsEntry}); err != nil {
+		return nil, err
+	}
 
-		// Phishing results — pseudonymise the person link (target_id).
-		for _, e := range awarePseudoEntries {
-			data, err := queryToJSONPseudonymised(ctx, db, orgID, e.query, salt, map[string]bool{"target_id": true})
-			if err != nil {
-				log.Warn().Err(err).Str("file", e.file).Msg("dataexport: table export failed, writing empty array")
-				data = []byte("[]")
-			}
-			if err := writeRaw(zw, e.file, data); err != nil {
-				return nil, fmt.Errorf("%s: %w", e.file, err)
-			}
+	// Phishing results — pseudonymise the person link (target_id).
+	for _, e := range awarePseudoEntries {
+		data, err := queryToJSONPseudonymised(ctx, db, orgID, e.query, salt, map[string]bool{"target_id": true})
+		if err != nil {
+			log.Warn().Err(err).Str("file", e.file).Msg("dataexport: table export failed, writing empty array")
+			data = []byte("[]")
 		}
+		if err := writeRaw(zw, e.file, data); err != nil {
+			return nil, fmt.Errorf("%s: %w", e.file, err)
+		}
+	}
 
-		// Completions — no direct person column; exported raw.
-		if err := writeEntries([]entry{awareCompletionsEntry}); err != nil {
-			return nil, err
-		}
+	// Completions — no direct person column; exported raw.
+	if err := writeEntries([]entry{awareCompletionsEntry}); err != nil {
+		return nil, err
 	}
 
 	// Audit log — scoped to org.
