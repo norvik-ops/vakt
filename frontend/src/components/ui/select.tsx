@@ -75,4 +75,8 @@ const SelectItem = React.forwardRef<
 ))
 SelectItem.displayName = SelectPrimitive.Item.displayName
 
-export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectItem }
+// Radix verbietet <SelectItem value="">: das Öffnen der Liste wirft (R1-KW-7, R1-KW-9).
+// „Keine Auswahl“ bekommt deshalb diesen Platzhalterwert und wird beim Speichern zurückübersetzt.
+const SELECT_NONE = '__none__'
+
+export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectItem, SELECT_NONE }

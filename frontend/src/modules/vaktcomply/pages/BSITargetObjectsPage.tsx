@@ -33,6 +33,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SELECT_NONE,
   SelectTrigger,
   SelectValue,
 } from '../../../components/ui/select'
@@ -430,14 +431,14 @@ function OverrideDialog({ object, onClose }: OverrideDialogProps) {
           <div className="space-y-1.5">
             <Label>{t('bsi.overrideDialog.effectLabel')}</Label>
             <Select
-              value={form.override_effect ?? ''}
-              onValueChange={(v) => { setF('override_effect', v === '' ? null : v as BSIOverrideEffect) }}
+              value={form.override_effect ?? SELECT_NONE}
+              onValueChange={(v) => { setF('override_effect', v === SELECT_NONE ? null : v as BSIOverrideEffect) }}
             >
               <SelectTrigger>
                 <SelectValue placeholder={t('bsi.overrideDialog.effectPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">—</SelectItem>
+                <SelectItem value={SELECT_NONE}>—</SelectItem>
                 <SelectItem value="kumulation">{t('bsi.overrideDialog.kumulation')}</SelectItem>
                 <SelectItem value="verteilung">{t('bsi.overrideDialog.verteilung')}</SelectItem>
               </SelectContent>
@@ -570,12 +571,12 @@ function EditRiskForm({ risk, targetObjectId, onDone }: EditRiskFormProps) {
         <div className="space-y-1">
           <Label className="text-[11px]">{t('bsi.riskDialog.behandlungLabel')}</Label>
           <Select
-            value={form.behandlungsoption ?? ''}
-            onValueChange={(v) => { setForm((f) => ({ ...f, behandlungsoption: v === '' ? undefined : v as BSIBehandlungsoption })) }}
+            value={form.behandlungsoption ?? SELECT_NONE}
+            onValueChange={(v) => { setForm((f) => ({ ...f, behandlungsoption: v === SELECT_NONE ? undefined : v as BSIBehandlungsoption })) }}
           >
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">—</SelectItem>
+              <SelectItem value={SELECT_NONE}>—</SelectItem>
               {behandlungOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -583,12 +584,12 @@ function EditRiskForm({ risk, targetObjectId, onDone }: EditRiskFormProps) {
         <div className="space-y-1">
           <Label className="text-[11px]">{t('bsi.riskDialog.restrisikoLabel')}</Label>
           <Select
-            value={form.restrisiko ?? ''}
-            onValueChange={(v) => { setForm((f) => ({ ...f, restrisiko: v === '' ? undefined : v as BSIRisikokategorie })) }}
+            value={form.restrisiko ?? SELECT_NONE}
+            onValueChange={(v) => { setForm((f) => ({ ...f, restrisiko: v === SELECT_NONE ? undefined : v as BSIRisikokategorie })) }}
           >
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">—</SelectItem>
+              <SelectItem value={SELECT_NONE}>—</SelectItem>
               {risikoOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>

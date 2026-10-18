@@ -10,7 +10,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../../../components/ui/select'
+import { Select, SelectTrigger, SelectContent, SelectItem, SELECT_NONE, SelectValue } from '../../../components/ui/select'
 import {
   useEnrollmentRules,
   useCreateEnrollmentRule,
@@ -170,10 +170,10 @@ export default function EnrollmentRulesPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{t('vaktaware.enrollmentRules.labelTargetCampaignOptional')}</Label>
-                <Select value={campaignId} onValueChange={setCampaignId}>
+                <Select value={campaignId || SELECT_NONE} onValueChange={(v) => { setCampaignId(v === SELECT_NONE ? '' : v) }}>
                   <SelectTrigger><SelectValue placeholder={t('vaktaware.enrollmentRules.placeholderCampaign')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{t('vaktaware.enrollmentRules.none')}</SelectItem>
+                    <SelectItem value={SELECT_NONE}>{t('vaktaware.enrollmentRules.none')}</SelectItem>
                     {(campaigns as { id: string; name: string }[]).map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}

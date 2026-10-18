@@ -27,7 +27,6 @@ test.describe('KW8 Risiken', () => {
     await riskList(page)
     await page.getByRole('button', { name: 'Risiko erfassen' }).first().click()
 
-    test.fail(true, 'R1-KW-9: „Risiko erfassen" stürzt ab, sobald ein Teammitglied keinen Anzeigenamen hat (UserPicker: SelectItem value="")')
     const dlg = page.getByRole('dialog', { name: 'Risiko erfassen' })
     await expect(page.getByRole('heading', { name: 'Etwas ist schiefgelaufen' })).toHaveCount(0, { timeout: 3000 })
     await dlg.getByLabel('Bezeichnung *').fill(RISK)

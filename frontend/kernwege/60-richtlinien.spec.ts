@@ -23,7 +23,6 @@ test.describe('KW7 Richtlinien', () => {
     await page.goto('/vaktcomply/policies')
     await expect(page.getByRole('heading', { name: 'Richtlinienmanagement', level: 1 })).toBeVisible()
     await page.getByRole('button', { name: 'Richtlinie anlegen' }).first().click()
-    test.fail(true, 'R1-KW-7: „Richtlinie anlegen" → Absturz „A <Select.Item /> must have a value prop that is not an empty string"')
     await expect(page.getByRole('heading', { name: 'Etwas ist schiefgelaufen' })).toHaveCount(0, { timeout: 3000 })
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 3000 })
   })

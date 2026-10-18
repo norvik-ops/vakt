@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Select, SelectContent, SelectItem, SELECT_NONE, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { AIDisclaimer } from '../../../shared/components/AIDisclaimer'
 import { ExportButton } from '../../../shared/components/ExportButton'
@@ -401,12 +401,12 @@ export default function PoliciesPage() {
 
               <div className="space-y-1.5">
                 <Label>{t('vaktcomply.policiesPage.aiFramework')}</Label>
-                <Select value={aiFrameworkId} onValueChange={setAiFrameworkId}>
+                <Select value={aiFrameworkId || SELECT_NONE} onValueChange={(v) => { setAiFrameworkId(v === SELECT_NONE ? '' : v) }}>
                   <SelectTrigger>
                     <SelectValue placeholder={t('vaktcomply.policiesPage.aiFrameworkPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{t('vaktcomply.policiesPage.noFramework')}</SelectItem>
+                    <SelectItem value={SELECT_NONE}>{t('vaktcomply.policiesPage.noFramework')}</SelectItem>
                     {frameworks?.map((fw) => (
                       <SelectItem key={fw.id} value={fw.id}>{fw.name}</SelectItem>
                     ))}

@@ -43,11 +43,15 @@ export function UserPicker({
         <SelectItem value={NOBODY_VALUE} className="text-secondary italic">
           Niemand
         </SelectItem>
-        {(members ?? []).map((member) => (
-          <SelectItem key={member.id} value={member.name} className="text-primary">
-            {member.name}
-          </SelectItem>
-        ))}
+        {(members ?? []).map((member) => {
+          // Per „Direkt anlegen“ erzeugte Nutzer haben keinen Namen; Radix verbietet value="" (R1-KW-9).
+          const label = member.name.trim() || member.email
+          return (
+            <SelectItem key={member.id} value={label} className="text-primary">
+              {label}
+            </SelectItem>
+          )
+        })}
       </SelectContent>
     </Select>
   )

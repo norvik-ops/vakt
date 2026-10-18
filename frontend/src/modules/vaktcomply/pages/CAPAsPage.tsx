@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Select, SelectContent, SelectItem, SELECT_NONE, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { toast } from '../../../shared/hooks/useToast'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
@@ -249,10 +249,10 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs">{t('capas.ncClass')}</Label>
-            <Select value={ncClassification ?? ''} onValueChange={(v) => { setNcClassification((v as CAPANCFields['nc_classification']) || undefined); }}>
+            <Select value={ncClassification ?? SELECT_NONE} onValueChange={(v) => { setNcClassification(v === SELECT_NONE ? undefined : v as CAPANCFields['nc_classification']); }}>
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t('capas.notClassified')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{t('capas.notClassified')}</SelectItem>
+                <SelectItem value={SELECT_NONE}>{t('capas.notClassified')}</SelectItem>
                 <SelectItem value="major_nc">{t('capas.ncClass_major')}</SelectItem>
                 <SelectItem value="minor_nc">{t('capas.ncClass_minor')}</SelectItem>
                 <SelectItem value="observation">{t('capas.ncClass_observation')}</SelectItem>

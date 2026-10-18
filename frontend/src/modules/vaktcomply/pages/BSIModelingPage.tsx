@@ -34,6 +34,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SELECT_NONE,
   SelectTrigger,
   SelectValue,
 } from '../../../components/ui/select'
@@ -608,17 +609,17 @@ function CreateDialog({
             <div className="space-y-1.5">
               <Label>{t('bsiModeling.checkStatus')}</Label>
               <Select
-                value={form.check_status ?? ''}
+                value={form.check_status ?? SELECT_NONE}
                 onValueChange={(v) => {
                   setForm((f) => ({
                     ...f,
-                    check_status: v === '' ? undefined : v as CreateBSIModelingInput['check_status'],
+                    check_status: v === SELECT_NONE ? undefined : v as CreateBSIModelingInput['check_status'],
                   }))
                 }}
               >
                 <SelectTrigger><SelectValue placeholder={t('bsiModeling.statPending')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{t('bsiModeling.statPending')}</SelectItem>
+                  <SelectItem value={SELECT_NONE}>{t('bsiModeling.statPending')}</SelectItem>
                   <SelectItem value="yes">{t('bsiModeling.statFulfilled')}</SelectItem>
                   <SelectItem value="partial">{t('bsiModeling.statPartial')}</SelectItem>
                   <SelectItem value="no">{t('bsiModeling.statOpen')}</SelectItem>
