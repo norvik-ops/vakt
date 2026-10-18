@@ -5,7 +5,7 @@ import {
   Server, ChevronRight, CheckCircle2, AlertTriangle,
 } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
-import { useAssets } from '../hooks/useAssets'
+import { useAssets } from '../../vaktcomply/assets/hooks'
 import { useFindings } from '../hooks/useFindings'
 import { useScannerStatus } from '../hooks/useScannerStatus'
 import { cn } from '../../../lib/utils'
@@ -103,7 +103,7 @@ export default function ScanOverviewPage() {
             label={t('vaktscan.overviewPage.statAssets')}
             value={allAssets.length}
             sub={allAssets.length > 0 ? t('vaktscan.overviewPage.statAssetsCriticalSub', { count: criticalAssets.length }) : t('vaktscan.overviewPage.statAssetsNoSub')}
-            onClick={() => { navigate('/vaktscan/assets'); }}
+            onClick={() => { navigate('/vaktcomply/assets'); }}
             accent={allAssets.length > 0 ? 'green' : 'default'}
           />
           <StatCard
@@ -111,7 +111,7 @@ export default function ScanOverviewPage() {
             label={t('vaktscan.overviewPage.statCriticalAssets')}
             value={criticalAssets.length}
             sub={t('vaktscan.overviewPage.statCriticalAssetsSub')}
-            onClick={() => { navigate('/vaktscan/assets'); }}
+            onClick={() => { navigate('/vaktcomply/assets'); }}
             accent={criticalAssets.length > 0 ? 'red' : 'green'}
           />
           <StatCard
@@ -143,7 +143,7 @@ export default function ScanOverviewPage() {
                 icon: Server,
                 title: 'Assets',
                 desc: t('vaktscan.overviewPage.areaAssetsDesc'),
-                path: '/vaktscan/assets',
+                path: '/vaktcomply/assets',
               },
               {
                 icon: Bug,

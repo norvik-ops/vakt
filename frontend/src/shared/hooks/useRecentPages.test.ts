@@ -11,7 +11,7 @@ describe('useRecentPages', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([
       { path: '/vaktscan/findings/1', label: 'Finding', icon: 'x', visitedAt: 3 },
       { path: '/vaktcomply/risks/2', label: 'Risiko', icon: 'x', visitedAt: 2 },
-      { path: '/vaktscan/assets/3', label: 'Asset', icon: 'x', visitedAt: 1 },
+      { path: '/vaktcomply/assets/3', label: 'Asset', icon: 'x', visitedAt: 1 },
     ]))
   })
 
@@ -23,7 +23,7 @@ describe('useRecentPages', () => {
   it('blendet Seiten aus abgeschalteten Modulen aus, behält sie aber im Speicher', () => {
     useEnabledModules.setState({ modules: new Set(['vaktcomply']) })
     const { result } = renderHook(() => useRecentPages())
-    expect(result.current.map((p) => p.path)).toEqual(['/vaktcomply/risks/2', '/vaktscan/assets/3'])
+    expect(result.current.map((p) => p.path)).toEqual(['/vaktcomply/risks/2', '/vaktcomply/assets/3'])
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')).toHaveLength(3)
   })
 

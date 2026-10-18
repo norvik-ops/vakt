@@ -17,8 +17,8 @@ Das Modul ist optional und in neuen Installationen abgeschaltet (`.env.example` 
 VAKT_MODULES_ENABLED=vaktcomply,vaktscan
 ```
 
-Das Asset-Inventar (`/vaktscan/assets`) gehört zum ISMS und bleibt auch bei abgeschaltetem
-Vakt Scan verfügbar.
+Das Asset-Inventar gehört zum ISMS und liegt unter Vakt Comply (`/vaktcomply/assets`); es bleibt
+auch bei abgeschaltetem Vakt Scan verfügbar.
 
 Was beim Abschalten wegfällt und was bleibt: [Konfiguration → Module einzeln deaktivieren](../configuration.md#module-einzeln-deaktivieren).
 

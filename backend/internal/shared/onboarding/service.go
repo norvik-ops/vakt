@@ -50,7 +50,7 @@ type progressStepDef struct {
 var progressSteps = []progressStepDef{
 	{"scope", "/vaktcomply/isms-scope",
 		`SELECT EXISTS(SELECT 1 FROM ck_isms_scope WHERE org_id = $1::uuid)`},
-	{"assets", "/vaktscan/assets",
+	{"assets", "/vaktcomply/assets",
 		`SELECT EXISTS(SELECT 1 FROM vb_assets WHERE org_id = $1::uuid AND is_deleted = FALSE)`},
 	{"protection_need", "/vaktcomply/bsi/target-objects",
 		`SELECT EXISTS(SELECT 1 FROM ck_protection_need_assessments WHERE org_id = $1::uuid)`},

@@ -72,7 +72,6 @@ const MODULES_NAV: NavItem[] = [
     label: 'nav.scan.root',
     icon: Bug,
     children: [
-      { path: '/vaktscan/assets',       label: 'nav.scan.assets',       icon: Server },
       { path: '/vaktscan/findings',     label: 'nav.scan.findings',     icon: ScanSearch },
       { path: '/vaktscan/sla',          label: 'nav.scan.sla',          icon: Clock },
       { path: '/vaktscan/reports',      label: 'nav.scan.reports',      icon: BarChart2, pro: true },
@@ -106,8 +105,7 @@ const MODULES_NAV: NavItem[] = [
         label: 'nav.comply.group.operations',
         items: [
           { path: '/vaktcomply/risks',           label: 'nav.comply.risks',       icon: ShieldAlert },
-          // Asset-Inventar: technisch Scan, fachlich ISMS (siehe shared/moduleVisibility.ts).
-          { path: '/vaktscan/assets',            label: 'nav.scan.assets',        icon: Server },
+          { path: '/vaktcomply/assets',          label: 'nav.comply.assets',      icon: Server },
           { path: '/vaktcomply/incidents',       label: 'nav.comply.incidents',   icon: Siren },
           { path: '/vaktcomply/audits',          label: 'nav.comply.audits',      icon: ClipboardList },
           { path: '/vaktcomply/capas',           label: 'nav.comply.capas',       icon: ClipboardCheck },

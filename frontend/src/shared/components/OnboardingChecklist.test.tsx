@@ -22,7 +22,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 const progress = {
   steps: [
     { key: 'scope', done: true, path: '/vaktcomply/isms-scope' },
-    { key: 'assets', done: false, path: '/vaktscan/assets' },
+    { key: 'assets', done: false, path: '/vaktcomply/assets' },
     { key: 'risks', done: true, path: '/vaktcomply/risks' },
     { key: 'framework', done: false, path: '/vaktcomply/frameworks' },
   ],
@@ -58,7 +58,7 @@ describe('OnboardingChecklist', () => {
     const scope = screen.getByTestId('onboarding-step-scope')
     expect(scope.getAttribute('href')).toBe('/vaktcomply/isms-scope')
     const assets = screen.getByTestId('onboarding-step-assets')
-    expect(assets.getAttribute('href')).toBe('/vaktscan/assets')
+    expect(assets.getAttribute('href')).toBe('/vaktcomply/assets')
     // Progress bar reflects percentage.
     expect(screen.getByTestId('onboarding-progress-bar').getAttribute('style')).toContain('50%')
   })

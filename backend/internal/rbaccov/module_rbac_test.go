@@ -16,6 +16,7 @@ import (
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/license"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/assets"
 	"github.com/matharnica/vakt/internal/modules/vaktscan"
 	"github.com/matharnica/vakt/internal/modules/vaktvault"
 )
@@ -80,10 +81,6 @@ func runModuleRBAC(t *testing.T, prefix string, register func(*echo.Group), rout
 
 func TestVaktscanModuleRBAC(t *testing.T) {
 	routes := []writeRoute{
-		{http.MethodPost, "/vaktscan/assets"},
-		{http.MethodPut, "/vaktscan/assets/abc"},
-		{http.MethodDelete, "/vaktscan/assets/abc"},
-		{http.MethodPost, "/vaktscan/assets/import"},
 		{http.MethodPost, "/vaktscan/findings/bulk"},
 		{http.MethodPatch, "/vaktscan/findings/abc"},
 		{http.MethodDelete, "/vaktscan/findings/abc"},
@@ -93,9 +90,30 @@ func TestVaktscanModuleRBAC(t *testing.T) {
 		{http.MethodPost, "/vaktscan/findings/import"}, // Pro (SecPulse)
 	}
 	runModuleRBAC(t, "/vaktscan", func(g *echo.Group) {
-		vaktscan.RegisterAssets(g, &vaktscan.Handler{})
 		vaktscan.Register(g, &vaktscan.Handler{})
 	}, routes)
+}
+
+// TestAssetInventoryRBAC: the asset inventory moved from vaktscan to
+// vaktcomply/assets (module-archivieren S1) and is mounted twice — canonical
+// under /vaktcomply and as an alias under /vaktscan. Both mounts must reject a
+// Viewer on every write; an alias that forgot its RequireRole would be an
+// unguarded second path to the same rows.
+func TestAssetInventoryRBAC(t *testing.T) {
+	for _, prefix := range []string{"/vaktcomply", "/vaktscan"} {
+		t.Run(prefix, func(t *testing.T) {
+			routes := []writeRoute{
+				{http.MethodPost, prefix + "/assets"},
+				{http.MethodPut, prefix + "/assets/abc"},
+				{http.MethodDelete, prefix + "/assets/abc"},
+				{http.MethodPost, prefix + "/assets/import"},
+				{http.MethodPost, prefix + "/assets/import/csv"}, // Pro (SecPulse)
+			}
+			runModuleRBAC(t, prefix, func(g *echo.Group) {
+				assets.Register(g, &assets.Handler{})
+			}, routes)
+		})
+	}
 }
 
 func TestVaktvaultModuleRBAC(t *testing.T) {

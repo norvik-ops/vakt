@@ -79,12 +79,32 @@ func f(tx X) { tx.Exec(ctx, `DELETE FROM hr_employees WHERE org_id = $1`) }''',
     expect_writes=1, expect_imports=0,
 )
 
-# ── 3. RED on the A1 finding: vaktcomply writing vb_ ────────────────────────
+# ── 3. RED on the A1 class: vaktcomply writing a vb_ table it does not own.
+#      (vb_assets itself moved to vaktcomply in module-archivieren S1, see
+#      TABLE_OWNER and cases 3a/3b — so the probe uses vb_findings.)
 run_case(
     "cross-prefix WRITE is caught (A1: vaktcomply → vb_)",
     '''package vaktcomply
+func f(tx X) { tx.Exec(ctx, `UPDATE vb_findings SET status = $1`) }''',
+    own_prefix="ck_", own_module="vaktcomply",
+    expect_writes=1, expect_imports=0,
+)
+
+# ── 3a. TABLE_OWNER: vaktcomply writing vb_assets is its own table now ───────
+run_case(
+    "TABLE_OWNER: vaktcomply writes vb_assets (moved inventory) — legal",
+    '''package vaktcomply
 func f(tx X) { tx.Exec(ctx, `UPDATE vb_assets SET protection_need_id = $1`) }''',
     own_prefix="ck_", own_module="vaktcomply",
+    expect_writes=0, expect_imports=0,
+)
+
+# ── 3b. TABLE_OWNER, RED side: the prefix module lost write access ───────────
+run_case(
+    "TABLE_OWNER: vaktscan writing vb_assets is caught",
+    '''package vaktscan
+func f(tx X) { tx.Exec(ctx, `UPDATE vb_assets SET environment = $1`) }''',
+    own_prefix="vb_", own_module="vaktscan",
     expect_writes=1, expect_imports=0,
 )
 
@@ -191,8 +211,24 @@ run_sqlc_case(
 # ── 10. Same call, own prefix — must stay silent, or the gate is unusable.
 run_sqlc_case(
     "own-prefix write through sqlc is legal",
+    "-- name: InsertCKThing :one\nINSERT INTO vb_findings (org_id) VALUES ($1) RETURNING id;\n",
+    GO_SCAN_CALL,
+    expect_hits=0,
+)
+
+# ── 10a. TABLE_OWNER through sqlc: vaktscan calling a vb_assets writer is
+#       caught, vaktcomply calling the same query is legal.
+run_sqlc_case(
+    "TABLE_OWNER through sqlc: vb_assets writer called from vaktscan is caught",
     "-- name: InsertCKThing :one\nINSERT INTO vb_assets (org_id) VALUES ($1) RETURNING id;\n",
     GO_SCAN_CALL,
+    expect_hits=1,
+)
+run_sqlc_case(
+    "TABLE_OWNER through sqlc: vb_assets writer called from vaktcomply is legal",
+    "-- name: InsertCKThing :one\nINSERT INTO vb_assets (org_id) VALUES ($1) RETURNING id;\n",
+    [("internal/modules/vaktcomply/assets/r.go", "vaktcomply", "ck_",
+      "package assets\nfunc f(q *Q) { _, _ = q.InsertCKThing(ctx, arg) }\n")],
     expect_hits=0,
 )
 
@@ -313,4 +349,4 @@ if FAILURES:
         print(f"  - {f}")
     sys.exit(1)
 
-print("\nALL TESTS PASSED (15 cases: 8 Go-literal, 5 sqlc seam, 2 line fidelity)")
+print("\nALL TESTS PASSED (19 cases: 10 Go-literal, 7 sqlc seam, 2 line fidelity)")

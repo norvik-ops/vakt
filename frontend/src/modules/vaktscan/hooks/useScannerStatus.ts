@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
-import type { ScannerName } from './useAssets'
+import type { ScannerName } from './useSLA'
 
 export interface ScannerStatus {
   trivy: boolean

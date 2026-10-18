@@ -1,7 +1,7 @@
 // Copyright (c) 2026 NorvikOps. All rights reserved.
 // SPDX-License-Identifier: Elastic-2.0
 
-package vaktscan
+package assets
 
 import (
 	"context"
@@ -12,10 +12,9 @@ import (
 )
 
 // AssetProtectionLinker writes the protection_need_id reverse soft-link on
-// vb_assets. It lets vaktcomply link a protection-need assessment to an asset
-// without writing the vb_ prefix from its own package (module isolation,
-// ADR-0079): vaktscan owns vb_assets and also reads this column back
-// (GetAssetProtectionNeedID), so the write belongs here.
+// vb_assets for the protection-need assessments in vaktcomply. It came from
+// vaktscan (ADR-0079) and moved with the inventory; the shared interface stays
+// so the caller in vaktcomply needs no change.
 type AssetProtectionLinker struct {
 	db *pgxpool.Pool
 }

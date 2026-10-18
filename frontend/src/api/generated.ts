@@ -1105,7 +1105,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktscan/assets": {
+    "/vaktcomply/assets": {
         parameters: {
             query?: never;
             header?: never;
@@ -1178,7 +1178,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktscan/assets/{id}": {
+    "/vaktscan/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List assets
+         * @deprecated
+         */
+        get: {
+            parameters: {
+                query?: {
+                    page?: components["parameters"]["PageParam"];
+                    limit?: components["parameters"]["LimitParam"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Paginated asset list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["Asset"][];
+                            pagination?: components["schemas"]["Pagination"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create an asset
+         * @deprecated
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateAssetRequest"];
+                };
+            };
+            responses: {
+                /** @description Asset created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Asset"];
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/assets/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1267,7 +1346,105 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktscan/assets/import/csv": {
+    "/vaktscan/assets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an asset
+         * @deprecated
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Asset */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Asset"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /**
+         * Update an asset
+         * @deprecated
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateAssetRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated asset */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Delete an asset
+         * @deprecated
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/assets/import/csv": {
         parameters: {
             query?: never;
             header?: never;
@@ -1277,6 +1454,56 @@ export interface paths {
         get?: never;
         put?: never;
         /** Bulk-import assets from CSV */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Import result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            inserted?: number;
+                            errored?: number;
+                            errors?: string[];
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/assets/import/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk-import assets from CSV
+         * @deprecated
+         */
         post: {
             parameters: {
                 query?: never;
@@ -13200,7 +13427,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktscan/assets/classification-summary": {
+    "/vaktcomply/assets/classification-summary": {
         parameters: {
             query?: never;
             header?: never;
@@ -13209,6 +13436,26 @@ export interface paths {
         };
         /** Get asset classification summary */
         get: operations["getAssetClassificationSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/assets/classification-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get asset classification summary
+         * @deprecated
+         */
+        get: operations["getAssetClassificationSummaryLegacy"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34995,7 +35242,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktscan/assets/import": {
+    "/vaktcomply/assets/import": {
         parameters: {
             query?: never;
             header?: never;
@@ -35063,7 +35310,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktscan/assets/{id}/protection-need": {
+    "/vaktscan/assets/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import assets from a CSV file (multipart upload, max 5 MB)
+         * @deprecated
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Import result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            inserted: number;
+                            errored: number;
+                            errors: string[] | null;
+                        };
+                    };
+                };
+                /** @description Missing file field or CSV parse error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden - role not permitted */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktcomply/assets/{id}/protection-need": {
         parameters: {
             query?: never;
             header?: never;
@@ -35071,6 +35389,64 @@ export interface paths {
             cookie?: never;
         };
         /** Get the protection-need soft link for an asset */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Protection-need link (null when the asset is unlinked) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            protection_need_id: string | null;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden - role not permitted */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vaktscan/assets/{id}/protection-need": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the protection-need soft link for an asset
+         * @deprecated
+         */
         get: {
             parameters: {
                 query?: never;
@@ -46890,6 +47266,33 @@ export interface operations {
         };
     };
     getAssetClassificationSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Classification summary */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        total_count?: number;
+                        classified_count?: number;
+                        unclassified_count?: number;
+                        by_level?: {
+                            [key: string]: number;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getAssetClassificationSummaryLegacy: {
         parameters: {
             query?: never;
             header?: never;

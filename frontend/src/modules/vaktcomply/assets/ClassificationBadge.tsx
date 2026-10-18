@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Badge } from '../../../components/ui/badge'
-import type { ClassificationLevel } from '../types'
+import type { ClassificationLevel } from './types'
 
 const CLASSIFICATION_CLASS: Record<ClassificationLevel, string> = {
   public: 'bg-green-500/20 text-green-400 border-green-500/30',
@@ -26,7 +26,7 @@ export function ClassificationBadge({
   const { t } = useTranslation()
   return (
     <Badge className={`text-xs ${CLASSIFICATION_CLASS[level]} ${className}`}>
-      {t('vaktscan.classification.' + level, CLASSIFICATION_LABELS[level])}
+      {t('vaktcomply.assets.classification.' + level, CLASSIFICATION_LABELS[level])}
     </Badge>
   )
 }

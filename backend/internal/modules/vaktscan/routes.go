@@ -6,28 +6,6 @@ import (
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
-// RegisterAssets wires the asset registry. It is mounted even when vaktscan is
-// disabled: the inventory belongs to the ISMS (ISO 27001 A.5.9) — protection
-// needs, risk↔asset links, BSI modelling and onboarding read it — and only
-// lives in this package for historical reasons. The caller decides which
-// module permission guards the group (cmd/api/routes.go).
-func RegisterAssets(g *echo.Group, h *Handler) {
-	rw := auth.RequireRole("Admin", "SecurityAnalyst")
-	ro := auth.RequireRole("Admin", "SecurityAnalyst", "Viewer", "AuditorReadOnly")
-
-	assets := g.Group("", ro)
-	assets.POST("/assets", h.CreateAsset, rw)
-	assets.GET("/assets", h.ListAssets)
-	assets.GET("/assets/classification-summary", h.GetClassificationSummary)
-	assets.GET("/assets/:id/protection-need", h.GetAssetProtectionNeed)
-	assets.GET("/assets/:id", h.GetAsset)
-	assets.PUT("/assets/:id", h.UpdateAsset, rw)
-	assets.DELETE("/assets/:id", h.DeleteAsset, rw)
-	assets.POST("/assets/import", h.ImportAssets, rw)
-	// Pro: extended CSV format (name,type,ip,owner,criticality)
-	assets.POST("/assets/import/csv", h.ImportAssetsCSVNew, rw, features.Require(features.FeatureSecPulse))
-}
-
 // Register wires the scanning routes (scans, findings, SLA, reports, SBOM …)
 // under the provided group. The asset registry is registered separately via
 // RegisterAssets.

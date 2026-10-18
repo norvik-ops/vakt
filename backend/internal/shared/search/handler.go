@@ -285,7 +285,7 @@ func searchAssets(ctx context.Context, db *pgxpool.Pool, orgID, pattern string, 
 		}
 		r.EntityType = "asset"
 		r.Subtitle = "Asset"
-		r.URL = "/vaktscan/assets/" + r.ID
+		r.URL = "/vaktcomply/assets/" + r.ID
 		results = append(results, r)
 	}
 	return results

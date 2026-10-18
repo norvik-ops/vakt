@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hibiken/asynq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/assets"
 	"github.com/matharnica/vakt/internal/modules/vaktscan"
 )
 
@@ -42,10 +42,9 @@ func TestVaktscan_FindingDedup_RescanAndReopen(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	svc := vaktscan.NewService(pool, asynq.RedisClientOpt{})
 	repo := vaktscan.NewRepository(pool)
 
-	asset, err := svc.CreateAsset(ctx, orgID, "", vaktscan.CreateAssetInput{
+	asset, err := assets.NewService(pool).CreateAsset(ctx, orgID, assets.CreateAssetInput{
 		Name: "web-01", Type: "server", Criticality: "high",
 	})
 	require.NoError(t, err)
@@ -113,7 +112,7 @@ func TestVaktscan_ImportAssetsCSV_RoundTrip(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	svc := vaktscan.NewService(pool, asynq.RedisClientOpt{})
+	assetSvc := assets.NewService(pool)
 
 	csv := strings.Join([]string{
 		"name,type,criticality,tags",
@@ -125,19 +124,19 @@ func TestVaktscan_ImportAssetsCSV_RoundTrip(t *testing.T) {
 		"mystery-box,teapot,low,",
 	}, "\n")
 
-	imported, failed, errs, err := svc.ImportAssetsCSV(ctx, orgID, "", strings.NewReader(csv))
+	imported, failed, errs, err := assetSvc.ImportAssetsCSV(ctx, orgID, strings.NewReader(csv))
 	require.NoError(t, err, "a bad row is a row-level failure, not an import-level one")
 	assert.Equal(t, 3, imported)
 	assert.Equal(t, 1, failed)
 	require.Len(t, errs, 1)
 	assert.Contains(t, errs[0], "mystery-box", "the rejected row must be named, or the user cannot fix it")
 
-	assets, total, err := svc.ListAssets(ctx, orgID, 1, 50, "")
+	list, total, err := assetSvc.ListAssets(ctx, orgID, 1, 50, "")
 	require.NoError(t, err)
 	assert.Equal(t, 3, total)
 
-	byName := map[string]vaktscan.Asset{}
-	for _, a := range assets {
+	byName := map[string]assets.Asset{}
+	for _, a := range list {
 		byName[a.Name] = a
 	}
 	require.Contains(t, byName, "prod-web-01")

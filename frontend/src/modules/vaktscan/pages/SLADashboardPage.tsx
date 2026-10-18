@@ -8,7 +8,7 @@ import { EmptyState } from '../../../shared/components/EmptyState'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/table'
-import { useSLADashboard } from '../hooks/useAssets'
+import { useSLADashboard } from '../hooks/useSLA'
 import type { SLAEntry } from '../types'
 import { findingSeverityVariant } from '../../../lib/statusMapping'
 
@@ -142,7 +142,7 @@ export default function SLADashboardPage() {
             }
             action={
               activeTab === 'all' ? (
-                <Button size="sm" onClick={() => { navigate('/vaktscan/assets'); }}>
+                <Button size="sm" onClick={() => { navigate('/vaktcomply/assets'); }}>
                   {t('vaktscan.slaPage.showAssets')}
                 </Button>
               ) : undefined

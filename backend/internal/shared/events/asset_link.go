@@ -5,12 +5,12 @@ package events
 
 import "context"
 
-// AssetProtectionLinker writes the protection_need_id reverse soft-link on a
-// vaktscan asset (vb_assets). vaktcomply owns the forward link
-// (ck_protection_need_assessments.vb_asset_id) but must not write the vb_ prefix
-// itself — a module may only write its own table prefix (module isolation,
-// [[ADR-0079]] / ADR-0004). vaktcomply calls this interface instead; the real
-// implementation lives in vaktscan (see vaktscan.NewAssetProtectionLinker).
+// AssetProtectionLinker writes the protection_need_id reverse soft-link on an
+// inventory asset (vb_assets). It was introduced when the inventory lived in
+// vaktscan and vaktcomply could not write the vb_ prefix ([[ADR-0079]] /
+// ADR-0004). Since module-archivieren S1 the implementation lives in
+// vaktcomply/assets (see assets.NewAssetProtectionLinker); the interface stays
+// so the protection-need code is unchanged.
 type AssetProtectionLinker interface {
 	// SetAssetProtectionNeed points vb_assets.protection_need_id at pnaID for the
 	// given asset. It is best-effort by design (mirrors the historic reverse-link
@@ -19,7 +19,7 @@ type AssetProtectionLinker interface {
 }
 
 // NoopAssetProtectionLinker satisfies AssetProtectionLinker without doing
-// anything. It is the default when vaktscan is not wired (tests, worker
+// anything. It is the default when no linker is wired (tests, worker
 // constructors that never link) — the forward link on the ck_ side still writes.
 type NoopAssetProtectionLinker struct{}
 

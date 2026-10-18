@@ -36,11 +36,14 @@ describe('isPathVisible', () => {
     expect(isPathVisible('/vaktscan/findings')).toBe(false)
   })
 
-  it('lässt das Asset-Inventar sichtbar, weil das ISMS es braucht', () => {
+  it('zeigt das Asset-Inventar im ISMS-Kern; Scan hat keine Ausnahme mehr', () => {
+    // Seit module-archivieren S1 liegt das Inventar unter /vaktcomply/assets. Die alten
+    // /vaktscan/assets-Adressen leitet der Router um (LegacyAssetRedirect), sie sind kein
+    // sichtbarer Scan-Pfad mehr.
     enable('vaktcomply')
-    expect(isPathVisible('/vaktscan/assets')).toBe(true)
-    expect(isPathVisible('/vaktscan/assets/123')).toBe(true)
-    expect(isPathVisible('/vaktscan/assetsXYZ')).toBe(false)
+    expect(isPathVisible('/vaktcomply/assets')).toBe(true)
+    expect(isPathVisible('/vaktcomply/assets/123')).toBe(true)
+    expect(isPathVisible('/vaktscan/assets')).toBe(false)
   })
 
   it('verwechselt keine Präfixe', () => {

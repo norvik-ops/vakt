@@ -69,7 +69,7 @@ describe('apiFetch — FormData bodies', () => {
     const fd = new FormData()
     fd.append('file', new File(['data'], 'x.csv', { type: 'text/csv' }))
 
-    await apiFetch('/vaktscan/assets/import', { method: 'POST', body: fd })
+    await apiFetch('/vaktcomply/assets/import', { method: 'POST', body: fd })
 
     const [, init] = spy.mock.calls[0] as [string, RequestInit]
     expect(init.body).toBe(fd)
@@ -89,7 +89,7 @@ describe('apiFetch — FormData bodies', () => {
     const fd = new FormData()
     fd.append('file', new File(['data'], 'x.csv'))
 
-    await apiFetch('/vaktscan/assets/import', {
+    await apiFetch('/vaktcomply/assets/import', {
       method: 'POST',
       body: fd,
       headers: { 'Content-Type': 'application/json' },

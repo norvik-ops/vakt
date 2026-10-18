@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../components/ui/select'
-import { useAssets } from '../hooks/useAssets'
+import { useAssets } from '../../vaktcomply/assets/hooks'
 import { apiFetch } from '../../../api/client'
 
 interface ImportFindingsDialogProps {

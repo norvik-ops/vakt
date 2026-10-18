@@ -4,13 +4,10 @@
 package vaktscan
 
 import (
-	"context"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // ── certStatus ────────────────────────────────────────────────────────────────
@@ -80,48 +77,4 @@ func TestContains_BasicSubstring(t *testing.T) {
 	assert.True(t, contains("abc", ""))  // empty sub always true
 	assert.True(t, contains("", ""))     // both empty
 	assert.False(t, contains("", "abc")) // longer sub than string
-}
-
-// ── ImportAssetsCSV — header validation (no DB needed) ───────────────────────
-
-func TestImportAssetsCSV_EmptyFile(t *testing.T) {
-	svc := &Service{}
-	_, _, _, err := svc.ImportAssetsCSV(context.Background(), "org1", "", strings.NewReader(""))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "read CSV header")
-}
-
-func TestImportAssetsCSV_MissingNameColumn(t *testing.T) {
-	svc := &Service{}
-	csv := "type,criticality\nserver,high\n"
-	_, _, _, err := svc.ImportAssetsCSV(context.Background(), "org1", "", strings.NewReader(csv))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `"name"`)
-}
-
-func TestImportAssetsCSV_MissingTypeColumn(t *testing.T) {
-	svc := &Service{}
-	csv := "name,criticality\nmy-server,high\n"
-	_, _, _, err := svc.ImportAssetsCSV(context.Background(), "org1", "", strings.NewReader(csv))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `"type"`)
-}
-
-func TestImportAssetsCSV_HeaderOnlyNoDataRows(t *testing.T) {
-	svc := &Service{}
-	csv := "name,type,criticality\n"
-	_, _, _, err := svc.ImportAssetsCSV(context.Background(), "org1", "", strings.NewReader(csv))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no data rows")
-}
-
-func TestImportAssetsCSV_ColumnOrderFlexible(t *testing.T) {
-	// Header column order may vary — the parser must handle reordering.
-	// This returns "no data rows" because we pass no actual rows,
-	// proving the column-index map was built without error.
-	svc := &Service{}
-	csv := "criticality,name,type\n"
-	_, _, _, err := svc.ImportAssetsCSV(context.Background(), "org1", "", strings.NewReader(csv))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no data rows") // NOT "missing required column"
 }

@@ -152,7 +152,7 @@ export default function EOLDashboardPage() {
               }
               action={
                 activeTab === 'all' ? (
-                  <Button size="sm" onClick={() => { navigate('/vaktscan/assets'); }}>
+                  <Button size="sm" onClick={() => { navigate('/vaktcomply/assets'); }}>
                     {t('vaktscan.eolPage.configureAssets')}
                   </Button>
                 ) : undefined

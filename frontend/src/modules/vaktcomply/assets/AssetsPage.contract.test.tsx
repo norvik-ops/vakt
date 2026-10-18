@@ -1,9 +1,9 @@
 /**
  * K5-16 regression, at the apiFetch seam: an asset's target address.
  *
- * The defect: the frontend read and wrote `target`. vaktscan.Asset emits
- * `external_url` (models.go:17, `*string` with omitempty) and
- * vaktscan.CreateAssetInput binds `external_url` (models.go:49). Two halves, both
+ * The defect: the frontend read and wrote `target`. assets.Asset emits
+ * `external_url` (backend vaktcomply/assets/models.go, `*string` with omitempty) and
+ * assets.CreateAssetInput binds `external_url` (same file). Two halves, both
  * broken by one name:
  *   READ  — the asset table's target column and the detail page's target row read
  *           `row.target`, which is never on the wire, so every asset showed the
@@ -16,7 +16,7 @@
  * Why apiFetch and not the hook: the 587-test baseline mocks hooks, i.e. it feeds
  * components fixtures the tests invented, which is why sixteen field-name drifts
  * lived under a green suite. The fixture below is the json tags of
- * vaktscan.Asset verbatim, delivered through the transport.
+ * assets.Asset verbatim, delivered through the transport.
  *
  * Reverting the fix (`target` back in AssetsPage.tsx's column + form and in
  * CreateAssetInput) fails both tests: the table cell falls back to "—" and the
@@ -56,7 +56,7 @@ vi.mock('../../../api/client', async (importOriginal) => ({
 const { apiFetch } = await import('../../../api/client')
 const mockApiFetch = vi.mocked(apiFetch)
 
-// json tags of vaktscan.Asset. `external_url`, not `target` — and nothing named
+// json tags of assets.Asset. `external_url`, not `target` — and nothing named
 // `target` exists on this struct at all.
 const ASSET_ON_THE_WIRE = {
   id: 'a-1',
@@ -88,7 +88,7 @@ function stubApi() {
         by_level: { public: 0, internal: 0, confidential: 1, restricted: 0 },
       } as never)
     }
-    if (path.includes('/vaktscan/assets')) {
+    if (path.includes('/vaktcomply/assets')) {
       return Promise.resolve({
         data: [ASSET_ON_THE_WIRE],
         pagination: { page: 1, limit: 20, total: 1, total_pages: 1 },
@@ -128,9 +128,9 @@ describe('AssetsPage — target address (K5-16)', () => {
     renderPage()
     await screen.findByText('Kundenportal')
 
-    fireEvent.click(screen.getByText('vaktscan.assetsPage.newAsset'))
+    fireEvent.click(screen.getByText('vaktcomply.assets.page.newAsset'))
     const dialog = await screen.findByRole('dialog')
-    fireEvent.change(screen.getByLabelText('vaktscan.assetsPage.labelName'), {
+    fireEvent.change(screen.getByLabelText('vaktcomply.assets.page.labelName'), {
       target: { value: 'Zahlungs-API' },
     })
     fireEvent.change(screen.getByPlaceholderText('https://example.com or 192.168.1.1'), {

@@ -27,6 +27,7 @@ import (
 	"github.com/matharnica/vakt/internal/license"
 	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/assets"
 	"github.com/matharnica/vakt/internal/modules/vakthr"
 	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
 	"github.com/matharnica/vakt/internal/modules/vaktscan"
@@ -529,14 +530,18 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		return c.JSON(http.StatusOK, map[string][]string{"modules": cfg.EnabledModules()})
 	})
 
+	// Asset inventory: ISMS core (vaktcomply/assets), always mounted. The old
+	// /vaktscan/assets paths stay as an alias with the same vaktcomply guard
+	// until the vaktscan code is removed (docs/stories/module-archivieren.md, S4).
+	assetHandler := assets.NewHandler(assets.NewService(pool))
+	assets.Register(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), assetHandler)
+	assets.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), assetHandler)
+
 	// Module routes — all behind auth middleware, sharing the same DB pool.
-	// The asset registry is ISMS core and stays mounted when vaktscan is off;
-	// it is guarded by the vaktcomply permission it serves (see RegisterAssets).
 	vbSvc := vaktscan.NewService(pool, asynqOpt)
 	vbSvc.WithRedis(rdb)
 	vbSvc.WithWebhooks(webhookSvc)
 	vbHandler := vaktscan.NewHandler(vbSvc)
-	vaktscan.RegisterAssets(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), vbHandler)
 	if cfg.IsModuleEnabled("vaktscan") {
 		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb)), vbHandler)
 		log.Info().Msg("vaktscan routes registered")
@@ -567,7 +572,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// (module isolation, ADR-0079); vaktcomply writes it via this linker
 		// instead of the vb_ prefix directly. Wired unconditionally — vb_assets
 		// exists regardless of whether vaktscan is enabled.
-		ckSvc.WithAssetProtectionLinker(vaktscan.NewAssetProtectionLinker(pool))
+		ckSvc.WithAssetProtectionLinker(assets.NewAssetProtectionLinker(pool))
 		if cfg.AIProvider != "disabled" && cfg.AIProvider != "" && cfg.AIBaseURL != "" {
 			aiClient := ai.NewAIClient(cfg.AIBaseURL, cfg.AIAPIKey, cfg.AIModel)
 			if cfg.AIReportTimeoutSeconds > 0 {

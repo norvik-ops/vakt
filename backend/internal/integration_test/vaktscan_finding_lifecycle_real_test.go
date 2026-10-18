@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/assets"
 	"github.com/matharnica/vakt/internal/modules/vaktscan"
 
 	"github.com/hibiken/asynq"
@@ -38,7 +39,7 @@ func TestVaktscan_FindingLifecycle_AndClassification(t *testing.T) {
 	svc := vaktscan.NewService(pool, asynq.RedisClientOpt{})
 	repo := vaktscan.NewRepository(pool)
 
-	asset, err := svc.CreateAsset(ctx, orgID, "", vaktscan.CreateAssetInput{
+	asset, err := assets.NewService(pool).CreateAsset(ctx, orgID, assets.CreateAssetInput{
 		Name:           "prod-db-01",
 		Type:           "database",
 		Criticality:    "high",

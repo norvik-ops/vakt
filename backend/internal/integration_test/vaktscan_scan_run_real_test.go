@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/assets"
 	"github.com/matharnica/vakt/internal/modules/vaktscan"
 )
 
@@ -50,7 +51,7 @@ func TestVaktscan_RunTrivyScan_KompletterWeg(t *testing.T) {
 	svc := vaktscan.NewService(pool, asynq.RedisClientOpt{})
 	repo := vaktscan.NewRepository(pool)
 
-	asset, err := svc.CreateAsset(ctx, orgID, "", vaktscan.CreateAssetInput{
+	asset, err := assets.NewService(pool).CreateAsset(ctx, orgID, assets.CreateAssetInput{
 		Name: "nginx", Type: "container", Criticality: "high",
 	})
 	require.NoError(t, err)
@@ -138,7 +139,7 @@ func TestVaktscan_RunTrivyScan_ScannerFehlerMarkiertDenScanAlsGescheitert(t *tes
 	svc := vaktscan.NewService(pool, asynq.RedisClientOpt{})
 	repo := vaktscan.NewRepository(pool)
 
-	asset, err := svc.CreateAsset(ctx, orgID, "", vaktscan.CreateAssetInput{
+	asset, err := assets.NewService(pool).CreateAsset(ctx, orgID, assets.CreateAssetInput{
 		Name: "nginx", Type: "container", Criticality: "high",
 	})
 	require.NoError(t, err)
@@ -186,7 +187,7 @@ func TestVaktscan_RunTrivyScan_AbgelehntesZielLaesstDenScanNichtHaengen(t *testi
 	svc := vaktscan.NewService(pool, asynq.RedisClientOpt{})
 	repo := vaktscan.NewRepository(pool)
 
-	asset, err := svc.CreateAsset(ctx, orgID, "", vaktscan.CreateAssetInput{
+	asset, err := assets.NewService(pool).CreateAsset(ctx, orgID, assets.CreateAssetInput{
 		Name: "intern", Type: "server", Criticality: "high",
 	})
 	require.NoError(t, err)
@@ -243,14 +244,13 @@ func TestVaktscan_BatchUpsert_MehrereFundeUeberMehrereAssets(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	svc := vaktscan.NewService(pool, asynq.RedisClientOpt{})
 	repo := vaktscan.NewRepository(pool)
 
-	assetA, err := svc.CreateAsset(ctx, orgID, "", vaktscan.CreateAssetInput{
+	assetA, err := assets.NewService(pool).CreateAsset(ctx, orgID, assets.CreateAssetInput{
 		Name: "web-01", Type: "server", Criticality: "high",
 	})
 	require.NoError(t, err)
-	assetB, err := svc.CreateAsset(ctx, orgID, "", vaktscan.CreateAssetInput{
+	assetB, err := assets.NewService(pool).CreateAsset(ctx, orgID, assets.CreateAssetInput{
 		Name: "web-02", Type: "server", Criticality: "high",
 	})
 	require.NoError(t, err)

@@ -673,8 +673,9 @@ Was „abgeschaltet" bedeutet:
   Abschalten friert die Aufbewahrung nicht ein.
 - **Im DSGVO-Export:** Der Org-Export enthält immer die Daten aller Module, auch abgeschalteter
   (siehe [Datenexport](data-export.md)).
-- **Immer da:** das Asset-Inventar (`/vaktscan/assets`), weil Schutzbedarf, Risiken und
-  BSI-Modellierung darauf aufbauen. Es ist an die Berechtigung für Vakt Comply gebunden.
+- **Immer da:** das Asset-Inventar (`/vaktcomply/assets`), weil Schutzbedarf, Risiken und
+  BSI-Modellierung darauf aufbauen. Es gehört zu Vakt Comply; die alten Pfade unter
+  `/vaktscan/assets` funktionieren als Alias weiter.
 - Ist die Variable gar nicht gesetzt, sind alle Module aktiv — bestehende Installationen
   ändern sich durch ein Update nicht.
 

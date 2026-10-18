@@ -16,12 +16,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../../../components/ui/select'
-import { useAssets, useCreateAsset } from '../hooks/useAssets'
+import { useAssets, useCreateAsset } from './hooks'
 import { useFirstAction } from '../../../shared/hooks/useFirstAction'
 import { useFeature } from '../../../shared/hooks/useFeature'
-import { ClassificationBadge } from '../components/ClassificationBadge'
-import type { Asset, ClassificationLevel } from '../types'
-import type { CreateAssetInput } from '../hooks/useAssets'
+import { ClassificationBadge } from './ClassificationBadge'
+import type { Asset, ClassificationLevel } from './types'
+import type { CreateAssetInput } from './hooks'
 import { toast } from '../../../shared/hooks/useToast'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { ErrorState } from '../../../shared/components/ErrorState'
@@ -69,18 +69,18 @@ function ASSET_COLUMNS(t: (key: string) => string, formatDate: (v: string) => st
   return [
     {
       key: 'name',
-      label: t('vaktscan.assetsPage.colName'),
+      label: t('vaktcomply.assets.page.colName'),
       mobileTitle: true,
       render: (row) => <span className="font-medium">{row.name}</span>,
     },
     {
       key: 'type',
-      label: t('vaktscan.assetsPage.colType'),
+      label: t('vaktcomply.assets.page.colType'),
       render: (row) => <span>{assetTypeLabels[row.type]}</span>,
     },
     {
       key: 'external_url',
-      label: t('vaktscan.assetsPage.colTarget'),
+      label: t('vaktcomply.assets.page.colTarget'),
       mobileHide: true,
       render: (row) => (
         <span className="font-mono text-xs text-secondary">
@@ -90,7 +90,7 @@ function ASSET_COLUMNS(t: (key: string) => string, formatDate: (v: string) => st
     },
     {
       key: 'criticality',
-      label: t('vaktscan.assetsPage.colCriticality'),
+      label: t('vaktcomply.assets.page.colCriticality'),
       render: (row) => (
         <Badge
           variant={criticalityVariant[row.criticality]}
@@ -102,7 +102,7 @@ function ASSET_COLUMNS(t: (key: string) => string, formatDate: (v: string) => st
     },
     {
       key: 'tags',
-      label: t('vaktscan.assetsPage.colTags'),
+      label: t('vaktcomply.assets.page.colTags'),
       mobileHide: true,
       render: (row) => (
         <div className="flex flex-wrap gap-1">
@@ -116,7 +116,7 @@ function ASSET_COLUMNS(t: (key: string) => string, formatDate: (v: string) => st
     },
     {
       key: 'classification',
-      label: t('vaktscan.assetsPage.colClassification'),
+      label: t('vaktcomply.assets.page.colClassification'),
       mobileHide: true,
       render: (row) => row.classification
         ? <ClassificationBadge level={row.classification} />
@@ -156,19 +156,19 @@ export default function AssetsPage() {
   const [form, setForm] = useState<CreateAssetInput>(emptyForm)
 
   // R23-02: the page carried a SECOND, hand-rolled import dialog for
-  // POST /vaktscan/assets/import, and its `importOpen` state was only ever set
+  // POST /vaktcomply/assets/import, and its `importOpen` state was only ever set
   // to false — no call site anywhere set it to true, so the dialog could not be
   // opened and useImportAssets had exactly one caller, a dead one.
   //
   // Deleting it would have hidden a worse problem than it solved. The two
-  // endpoints are not duplicates: /vaktscan/assets/import is Community, while
-  // /vaktscan/assets/import/csv is gated behind FeatureSecPulse
-  // (vaktscan/routes.go:31 vs :54). The only REACHABLE button pointed at the
+  // endpoints are not duplicates: /vaktcomply/assets/import is Community, while
+  // /vaktcomply/assets/import/csv is gated behind FeatureSecPulse
+  // (backend vaktcomply/assets/routes.go). The only REACHABLE button pointed at the
   // Pro route, so on a Community licence asset CSV import answered 402 and the
   // route that would have worked had no way in. Picking the endpoint by licence
   // keeps one button and makes the feature work on both tiers.
   const { enabled: hasSecPulse } = useFeature('vaktscan_advanced')
-  const importEndpoint = hasSecPulse ? '/vaktscan/assets/import/csv' : '/vaktscan/assets/import'
+  const importEndpoint = hasSecPulse ? '/vaktcomply/assets/import/csv' : '/vaktcomply/assets/import'
   const [tagsInput, setTagsInput] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -189,7 +189,7 @@ export default function AssetsPage() {
     try {
       await createAsset.mutateAsync({ ...form, tags })
       setOpen(false)
-      toast(t('vaktscan.assetsPage.created'), 'success')
+      toast(t('vaktcomply.assets.page.created'), 'success')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create asset'
       setFormError(msg)
@@ -208,23 +208,23 @@ export default function AssetsPage() {
         onSuccess={() => void refetch()}
       />
       <PageHeader
-        title={t('vaktscan.assetsPage.title')}
-        description={t('vaktscan.assetsPage.description')}
+        title={t('vaktcomply.assets.page.title')}
+        description={t('vaktcomply.assets.page.description')}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setCsvImportOpen(true); }}>
               <Upload className="w-4 h-4 mr-1" />
-              {t('vaktscan.assetsPage.csvImport')}
+              {t('vaktcomply.assets.page.csvImport')}
             </Button>
             <Button onClick={handleOpen}>
               <Plus className="w-4 h-4 mr-1" />
-              {t('vaktscan.assetsPage.newAsset')}
+              {t('vaktcomply.assets.page.newAsset')}
             </Button>
           </div>
         }
       />
 
-      <InfoBanner icon={ScanSearch} title={t('vaktscan.assetsPage.scannerInfo')}>
+      <InfoBanner icon={ScanSearch} title={t('vaktcomply.assets.page.scannerInfo')}>
         <p>Vakt Scan orchestriert lokale Scanner wie <strong>Trivy</strong>, <strong>Nuclei</strong> und <strong>OpenVAS</strong>. Lege zuerst ein Asset (Server, Web-App, Repo …) an — dann startest du einen Scan direkt aus der Asset-Detailseite.</p>
         <p className="mt-1">Die Scanner müssen von deiner Vakt-Instanz aus erreichbar sein. URLs und Credentials trägst du in <strong>Settings → Scanner</strong> ein.</p>
       </InfoBanner>
@@ -248,12 +248,12 @@ export default function AssetsPage() {
         {!isLoading && !isError && assets && assets.length === 0 && (
           <EmptyState
             icon={Server}
-            title={t('vaktscan.assetsPage.emptyTitle')}
-            description={t('vaktscan.assetsPage.emptyDesc')}
+            title={t('vaktcomply.assets.page.emptyTitle')}
+            description={t('vaktcomply.assets.page.emptyDesc')}
             action={
               <Button onClick={handleOpen}>
                 <Plus className="w-4 h-4 mr-1" />
-                {t('vaktscan.assetsPage.addAsset')}
+                {t('vaktcomply.assets.page.addAsset')}
               </Button>
             }
           />
@@ -263,7 +263,7 @@ export default function AssetsPage() {
           <ResponsiveTable<SortableAsset>
             keyField="id"
             data={sortedAssetsForRender}
-            onRowClick={(asset) => { navigate(`/vaktscan/assets/${asset.id}`); }}
+            onRowClick={(asset) => { navigate(`/vaktcomply/assets/${asset.id}`); }}
             columns={ASSET_COLUMNS(t, formatDate)}
           />
         )}
@@ -277,13 +277,13 @@ export default function AssetsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('vaktscan.assetsPage.newAssetDialogTitle')}</DialogTitle>
-            <DialogDescription>{t('vaktscan.assetsPage.newAssetDialogDesc')}</DialogDescription>
+            <DialogTitle>{t('vaktcomply.assets.page.newAssetDialogTitle')}</DialogTitle>
+            <DialogDescription>{t('vaktcomply.assets.page.newAssetDialogDesc')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => { void handleSubmit(e) }}>
             <div className="space-y-4 py-2">
               <div className="space-y-1">
-                <Label htmlFor="asset-name">{t('vaktscan.assetsPage.labelName')}</Label>
+                <Label htmlFor="asset-name">{t('vaktcomply.assets.page.labelName')}</Label>
                 <Input
                   id="asset-name"
                   placeholder="My Web App"
@@ -296,7 +296,7 @@ export default function AssetsPage() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="asset-type">{t('vaktscan.assetsPage.labelType')}</Label>
+                <Label htmlFor="asset-type">{t('vaktcomply.assets.page.labelType')}</Label>
                 <Select
                   value={form.type}
                   onValueChange={(val) => { setForm({ ...form, type: val as Asset['type'] }); }}
@@ -306,16 +306,16 @@ export default function AssetsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="web_app">Web App</SelectItem>
-                    <SelectItem value="server">{t('vaktscan.assetsPage.typeServer')}</SelectItem>
-                    <SelectItem value="database">{t('vaktscan.assetsPage.typeDatabase')}</SelectItem>
-                    <SelectItem value="container">{t('vaktscan.assetsPage.typeContainer')}</SelectItem>
-                    <SelectItem value="repo">{t('vaktscan.assetsPage.typeRepo')}</SelectItem>
+                    <SelectItem value="server">{t('vaktcomply.assets.page.typeServer')}</SelectItem>
+                    <SelectItem value="database">{t('vaktcomply.assets.page.typeDatabase')}</SelectItem>
+                    <SelectItem value="container">{t('vaktcomply.assets.page.typeContainer')}</SelectItem>
+                    <SelectItem value="repo">{t('vaktcomply.assets.page.typeRepo')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="asset-target">{t('vaktscan.assetsPage.labelTarget')}</Label>
+                <Label htmlFor="asset-target">{t('vaktcomply.assets.page.labelTarget')}</Label>
                 <Input
                   id="asset-target"
                   placeholder="https://example.com or 192.168.1.1"
@@ -328,7 +328,7 @@ export default function AssetsPage() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="asset-criticality">{t('vaktscan.assetsPage.labelCriticality')}</Label>
+                <Label htmlFor="asset-criticality">{t('vaktcomply.assets.page.labelCriticality')}</Label>
                 <Select
                   value={form.criticality}
                   onValueChange={(val) => { setForm({ ...form, criticality: val as Asset['criticality'] }); }}
@@ -337,16 +337,16 @@ export default function AssetsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">{t('vaktscan.severity.low')}</SelectItem>
-                    <SelectItem value="medium">{t('vaktscan.severity.medium')}</SelectItem>
-                    <SelectItem value="high">{t('vaktscan.severity.high')}</SelectItem>
-                    <SelectItem value="critical">{t('vaktscan.severity.critical')}</SelectItem>
+                    <SelectItem value="low">{t('vaktcomply.assets.criticality.low')}</SelectItem>
+                    <SelectItem value="medium">{t('vaktcomply.assets.criticality.medium')}</SelectItem>
+                    <SelectItem value="high">{t('vaktcomply.assets.criticality.high')}</SelectItem>
+                    <SelectItem value="critical">{t('vaktcomply.assets.criticality.critical')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="asset-classification">{t('vaktscan.assetsPage.labelClassification')}</Label>
+                <Label htmlFor="asset-classification">{t('vaktcomply.assets.page.labelClassification')}</Label>
                 <Select
                   value={form.classification ?? 'internal'}
                   onValueChange={(val) => { setForm({ ...form, classification: val as ClassificationLevel }); }}
@@ -355,19 +355,19 @@ export default function AssetsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="public">{t('vaktscan.classification.public')}</SelectItem>
-                    <SelectItem value="internal">{t('vaktscan.classification.internal')}</SelectItem>
-                    <SelectItem value="confidential">{t('vaktscan.classification.confidential')}</SelectItem>
-                    <SelectItem value="restricted">{t('vaktscan.classification.restricted')}</SelectItem>
+                    <SelectItem value="public">{t('vaktcomply.assets.classification.public')}</SelectItem>
+                    <SelectItem value="internal">{t('vaktcomply.assets.classification.internal')}</SelectItem>
+                    <SelectItem value="confidential">{t('vaktcomply.assets.classification.confidential')}</SelectItem>
+                    <SelectItem value="restricted">{t('vaktcomply.assets.classification.restricted')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="asset-tags">{t('vaktscan.assetsPage.labelTags')}</Label>
+                <Label htmlFor="asset-tags">{t('vaktcomply.assets.page.labelTags')}</Label>
                 <Input
                   id="asset-tags"
-                  placeholder={t('vaktscan.assetsPage.placeholderTags')}
+                  placeholder={t('vaktcomply.assets.page.placeholderTags')}
                   value={tagsInput}
                   onChange={(e) => { setTagsInput(e.target.value); }}
                 />
@@ -386,7 +386,7 @@ export default function AssetsPage() {
                 {createAsset.isPending ? (
                   <Spinner size="sm" color="white" className="mr-2" />
                 ) : null}
-                {createAsset.isPending ? t('vaktscan.assetsPage.creating') : t('vaktscan.assetsPage.createAsset')}
+                {createAsset.isPending ? t('vaktcomply.assets.page.creating') : t('vaktcomply.assets.page.createAsset')}
               </Button>
             </DialogFooter>
           </form>

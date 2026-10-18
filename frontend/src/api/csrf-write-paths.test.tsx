@@ -12,8 +12,8 @@
  *   3. POST /vaktcomply/suppliers/import-csv           (useImportSuppliersCSV)
  *   4. POST /vaktcomply/ai/report                      (AIReportPage)
  *   5. POST /vaktscan/findings/import                  (ImportFindingsDialog)
- *   6. POST /vaktscan/assets/import                    (useImportAssets)
- *   7. POST /vaktscan/assets/import/csv                (CSVImportDialog)
+ *   6. POST /vaktcomply/assets/import                    (useImportAssets)
+ *   7. POST /vaktcomply/assets/import/csv                (CSVImportDialog)
  *
  * Each test below drives the real call site (hook or component) and asserts the
  * request that actually leaves the app carries the header. Reverting any single
@@ -35,7 +35,7 @@ import { setCsrfToken } from './client'
 import { useUploadEvidence } from '../modules/vaktcomply/hooks/useControls'
 import { useUploadEvidenceFile } from '../modules/vaktcomply/hooks/useEvidenceFiles'
 import { useImportSuppliersCSV } from '../modules/vaktcomply/hooks/useSuppliers'
-import { useImportAssets } from '../modules/vaktscan/hooks/useAssets'
+import { useImportAssets } from '../modules/vaktcomply/assets/hooks'
 import AIReportPage from '../modules/vaktcomply/pages/AIReportPage'
 import { CSVImportDialog } from '../shared/components/CSVImportDialog'
 import { importFindings } from '../modules/vaktscan/components/ImportFindingsDialog'
@@ -159,15 +159,15 @@ describe('R1-18-D4 — multipart upload hooks send X-CSRF-Token', () => {
     expect(contentTypeOf(req!.init)).toBeUndefined()
   })
 
-  it('6. useImportAssets — POST vaktscan/assets/import', async () => {
+  it('6. useImportAssets — POST vaktcomply/assets/import', async () => {
     const { result } = renderHook(() => useImportAssets(), { wrapper: makeWrapper() })
 
     await act(async () => {
       await result.current.mutateAsync(formDataWithFile())
     })
 
-    const req = requestTo('/vaktscan/assets/import')
-    expect(req, 'no request reached /vaktscan/assets/import').toBeDefined()
+    const req = requestTo('/vaktcomply/assets/import')
+    expect(req, 'no request reached /vaktcomply/assets/import').toBeDefined()
     expect(headersOf(req!.init)['X-CSRF-Token']).toBe(TOKEN)
     expect(contentTypeOf(req!.init)).toBeUndefined()
   })
@@ -202,12 +202,12 @@ describe('R1-18-D4 — component write paths send X-CSRF-Token', () => {
     expect(contentTypeOf(req.init)).toContain('application/json')
   })
 
-  it('7. CSVImportDialog — POST vaktscan/assets/import/csv', async () => {
+  it('7. CSVImportDialog — POST vaktcomply/assets/import/csv', async () => {
     render(
       <CSVImportDialog
         open
         onClose={() => undefined}
-        endpoint="/vaktscan/assets/import/csv"
+        endpoint="/vaktcomply/assets/import/csv"
         entityLabel="Assets"
         columns={['name', 'type']}
       />,
@@ -224,9 +224,9 @@ describe('R1-18-D4 — component write paths send X-CSRF-Token', () => {
     fireEvent.click(uploadButton)
 
     await waitFor(() => {
-      expect(requestTo('/vaktscan/assets/import/csv')).toBeDefined()
+      expect(requestTo('/vaktcomply/assets/import/csv')).toBeDefined()
     })
-    const req = requestTo('/vaktscan/assets/import/csv')!
+    const req = requestTo('/vaktcomply/assets/import/csv')!
     expect(headersOf(req.init)['X-CSRF-Token']).toBe(TOKEN)
     expect(contentTypeOf(req.init)).toBeUndefined()
   })

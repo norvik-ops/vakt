@@ -7,6 +7,8 @@ const FrameworkDetailPage = lazy(() => import('./pages/FrameworkDetailPage'))
 const ControlDetailPage = lazy(() => import('./pages/ControlDetailPage'))
 const RisksPage = lazy(() => import('./pages/RisksPage'))
 const RiskDetailPage = lazy(() => import('./pages/RiskDetailPage'))
+const AssetsPage = lazy(() => import('./assets/AssetsPage'))
+const AssetDetailPage = lazy(() => import('./assets/AssetDetailPage'))
 const IncidentsPage = lazy(() => import('./pages/IncidentsPage'))
 const IncidentDetailPage = lazy(() => import('./pages/IncidentDetailPage'))
 const PoliciesPage = lazy(() => import('./pages/PoliciesPage'))
@@ -87,6 +89,8 @@ export default function SecVitalsRoutes() {
         <Route path="controls/:id" element={<ControlDetailPage />} />
         <Route path="risks" element={<RisksPage />} />
         <Route path="risks/:id" element={<RiskDetailPage />} />
+        <Route path="assets" element={<AssetsPage />} />
+        <Route path="assets/:id" element={<AssetDetailPage />} />
         <Route path="incidents" element={<IncidentsPage />} />
         <Route path="incidents/:id" element={<IncidentDetailPage />} />
         <Route path="policies" element={<PoliciesPage />} />

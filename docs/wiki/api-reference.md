@@ -95,12 +95,6 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/vaktscan/assets` | List assets (paginated) |
-| `POST` | `/vaktscan/assets` | Create asset |
-| `GET` | `/vaktscan/assets/:id` | Get asset |
-| `PUT` | `/vaktscan/assets/:id` | Update asset |
-| `DELETE` | `/vaktscan/assets/:id` | Delete asset |
-| `POST` | `/vaktscan/assets/import/csv` | Bulk import via CSV |
 | `GET` | `/vaktscan/findings` | List findings (filterable by asset, severity, status) |
 | `GET` | `/vaktscan/findings/:id` | Get finding |
 | `PUT` | `/vaktscan/findings/:id` | Update finding status/severity |
@@ -121,6 +115,12 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 | `GET` | `/vaktcomply/frameworks/:id/gaps` | Gap analysis |
 | `GET` | `/vaktcomply/controls/:id` | Get control |
 | `GET` | `/vaktcomply/controls/export/xlsx` | Export controls as XLSX |
+| `GET` | `/vaktcomply/assets` | List assets (paginated; old path `/vaktscan/assets` stays as an alias) |
+| `POST` | `/vaktcomply/assets` | Create asset |
+| `GET` | `/vaktcomply/assets/:id` | Get asset |
+| `PUT` | `/vaktcomply/assets/:id` | Update asset |
+| `DELETE` | `/vaktcomply/assets/:id` | Delete asset |
+| `POST` | `/vaktcomply/assets/import/csv` | Bulk import via CSV (Pro) |
 | `GET` | `/vaktcomply/risks` | List risks |
 | `POST` | `/vaktcomply/risks` | Create risk |
 | `GET` | `/vaktcomply/risks/export/xlsx` | Export risks as XLSX |

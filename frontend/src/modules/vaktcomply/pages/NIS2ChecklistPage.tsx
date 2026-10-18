@@ -99,8 +99,8 @@ const NIS2_REQUIREMENTS: NIS2Requirement[] = [
     title: 'Personalsicherheit und Zugriffskontrolle',
     description:
       'Sicherheit des Personals, Konzepte fur die Zugriffskontrolle und Asset-Management',
-    module: 'Vakt Scan (Assets)',
-    path: '/vaktscan/assets',
+    module: 'Vakt Comply (Assets)',
+    path: '/vaktcomply/assets',
     checkHint: 'Asset-Inventar vollstandig, Benutzerrechte dokumentiert',
   },
   {

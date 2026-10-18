@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { LegacyAssetRedirect } from './modules/vaktcomply/assets/LegacyAssetRedirect'
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { apiFetch } from './api/client'
 import { useAuthStore } from './shared/stores/auth'
@@ -235,6 +236,8 @@ export const router = createBrowserRouter([
           { path: '/admin', element: <AdminHubPage /> },
           { path: '/admin/health', element: <AdminHealthPage /> },
           { path: '/admin/security', element: <AdminSecurityPage /> },
+          { path: '/vaktscan/assets', element: <LegacyAssetRedirect /> },
+          { path: '/vaktscan/assets/:id', element: <LegacyAssetRedirect /> },
           {
             path: '/vaktscan/*',
             element: <ModuleShell moduleKey="vaktscan"><SecPulse /></ModuleShell>,

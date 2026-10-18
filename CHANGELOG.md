@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Geändert
+- **Das Asset-Inventar gehört jetzt zu Vakt Comply.** Seiten und API liegen unter
+  `/vaktcomply/assets`; alte Lesezeichen und die API-Pfade unter `/vaktscan/assets` leiten weiter bzw.
+  funktionieren als Alias mit derselben Berechtigung. Die Asset-Detailseite zeigt keine Scan-Auslöser
+  und Findings mehr — sie fragten bei abgeschaltetem Scan Endpunkte ab, die es nicht gibt. Daten und
+  Tabelle bleiben unverändert (erster Schritt von `docs/stories/module-archivieren.md`).
 - **Neue Installationen starten nur mit dem ISMS (Vakt Comply).** `.env.example` und das Helm-Chart
   setzen `VAKT_MODULES_ENABLED=vaktcomply`. Scan, Vault, Aware, Privacy und HR lassen sich über diese
   Variable dazuschalten. Ein abgeschaltetes Modul hat keine API-Routen und keine Hintergrund-Jobs mehr

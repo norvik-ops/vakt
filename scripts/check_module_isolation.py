@@ -87,6 +87,28 @@ MODULE_PREFIX = {
 ALL_PREFIXES = tuple(MODULE_PREFIX.values())
 MODULE_NAMES = set(MODULE_PREFIX)
 
+# Tables whose owner is NOT the module their prefix names. Each entry is a
+# deliberate ownership move with a documented end state, not an exception:
+#   vb_assets — the ISMS asset inventory moved from vaktscan to vaktcomply/assets
+#               (docs/stories/module-archivieren.md, S1). The rename to ck_assets
+#               follows in S5, once the vaktscan code is gone; delete this entry
+#               in that commit. From here on vaktscan writing vb_assets IS a
+#               violation — it may only read the inventory.
+TABLE_OWNER = {
+    "vb_assets": "vaktcomply",
+}
+
+
+def table_owner(table):
+    """Owning module of a table: TABLE_OWNER first, then the prefix. None for
+    platform-shared tables (no module prefix)."""
+    if table in TABLE_OWNER:
+        return TABLE_OWNER[table]
+    for module, prefix in MODULE_PREFIX.items():
+        if table.startswith(prefix):
+            return module
+    return None
+
 # Curated exceptions. Key: "relative/path.go" for an import violation, or
 # "relative/path.go:TABLE" for a write violation. Value: reason (printed). Keep
 # empty unless a violation is a deliberate, documented exception — every entry
@@ -226,11 +248,10 @@ def scan_file(path, rel_path, own_prefix, own_module):
         cleaned = re.sub(r'\s+', ' ', cleaned)
         for m in WRITE_RE.finditer(cleaned):
             table = m.group(1).lower()
-            for prefix in ALL_PREFIXES:
-                if table.startswith(prefix) and prefix != own_prefix:
-                    line = start_line + content[:m.start()].count('\n')
-                    writes.append((rel_path, line, table, prefix))
-                    break
+            owner = table_owner(table)
+            if owner is not None and owner != own_module:
+                line = start_line + content[:m.start()].count('\n')
+                writes.append((rel_path, line, table, owner))
     return (writes, imports), None
 
 
@@ -311,7 +332,7 @@ def strip_go_code_noise(src):
 def parse_sqlc_queries(queries_dir):
     """backend/db/queries/*.sql -> (writes, stats).
 
-    writes: query name -> sorted list of (table, owning prefix) it WRITES, kept
+    writes: query name -> sorted list of (table, owning module) it WRITES, kept
     only for module-prefixed tables (platform tables are shared, ADR-0079).
     stats: counters that go into the printed denominator."""
     writes, stats = {}, {'files': 0, 'queries': 0, 'unparsed': [], 'prefix_writers': 0}
@@ -348,10 +369,9 @@ def parse_sqlc_queries(queries_dir):
             hits = set()
             for w in WRITE_RE.finditer(body):
                 table = w.group(1).lower()
-                for prefix in ALL_PREFIXES:
-                    if table.startswith(prefix):
-                        hits.add((table, prefix))
-                        break
+                owner = table_owner(table)
+                if owner is not None:
+                    hits.add((table, owner))
             if hits:
                 writes[name] = sorted(hits)
                 stats['prefix_writers'] += 1
@@ -359,8 +379,8 @@ def parse_sqlc_queries(queries_dir):
 
 
 def find_sqlc_call_sites(module_files, query_writes):
-    """[(rel_path, line, query_name, tables, prefix)] for every call from module
-    code to a sqlc query that writes a table prefix the module does not own."""
+    """[(rel_path, line, query_name, table, owner, own_module)] for every call
+    from module code to a sqlc query that writes a table the module does not own."""
     found = []
     if not query_writes:
         return found
@@ -372,10 +392,10 @@ def find_sqlc_call_sites(module_files, query_writes):
         code = strip_go_code_noise(src)
         for m in call_re.finditer(code):
             name = m.group(1)
-            for table, prefix in query_writes[name]:
-                if prefix != own_prefix:
+            for table, owner in query_writes[name]:
+                if owner != own_module:
                     line = code.count('\n', 0, m.start()) + 1
-                    found.append((rel_path, line, name, table, prefix, own_module))
+                    found.append((rel_path, line, name, table, owner, own_module))
     return found
 
 
@@ -430,12 +450,12 @@ def main():
     sqlc_hits = find_sqlc_call_sites(module_files, query_writes)
 
     sqlc_new, sqlc_known_seen = [], set()
-    for rel_path, line, name, table, prefix, own_module in sqlc_hits:
+    for rel_path, line, name, table, owner, own_module in sqlc_hits:
         key = (rel_path, name)
         if key in KNOWN_SQLC_CROSS_PREFIX:
             sqlc_known_seen.add(key)
         else:
-            sqlc_new.append((rel_path, line, name, table, prefix, own_module))
+            sqlc_new.append((rel_path, line, name, table, owner, own_module))
 
     # Second non-vacuity guard, for the half that was just added: if the query
     # parser reads nothing, every sqlc check below is silently empty and the
@@ -469,8 +489,7 @@ def main():
             print(f"  Cross-prefix WRITE ({len(write_violations)}): a module writing a foreign table prefix.")
             print("  Fix: write only your own prefix; route the foreign write through a shared")
             print("  interface implemented by the owning module (see ADR-0079).\n")
-            for rel_path, line, table, prefix in write_violations:
-                owner = next(m for m, p in MODULE_PREFIX.items() if p == prefix)
+            for rel_path, line, table, owner in write_violations:
                 print(f"    WRITE  {rel_path}:{line}  → {table}  (owned by {owner})")
             print()
         if import_violations:
@@ -485,8 +504,7 @@ def main():
             print("  so it is invisible to the Go-literal scan above — that is K2-03.")
             print("  Fix: route the write through an owner interface (ADR-0079), or, if it is")
             print("  a tracked open finding, record it in KNOWN_SQLC_CROSS_PREFIX with a reason.\n")
-            for rel_path, line, name, table, prefix, own_module in sqlc_new:
-                owner = next(m for m, p in MODULE_PREFIX.items() if p == prefix)
+            for rel_path, line, name, table, owner, own_module in sqlc_new:
                 print(f"    SQLC   {rel_path}:{line}  {name}() → {table}  "
                       f"({own_module} owns {MODULE_PREFIX[own_module]}, {table} owned by {owner})")
             print()

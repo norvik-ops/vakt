@@ -10,11 +10,11 @@ import { mockApiServer, type ApiServerHandle } from '../../../test-utils/apiServ
  * pointed at a route half the customers cannot use.
  *
  * `importOpen` was set to false in two places and to true in none, so the
- * hand-rolled dialog for POST /vaktscan/assets/import was unreachable and
+ * hand-rolled dialog for POST /vaktcomply/assets/import was unreachable and
  * useImportAssets had a single dead caller. That much was already reported.
  * What the repro turned up on top: the two endpoints are not duplicates.
- * /vaktscan/assets/import is Community; /vaktscan/assets/import/csv sits behind
- * FeatureSecPulse (vaktscan/routes.go:31 vs :54). The button that DID work
+ * /vaktcomply/assets/import is Community; /vaktcomply/assets/import/csv sits behind
+ * FeatureSecPulse (backend vaktcomply/assets/routes.go). The button that DID work
  * pointed at the Pro route, so on a Community licence asset import answered 402
  * and the route that would have worked had no way in.
  *
@@ -28,11 +28,11 @@ function armServer(isPro: boolean) {
     'GET /license': {
       body: { tier: isPro ? 'pro' : 'community', is_pro: isPro, features: isPro ? ['vaktscan_advanced'] : [] },
     },
-    'GET /vaktscan/assets': {
+    'GET /vaktcomply/assets': {
       body: { data: [], pagination: { page: 1, limit: 25, total: 0, total_pages: 1 } },
     },
-    'POST /vaktscan/assets/import': { body: { inserted: 2, errored: 0, errors: [] } },
-    'POST /vaktscan/assets/import/csv': { body: { imported: 2, skipped: 0, errors: [] } },
+    'POST /vaktcomply/assets/import': { body: { inserted: 2, errored: 0, errors: [] } },
+    'POST /vaktcomply/assets/import/csv': { body: { imported: 2, skipped: 0, errors: [] } },
   })
 }
 
@@ -71,7 +71,7 @@ describe('AssetsPage — CSV import reachability (R23-02)', () => {
     await waitFor(() => {
       const posts = server.requests.filter((r) => r.method === 'POST')
       expect(posts).toHaveLength(1)
-      expect(posts[0].url).toContain('/vaktscan/assets/import')
+      expect(posts[0].url).toContain('/vaktcomply/assets/import')
       expect(posts[0].url).not.toContain('/import/csv')
     })
   })
@@ -84,7 +84,7 @@ describe('AssetsPage — CSV import reachability (R23-02)', () => {
     await waitFor(() => {
       const posts = server.requests.filter((r) => r.method === 'POST')
       expect(posts).toHaveLength(1)
-      expect(posts[0].url).toContain('/vaktscan/assets/import/csv')
+      expect(posts[0].url).toContain('/vaktcomply/assets/import/csv')
     })
   })
 

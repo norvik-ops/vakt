@@ -215,8 +215,8 @@ export default function ProtectionNeedsPage() {
   const linkAsset = useLinkAssetToPNA()
 
   const { data: assetsResp } = useQuery<{ data: AssetOption[] } | AssetOption[]>({
-    queryKey: ['vaktscan', 'assets', 'picker'],
-    queryFn: () => apiFetch<{ data: AssetOption[] } | AssetOption[]>('/vaktscan/assets'),
+    queryKey: ['vaktcomply', 'assets', 'picker'],
+    queryFn: () => apiFetch<{ data: AssetOption[] } | AssetOption[]>('/vaktcomply/assets'),
     staleTime: 60_000,
     enabled: linkDialogPnaId != null,
   })

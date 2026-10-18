@@ -15,16 +15,13 @@ import (
 	"github.com/matharnica/vakt/internal/shared/sqlcheck"
 )
 
-// TestRawSQLAgainstSchema_S121 executes the two raw-SQL queries the live route
-// sweep caught 500'ing against a real migrated schema. Both bugs were column
-// drift that only surfaces at query time (the compiler can't see raw SQL):
-//   - ListExpiringCertificates used `($2 || ' days')::interval`, whose bound int
-//     parameter pgx could not type — now make_interval(days => $2::int).
-//   - GetAssetProtectionNeedID filtered on vb_assets.deleted_at, a column that
-//     does not exist (soft-delete is is_deleted) — SQLSTATE 42703 for every asset.
-//
-// These two run for real (not just PREPARE) because the second bug is an execute-
-// time type error, not a parse-time one: PREPARE alone would have passed it.
+// TestRawSQLAgainstSchema_S121 executes a raw-SQL query the live route sweep
+// caught 500'ing against a real migrated schema: ListExpiringCertificates used
+// `($2 || ' days')::interval`, whose bound int parameter pgx could not type —
+// now make_interval(days => $2::int). It runs for real (not just PREPARE)
+// because this is an execute-time type error. The second query of the original
+// pair, GetAssetProtectionNeedID, moved with the asset inventory to
+// vaktcomply/assets (rawsql_schema_test.go there).
 func TestRawSQLAgainstSchema_S121(t *testing.T) {
 	dbURL := os.Getenv("VAKT_DB_URL")
 	if dbURL == "" {
@@ -37,13 +34,9 @@ func TestRawSQLAgainstSchema_S121(t *testing.T) {
 	repo := NewRepository(pool)
 	// Any UUID works — we assert the query EXECUTES (0 rows is fine), not the data.
 	const org = "00000000-0000-0000-0000-0000000000aa"
-	const asset = "00000000-0000-0000-0000-0000000000bb"
 
 	_, err = repo.ListExpiringCertificates(context.Background(), org, 30)
 	require.NoError(t, err, "ListExpiringCertificates must execute against the real schema")
-
-	_, err = repo.GetAssetProtectionNeedID(context.Background(), org, asset)
-	require.NoError(t, err, "GetAssetProtectionNeedID must execute against the real schema (vb_assets.is_deleted, not deleted_at)")
 }
 
 // TestVaktscanRawSQLAgainstSchema (S126) widens the gate above from the two known

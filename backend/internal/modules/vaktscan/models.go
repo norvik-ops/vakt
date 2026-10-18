@@ -20,14 +20,6 @@ type Asset struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 }
 
-// ClassificationSummary holds counts of assets by classification level.
-type ClassificationSummary struct {
-	TotalCount        int            `json:"total_count"`
-	ClassifiedCount   int            `json:"classified_count"`
-	ByLevel           map[string]int `json:"by_level"`
-	UnclassifiedCount int            `json:"unclassified_count"`
-}
-
 // SLAConfig holds the per-org SLA remediation targets in days per severity.
 type SLAConfig struct {
 	OrgID        string `json:"org_id"`
@@ -35,40 +27,6 @@ type SLAConfig struct {
 	HighDays     int    `json:"high_days"`
 	MediumDays   int    `json:"medium_days"`
 	LowDays      int    `json:"low_days"`
-}
-
-// CreateAssetInput is the validated request body for creating an asset.
-type CreateAssetInput struct {
-	Name           string   `json:"name"           validate:"required,min=1,max=255"`
-	Type           string   `json:"type"           validate:"required,oneof=server container web_app database repo"`
-	Criticality    string   `json:"criticality"    validate:"required,oneof=low medium high critical"`
-	Environment    string   `json:"environment"    validate:"omitempty,oneof=prod staging dev"`
-	Classification string   `json:"classification" validate:"omitempty,oneof=public internal confidential restricted"`
-	Tags           []string `json:"tags"`
-	OwnerID        *string  `json:"owner_id,omitempty"`
-	ExternalURL    string   `json:"external_url"`
-}
-
-// UpdateAssetInput is the validated request body for updating an asset.
-type UpdateAssetInput struct {
-	Name           *string  `json:"name"           validate:"omitempty,min=1,max=255"`
-	Type           *string  `json:"type"           validate:"omitempty,oneof=server container web_app database repo"`
-	Criticality    *string  `json:"criticality"    validate:"omitempty,oneof=low medium high critical"`
-	Environment    *string  `json:"environment"    validate:"omitempty,oneof=prod staging dev"`
-	Classification *string  `json:"classification" validate:"omitempty,oneof=public internal confidential restricted"`
-	Tags           []string `json:"tags"`
-	OwnerID        *string  `json:"owner_id,omitempty"`
-	ExternalURL    *string  `json:"external_url,omitempty"`
-}
-
-// CSVAssetRow represents one row from a bulk-import CSV file.
-type CSVAssetRow struct {
-	Name        string
-	Type        string
-	Criticality string
-	Environment string
-	Tags        []string
-	ExternalURL string
 }
 
 // Scan represents a scanner job record.

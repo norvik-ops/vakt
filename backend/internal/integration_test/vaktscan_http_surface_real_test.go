@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/assets"
 	"github.com/matharnica/vakt/internal/modules/vaktscan"
 	sharedmw "github.com/matharnica/vakt/internal/shared/middleware"
 )
@@ -54,8 +55,10 @@ func vaktscanHTTP(t *testing.T, pool *pgxpool.Pool, orgID, userID string) *echo.
 		// testing a configuration that does not exist.
 		sharedmw.ValidateUUIDParams(),
 	)
+	// The asset inventory moved to vaktcomply/assets; cmd/api still mounts it
+	// under /vaktscan as an alias, so the surface here stays the same.
+	assets.Register(g, assets.NewHandler(assets.NewService(pool)))
 	h := vaktscan.NewHandler(vaktscan.NewService(pool, asynq.RedisClientOpt{}))
-	vaktscan.RegisterAssets(g, h)
 	vaktscan.Register(g, h)
 	return e
 }
