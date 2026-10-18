@@ -6,13 +6,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
@@ -49,15 +46,8 @@ func (h *Handler) UploadEvidence(c echo.Context) error {
 	if err != nil {
 		return errResp(c, http.StatusBadRequest, "file is required", "CK_BAD_REQUEST")
 	}
-
-	allowed := map[string]bool{
-		".pdf": true, ".png": true, ".jpg": true, ".jpeg": true,
-		".gif": true, ".webp": true, ".txt": true, ".csv": true,
-		".xlsx": true, ".docx": true, ".zip": true,
-	}
-	ext := strings.ToLower(filepath.Ext(fh.Filename))
-	if !allowed[ext] {
-		return echo.NewHTTPError(http.StatusBadRequest, "Dateityp nicht erlaubt")
+	if h.evidenceFiles == nil {
+		return errResp(c, http.StatusServiceUnavailable, "evidence file service unavailable", "CK_SERVICE_UNAVAILABLE")
 	}
 
 	src, err := fh.Open()
@@ -66,41 +56,32 @@ func (h *Handler) UploadEvidence(c echo.Context) error {
 	}
 	defer src.Close()
 
-	uploadDir := h.uploadDir
-	if uploadDir == "" {
-		uploadDir = "./data/uploads"
-	}
-	orgDir := filepath.Join(uploadDir, orgID(c), "evidence")
-	if err := os.MkdirAll(orgDir, 0o750); err != nil {
-		return errResp(c, http.StatusInternalServerError, "failed to create upload directory", "CK_UPLOAD_FAILED")
-	}
-
-	destName := uuid.New().String() + ext
-	destPath := filepath.Join(orgDir, destName)
-
-	dst, err := os.Create(destPath)
-	if err != nil {
-		return errResp(c, http.StatusInternalServerError, "failed to save file", "CK_UPLOAD_FAILED")
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, src); err != nil {
-		return errResp(c, http.StatusInternalServerError, "failed to write file", "CK_UPLOAD_FAILED")
+	// R1-KW-12: this endpoint used to write the file to <upload>/<org>/evidence and
+	// only into ck_evidence.file_path. The audit package and the download route read
+	// attachments (ck_evidence_files), so a document added via „Nachweis hinzufügen"
+	// was in the register but neither in the ZIP nor downloadable. The file now goes
+	// through EvidenceFileService as an attachment of the new evidence record. Checked
+	// first, because evidence is append-only: a rejected file must not leave a record.
+	if err := h.evidenceFiles.Check(src, fh); err != nil {
+		return errResp(c, http.StatusBadRequest, err.Error(), "CK_UPLOAD_FAILED")
 	}
 
 	input := AddEvidenceInput{
 		Title:       title,
 		Description: notes,
 		Source:      "manual",
-		FilePath:    destPath,
 		FileSize:    fh.Size,
 		ExpiresAt:   expiresAt,
 	}
 	ev, err := h.service.AddEvidence(c.Request().Context(), orgID(c), controlID, userID(c), input)
 	if err != nil {
-		_ = os.Remove(destPath)
 		log.Error().Err(err).Str("control_id", controlID).Msg("upload evidence")
 		return errResp(c, http.StatusInternalServerError, "failed to add evidence", "CK_ADD_EVIDENCE_FAILED")
+	}
+	if _, err := h.evidenceFiles.Upload(c.Request().Context(), orgID(c), controlID, ev.ID, userID(c), src, fh); err != nil {
+		log.Error().Err(err).Str("control_id", controlID).Str("evidence_id", ev.ID).
+			Msg("upload evidence: record created, attachment failed")
+		return errResp(c, http.StatusInternalServerError, "evidence created, but the file could not be stored", "CK_UPLOAD_FAILED")
 	}
 	return c.JSON(http.StatusCreated, ev)
 }

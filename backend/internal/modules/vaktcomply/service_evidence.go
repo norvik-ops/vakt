@@ -656,23 +656,27 @@ func NewEvidenceFileService(repo *Repository, uploadDir string) *EvidenceFileSer
 	return &EvidenceFileService{repo: repo, uploadDir: uploadDir}
 }
 
-// Upload validates, stores, and records a new evidence file.
-// evidenceID may be empty when a file is attached directly to a control without a parent evidence record.
-func (s *EvidenceFileService) Upload(
-	ctx context.Context,
-	orgID, controlID, evidenceID, uploaderID string,
-	file multipart.File,
-	header *multipart.FileHeader,
-) (EvidenceFile, error) {
+// Check runs Upload's size, extension and content checks without storing
+// anything and rewinds file. UploadEvidence calls it before it creates the
+// parent evidence record, so a rejected file does not leave a record behind
+// (evidence is append-only, there is no delete) — R1-KW-12.
+func (s *EvidenceFileService) Check(file multipart.File, header *multipart.FileHeader) error {
+	_, err := checkEvidenceFile(file, header)
+	return err
+}
+
+// checkEvidenceFile validates size, extension and sniffed MIME type and returns
+// the detected type with file rewound to the start.
+func checkEvidenceFile(file multipart.File, header *multipart.FileHeader) (string, error) {
 	// Size check
 	if header.Size > maxEvidenceFileSizeBytes {
-		return EvidenceFile{}, fmt.Errorf("file too large: max 50 MB")
+		return "", fmt.Errorf("file too large: max 50 MB")
 	}
 
 	// Extension check
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if !allowedEvidenceExt[ext] {
-		return EvidenceFile{}, fmt.Errorf("file type not allowed: %s", ext)
+		return "", fmt.Errorf("file type not allowed: %s", ext)
 	}
 
 	// MIME sniff from actual content — never trust the client-supplied Content-Type header.
@@ -684,12 +688,28 @@ func (s *EvidenceFileService) Upload(
 		detected = strings.TrimSpace(detected[:idx])
 	}
 	if !allowedEvidenceMIME[detected] {
-		return EvidenceFile{}, fmt.Errorf("MIME type not allowed: %s", detected)
+		return "", fmt.Errorf("MIME type not allowed: %s", detected)
 	}
 	// Seek back so io.Copy writes the full file, not just bytes after the sniff window.
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		return EvidenceFile{}, fmt.Errorf("seek file: %w", err)
+		return "", fmt.Errorf("seek file: %w", err)
 	}
+	return detected, nil
+}
+
+// Upload validates, stores, and records a new evidence file.
+// evidenceID may be empty when a file is attached directly to a control without a parent evidence record.
+func (s *EvidenceFileService) Upload(
+	ctx context.Context,
+	orgID, controlID, evidenceID, uploaderID string,
+	file multipart.File,
+	header *multipart.FileHeader,
+) (EvidenceFile, error) {
+	detected, err := checkEvidenceFile(file, header)
+	if err != nil {
+		return EvidenceFile{}, err
+	}
+	ext := strings.ToLower(filepath.Ext(header.Filename))
 
 	// Build destination path
 	storedName := uuid.New().String() + ext

@@ -31,6 +31,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `/metrics` veröffentlicht Findings- und DSR-Werte nur, wenn das jeweilige Modul aktiv ist.
 
 ### Behoben
+- **Als Nachweis hochgeladene Dokumente fehlen nicht mehr im Audit-Paket** (R1-KW-12). „Nachweis
+  hinzufügen → Dokument" legt die Datei jetzt als Anhang des Nachweises ab; sie steckt im Audit-Paket
+  und ist herunterladbar. Dokumente, die vorher auf dem alten Weg hochgeladen wurden, nimmt der Export
+  ebenfalls auf. Der Upload prüft dabei wie die Anhänge den Dateiinhalt; GIF- und WebP-Bilder nimmt er
+  nicht mehr an.
 - Der Einrichtungsassistent bot in Schritt 3 eine Modulauswahl an, die nichts bewirkte. Der Schritt
   entfällt; der Assistent hat jetzt zwei Schritte. Der Passworthinweis nennt die tatsächliche
   Mindestlänge von 10 Zeichen statt 8.

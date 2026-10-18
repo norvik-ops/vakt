@@ -324,6 +324,9 @@ func writeEvidenceFiles(ctx context.Context, db *pgxpool.Pool, orgID, uploadDir 
 
 	baseDir := filepath.Join(uploadDir, "evidence", orgID)
 	used := map[string]bool{}
+	if err := writeLegacyEvidenceFiles(ctx, db, orgID, uploadDir, zw, used); err != nil {
+		return err
+	}
 	for _, fr := range files {
 		diskPath := filepath.Join(baseDir, fr.stored)
 		data, rerr := os.ReadFile(diskPath)
@@ -333,6 +336,61 @@ func writeEvidenceFiles(ctx context.Context, db *pgxpool.Pool, orgID, uploadDir 
 			continue
 		}
 		w, cerr := zw.Create(evidenceZipPath(fr.original, fr.stored, used))
+		if cerr != nil {
+			return cerr
+		}
+		if _, werr := w.Write(data); werr != nil {
+			return werr
+		}
+	}
+	return nil
+}
+
+// writeLegacyEvidenceFiles adds documents uploaded before R1-KW-12 through the
+// old POST /controls/:id/evidence/upload route. That route stored the file under
+// <upload>/<org>/evidence/<uuid.ext> and only in ck_evidence.file_path, never as
+// an attachment, so these documents were in evidence.csv but not in the ZIP.
+// Production instances have such rows. Path safety: only the base name of the
+// stored path is used, joined to the legacy directory of THIS org — a stored path
+// pointing elsewhere cannot leave it. Missing files are skipped and logged, like
+// attachments.
+func writeLegacyEvidenceFiles(ctx context.Context, db *pgxpool.Pool, orgID, uploadDir string, zw *zip.Writer, used map[string]bool) error {
+	rows, err := db.Query(ctx, `
+		SELECT e.title, e.file_path
+		FROM ck_evidence e
+		WHERE e.org_id = $1::uuid AND COALESCE(e.file_path, '') <> ''
+		ORDER BY e.created_at`, orgID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type legacyRow struct{ title, path string }
+	var legacy []legacyRow
+	for rows.Next() {
+		var lr legacyRow
+		if err := rows.Scan(&lr.title, &lr.path); err != nil {
+			continue
+		}
+		legacy = append(legacy, lr)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	legacyDir := filepath.Join(uploadDir, orgID, "evidence")
+	for _, lr := range legacy {
+		stored := filepath.Base(strings.ReplaceAll(lr.path, "\\", "/"))
+		if stored == "" || stored == "." || stored == ".." || stored == "/" {
+			continue
+		}
+		data, rerr := os.ReadFile(filepath.Join(legacyDir, stored))
+		if rerr != nil {
+			log.Warn().Err(rerr).Str("org_id", orgID).Str("stored_name", stored).
+				Msg("audit export: legacy evidence file missing on disk, skipping")
+			continue
+		}
+		w, cerr := zw.Create(evidenceZipPath(lr.title+filepath.Ext(stored), stored, used))
 		if cerr != nil {
 			return cerr
 		}

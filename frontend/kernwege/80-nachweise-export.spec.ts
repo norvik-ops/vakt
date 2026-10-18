@@ -92,16 +92,14 @@ test.describe('KW9 Nachweise & Audit-Export', () => {
     expect(zip.get('policies.csv')!.toString('utf8')).toContain('Passwort- und Zugangskontrollrichtlinie')
   })
 
-  // „Nachweis hinzufügen → Dokument" schreibt über den veralteten Endpunkt
-  // /controls/:id/evidence/upload nach ck_evidence.file_path. Das Audit-Paket liest nur
-  // ck_evidence_files („Anhänge"). Die Datei fehlt im Paket — und die Nachweis-Zeile
-  // bietet auch keinen Download, nur „Verlauf anzeigen".
+  // R1-KW-12: „Nachweis hinzufügen → Dokument" schrieb über /controls/:id/evidence/upload
+  // nur nach ck_evidence.file_path, das Audit-Paket liest ck_evidence_files („Anhänge").
+  // Seit dem Fix legt der Endpunkt die Datei als Anhang des neuen Nachweises ab.
   test('KW9 R1-KW-12 als „Nachweis" hochgeladenes Dokument steckt im Audit-Paket', async ({ browser }) => {
     const page = await openAs(browser, 'admin')
     const zip = await downloadAuditPackage(page)
     const ev = csv(zip.get('evidence.csv'))
     expect(ev.some((r) => r[2] === EVIDENCE_TITLE), 'Vorbedingung: Nachweis ist im Register gelistet').toBe(true)
-    test.fail(true, 'R1-KW-12: Dokument aus „Nachweis hinzufügen" fehlt im Audit-Paket (veralteter Upload-Weg, Export liest nur Anhänge)')
     // Byte-Vergleich, nicht Teilstring: der Anhang trägt `${MARKER}-anhang` und würde sonst mitzählen.
     const doc = [...zip.entries()].find(([n, b]) => n.startsWith('evidence/') && b.equals(PDF))
     expect(doc, `Beleg mit Markierung im Paket (Inhalt: ${[...zip.keys()].join(', ')})`).toBeTruthy()
