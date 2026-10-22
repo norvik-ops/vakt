@@ -109,13 +109,24 @@ export async function closeContexts(): Promise<void> {
  * als ein Mensch; ohne Pause liefe sie mitten in einem Test in 429. Vor jedem Test
  * liest dieser Helfer den Rest des Fensters aus X-RateLimit-Remaining und wartet, wenn
  * weniger als 150 übrig sind, bis zum Fensterwechsel (X-RateLimit-Reset).
+ *
+ * Die Probe geht an /api/v1/modules, weil die Route unter dem Org-Limit hängt. Bis
+ * 2026-10-18 fragte der Helfer /api/v1/license — die Antwort trägt keinen
+ * Limit-Header, der Fallback „300" griff jedes Mal, und der Helfer wartete nie. Im
+ * CI startete KW9 „Zahlen im Audit-Paket" so mit 22 Anfragen Rest und lief beim
+ * Export in 429 (Trace des Laufs 39118364362). Fehlt der Header, bricht der Helfer
+ * deshalb ab, statt still „genug Budget" anzunehmen.
  */
 async function ensureRateBudget(): Promise<void> {
   if (!fs.existsSync(sessionFile('admin'))) return
   const api = await request.newContext({ baseURL: KW.baseURL, storageState: sessionFile('admin') })
   try {
-    const r = await api.get('/api/v1/license')
-    const remaining = Number(r.headers()['x-ratelimit-remaining'] ?? '300')
+    const r = await api.get('/api/v1/modules')
+    const remainingHeader = r.headers()['x-ratelimit-remaining']
+    if (remainingHeader === undefined) {
+      throw new Error(`ensureRateBudget: /api/v1/modules (HTTP ${r.status()}) liefert keinen X-RateLimit-Remaining — die Probe misst das Org-Limit nicht`)
+    }
+    const remaining = Number(remainingHeader)
     const reset = Number(r.headers()['x-ratelimit-reset'] ?? '0')
     if (remaining < 150 && reset > 0) {
       const wait = reset * 1000 - Date.now() + 500
@@ -135,11 +146,21 @@ export async function prepareContext(ctx: BrowserContext, returningUser: boolean
   }, { returning: returningUser, v: version })
 }
 
+/**
+ * Locator-Handler für „Was ist neu". Der Klick hat einen kurzen Timeout und darf
+ * fehlschlagen: Ein Handler läuft VOR der eigentlichen Aktion und zählt nicht gegen
+ * deren Timeout. Bis 2026-10-18 klickte er ohne Timeout — war der Knopf gerade nicht
+ * klickbar (Dialog im Aufbau), wartete der Handler bis zum Test-Timeout und riss den
+ * Test mit „Target page, context or browser has been closed" ab (CI-Läufe 39122151563
+ * KW3, 39118364362 KW4). Die aufrufende Aktion versucht es danach erneut.
+ */
+async function dismissWhatsNew(d: Locator): Promise<void> {
+  await d.getByRole('button', { name: 'Verstanden' }).click({ timeout: 2000 }).catch(() => undefined)
+}
+
 export async function dismissFirstRunOverlays(page: Page): Promise<void> {
   await prepareContext(page.context(), false)
-  await page.addLocatorHandler(page.getByRole('dialog', { name: /^Was ist neu in Vakt/ }), async (d) => {
-    await d.getByRole('button', { name: 'Verstanden' }).click()
-  }, { noWaitAfter: true })
+  await page.addLocatorHandler(page.getByRole('dialog', { name: /^Was ist neu in Vakt/ }), dismissWhatsNew, { noWaitAfter: true })
 }
 
 /**
@@ -222,9 +243,7 @@ export async function openAs(browser: Browser, role: 'admin' | 'viewer'): Promis
   const ctx = await browser.newContext({ storageState: sessionFile(role) })
   await prepareContext(ctx, true)
   const page = await ctx.newPage()
-  await page.addLocatorHandler(page.getByRole('dialog', { name: /^Was ist neu in Vakt/ }), async (d) => {
-    await d.getByRole('button', { name: 'Verstanden' }).click()
-  }, { noWaitAfter: true })
+  await page.addLocatorHandler(page.getByRole('dialog', { name: /^Was ist neu in Vakt/ }), dismissWhatsNew, { noWaitAfter: true })
   return page
 }
 
