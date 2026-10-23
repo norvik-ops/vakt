@@ -11,7 +11,6 @@
  *   2. POST /vaktcomply/controls/:id/evidence-files    (useUploadEvidenceFile)
  *   3. POST /vaktcomply/suppliers/import-csv           (useImportSuppliersCSV)
  *   4. POST /vaktcomply/ai/report                      (AIReportPage)
- *   5. POST /vaktscan/findings/import                  (ImportFindingsDialog)
  *   6. POST /vaktcomply/assets/import                    (useImportAssets)
  *   7. POST /vaktcomply/assets/import/csv                (CSVImportDialog)
  *
@@ -38,7 +37,6 @@ import { useImportSuppliersCSV } from '../modules/vaktcomply/hooks/useSuppliers'
 import { useImportAssets } from '../modules/vaktcomply/assets/hooks'
 import AIReportPage from '../modules/vaktcomply/pages/AIReportPage'
 import { CSVImportDialog } from '../shared/components/CSVImportDialog'
-import { importFindings } from '../modules/vaktscan/components/ImportFindingsDialog'
 
 const TOKEN = 'csrf-token-under-test'
 
@@ -231,16 +229,4 @@ describe('R1-18-D4 — component write paths send X-CSRF-Token', () => {
     expect(contentTypeOf(req.init)).toBeUndefined()
   })
 
-  it('5. ImportFindingsDialog — POST vaktscan/findings/import', async () => {
-    // Entered one level below the dialog: the asset picker is a Radix Select,
-    // which does not open in jsdom. importFindings() is the exact function the
-    // dialog's upload button calls, so the request under test is the real one.
-    await importFindings('asset-1', 'sarif', new File(['{}'], 'findings.sarif'))
-
-    const req = requestTo('/vaktscan/findings/import')
-    expect(req, 'no request reached /vaktscan/findings/import').toBeDefined()
-    expect(headersOf(req!.init)['X-CSRF-Token']).toBe(TOKEN)
-    expect(contentTypeOf(req!.init)).toBeUndefined()
-    expect(req!.url).toContain('asset_id=asset-1')
-  })
 })

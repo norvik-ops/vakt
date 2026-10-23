@@ -75,9 +75,6 @@ var scannedDirs = []string{
 	"internal/shared/metrics",
 	"internal/shared/notify",
 	"internal/shared/redisopt",
-	"internal/modules/vaktscan",
-	"internal/modules/vaktprivacy",
-	"internal/modules/vaktaware",
 }
 
 // asynqConnConstructors sind die Asynq-Einstiegspunkte, die eine

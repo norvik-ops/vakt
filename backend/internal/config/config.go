@@ -228,14 +228,22 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// KnownModules lists every module in display order. EnabledModules and the
-// admin module overview iterate over it, so an unknown name in
-// VAKT_MODULES_ENABLED is ignored instead of reaching the frontend.
-var KnownModules = []string{"vaktcomply", "vaktscan", "vaktvault", "vaktaware", "vaktprivacy", "vakthr"}
+// KnownModules lists every module the platform ships, in display order.
+// EnabledModules and the admin module overview iterate over it, so an unknown
+// name in VAKT_MODULES_ENABLED is ignored instead of reaching the frontend.
+//
+// Since 2026-10-18 this is the ISMS alone: Scan, Vault, Aware, Privacy and HR are
+// archived (ArchivedModules, tag archiv/module-vollstaendig,
+// docs/stories/module-archivieren.md). Their tables stay in the database.
+var KnownModules = []string{CoreModule}
+
+// ArchivedModules are the former optional modules. A name from this list in
+// VAKT_MODULES_ENABLED no longer enables anything; API and worker log one
+// warning at start (ArchivedModulesRequested) so an old configuration is noticed.
+var ArchivedModules = []string{"vaktscan", "vaktvault", "vaktaware", "vaktprivacy", "vakthr"}
 
 // EnabledModules returns the active modules from KnownModules, in that order.
-// The frontend derives its navigation from this list (GET /modules), so the
-// environment variable is the only place that decides what a user sees.
+// The frontend derives its navigation from this list (GET /modules).
 func (c *Config) EnabledModules() []string {
 	out := make([]string, 0, len(KnownModules))
 	for _, m := range KnownModules {
@@ -251,19 +259,26 @@ func (c *Config) EnabledModules() []string {
 // when VAKT_MODULES_ENABLED omits it.
 const CoreModule = "vaktcomply"
 
-// IsModuleEnabled reports whether the named module (e.g. "vaktscan") appears in
-// the ModulesEnabled CSV list.  Comparison is case-insensitive. CoreModule is
-// always enabled.
+// IsModuleEnabled reports whether the named module runs. Only CoreModule does:
+// every other name, archived or unknown, is off regardless of
+// VAKT_MODULES_ENABLED. Comparison is case-insensitive.
 func (c *Config) IsModuleEnabled(name string) bool {
-	if strings.EqualFold(name, CoreModule) {
-		return true
-	}
-	for _, mod := range strings.Split(c.ModulesEnabled, ",") {
-		if strings.EqualFold(strings.TrimSpace(mod), name) {
-			return true
+	return strings.EqualFold(strings.TrimSpace(name), CoreModule)
+}
+
+// ArchivedModulesRequested returns the archived module names listed in
+// VAKT_MODULES_ENABLED, in ArchivedModules order, so the caller can warn once.
+func (c *Config) ArchivedModulesRequested() []string {
+	var out []string
+	for _, archived := range ArchivedModules {
+		for _, mod := range strings.Split(c.ModulesEnabled, ",") {
+			if strings.EqualFold(strings.TrimSpace(mod), archived) {
+				out = append(out, archived)
+				break
+			}
 		}
 	}
-	return false
+	return out
 }
 
 func getEnv(key, def string) string {
@@ -370,7 +385,7 @@ func Load() (*Config, error) {
 		SecretKey:              secretKey,
 		APIPort:                getEnv("VAKT_API_PORT", "8080"),
 		InternalPort:           getEnv("VAKT_INTERNAL_PORT", "8081"),
-		ModulesEnabled:         getEnv("VAKT_MODULES_ENABLED", "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr"),
+		ModulesEnabled:         getEnv("VAKT_MODULES_ENABLED", CoreModule),
 		AutoMigrate:            getEnv("AUTO_MIGRATE", "false") == "true",
 		DemoSeed:               getEnv("VAKT_DEMO", "false") == "true",
 		Version:                getEnv("APP_VERSION", "0.1.0"),

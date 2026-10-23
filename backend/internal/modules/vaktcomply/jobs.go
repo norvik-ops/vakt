@@ -14,9 +14,6 @@ const (
 	// TaskAIWeeklyDigest is the task type for the Monday AI compliance digest.
 	TaskAIWeeklyDigest = "vaktcomply:ai_weekly_digest"
 
-	// TaskAIEvidenceSuggestion is the task type for per-finding AI evidence suggestions.
-	TaskAIEvidenceSuggestion = "vaktcomply:ai_evidence_suggestion"
-
 	// TaskEvidenceExpiryAlert is the task type for daily evidence expiry alerts.
 	TaskEvidenceExpiryAlert = "vaktcomply:evidence_expiry_alert"
 

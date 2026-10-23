@@ -73,6 +73,12 @@ func main() {
 	if err := cfg.Validate(); err != nil {
 		log.Fatal().Err(err).Msg("configuration error — check .env file")
 	}
+	// Scan, Vault, Aware, Privacy and HR are archived; naming them no longer
+	// enables anything. One warning so an old configuration is noticed.
+	if archived := cfg.ArchivedModulesRequested(); len(archived) > 0 {
+		log.Warn().Strs("modules", archived).
+			Msg("VAKT_MODULES_ENABLED nennt archivierte Module — sie werden ignoriert (docs/UPGRADE.md)")
+	}
 
 	// S87-5 (F-07): wire the hard Secure-cookie override before any request is served.
 	auth.SetForceSecureCookies(cfg.ForceSecureCookies)

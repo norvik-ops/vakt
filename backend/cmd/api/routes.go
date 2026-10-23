@@ -16,7 +16,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
@@ -25,13 +24,8 @@ import (
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/license"
-	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/assets"
-	"github.com/matharnica/vakt/internal/modules/vakthr"
-	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
-	"github.com/matharnica/vakt/internal/modules/vaktscan"
-	"github.com/matharnica/vakt/internal/modules/vaktvault"
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/evidence_auto"
@@ -60,7 +54,6 @@ import (
 	"github.com/matharnica/vakt/internal/shared/platform/ldap"
 	"github.com/matharnica/vakt/internal/shared/platform/trustcenter"
 	sharedwebhooks "github.com/matharnica/vakt/internal/shared/platform/webhooks"
-	"github.com/matharnica/vakt/internal/shared/redisopt"
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"
 	"github.com/matharnica/vakt/internal/shared/search"
@@ -256,7 +249,6 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		}
 		return k
 	}
-	vaultKey := deriveKey("vakt-vault-v1")
 	totpKey := deriveKey("vakt-totp-v1")
 	alertKey := deriveKey("vakt-alert-v1")
 	ghKey := deriveKey("vakt-github-v1")
@@ -464,17 +456,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// org is locked out of all sensitive writes while the toggle is on.
 	mfaSensitive := sharedmw.RequireMFASensitive(pool, totpKey, auth.ValidateTOTP)
 
-	// R1-14b-01: EINE Ableitung der Asynq-Verbindung fuer den gesamten
-	// API-Prozess. Vorher baute jede der vier Enqueue-Stellen hier
-	// {Addr, Password} von Hand und liess DB fallen — traegt VAKT_REDIS_URL eine
-	// Datenbanknummer, schrieb die API nach DB 0, waehrend der Worker aus DB N
-	// las. Die Kette brach lautlos: kein Fehler, kein Log, kein Wiederholungs-
-	// versuch. Der abgeleitete Wert wird ab hier weitergereicht, nie nachgebaut;
-	// das Gate asynq_redis_db_coverage_test.go haelt das fest.
-	asynqOpt := redisopt.Asynq(redisOpt)
-
 	// Admin routes (also require Admin role)
-	asynqClient := asynq.NewClient(asynqOpt)
 	adminSvc := admin.NewService(pool, cfg.ModulesEnabled)
 	adminSvc.WithNotifyService(notify.NewService(pool, cfg))
 	adminSvc.WithMasterKey(rawMasterKey)
@@ -531,21 +513,12 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	})
 
 	// Asset inventory: ISMS core (vaktcomply/assets), always mounted. The old
-	// /vaktscan/assets paths stay as an alias with the same vaktcomply guard
-	// until the vaktscan code is removed (docs/stories/module-archivieren.md, S4).
+	// /vaktscan/assets paths stay as a compatibility alias with the same vaktcomply
+	// guard for API clients of earlier versions; the Scan module itself is archived
+	// (tag archiv/module-vollstaendig, docs/stories/module-archivieren.md).
 	assetHandler := assets.NewHandler(assets.NewService(pool))
 	assets.Register(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), assetHandler)
 	assets.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), assetHandler)
-
-	// Module routes — all behind auth middleware, sharing the same DB pool.
-	vbSvc := vaktscan.NewService(pool, asynqOpt)
-	vbSvc.WithRedis(rdb)
-	vbSvc.WithWebhooks(webhookSvc)
-	vbHandler := vaktscan.NewHandler(vbSvc)
-	if cfg.IsModuleEnabled("vaktscan") {
-		vaktscan.Register(protected.Group("/vaktscan", auth.RequireModuleAccess(pool, "vaktscan", rdb)), vbHandler)
-		log.Info().Msg("vaktscan routes registered")
-	}
 
 	// S78-6d: Redis-backed rate limiters (multi-replica safe).
 	auditorRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auditor", 30, time.Minute, false)
@@ -555,10 +528,6 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// and are assigned in the vaktcomply block.
 	// cloudEvidence: cloud integration → vaktcomply evidence.
 	var cloudEvidence cloudintegration.EvidenceWriter
-	// hrEvidence: hr → vaktcomply evidence.
-	var hrEvidence vakthr.EvidenceWriter
-	// hrAccessReview triggers an access-review campaign in vaktcomply when an offboarding run completes.
-	var hrAccessReview vakthr.AccessReviewTrigger
 
 	// vaktcomply is the core module (config.CoreModule) and always registered; the
 	// block only scopes its local variables.
@@ -581,8 +550,6 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 			ckSvc.WithAIClient(aiClient)
 		}
 		cloudEvidence = vaktcomply.NewCloudEvidenceWriter(ckSvc.Repo())
-		hrEvidence = vaktcomply.NewHREvidenceWriter(pool)
-		hrAccessReview = vaktcomply.NewHRAccessReviewTrigger(pool)
 		ckSvc.ReseedBuiltinControls(ctx)
 		ckSvc.SeedBuiltinMeasures(ctx)
 		if err := ckSvc.SeedFrameworkMappings(ctx); err != nil {
@@ -653,107 +620,14 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		log.Info().Msg("vaktcomply routes registered")
 	}
 
-	if cfg.IsModuleEnabled("vaktvault") && cfg.SecretKey != "" {
-		soSvc := vaktvault.NewService(pool, vaultKey, asynqClient)
-		vaultHandler := vaktvault.NewHandler(soSvc)
-		vaktvault.Register(protected.Group("/vaktvault", auth.RequireModuleAccess(pool, "vaktvault", rdb)), vaultHandler)
-		// S127-3 (D6): public share-link consumer route. The external recipient has
-		// no session; the route is validated by the URL token (hash-stored) alone.
-		vaultShareRL := sharedmw.IPRateLimitRedis(rdb, "vaktvault_share", 30, time.Minute, false)
-		vaktvault.RegisterPublic(api.Group("/vaktvault"), vaultHandler, vaultShareRL)
-		log.Info().Msg("vaktvault routes registered (protected + public share)")
-	}
-
-	// R1-SA25-01: vaktaware subscribes to the HR entry event to auto-enrol new
-	// employees. Declared here and assigned inside the module guard below,
-	// because vakthr (further down) is what fires the event. Stays nil when
-	// vaktaware is disabled — WithEmployeeOnboardingTrigger then falls back to
-	// the noop.
-	var hrOnboardingTrigger vakthr.EmployeeOnboardingTrigger
-
-	if cfg.IsModuleEnabled("vaktaware") {
-		pgSvc := vaktaware.NewService(pool, vaktaware.SMTPConfig{
-			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
-			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
-		}, asynqOpt)
-		hrOnboardingTrigger = vaktaware.NewEnrollmentTrigger(pgSvc)
-		awareHandler := vaktaware.NewHandler(pgSvc)
-		vaktaware.Register(protected.Group("/vaktaware", auth.RequireModuleAccess(pool, "vaktaware", rdb)), awareHandler)
-		// S127-1 (D4/D5): public tracking + phish-report. Mounted on the PUBLIC api
-		// group — the phishing target's mail client/browser has no session, so these
-		// MUST NOT sit behind auth/CSRF/license. Redis-backed IP rate limit (10/min,
-		// replica-safe, fail-open) replaces the old per-replica in-memory limiter.
-		// Depends on VAKT_TRUSTED_PROXIES for a correct c.RealIP() behind Caddy.
-		awareTrackRL := sharedmw.IPRateLimitRedis(rdb, "vaktaware_track", 10, time.Minute, false)
-		vaktaware.RegisterPublic(api.Group("/vaktaware"), awareHandler, awareTrackRL)
-		log.Info().Msg("vaktaware routes registered (protected + public tracking)")
-	}
-
-	// External alerting & webhooks (cross-module) — created before modules that fire events.
-	var alertSvc *alerting.Service
+	// External alerting channels (Slack, Teams, mail, …).
 	if cfg.SecretKey != "" {
-		alertSvc = alerting.NewService(pool, alertKey, alerting.SMTPConfig{
-			Host: cfg.SMTPHost,
-			Port: cfg.SMTPPort,
-			User: cfg.SMTPUser,
-			Pass: cfg.SMTPPass,
-			From: cfg.SMTPFrom,
-		})
 		// S121-B5 (R6): mounted on `protected` for CSRF; channel writes Admin-gated inside Register.
 		alerting.Register(protected, pool, alertKey, alerting.SMTPConfig{
 			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
 			User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
 		})
 		log.Info().Msg("alerting routes registered")
-	}
-
-	if cfg.IsModuleEnabled("vaktprivacy") {
-		poSvc := vaktprivacy.NewService(pool, asynqOpt)
-		// Art. 17 erasure deletes hr_/sr_ PII through the owning modules' erasers,
-		// not by writing those prefixes from vaktprivacy (module isolation,
-		// ADR-0079). Order is IRRELEVANT here by design: the resolver below hands
-		// every cross-module identifier to the erasers up front, so reordering this
-		// line cannot cause a silent partial erasure (it used to).
-		// Wired unconditionally: the tables exist regardless of module toggles, and
-		// ExecuteErasure refuses to run unless an eraser for EVERY module holding
-		// subject PII is present.
-		// vaktcomply redacts (not deletes) the employee name/email hr_integration.go
-		// writes into ck_evidence — the evidence row stays under the retention
-		// obligation, only the PII fields are cleared (ADR-0089). Wired here, next to
-		// the hr_/sr_ erasers, and listed in requiredEraserModules so ExecuteErasure
-		// refuses a partial erasure that would leave PII in the compliance evidence.
-		poSvc.WithSubjectErasers(vaktaware.NewSubjectEraser(), vakthr.NewSubjectEraser(), vaktcomply.NewSubjectEraser())
-		poSvc.WithSubjectResolver(vakthr.NewSubjectResolver())
-		tiaSvc := vaktprivacy.NewTIAService(pool)
-		poHandler := vaktprivacy.NewHandler(poSvc).WithDB(pool).WithTIA(tiaSvc)
-		if alertSvc != nil {
-			// Adapter statt Methodenwert: Fire liefert seit ADR-0083 ein
-			// FireResult zurueck, AlertFunc ist void. Der Rueckgabewert wird
-			// hier bewusst verworfen — diese Naht setzt keine Sperre, also
-			// unterdrueckt ein Fehlschlag auch nichts. (h.alertFunc hat
-			// derzeit ueberhaupt keinen Aufrufer, siehe R1-W7A-N1.)
-			poHandler.WithAlerting(func(ctx context.Context, orgID, event string, payload map[string]any) {
-				_ = alertSvc.Fire(ctx, orgID, event, payload)
-			})
-		}
-		vaktprivacy.Register(protected.Group("/vaktprivacy", auth.RequireModuleAccess(pool, "vaktprivacy", rdb)), poHandler)
-		// DSR portal uses URL slug/token — exempt from Bearer auth; rate-limited to 30 req/min per IP
-		dsrPortalRateLimiter := sharedmw.IPRateLimitRedis(rdb, "dsr_portal", 30, time.Minute, false)
-		vaktprivacy.RegisterPublic(api.Group("/vaktprivacy"), poHandler, dsrPortalRateLimiter)
-		log.Info().Msg("vaktprivacy routes registered")
-	}
-
-	// HR module — onboarding and offboarding workflows (S78-6a: guarded by IsModuleEnabled)
-	var hrHandler *vakthr.Handler
-	if cfg.IsModuleEnabled("vakthr") {
-		hrSvc := vakthr.NewService(vakthr.NewRepository(pool)).
-			WithEvidenceWriter(hrEvidence).
-			WithAccessReviewTrigger(hrAccessReview).
-			WithEmployeeOnboardingTrigger(hrOnboardingTrigger). // R1-SA25-01: without this, no entry ever reaches vaktaware
-			WithSessionRevoker(authSvc)                         // S131-C1: offboarding must kill the access token (pw_version), not just refresh sessions
-		hrHandler = vakthr.NewHandler(hrSvc)
-		vakthr.Register(protected.Group("/vakthr", auth.RequireModuleAccess(pool, "vakthr", rdb)), hrHandler)
-		log.Info().Msg("vakthr routes registered")
 	}
 
 	// Account self-service: DSGVO Art. 17 (delete) and Art. 20 (export).
@@ -779,14 +653,6 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		cloudSvc := cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud", auth.RequireRole("Admin")), pool, cloudKey, cloudEvidence)
 		cloudSvc.WithScanFindings(cfg.IsModuleEnabled("vaktscan"))
 		log.Info().Msg("cloud integration routes registered")
-
-		// Inject Personio secret provider into the HR handler so the webhook can verify HMAC sigs.
-		// Only registered when vakthr is enabled (hrHandler is nil otherwise).
-		if hrHandler != nil {
-			hrHandler.WithPersonioSecrets(cloudSvc)
-			api.POST("/vakthr/webhooks/personio/:org_id", hrHandler.HandlePersonioWebhook)
-			log.Info().Msg("personio webhook route registered at /api/v1/vakthr/webhooks/personio/:org_id")
-		}
 	}
 
 	// Outgoing webhooks — org-scoped event delivery (cross-module).

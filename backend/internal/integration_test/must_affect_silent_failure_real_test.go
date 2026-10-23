@@ -14,11 +14,9 @@ import (
 	pgx "github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/require"
 
-	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/risk"
-	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
 )
 
 // TestMustAffect_SilentFailureHandlersReturnNotFound is the regression guard for the
@@ -41,8 +39,6 @@ func TestMustAffect_SilentFailureHandlersReturnNotFound(t *testing.T) {
 	org := uuid.NewString()
 	id := uuid.NewString()
 
-	awareRepo := vaktaware.NewRepository(pool)
-	privacyRepo := vaktprivacy.NewRepository(pool)
 	complyRepo := vaktcomply.NewRepository(pool)
 	policyRepo := policy.NewRepository(pool)
 	riskRepo := risk.NewRepository(pool)
@@ -51,21 +47,6 @@ func TestMustAffect_SilentFailureHandlersReturnNotFound(t *testing.T) {
 		name string
 		call func() error
 	}{
-		{"vaktaware UpdateEnrollmentRuleActive", func() error {
-			return awareRepo.UpdateEnrollmentRuleActive(ctx, org, id, true)
-		}},
-		{"vaktaware DeleteEnrollmentRule", func() error {
-			return awareRepo.DeleteEnrollmentRule(ctx, org, id)
-		}},
-		{"vaktprivacy AssignDSR", func() error {
-			return privacyRepo.AssignDSR(ctx, org, id, "")
-		}},
-		{"vaktprivacy UpdateRetentionInfo", func() error {
-			return privacyRepo.UpdateRetentionInfo(ctx, org, id, vaktprivacy.UpdateRetentionInfoInput{})
-		}},
-		{"vaktprivacy CompleteDeletionReminder", func() error {
-			return privacyRepo.CompleteDeletionReminder(ctx, org, id, "", vaktprivacy.CompleteDeletionReminderInput{})
-		}},
 		{"vaktcomply UpdateIncidentReportability (assess-reportability phantom)", func() error {
 			return complyRepo.UpdateIncidentReportability(ctx, org, id, "not_required", "", false, []byte("{}"))
 		}},

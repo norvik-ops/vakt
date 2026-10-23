@@ -19,59 +19,15 @@ func TestWithNotifyService_returnsReceiver(t *testing.T) {
 	assert.Equal(t, svc, returned, "WithNotifyService must return the same *Service")
 }
 
-func TestListModules_allEnabled(t *testing.T) {
-	svc := NewService(nil, "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr")
-	mods := svc.ListModules()
-	require.Len(t, mods, 6)
-	for _, m := range mods {
-		assert.True(t, m.Enabled, "module %q should be enabled", m.Name)
+// TestListModules_onlyCore: since the archive (docs/stories/module-archivieren.md)
+// the overview lists the ISMS alone, enabled, whatever VAKT_MODULES_ENABLED says.
+func TestListModules_onlyCore(t *testing.T) {
+	for _, csv := range []string{"", "vaktcomply", "vaktscan,vaktcomply,vaktvault,vaktaware,vaktprivacy,vakthr", " VAKTSCAN , vaktaware "} {
+		mods := NewService(nil, csv).ListModules()
+		require.Len(t, mods, 1, csv)
+		assert.Equal(t, "vaktcomply", mods[0].Name)
+		assert.True(t, mods[0].Enabled, csv)
 	}
-}
-
-func TestListModules_emptyKeepsCore(t *testing.T) {
-	svc := NewService(nil, "")
-	mods := svc.ListModules()
-	require.Len(t, mods, 6)
-	for _, m := range mods {
-		// vaktcomply is the core module and always on (config.CoreModule).
-		assert.Equal(t, m.Name == "vaktcomply", m.Enabled, "module %q", m.Name)
-	}
-}
-
-func TestListModules_partial(t *testing.T) {
-	svc := NewService(nil, "vaktscan,vaktprivacy")
-	mods := svc.ListModules()
-	byName := make(map[string]bool, len(mods))
-	for _, m := range mods {
-		byName[m.Name] = m.Enabled
-	}
-	assert.True(t, byName["vaktscan"])
-	assert.True(t, byName["vaktprivacy"])
-	assert.True(t, byName["vaktcomply"], "core module is always on")
-	assert.False(t, byName["vaktvault"])
-	assert.False(t, byName["vaktaware"])
-}
-
-func TestListModules_caseInsensitive(t *testing.T) {
-	svc := NewService(nil, "VAKTSCAN,VaktComply")
-	mods := svc.ListModules()
-	byName := make(map[string]bool, len(mods))
-	for _, m := range mods {
-		byName[m.Name] = m.Enabled
-	}
-	assert.True(t, byName["vaktscan"], "VAKTSCAN should match vaktscan")
-	assert.True(t, byName["vaktcomply"], "VaktComply should match vaktcomply")
-}
-
-func TestListModules_whitespaceStripped(t *testing.T) {
-	svc := NewService(nil, " vaktscan , vaktaware ")
-	mods := svc.ListModules()
-	byName := make(map[string]bool, len(mods))
-	for _, m := range mods {
-		byName[m.Name] = m.Enabled
-	}
-	assert.True(t, byName["vaktscan"])
-	assert.True(t, byName["vaktaware"])
 }
 
 func TestListNotificationChannels_nilNotifySvc(t *testing.T) {

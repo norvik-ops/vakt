@@ -115,8 +115,8 @@ api:
     type: ClusterIP
     port: 8080
   env:
-    # Vakt Comply (ISMS) is the core; add vaktscan, vaktvault, vaktaware, vaktprivacy,
-    # vakthr comma-separated if needed (see docs/wiki/configuration.md).
+    # Vakt Comply (ISMS) is the only module; the former optional modules are
+    # archived (see docs/wiki/configuration.md).
     VAKT_MODULES_ENABLED: "vaktcomply"
     VAKT_LOG_LEVEL: "info"
     # Per-pod pgx connection pool size (default 25). IMPORTANT (S90-6): the total

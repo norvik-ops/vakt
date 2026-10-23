@@ -29,34 +29,24 @@ Free-to-self-host alternative to Vanta, Drata, or DataGuard. Those vendors don't
 
 ## Modules
 
-> **Focus (2026-10):** A new installation runs **Vakt Comply** only — the ISMS, including the asset
-> inventory. The other modules below are not part of the tested launch scope and are switched off by
-> default (`VAKT_MODULES_ENABLED=vaktcomply` in `.env.example`). Add them to that variable if you
-> need them. Vakt Comply is the core and always on, even if it is missing from that variable. A disabled
-> module has no API routes, no background jobs and no UI; its data is not deleted (retention policies keep
-> applying), and the GDPR org export still contains it.
-> See [docs/wiki/configuration.md](docs/wiki/configuration.md#module-einzeln-deaktivieren).
+> **Vakt is an ISMS.** It ships one module, **Vakt Comply**, including the asset inventory. The former
+> add-on modules (Scan, Vault, Aware, Privacy, HR) were archived on 2026-10-18 to keep the product
+> focused and fully tested; their tables stay in the database. See
+> [docs/wiki/configuration.md](docs/wiki/configuration.md#archivierte-module).
 
 | Module | Description |
 |---|---|
-| 📊 **Vakt Comply** | Compliance hub: control tracking, gap analysis, risk register, incident register, policy templates (10 German templates), auditor portal, audit package export (ZIP), AI-generated reports, NIS2 registration wizard, Trust Center |
-| 🔍 **Vakt Scan** | Scanner orchestration: Trivy, Nuclei, OpenVAS. Finding deduplication, SLA tracking, daily BSI CERT-Bund advisory feed, automatic evidence on resolved findings |
-| 🔐 **Vakt Vault** | Secrets management: AES-256-GCM storage, Git repo scanning (gitleaks), on-demand rotation with due-date reminders, CI/CD integration |
-| 📧 **Vakt Aware** | Security awareness: internal phishing simulations, micro-trainings, SMTP campaigns, anonymised reporting (Betriebsrats-konform), automatic evidence on training completion |
-| 📋 **Vakt Privacy** | GDPR documentation hub: VVT (Art. 30), DPIA (Art. 35), AVV management (Art. 28), DSR workflows, breach notification records (Art. 33/34) |
-| 👥 **Vakt HR** | Employee lifecycle management: onboarding and offboarding checklists, checklist runs per employee, employee directory with status tracking. Audit-ready evidence that access provisioning and revocation steps were completed. |
+| 📊 **Vakt Comply** | Compliance hub: control tracking, gap analysis, asset inventory, risk register, incident register, policy templates (10 German templates), auditor portal, audit package export (ZIP), AI-generated reports, NIS2 registration wizard, Trust Center |
 
-**Shared features across all modules:**
+**Platform features:**
 
 - Webhook alerting — Slack, Teams, generic webhooks with HMAC signing
-- In-app notifications and weekly email digest (open risks and CAPAs always; findings only with Vakt Scan, DSR deadlines only with Vakt Privacy)
+- In-app notifications and weekly email digest (open risks and CAPAs)
 - Prometheus metrics endpoint
-- Global search across all enabled modules
+- Global search
 - Data retention policies
 - 2FA / TOTP
 - Session management
-- BSI CERT-Bund advisory feed (runs only when Vakt Scan is enabled)
-- Cross-module evidence automation (e.g. resolved findings and completed trainings flow into Vakt Comply)
 - Admin CLI
 - Public Trust Pages
 
@@ -72,14 +62,6 @@ Free-to-self-host alternative to Vanta, Drata, or DataGuard. Those vendors don't
 <tr>
 <td><img src="docs/wiki/assets/screenshots/vakt-01-dashboard.gif" alt="Dashboard" width="480"/></td>
 <td><img src="docs/wiki/assets/screenshots/vakt-02-comply.gif" alt="Vakt Comply" width="480"/></td>
-</tr>
-<tr>
-<td align="center"><b>Vakt Scan</b></td>
-<td align="center"><b>Vakt Aware</b></td>
-</tr>
-<tr>
-<td><img src="docs/wiki/assets/screenshots/vakt-03-scan.gif" alt="Vakt Scan" width="480"/></td>
-<td><img src="docs/wiki/assets/screenshots/vakt-04-aware.gif" alt="Vakt Aware" width="480"/></td>
 </tr>
 </table>
 
@@ -174,23 +156,6 @@ The AI advisor runs locally via Ollama on CPU — no GPU, no cloud API key requi
 | EU CRA | — | ✅ |
 
 
-### Modules
-
-| Module | Community | Pro |
-|---|:---:|:---:|
-| Vakt Comply (controls, risks, incidents, policies) | ✅ | ✅ |
-| Vakt HR (onboarding/offboarding checklists) | ✅ | ✅ |
-| Vakt Scan (asset registry, scans, findings, SLA) | ✅ Basis | ✅ |
-| Vakt Vault (secrets storage & sharing) | ✅ Basis | ✅ |
-| Vakt Aware (training assignment & tracking) | ✅ Basis | ✅ |
-| Vakt Privacy (VVT, AVV, DSR, breach records) | ✅ Basis | ✅ |
-
-> **Basis** — these modules are usable in Community with their core functionality. **Pro** unlocks the advanced features per module. Vakt Scan, Vault, Aware, Privacy and HR are optional modules, switched off by default — their features (Community or Pro) are only available after adding the module to `VAKT_MODULES_ENABLED`:
-> - **Vakt Scan** — SBOM scanning, EOL tracking, report generation & export, Wazuh import
-> - **Vakt Vault** — Git repo secret scanning, on-demand rotation, access reviews
-> - **Vakt Aware** — phishing campaigns, template library, target groups
-> - **Vakt Privacy** — DPIA workflows, deletion-reminder automation, PDF exports
-
 ### Features
 
 | Feature | Community | Pro |
@@ -244,7 +209,7 @@ The most important environment variables:
 | `VAKT_AI_BASE_URL` | — | Base URL of the AI API |
 | `VAKT_AI_API_KEY` | — | API key for the AI provider |
 | `VAKT_AI_MODEL` | — | Model name (e.g. `mistral-small-latest`) |
-| `VAKT_SMTP_HOST` | — | SMTP host for Vakt Aware campaigns |
+| `VAKT_SMTP_HOST` | — | SMTP host for notifications, invitations and policy acceptance mails |
 | `VAKT_SMTP_PORT` | — | SMTP port |
 | `VAKT_SMTP_USER` | — | SMTP username (required for port 587/465) |
 | `VAKT_SMTP_PASS` | — | SMTP password (required for port 587/465) |
@@ -305,11 +270,9 @@ graph TD
     Worker --> DB
 ```
 
-All services run in Docker containers. **No telemetry, no usage tracking, no analytics.** Vakt makes exactly three outbound calls of its own, all of them switchable, none of them carrying your compliance data — the complete list, with what each one sends, is in [SECURITY.md](SECURITY.md#data-protection):
+All services run in Docker containers. **No telemetry, no usage tracking, no analytics.** Vakt makes exactly one outbound call of its own, switchable, carrying none of your compliance data — the complete list, with what each one sends, is in [SECURITY.md](SECURITY.md#data-protection):
 
 - `api.norvikops.de` — fetches the next licence key when yours is running out. **Only in the last quarter of the key's life** — about **one call a year** on an annual plan, none in between. Sends the licence token, nothing else. `VAKT_LICENSE_AUTORENEW=false` to switch it off; we then mail you the key. **Community Edition never calls at all.**
-- `www.bsi.bund.de` — BSI CERT-Bund advisories. On by default **when Vakt Scan is enabled** (the shipped ISMS-only configuration never calls it), `VAKT_BSI_FEED_ENABLED=false` to stop it. Sends nothing.
-- `endoflife.date` — is a component in your SBOM out of support? Part of Vakt Scan, so only when Scan is enabled; on by default there, `VAKT_EOL_CHECK_ENABLED=false` to stop it. Sends the names of components you run.
 
 Everything else that leaves your network is something you configured yourself: your cloud, your GitHub, your LLM. Turn all the switches off and Vakt makes no outbound connection at all.
 

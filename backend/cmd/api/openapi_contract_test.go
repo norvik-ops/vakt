@@ -57,16 +57,12 @@ var contractCases = []contractCase{
 	// Each spec entry now documents '401: Unauthorized' so the validator
 	// can match the response. Expanding these to authenticated cases requires
 	// a seeded test DB (track in ADR-0017 follow-up).
-	{name: "vaktscan_findings", method: http.MethodGet,
-		realPath: "/api/v1/vaktscan/findings", specPath: "/api/v1/vaktscan/findings"},
+	// Since 2026-10-18 vaktcomply is the only module (the other cases left with
+	// the archived modules); the asset inventory has its own case.
 	{name: "vaktcomply_frameworks", method: http.MethodGet,
 		realPath: "/api/v1/vaktcomply/frameworks", specPath: "/api/v1/vaktcomply/frameworks"},
-	{name: "vaktvault_projects", method: http.MethodGet,
-		realPath: "/api/v1/vaktvault/projects", specPath: "/api/v1/vaktvault/projects"},
-	{name: "vaktprivacy_vvt", method: http.MethodGet,
-		realPath: "/api/v1/vaktprivacy/vvt", specPath: "/api/v1/vaktprivacy/vvt"},
-	{name: "vakthr_contractors", method: http.MethodGet,
-		realPath: "/api/v1/vakthr/contractors", specPath: "/api/v1/vakthr/contractors"},
+	{name: "vaktcomply_assets", method: http.MethodGet,
+		realPath: "/api/v1/vaktcomply/assets", specPath: "/api/v1/vaktcomply/assets"},
 	// GET /system/update — no auth required for read; returns 200 with UpdateInfo schema.
 	{name: "system_update_get", method: http.MethodGet,
 		realPath: "/api/v1/system/update", specPath: "/api/v1/system/update"},
@@ -93,12 +89,10 @@ var contractCases = []contractCase{
 	{name: "admin_backup_dest_get", method: http.MethodGet,
 		realPath: "/api/v1/admin/org/backup-dest", specPath: "/api/v1/admin/org/backup-dest"},
 
-	// S128-1 (D14/D15): four routes that were live, frontend-consumed, and absent
+	// S128-1 (D14/D15): routes that were live, frontend-consumed, and absent
 	// from the spec entirely — a `grep` for them returned nothing. The frontend
 	// generates its types from this document, so an endpoint missing here is an
 	// endpoint the client is typing by hand and nothing is checking.
-	{name: "vaktprivacy_dsr_portal_settings_get", method: http.MethodGet,
-		realPath: "/api/v1/vaktprivacy/dsr-portal-settings", specPath: "/api/v1/vaktprivacy/dsr-portal-settings"},
 	{name: "vaktcomply_policy_templates", method: http.MethodGet,
 		realPath: "/api/v1/vaktcomply/policy-templates", specPath: "/api/v1/vaktcomply/policy-templates"},
 	{name: "vaktcomply_db_templates", method: http.MethodGet,

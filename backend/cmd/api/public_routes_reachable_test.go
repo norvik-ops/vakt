@@ -73,23 +73,9 @@ type publicRoute struct {
 // Setup-/NIS2-Wizard-Routen sind ebenfalls unauthentifiziert, aber ihre
 // Erreichbarkeit ist durch eigene Tests (health_test.go, openapi_contract_test.go)
 // abgedeckt. Diese Liste fuehrt die Routen, deren Aufrufer PER DEFINITION kein
-// Konto in dieser Instanz hat: Phishing-Ziel, Share-Empfaenger, Lieferant,
-// Auditor, betroffene Person, Fremdsystem.
+// Konto in dieser Instanz hat: Lieferant, Auditor, Mitarbeiter mit
+// Richtlinien-Link.
 var publicRoutes = []publicRoute{
-	// ── Vakt Aware: der Bug von S127 selbst ──────────────────────────────────
-	{http.MethodGet, "/api/v1/vaktaware/track/:token", "/api/v1/vaktaware/track/sometoken",
-		"Open-Pixel — laedt der Mail-Client des Phishing-Ziels, niemals ein eingeloggter Nutzer"},
-	{http.MethodGet, "/api/v1/vaktaware/t/:token", "/api/v1/vaktaware/t/sometoken",
-		"Klick-Link — oeffnet der Browser des Ziels"},
-	{http.MethodPost, "/api/v1/vaktaware/t/:token/submit", "/api/v1/vaktaware/t/sometoken/submit",
-		"Formular-Abgabe der Landing-Page; kein Session-Cookie, also auch kein CSRF-Token"},
-	{http.MethodPost, "/api/v1/vaktaware/phish-report", "/api/v1/vaktaware/phish-report",
-		"Melde-Button/Weiterleitung aus dem Mail-Client"},
-
-	// ── Vakt Vault: Share-Link ───────────────────────────────────────────────
-	{http.MethodGet, "/api/v1/vaktvault/share/:token", "/api/v1/vaktvault/share/sometoken",
-		"externer Empfaenger eines Secret-Share-Links, hat kein Konto"},
-
 	// ── Trust Center: oeffentliche Seite ─────────────────────────────────────
 	{http.MethodGet, "/api/v1/trust/:slug", "/api/v1/trust/some-org-slug",
 		"oeffentliche Trust-Center-Seite; muss unter /api/v1 liegen, weil Caddy nur /api/* proxyt (S131-D4)"},
@@ -112,21 +98,9 @@ var publicRoutes = []publicRoute{
 	{http.MethodPost, "/api/v1/policy-accept/:token", "/api/v1/policy-accept/sometoken",
 		"dieselbe Bestaetigung als Schreibvorgang — darf deshalb auch kein CSRF verlangen"},
 
-	// ── Vakt Privacy: DSR-Portal fuer betroffene Personen ────────────────────
-	{http.MethodGet, "/api/v1/vaktprivacy/dsr-portal/status/:token", "/api/v1/vaktprivacy/dsr-portal/status/sometoken",
-		"betroffene Person fragt den Stand ihres Auskunftsersuchens ab"},
-	{http.MethodGet, "/api/v1/vaktprivacy/dsr-portal/:slug/info", "/api/v1/vaktprivacy/dsr-portal/some-org/info",
-		"oeffentliche Portalseite der Organisation"},
-	{http.MethodPost, "/api/v1/vaktprivacy/dsr-portal/:slug/submit", "/api/v1/vaktprivacy/dsr-portal/some-org/submit",
-		"betroffene Person stellt ein Ersuchen nach Art. 15 ff."},
-
 	// ── Auditor-Einladung ────────────────────────────────────────────────────
 	{http.MethodPost, "/api/v1/auditor/accept/:token", "/api/v1/auditor/accept/sometoken",
 		"externer Auditor loest seine Einladung ein — der Vorgang, der ihm ueberhaupt erst eine Session gibt"},
-
-	// ── Vakt HR: eingehender Personio-Webhook ────────────────────────────────
-	{http.MethodPost, "/api/v1/vakthr/webhooks/personio/:org_id", "/api/v1/vakthr/webhooks/personio/00000000-0000-0000-0000-000000000000",
-		"Fremdsystem authentifiziert per HMAC-Signatur, nicht per Paseto — hinter `protected` waere es tot"},
 }
 
 // protectedProbe ist die Gegenprobe zu Zusicherung 3. Ohne sie waere ein
@@ -165,16 +139,15 @@ var publicParamSeg = regexp.MustCompile(`:[a-zA-Z_]+`)
 
 // probeIP gibt jeder Probe eine EIGENE Client-IP (TEST-NET-3, RFC 5737).
 //
-// Die oeffentlichen Routen sind IP-ratenbegrenzt (vaktaware_track: 10/min/IP,
-// vaktvault_share und portal: 30/min/IP). Kaemen alle Proben von derselben
+// Die oeffentlichen Routen sind IP-ratenbegrenzt (Portale: 30/min/IP). Kaemen alle Proben von derselben
 // Adresse — httptest.NewRequest setzt fest 192.0.2.1 —, teilten sie sich einen
 // Eimer, und der Test waere ab einer bestimmten Listenlaenge oder beim zweiten
 // Lauf innerhalb einer Minute rot mit 429. Das waere kein Fund, sondern ein
 // Defekt am Gate: Ein Gate, das bei gesundem Repo rot wird, wird abgeschaltet
 // statt gefixt.
 //
-// Getrennte IPs sind ausserdem die ehrlichere Nachbildung: Jedes Phishing-Ziel,
-// jeder Share-Empfaenger sitzt hinter einer eigenen Adresse.
+// Getrennte IPs sind ausserdem die ehrlichere Nachbildung: Jeder Lieferant,
+// jeder Auditor sitzt hinter einer eigenen Adresse.
 func probeIP(n int) string {
 	return fmt.Sprintf("203.0.113.%d:41000", n%250+1)
 }
@@ -256,7 +229,11 @@ func TestPublicRoutesReachableWithoutToken(t *testing.T) {
 	require.Equal(t, len(publicRoutes), checked,
 		"nicht jede kuratierte oeffentliche Route wurde geprueft (checked=%d von %d) — fehlende: %v",
 		checked, len(publicRoutes), missingNames)
-	require.GreaterOrEqual(t, len(publicRoutes), 19,
+	// 19 → 10 (2026-10-18): die oeffentlichen Routen von Aware (Pixel, Klick,
+	// Formular, Phish-Report), Vault (Share-Link), Privacy (DSR-Portal ×3) und HR
+	// (Personio-Webhook) gingen mit den archivierten Modulen
+	// (docs/stories/module-archivieren.md) — bewusst, nicht als Nebenwirkung.
+	require.GreaterOrEqual(t, len(publicRoutes), 10,
 		"die kuratierte Liste ist geschrumpft — wer eine oeffentliche Route entfernt, entfernt auch ihren "+
 			"Nachweis; das ist eine bewusste Entscheidung und keine Nebenwirkung")
 
@@ -294,25 +271,4 @@ func TestPublicRoutesReachableWithoutToken(t *testing.T) {
 	require.Contains(t, rec.Body.String(), csrfRejectMarker,
 		"die Ablehnung des CSRF-Guards traegt nicht mehr den Code-Praefix %q (Body: %s) — die Marker-Pruefung "+
 			"oben greift ins Leere. Marker anpassen.", csrfRejectMarker, strings.TrimSpace(rec.Body.String()))
-}
-
-// TestPublicOpenPixelIsNoEnumerationOracle haelt die zweite Haelfte von S127 §3c
-// fest: Der Open-Pixel darf ein gueltiges nicht von einem ungueltigen Token
-// unterscheiden. Antwortete er nur bei bekanntem Token mit 200, koennte ein
-// Fremder Kampagnen-Token durchprobieren.
-func TestPublicOpenPixelIsNoEnumerationOracle(t *testing.T) {
-	if os.Getenv("VAKT_DB_URL") == "" || os.Getenv("VAKT_SECRET_KEY") == "" || os.Getenv("VAKT_REDIS_URL") == "" {
-		t.Skip("needs VAKT_DB_URL + VAKT_REDIS_URL + VAKT_SECRET_KEY (CI sets all three)")
-	}
-	e, _ := setupEcho(context.Background(), testConfig())
-
-	for i, token := range []string{"definitely-invalid", "00000000-0000-0000-0000-000000000000"} {
-		req := httptest.NewRequest(http.MethodGet, "/api/v1/vaktaware/track/"+token, nil)
-		req.RemoteAddr = probeIP(200 + i)
-		rec := httptest.NewRecorder()
-		e.ServeHTTP(rec, req)
-		assert.Equal(t, http.StatusOK, rec.Code,
-			"der Open-Pixel muss auch fuer ein unbekanntes Token 200 liefern (Token %q, Status %d) — "+
-				"jede Abweichung macht ihn zum Aufzaehlungs-Orakel", token, rec.Code)
-	}
 }

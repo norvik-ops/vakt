@@ -118,9 +118,8 @@ NEWTASK_ARG_RE = re.compile(r"asynq\.NewTask\(\s*([^,)]+)")
 # fails the gate — an exception that outlives its reason is a hole nobody can see
 # any more.
 INDIRECT_PRODUCERS = {
-    "TaskScanTrivy": ("taskTypeForScanner", "backend/internal/modules/vaktscan/service.go"),
-    "TaskScanNuclei": ("taskTypeForScanner", "backend/internal/modules/vaktscan/service.go"),
-    "TaskScanOpenVAS": ("taskTypeForScanner", "backend/internal/modules/vaktscan/service.go"),
+    # Empty since 2026-10-18: the three scanner tasks (taskTypeForScanner) left
+    # with the archived Scan module (docs/stories/module-archivieren.md).
 }
 
 

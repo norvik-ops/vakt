@@ -8,9 +8,9 @@
 
 Vakt gibt es in zwei frei bestellbaren Editionen — Community und Pro:
 
-**Community Edition (CE)** — kostenlos, für immer. Das komplette ISMS in der Basis (Vakt Comply mit Asset-Inventar, Risiken, Richtlinien, Audit-Export, NIS2 & ISO 27001, KI-Berater lokal via Ollama). Die weiteren Module (Scan, Vault, Aware, Privacy, HR) gehören nicht zum geprüften Launch-Umfang und lassen sich über `VAKT_MODULES_ENABLED` dazuschalten. Kein Ablaufdatum, keine Kreditkarte, keine Registrierung. Einzige Voraussetzung: eigener Server.
+**Community Edition (CE)** — kostenlos, für immer. Das komplette ISMS in der Basis (Vakt Comply mit Asset-Inventar, Risiken, Richtlinien, Audit-Export, NIS2 & ISO 27001, KI-Berater lokal via Ollama). Die früheren Zusatzmodule (Scan, Vault, Aware, Privacy, HR) sind seit 2026-10-18 archiviert. Kein Ablaufdatum, keine Kreditkarte, keine Registrierung. Einzige Voraussetzung: eigener Server.
 
-**Pro** — 299 €/Monat oder 2.990 €/Jahr, jeweils netto\*. Schaltet spezialisierte Frameworks und erweiterte Workflows frei: BSI IT-Grundschutz (Modellierung, Grundschutz-Check, 200-3-Risiken, Cockpit, Berichte), EU AI Act, CRA, DSGVO-TOM, CIS Controls v8, KRITIS-DachG, BSI C5, ISO 27017/27018, Audit-PDF-Export, NIS2-Meldungsassistent, Lieferantenportal, erweiterte Workflows der optionalen Module Scan, Aware, Vault und Privacy (Reports & Importe, Phishing-Kampagnen, Secret-Rotation & Access Reviews, DPIA & TIA — nutzbar nur, wenn das jeweilige Modul per `VAKT_MODULES_ENABLED` eingeschaltet ist; ab Werk sind diese Module aus), SSO (OIDC/SAML), SCIM-Provisionierung, SIEM-Export, granulare Berechtigungen und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
+**Pro** — 299 €/Monat oder 2.990 €/Jahr, jeweils netto\*. Schaltet spezialisierte Frameworks und erweiterte Workflows frei: BSI IT-Grundschutz (Modellierung, Grundschutz-Check, 200-3-Risiken, Cockpit, Berichte), EU AI Act, CRA, DSGVO-TOM, CIS Controls v8, KRITIS-DachG, BSI C5, ISO 27017/27018, Audit-PDF-Export, NIS2-Meldungsassistent, Lieferantenportal, SSO (OIDC/SAML), SCIM-Provisionierung, SIEM-Export, granulare Berechtigungen und API-Zugang. Nach dem Kauf erhältst du automatisch einen Lizenzschlüssel per E-Mail.
 
 
 Nicht erlaubt: Vakt als gehosteten oder verwalteten Service an Dritte verkaufen (mehr dazu unter [Was ist ELv2?](#was-ist-elv2)).
@@ -132,16 +132,11 @@ Verwaltung: **Einstellungen → Benutzerverwaltung → Shield-Icon** neben dem j
 
 ---
 
-### Kann ich einzelne Module deaktivieren?
+### Gibt es noch Vakt Scan, Vault, Aware, Privacy oder HR?
 
-Ja, alle außer Vakt Comply. Vakt Comply ist der Kern und immer aktiv. Die optionalen Module schaltest du über die Umgebungsvariable `VAKT_MODULES_ENABLED` ein; was nicht in der Liste steht, ist aus:
-
-```env
-# Vakt Comply (immer aktiv) plus Vakt Vault
-VAKT_MODULES_ENABLED=vaktcomply,vaktvault
-```
-
-Abgeschaltete Module haben keine API-Routen und keine Hintergrund-Jobs und erscheinen nicht in der Oberfläche. Ihre Daten werden nicht gelöscht. Details: [Module einzeln deaktivieren](configuration.md#module-einzeln-deaktivieren).
+Nein. Vakt ist seit 2026-10-18 ein reines ISMS: Vakt Comply mit Asset-Inventar. Die früheren
+Zusatzmodule sind archiviert. Ihre Daten bleiben in der Datenbank, es gibt aber keine Oberfläche
+mehr dafür. Details: [Archivierte Module](configuration.md#archivierte-module).
 
 ---
 

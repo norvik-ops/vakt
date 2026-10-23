@@ -209,7 +209,7 @@ green run over an unnamed subset is a false signal. So, explicitly:
 #     check_outbound_security.py       check_image_tags.py
 #     check_image_tags_test.py         check_user_role_insert.py
 #     check_response_shape.py          check_ci_steps.py  (this file)
-#     check_worker_wiring.py           check_evidence_flow.py
+#     check_worker_wiring.py
 #     check_backup_hardening.py        check_backup_hardening_test.py
 #     restore_test.sh                  backup_cron_test.sh
 #     infra/server/scripts/vakt-deploy_test.sh
@@ -337,7 +337,6 @@ REQUIRED_STEPS = {
         "Vulnerability scan (govulncheck)",
         "Route reconciliation (FE apiFetch ↔ BE routes)",
         "Worker-Wiring-Gate (G7 — Asynq Producer/Consumer)",
-        "Evidence-Flow-Gate (G12 — Cross-Modul-Evidence erreichbar)",
         "Image-Referenz-Gate Selbsttest",
         "restore.sh hardening (S89-1 — Key-Leak + Tamper)",
         "backup-cron.sh retention + Failure-Hook (S89-4)",
@@ -362,7 +361,6 @@ REQUIRED_STEPS = {
         "Gate — rotate_key_real_test must not be skipped (SEC-H08 / S99-4)",
         "Gate — jeder Integrations-Test liegt im Selektor",
         "Integration tests (testcontainers)",
-        "Coverage floor — vaktaware / vaktscan (S126)",
     ],
     (".github/workflows/ci.yml", "kernwege"): [
         "Playwright-Browser (Chromium)",
@@ -413,6 +411,30 @@ RENAMED_STEPS: dict[tuple[str, str, str], tuple[str, str]] = {
         "R1-INT-02: das Gate deckt seit 2026-07-30 auch testcontainers-Images und "
         "CI-Service-Container ab; der alte Name log ueber seinen Umfang. Gleicher "
         "Befehl (scripts/check_image_tags.py).",
+    ),
+}
+
+# Bewusst stillgelegte Schritte (P9: ein Gate ohne Gegenstand wird entfernt).
+# D kann eine gewollte Stilllegung nicht von einem versehentlichen Verlust
+# unterscheiden; dieser Eintrag erklaert sie. Gegenprobe: die Gate-Datei, die der
+# Schritt fuhr, muss aus dem Repo verschwunden sein. Ein Schritt, dessen Skript
+# noch existiert, ist nicht stillgelegt, sondern nur nicht mehr aufgerufen — und
+# bleibt ein Befund.
+#
+#   (workflow, job, Name) -> (entfernte Gate-Datei, Begruendung)
+RETIRED_STEPS: dict[tuple[str, str, str], tuple[str, str]] = {
+    (".github/workflows/ci.yml", "integration", "Coverage floor — vaktaware / vaktscan (S126)"): (
+        "backend/internal/modules/vaktscan",
+        "2026-10-18, module-archivieren: der Floor mass nur die Abdeckung der Pakete "
+        "vaktaware und vaktscan, die mit den archivierten Modulen entfernt sind. "
+        "Nachweis: das gemessene Paketverzeichnis existiert nicht mehr.",
+    ),
+    (".github/workflows/ci.yml", "backend", "Evidence-Flow-Gate (G12 — Cross-Modul-Evidence erreichbar)"): (
+        "scripts/check_evidence_flow.py",
+        "2026-10-18, module-archivieren: G12 pruefte nur den Cross-Modul-Evidence-Weg "
+        "(crossevidence.NewRecordEvidenceTask) der archivierten Module Scan/Vault/Aware/"
+        "Privacy/HR. Paket und Aufgabentyp sind entfernt; das Gate haette keinen "
+        "Gegenstand mehr (docs/dev/dead-worker-chains.md).",
     ),
 }
 
@@ -920,6 +942,16 @@ def main() -> int:
                 for name in was:
                     compared += 1
                     if name in now:
+                        continue
+                    retired = RETIRED_STEPS.get((wf, jid, name))
+                    if retired is not None:
+                        gate_file, _why = retired
+                        if (ROOT / gate_file).exists():
+                            errors.append(
+                                f"{wf} job `{jid}`: step {name!r} is declared in "
+                                f"RETIRED_STEPS, but {gate_file} still exists — "
+                                "nicht stillgelegt, nur nicht mehr aufgerufen."
+                            )
                         continue
                     ren = RENAMED_STEPS.get((wf, jid, name))
                     if ren is None:

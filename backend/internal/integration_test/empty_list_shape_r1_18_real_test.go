@@ -9,13 +9,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
-	"github.com/matharnica/vakt/internal/modules/vakthr"
-	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
 )
 
 // TestR1_18_EmptyListsSerializeAsArrayNotNull is the regression guard for
@@ -34,19 +31,14 @@ import (
 // non-nil empty slice. Reverting any source to `var out []T` makes that
 // assertion red (a nil slice on zero rows).
 //
-// The variant sweep (I4) also normalised three same-idiom siblings whose leak was
-// masked live — adequacy-decisions (seeded global table), TIAs-for-transfer
-// (nested under a transfer id) and mover-templates (seed-on-first-access). They
-// are pinned here too; adequacy is force-emptied first so its assertion is a real
-// regression guard rather than passing on seed rows.
+// The mover-event, transfer and TIA/adequacy cases left with the archived HR and
+// Privacy modules (docs/stories/module-archivieren.md); the Comply sources stay.
 func TestR1_18_EmptyListsSerializeAsArrayNotNull(t *testing.T) {
 	pool, orgID, cleanup := bootPostgresWithOrg(t)
 	defer cleanup()
 	ctx := context.Background()
 
 	ckRepo := vaktcomply.NewRepository(pool)
-	hrRepo := vakthr.NewRepository(pool)
-	tia := vaktprivacy.NewTIAService(pool)
 
 	// ── Confirmed live (SA-18) ────────────────────────────────────────────────
 
@@ -59,35 +51,4 @@ func TestR1_18_EmptyListsSerializeAsArrayNotNull(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, parties, "ListInterestedParties must return [] not nil on the empty state")
 	assert.Len(t, parties, 0)
-
-	movers, err := hrRepo.ListMoverEvents(ctx, orgID)
-	require.NoError(t, err)
-	assert.NotNil(t, movers, "ListMoverEvents must return [] not nil on the empty state")
-	assert.Len(t, movers, 0)
-
-	transfers, err := tia.ListTransfers(ctx, orgID)
-	require.NoError(t, err)
-	assert.NotNil(t, transfers, "ListTransfers must return [] not nil on the empty state")
-	assert.Len(t, transfers, 0)
-
-	// ── Same-class variants (I4) ──────────────────────────────────────────────
-
-	templates, err := hrRepo.ListMoverTemplates(ctx, orgID)
-	require.NoError(t, err)
-	assert.NotNil(t, templates, "ListMoverTemplates must return [] not nil on the empty state")
-	assert.Len(t, templates, 0)
-
-	tias, err := tia.ListTIAsForTransfer(ctx, orgID, uuid.NewString())
-	require.NoError(t, err)
-	assert.NotNil(t, tias, "ListTIAsForTransfer must return [] not nil on the empty state")
-	assert.Len(t, tias, 0)
-
-	// Adequacy decisions live in a seeded global table (migration 189), so force
-	// the empty state to make this a genuine red-on-revert guard.
-	_, err = pool.Exec(ctx, `DELETE FROM po_adequacy_decisions`)
-	require.NoError(t, err)
-	decisions, err := tia.ListAdequacyDecisions(ctx)
-	require.NoError(t, err)
-	assert.NotNil(t, decisions, "ListAdequacyDecisions must return [] not nil on the empty state")
-	assert.Len(t, decisions, 0)
 }

@@ -17,11 +17,9 @@ import (
 	"github.com/matharnica/vakt/internal/license"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/assets"
-	"github.com/matharnica/vakt/internal/modules/vaktscan"
-	"github.com/matharnica/vakt/internal/modules/vaktvault"
 )
 
-// S121-E2 (O3): the three business modules vaktscan/vaktcomply/vaktvault had no
+// S121-E2 (O3): the business modules (today vaktcomply and its asset inventory) had no
 // rbac_test.go (unlike vaktprivacy/vakthr/vaktaware). These tables assert that a
 // Viewer is rejected with 403 on representative write routes and an Admin is not,
 // so removing a RequireRole from any of them turns CI red.
@@ -79,21 +77,6 @@ func runModuleRBAC(t *testing.T, prefix string, register func(*echo.Group), rout
 	}
 }
 
-func TestVaktscanModuleRBAC(t *testing.T) {
-	routes := []writeRoute{
-		{http.MethodPost, "/vaktscan/findings/bulk"},
-		{http.MethodPatch, "/vaktscan/findings/abc"},
-		{http.MethodDelete, "/vaktscan/findings/abc"},
-		{http.MethodPost, "/vaktscan/suppressions"},
-		{http.MethodPut, "/vaktscan/sla-config"},
-		{http.MethodPost, "/vaktscan/certificates"},
-		{http.MethodPost, "/vaktscan/findings/import"}, // Pro (SecPulse)
-	}
-	runModuleRBAC(t, "/vaktscan", func(g *echo.Group) {
-		vaktscan.Register(g, &vaktscan.Handler{})
-	}, routes)
-}
-
 // TestAssetInventoryRBAC: the asset inventory moved from vaktscan to
 // vaktcomply/assets (module-archivieren S1) and is mounted twice — canonical
 // under /vaktcomply and as an alias under /vaktscan. Both mounts must reject a
@@ -114,24 +97,6 @@ func TestAssetInventoryRBAC(t *testing.T) {
 			}, routes)
 		})
 	}
-}
-
-func TestVaktvaultModuleRBAC(t *testing.T) {
-	routes := []writeRoute{
-		{http.MethodPost, "/vaktvault/projects"},
-		{http.MethodDelete, "/vaktvault/projects/abc"},
-		{http.MethodPost, "/vaktvault/projects/abc/envs"},
-		{http.MethodPut, "/vaktvault/projects/abc/envs/e1/secrets/k1"},
-		{http.MethodDelete, "/vaktvault/projects/abc/envs/e1/secrets/k1"},
-		{http.MethodPost, "/vaktvault/projects/abc/import"},
-		{http.MethodPost, "/vaktvault/tokens"},                                 // Pro (API)
-		{http.MethodPost, "/vaktvault/projects/abc/envs/e1/secrets/k1/rotate"}, // Pro (SecVault)
-		{http.MethodPost, "/vaktvault/git-scans"},                              // Pro
-		{http.MethodPost, "/vaktvault/access-reviews"},                         // Pro
-	}
-	runModuleRBAC(t, "/vaktvault", func(g *echo.Group) {
-		vaktvault.Register(g, &vaktvault.Handler{})
-	}, routes)
 }
 
 func TestVaktcomplyModuleRBAC(t *testing.T) {

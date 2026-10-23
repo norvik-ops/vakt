@@ -1,16 +1,7 @@
 import { Link, useLocation, Outlet } from 'react-router-dom'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import {
-  Bug, FileCheck, Key, Fish, Eye, LayoutDashboard, Sun, Moon, Monitor, Settings,
-  ShieldCheck, ShieldAlert, Siren, BookOpen, ClipboardList,
-  FileText, FileSearch, Handshake, AlertTriangle, Users,
-  Server, ScanSearch, BarChart2, Clock, Search,
-  Shield, FlaskConical,
-  Building2, Bot, PackageX, Mail, GraduationCap, Target, Flag, LayoutTemplate, UserCog, UserCheck,
-  Plug, ClipboardCheck, CalendarClock, Inbox, Menu, X, ArrowUpCircle, ScrollText, CalendarDays,
-  ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronDown,
-  LayoutGrid, FileBarChart, Globe, ActivitySquare, Phone, DatabaseBackup,
-  Layers,
+  FileCheck, Key, LayoutDashboard, Sun, Moon, Monitor, Settings, ShieldCheck, ShieldAlert, Siren, BookOpen, ClipboardList, Server, Search, Shield, FlaskConical, Building2, Bot, UserCheck, Plug, ClipboardCheck, CalendarClock, Inbox, Menu, X, ArrowUpCircle, ScrollText, CalendarDays, ChevronLeft, ChevronRight, Cpu, Landmark, ListChecks, Cloud, Banknote, ChevronDown, LayoutGrid, FileBarChart, ActivitySquare, Phone, DatabaseBackup, Layers,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ProBadge } from './ProBadge'
@@ -67,18 +58,6 @@ interface NavItem {
 
 const MODULES_NAV: NavItem[] = [
   { path: '/',            label: 'nav.dashboard',  icon: LayoutDashboard, exact: true },
-  {
-    path: '/vaktscan',
-    label: 'nav.scan.root',
-    icon: Bug,
-    children: [
-      { path: '/vaktscan/findings',     label: 'nav.scan.findings',     icon: ScanSearch },
-      { path: '/vaktscan/sla',          label: 'nav.scan.sla',          icon: Clock },
-      { path: '/vaktscan/reports',      label: 'nav.scan.reports',      icon: BarChart2, pro: true },
-      { path: '/vaktscan/eol',          label: 'nav.scan.eol',          icon: PackageX, pro: true },
-      { path: '/vaktscan/certificates', label: 'nav.scan.certificates', icon: ShieldCheck },
-    ],
-  },
   {
     path: '/vaktcomply',
     label: 'nav.comply.root',
@@ -141,55 +120,6 @@ const MODULES_NAV: NavItem[] = [
           { path: '/vaktcomply/backup',                   label: 'nav.comply.backup',             icon: DatabaseBackup },
         ],
       },
-    ],
-  },
-  {
-    path: '/vaktvault',
-    label: 'nav.vault.root',
-    icon: Key,
-    children: [
-      { path: '/vaktvault/projects',       label: 'nav.vault.projects',      icon: Key },
-      { path: '/vaktvault/tokens',         label: 'nav.vault.tokens',        icon: Shield },
-      { path: '/vaktvault/git-scans',      label: 'nav.vault.gitScans',      icon: ScanSearch, pro: true },
-      { path: '/vaktvault/access-reviews', label: 'nav.vault.accessReviews', icon: UserCheck, pro: true },
-    ],
-  },
-  {
-    path: '/vaktaware',
-    label: 'nav.aware.root',
-    icon: Fish,
-    children: [
-      { path: '/vaktaware/campaigns',     label: 'nav.aware.campaigns',    icon: Mail, pro: true },
-      { path: '/vaktaware/templates',     label: 'nav.aware.templates',    icon: LayoutTemplate, pro: true },
-      { path: '/vaktaware/target-groups', label: 'nav.aware.targetGroups', icon: Target, pro: true },
-      { path: '/vaktaware/training',      label: 'nav.aware.training',     icon: GraduationCap },
-      { path: '/vaktaware/phish-reports', label: 'nav.aware.phishReports', icon: Flag },
-    ],
-  },
-  {
-    path: '/vaktprivacy',
-    label: 'nav.privacy.root',
-    icon: Eye,
-    children: [
-      { path: '/vaktprivacy/vvt',               label: 'nav.privacy.vvt',            icon: FileText },
-      { path: '/vaktprivacy/dpia',              label: 'nav.privacy.dpia',           icon: FileSearch, pro: true },
-      { path: '/vaktprivacy/avv',               label: 'nav.privacy.avv',            icon: Handshake },
-      { path: '/vaktprivacy/breach',            label: 'nav.privacy.breach',         icon: AlertTriangle },
-      { path: '/vaktprivacy/dsr',               label: 'nav.privacy.dsr',            icon: Users },
-      { path: '/vaktprivacy/transfers',         label: 'nav.privacy.tia',            icon: Globe, pro: true },
-      { path: '/vaktprivacy/deletion-reminders', label: 'nav.privacy.deletionReminders', icon: PackageX, pro: true },
-      { path: '/vaktprivacy/privacy-design',    label: 'nav.privacy.privacyDesign',  icon: ClipboardCheck, pro: true },
-    ],
-  },
-  {
-    path: '/vakthr',
-    label: 'nav.hr.root',
-    icon: UserCog,
-    beta: true,
-    children: [
-      { path: '/vakthr/employees',   label: 'nav.hr.employees',   icon: Users },
-      { path: '/vakthr/checklists',  label: 'nav.hr.checklists',  icon: ClipboardList },
-      { path: '/vakthr/contractors', label: 'nav.hr.contractors', icon: Building2 },
     ],
   },
 ]
@@ -792,8 +722,6 @@ export default function Layout() {
         {[
           { label: 'Home',    path: '/',           icon: LayoutDashboard, exact: true },
           { label: 'Comply',  path: '/vaktcomply',  icon: ShieldCheck },
-          { label: 'Scan',    path: '/vaktscan',   icon: Bug },
-          { label: 'Privacy', path: '/vaktprivacy', icon: Eye },
         ].filter(({ path }) => isPathVisible(path)).map(({ label, path, icon: Icon, exact }) => {
           const active = isActive(path, exact)
           return (

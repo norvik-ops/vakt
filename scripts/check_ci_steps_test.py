@@ -29,6 +29,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from check_ci_steps import (  # noqa: E402
     RENAMED_STEPS,
+    RETIRED_STEPS,
     is_const_false,
     neutralization_of,
     run_body_cannot_fail,
@@ -205,10 +206,26 @@ for label, wf, jid, old, new, why in RENAME_CASES:
 print(("PASS: " if ok else "FAIL: ")
       + f"{len(RENAME_CASES)} deklarierte Umbenennung(en): begruendet, nicht leer, Ziel existiert")
 
+# ── 5. Deklarierte Stilllegungen (Pruefung D) ──────────────────────────────
+# Ein stillgelegter Schritt gilt nur, wenn sein Gate-Skript wirklich weg ist und
+# der Schritt nicht mehr im Workflow steht. Sonst ist der Eintrag eine Ausrede.
+RETIRE_CASES = list(RETIRED_STEPS.items())
+ok = True
+for (wf, jid, name), (gate_file, why) in RETIRE_CASES:
+    label = f"{name!r}"
+    if not why.strip():
+        FAILURES.append(f"Stilllegung {label} hat keine Begruendung"); ok = False
+    if (ROOT / gate_file).exists():
+        FAILURES.append(f"Stilllegung {label}: {gate_file} existiert noch"); ok = False
+    if f"name: {name}" in (ROOT / wf).read_text(encoding="utf-8"):
+        FAILURES.append(f"Stilllegung {label}: Schritt steht noch in {wf}"); ok = False
+print(("PASS: " if ok else "FAIL: ")
+      + f"{len(RETIRE_CASES)} deklarierte Stilllegung(en): begruendet, Skript entfernt, Schritt entfernt")
+
 if FAILURES:
     print("\nFAILED:")
     for f in FAILURES:
         print(f"  - {f}")
     sys.exit(1)
 
-print(f"\nALL TESTS PASSED ({len(NEUTRALIZING) + len(LEGITIMATE) + len(NODE_CASES) + len(RENAME_CASES) + 2} cases)")
+print(f"\nALL TESTS PASSED ({len(NEUTRALIZING) + len(LEGITIMATE) + len(NODE_CASES) + len(RENAME_CASES) + len(RETIRE_CASES) + 2} cases)")

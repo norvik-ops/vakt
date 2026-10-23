@@ -20,7 +20,6 @@ import (
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/services/ai"
-	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/siem"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/bsi"
@@ -34,70 +33,6 @@ import (
 	"github.com/matharnica/vakt/internal/shared/retention"
 	"github.com/matharnica/vakt/internal/shared/scheduledreports"
 )
-
-// handleSLAOverdueCheck fires alerting events for findings past their SLA deadline.
-// It groups findings by org and fires one alert per org that has overdue findings.
-// Uses errgroup with limit 5 to process orgs in parallel.
-func handleSLAOverdueCheck(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
-	return func(ctx context.Context, _ *asynq.Task) error {
-		if cfg == nil || cfg.SecretKey == "" {
-			return nil
-		}
-
-		// Only fire for orgs not alerted in the last 24h — prevents repeated
-		// alerts for perpetually-overdue findings on every cron tick.
-		rows, err := pool.Query(ctx, `
-			SELECT DISTINCT f.org_id::text
-			FROM vb_findings f
-			WHERE f.status NOT IN ('resolved','false_positive')
-			  AND f.sla_due_at IS NOT NULL
-			  AND f.sla_due_at < NOW()
-			  AND NOT EXISTS (
-			    SELECT 1 FROM notification_alert_state s
-			    WHERE s.org_id = f.org_id
-			      AND s.event_type = $1
-			      AND s.last_fired_at > NOW() - INTERVAL '24 hours'
-			  )
-		`, alerting.EventFindingSLAOverdue)
-		if err != nil {
-			log.Error().Err(err).Msg("sla_overdue_check: query failed")
-			return nil
-		}
-		defer rows.Close()
-
-		var orgIDs []string
-		for rows.Next() {
-			var orgID string
-			if err := rows.Scan(&orgID); err != nil {
-				continue
-			}
-			orgIDs = append(orgIDs, orgID)
-		}
-
-		alertSvc := alerting.NewService(pool, workerKey(cfg, "vakt-alert-v1"), alerting.SMTPConfig{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom})
-
-		g, gCtx := errgroup.WithContext(ctx)
-		sem := make(chan struct{}, 5)
-		for _, orgID := range orgIDs {
-			orgID := orgID
-			sem <- struct{}{}
-			g.Go(func() error {
-				defer func() { <-sem }()
-				// FireAndMark setzt die 24-Stunden-Sperre nur nach bestätigter
-				// Zustellung. Vorher stand hier ein bedingungsloses INSERT
-				// direkt hinter einem Fire ohne Rückgabewert — bei kaputtem
-				// Zustellweg 24 Stunden Stille je Lauf, dauerhaft also
-				// Totalausfall der Meldung (ADR-0083).
-				alertSvc.FireAndMark(gCtx, orgID, alerting.EventFindingSLAOverdue, map[string]any{
-					"message": "One or more findings have exceeded their SLA deadline.",
-				})
-				return nil
-			})
-		}
-		_ = g.Wait()
-		return nil
-	}
-}
 
 func handleDemoCleanup(pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {

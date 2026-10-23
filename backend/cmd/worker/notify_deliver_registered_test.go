@@ -25,8 +25,7 @@ import (
 // Red-on-revert: delete the mux.HandleFunc(notify.NotificationJobType, ...) line
 // in main.go and this test fails with an empty pattern.
 func TestNotificationsDeliverHandlerRegistered(t *testing.T) {
-	_, mux, enqueueClient := buildServer(nil)
-	t.Cleanup(func() { _ = enqueueClient.Close() })
+	_, mux := buildServer(nil)
 
 	_, pattern := mux.Handler(asynq.NewTask(notify.NotificationJobType, nil))
 	require.Equal(t, notify.NotificationJobType, pattern,

@@ -148,11 +148,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "frontend/src/pages/SupplierPortalPage.tsx",
         "`/api/v1/vaktcomply/supplier/${token}/upload`",
     ): "token-in-URL portal, no session cookie",
-    # DSR portal — data subject following a public link, no session.
-    (
-        "frontend/src/pages/DSRPortalPage.tsx",
-        "`/api/v1/vaktprivacy/dsr-portal/${slug}/submit`",
-    ): "public DSR intake, no session cookie",
     # Auditor invite acceptance — token in URL, runs before any session exists.
     (
         "frontend/src/pages/AuditorAcceptPage.tsx",

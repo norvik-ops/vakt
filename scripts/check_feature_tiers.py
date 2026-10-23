@@ -220,19 +220,10 @@ REGISTRY: list[dict] = [
     {"key": "supplier", "feature": "FeatureSupplierPortal",
      "labels": [r"Supplier portal", r"Lieferantenportal"],
      "nav": ["/vaktcomply/suppliers"]},
-    {"key": "scan_adv", "feature": "FeatureSecPulse",
-     "labels": [r"SBOM scanning", r"EOL tracking"],
-     "nav": ["/vaktscan/reports", "/vaktscan/eol"]},
-    {"key": "vault_adv", "feature": "FeatureSecVault",
-     "labels": [r"Git repo secret scanning", r"Git-Leak-Scans"],
-     "nav": ["/vaktvault/git-scans", "/vaktvault/access-reviews"]},
-    {"key": "aware_adv", "feature": "FeatureSecReflex",
-     "labels": [r"phishing campaigns", r"Phishing-Kampagnen"],
-     "nav": ["/vaktaware/campaigns", "/vaktaware/templates", "/vaktaware/target-groups"]},
-    {"key": "privacy_adv", "feature": "FeatureSecPrivacy",
-     "labels": [r"DPIA workflows", r"DPIA[- ]Workflows"],
-     "nav": ["/vaktprivacy/dpia", "/vaktprivacy/transfers",
-             "/vaktprivacy/deletion-reminders", "/vaktprivacy/privacy-design"]},
+    # scan_adv / vault_adv / aware_adv / privacy_adv: removed 2026-10-18 with the
+    # archived modules (docs/stories/module-archivieren.md). A sales text that
+    # still names SBOM scanning, Git-Leak-Scans, phishing campaigns or DPIA
+    # workflows is now an unregistered claim.
 
     # ── Faehigkeiten OHNE Feature-Konstante: Stufe an der Route abgelesen ────
     # Genau hier sassen die Falschzusagen in die andere Richtung: als Pro verkauft,
@@ -246,9 +237,6 @@ REGISTRY: list[dict] = [
     {"key": "ccm",
      "route": 'backend/internal/modules/vaktcomply/routes.go::"/ccm/checks"',
      "labels": [], "nav": ["/vaktcomply/ccm"]},
-    {"key": "avv",
-     "route": 'backend/internal/modules/vaktprivacy/routes.go::"/avvs"',
-     "labels": [], "nav": ["/vaktprivacy/avv"]},
     {"key": "ldap",
      "route": 'backend/internal/admin/routes.go::"/org/ldap"',
      "labels": [r"LDAP ?/ ?Active Directory", r"LDAP[- ]Sync"]},
@@ -582,7 +570,8 @@ def selftest() -> int:
          "ungegatetes Merkmal als Pro verkauft"),
         ("README.md", "| SCIM provisioning | — | ✅ |", "| Custom controls | — | ✅ |",
          "Merkmal beworben, das im Code nicht existiert"),
-        (LAYOUT_TSX, "icon: Handshake },", "icon: Handshake, pro: true },",
+        # Anker war bis 2026-10-18 der AVV-Eintrag (Privacy, archiviert); jetzt CCM.
+        (LAYOUT_TSX, "icon: Cloud },", "icon: Cloud, pro: true },",
          "Pro-Badge auf einer ungegateten Seite"),
         (OPENAPI, "x-license-tier: unsold", "x-pro-feature: true",
          "unverkaeufliche Operation in der oeffentlichen Spec als Pro markiert"),

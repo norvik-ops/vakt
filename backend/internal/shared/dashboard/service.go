@@ -181,7 +181,9 @@ func (s *Service) LastBackupAt(ctx context.Context, orgID string) (*time.Time, e
 // would point to pages that no longer exist.
 func (s *Service) disabledModules() []string {
 	off := []string{}
-	for _, m := range config.KnownModules {
+	// ArchivedModules too: their old hints still sit in user_notifications and
+	// link to pages that no longer exist (docs/stories/module-archivieren.md).
+	for _, m := range append(append([]string{}, config.KnownModules...), config.ArchivedModules...) {
 		if !s.moduleOn(m) {
 			off = append(off, m)
 		}

@@ -125,8 +125,7 @@ var shortCircuitCodes = map[int]bool{
 // traegt sie aus — das Gate erzwingt beides.
 var knownUnprovenRoutes = map[string]string{
 	// ── MESSLUECKE: Token-/Signaturpruefung im Handler ────────────────────────
-	"POST /api/v1/auditor/accept/:token":            "public, `:token` auf der Denylist; der Handler selbst antwortet 401 auf ein unbekanntes Token",
-	"POST /api/v1/vakthr/webhooks/personio/:org_id": "public Webhook, HMAC-Signaturpruefung antwortet 401 vor jedem Cast",
+	"POST /api/v1/auditor/accept/:token": "public, `:token` auf der Denylist; der Handler selbst antwortet 401 auf ein unbekanntes Token",
 
 	// ── MESSLUECKE: Auditor-Session-Auth antwortet 401 vor dem :id-Cast ───────
 	// Das Auditor-Portal sitzt hinter einer eigenen Session-Guard (nicht `protected`);
@@ -145,7 +144,6 @@ var knownUnprovenRoutes = map[string]string{
 	"POST /api/v1/vaktcomply/frameworks/:name/enable":        "`:name` auf der Denylist → CSRF 403",
 	"POST /api/v1/vaktcomply/physical-templates/:code/apply": "`:code` auf der Denylist → CSRF 403",
 	"PUT /api/v1/vaktcomply/soa/entries/:control_ref":        "`:control_ref` auf der Denylist → CSRF 403",
-	"PUT /api/v1/vaktscan/sla-policies/:severity":            "`:severity` auf der Denylist → CSRF 403",
 	"GET /api/v1/vaktcomply/bsi/reports/:type":               "`:type` auf der Denylist; BSI-Feature-Gate antwortet 402 vor dem Handler",
 	"GET /api/v1/vaktcomply/bsi/reports/:type/preview":       "`:type` auf der Denylist; BSI-Feature-Gate antwortet 402 vor dem Handler",
 }
@@ -238,13 +236,17 @@ func TestUUIDParamGuardCoversEveryParameterisedRoute(t *testing.T) {
 	// (c) Nenner. Ein leerer Baum (setupEcho ohne DB liefert nur /health) oder ein
 	// nicht mehr passendes Param-Muster liefe stumm durch und meldete gruen.
 	// Stille ist kein Beleg.
-	require.Greater(t, checked, 400,
+	// > 400 → > 250 (2026-10-18): mit den archivierten Modulen fielen gut 100
+	// parametrisierte Routen weg; heute sind es ~311. Die Schwelle bleibt deutlich
+	// darunter, faengt aber weiter einen leeren oder halben Baum.
+	require.Greater(t, checked, 250,
 		"der Test hat fast keine parametrisierten Routen gesehen — das ist ein Defekt AM TEST, nicht ein sauberes Ergebnis")
 	// (d) Und der Nenner der tatsaechlichen BEWEISE, nicht nur der Versuche: Wuerde
 	// ein Middleware-Umbau alle Routen vor den Guard kurzschliessen lassen, waere
 	// `checked` unveraendert und das Gate gruen — genau die Vakuitaet, gegen die
 	// dieser Test gebaut ist.
-	require.Greater(t, proved, 380,
+	// > 380 → > 240 (2026-10-18, archivierte Module; heute ~299 bewiesen).
+	require.Greater(t, proved, 240,
 		"zu wenige Routen haben den kaputten Param tatsaechlich bis zu Guard oder Handler getragen "+
 			"(proved=%d von checked=%d) — das Gate misst gerade fast nichts", proved, checked)
 }

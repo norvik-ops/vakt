@@ -8,15 +8,8 @@ Vakt Comply ist das zentrale Modul der Plattform. Es führt durch die Implementi
 
 ## Aktivierung
 
-Vakt Comply ist der Kern von Vakt und immer aktiv — auch wenn `vaktcomply` in
-`VAKT_MODULES_ENABLED` fehlt. Abschalten lässt es sich nicht. Die Variable steuert nur die
-optionalen Module; neue Installationen starten laut `.env.example` mit Vakt Comply allein:
-
-```env
-VAKT_MODULES_ENABLED=vaktcomply
-```
-
-Mehr dazu: [Konfiguration → Module einzeln deaktivieren](../configuration.md#module-einzeln-deaktivieren).
+Vakt Comply ist das einzige Modul von Vakt und immer aktiv. Es braucht keine Konfiguration.
+Mehr dazu: [Konfiguration → Archivierte Module](../configuration.md#archivierte-module).
 
 ---
 

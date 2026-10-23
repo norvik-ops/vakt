@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import {
-  AlertTriangle, CheckCircle, ShieldAlert, Activity, Flame,
+  CheckCircle,
   TrendingUp, TrendingDown, Minus, Settings2, GripVertical,
 } from 'lucide-react'
 import { Skeleton } from '../components/ui/skeleton'
@@ -9,7 +9,6 @@ import { Label } from '../components/ui/label'
 import { scoreStrokeColor } from './DashboardComponents'
 import { WIDGET_LABELS } from './WidgetConfigPanel'
 import type { WidgetKey } from './WidgetConfigPanel'
-import { isPathVisible } from '../shared/moduleVisibility'
 
 // SVG horseshoe-style progress ring for the Security Score.
 // 270° arc (25% gap at bottom), starts at 7:30 o'clock.
@@ -116,16 +115,8 @@ interface DashboardLayoutProps {
   scoreLoading: boolean
   scoreData: { score: number } | undefined
   scoreTrend: number | null
-  critCount: number | null
-  findingsLoading: boolean
   fwCount: number | null
   fwLoading: boolean
-  projCount: number | null
-  projLoading: boolean
-  activeCampaignCount: number | null
-  campLoading: boolean
-  openBreachCount: number | null
-  breachLoading: boolean
   editMode: boolean
   setEditMode: React.Dispatch<React.SetStateAction<boolean>>
   widgets: Record<WidgetKey, boolean>
@@ -137,9 +128,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({
   scoreLoading, scoreData, scoreTrend,
-  critCount, findingsLoading, fwCount, fwLoading,
-  projCount, projLoading, activeCampaignCount, campLoading,
-  openBreachCount, breachLoading,
+  fwCount, fwLoading,
   editMode, setEditMode, widgets, toggleWidget,
   widgetMenuOpen, setWidgetMenuOpen, widgetMenuRef,
 }: DashboardLayoutProps) {
@@ -147,31 +136,11 @@ export function DashboardLayout({
 
   const STATS: StatItem[] = [
     {
-      label: 'Kritische Findings', value: fmt(critCount),
-      icon: AlertTriangle, color: critCount ? 'text-severity-critical' : 'text-secondary',
-      path: '/vaktscan/findings?severity=critical', loading: findingsLoading,
-    },
-    {
       label: 'Frameworks aktiv', value: fmt(fwCount),
       icon: CheckCircle, color: fwCount ? 'text-severity-low' : 'text-secondary',
       path: '/vaktcomply', loading: fwLoading,
     },
-    {
-      label: 'Vault-Projekte', value: fmt(projCount),
-      icon: ShieldAlert, color: 'text-severity-medium',
-      path: '/vaktvault', loading: projLoading,
-    },
-    {
-      label: 'Aktive Kampagnen', value: fmt(activeCampaignCount),
-      icon: Activity, color: activeCampaignCount ? 'text-brand-hover' : 'text-secondary',
-      path: '/vaktaware', loading: campLoading,
-    },
-    {
-      label: 'Offene Datenpannen', value: fmt(openBreachCount),
-      icon: Flame, color: openBreachCount ? 'text-severity-critical' : 'text-secondary',
-      path: '/vaktprivacy?filter=breach&status=open', loading: breachLoading,
-    },
-  ].filter((s) => isPathVisible(s.path))
+  ]
 
   return (
     <div className="w-full lg:w-[260px] lg:shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-surface flex flex-col">

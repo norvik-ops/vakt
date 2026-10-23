@@ -210,7 +210,11 @@ func orgScopedLicence(path string) bool {
 // Der Boden liegt bewusst darunter, damit eine einzelne neue oder entfernte
 // Pro-Route den Lauf nicht rot faerbt — aber hoch genug, dass ein Fix, der nur
 // eine Handvoll Routen erwischt, auffliegt.
-const freedReadsFloor = 100
+//
+// 100 → 60 (2026-10-18): mit den archivierten Modulen fielen deren Pro-Routen
+// (Scan-Berichte, Phishing-Kampagnen, DPIA, Git-Scans …) weg; gemessen danach
+// 75 freigegebene bzw. 83 Community-gegatete Leserouten.
+const freedReadsFloor = 60
 
 // blockedWritesFloor ist derselbe Anker fuer die Gegenrichtung: So viele
 // Schreib-Routen muessen unter abgelaufener Lizenz weiterhin 402 melden.

@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import {
-  Bug, FileCheck, Key, Fish, Eye,
+  FileCheck,
   AlertTriangle, ChevronRight, Settings,
   ClipboardList, Clock, TriangleAlert, ListTodo,
   CalendarDays, GripVertical,
@@ -38,11 +38,7 @@ interface WidgetGridProps {
   recentPages: RecentPage[]
   nextMilestone: AuditMilestone | null | undefined
   kpiLoading: boolean
-  critCount: number | null
   fwCount: number | null
-  projCount: number | null
-  activeCampaignCount: number | null
-  openBreachCount: number | null
 }
 
 export function WidgetGrid({
@@ -50,18 +46,11 @@ export function WidgetGrid({
   agg, aggLoading, scoreHistory, widgets,
   scoreError, aggError,
   recentPages, nextMilestone, kpiLoading,
-  critCount, fwCount, projCount, activeCampaignCount, openBreachCount,
+  fwCount,
 }: WidgetGridProps) {
   const { t } = useTranslation()
 
   const MODULES = [
-    {
-      label: 'Vakt Scan', description: t('dashboard.modules.scan.description'),
-      icon: Bug, iconColor: 'text-severity-critical',
-      badge: critCount != null ? t('dashboard.modules.badgeCritical', { count: critCount }) : '—',
-      badgeColor: critCount ? 'text-severity-critical' : 'text-secondary',
-      path: '/vaktscan',
-    },
     {
       label: 'Vakt Comply', description: t('dashboard.modules.comply.description'),
       icon: FileCheck, iconColor: 'text-severity-low',
@@ -69,28 +58,7 @@ export function WidgetGrid({
       badgeColor: fwCount ? 'text-severity-low' : 'text-secondary',
       path: '/vaktcomply',
     },
-    {
-      label: 'Vakt Vault', description: t('dashboard.modules.vault.description'),
-      icon: Key, iconColor: 'text-severity-medium',
-      badge: projCount != null ? t('dashboard.modules.badgeProject', { count: projCount }) : '—',
-      badgeColor: 'text-secondary',
-      path: '/vaktvault',
-    },
-    {
-      label: 'Vakt Aware', description: t('dashboard.modules.aware.description'),
-      icon: Fish, iconColor: 'text-brand-hover',
-      badge: activeCampaignCount != null ? t('dashboard.modules.badgeActive', { count: activeCampaignCount }) : '—',
-      badgeColor: activeCampaignCount ? 'text-brand-hover' : 'text-secondary',
-      path: '/vaktaware',
-    },
-    {
-      label: 'Vakt Privacy', description: t('dashboard.modules.privacy.description'),
-      icon: Eye, iconColor: 'text-severity-info',
-      badge: openBreachCount != null ? t('dashboard.modules.badgeOpen', { count: openBreachCount }) : '—',
-      badgeColor: openBreachCount ? 'text-severity-critical' : 'text-secondary',
-      path: '/vaktprivacy',
-    },
-  ].filter((m) => isPathVisible(m.path))
+  ]
 
   // Zweite Sicherung neben useRecentPages: recentPages ist eine Prop und kann auch anders befüllt werden.
   const visibleRecentPages = recentPages.filter((p) => isPathVisible(p.path))

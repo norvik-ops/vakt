@@ -264,7 +264,6 @@ gates:
 	python3 scripts/check_user_role_insert.py
 	python3 scripts/check_response_shape.py
 	python3 scripts/check_worker_wiring.py
-	python3 scripts/check_evidence_flow.py
 	python3 scripts/check_backup_hardening.py
 	python3 scripts/check_backup_hardening_test.py
 	python3 scripts/check_image_tags_test.py

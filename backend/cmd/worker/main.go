@@ -22,14 +22,7 @@ import (
 	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
-	"github.com/matharnica/vakt/internal/modules/vakthr"
-	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
-	"github.com/matharnica/vakt/internal/modules/vaktscan"
-	"github.com/matharnica/vakt/internal/modules/vaktvault"
-	"github.com/matharnica/vakt/internal/services/alerting"
-	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/services/siem"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/bsi"
@@ -78,34 +71,31 @@ func newMetricsRedis(redisURL string) *redis.Client {
 // eine davon anfasst, hat die andere nicht in der Hand. Sie liegt jetzt in
 // internal/shared/redisopt und wird von beiden Binaries benutzt.
 
-func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Client) {
+func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	cfg, _ := config.Load()
 
 	redisOpt := redisopt.AsynqFromURL(cfg.RedisUrl)
-
-	// enqueueClient lets a handful of worker handlers chain a follow-up job after
-	// their own job completes (e.g. SBOM generation → EOL check, S5/W1). Closed on
-	// worker shutdown in main().
-	enqueueClient := asynq.NewClient(redisOpt)
 
 	srv := asynq.NewServer(
 		redisOpt,
 		asynq.Config{
 			Concurrency: workerConcurrency(),
 			Queues: map[string]int{
-				// Module-dedicated queues (S31-3): each module has its own namespace so
-				// a long-running scan batch cannot starve breach-notification or evidence jobs.
-				vaktscan.QueueScans: 8, // scanner jobs — highest module concurrency
-				vaktcomply.Queue:    5, // evidence collection, deadline checks
-				vaktprivacy.Queue:   5, // breach notifications, AVV checks
-				vaktaware.Queue:     3, // campaign send, training reminders
-				vaktvault.Queue:     3, // secret rotation, access reviews
-				vakthr.Queue:        3, // contractor expiry, access concepts
+				vaktcomply.Queue: 5, // evidence collection, deadline checks
 				// Generic queues kept for backward compat with external enqueues.
-				"critical":                10,
-				"default":                 5,
-				"low":                     3,
-				vaktscan.QueueMaintenance: 2, // SBOM generation and EOL checks
+				"critical": 10,
+				"default":  5,
+				"low":      3,
+				// Queues of the archived modules (docs/stories/module-archivieren.md).
+				// Still served at the lowest weight so tasks queued before an update
+				// are drained: moduleGuardMiddleware drops them instead of leaving
+				// them in Redis forever.
+				"vaktscan":    1,
+				"maintenance": 1,
+				"vaktprivacy": 1,
+				"vaktaware":   1,
+				"vaktvault":   1,
+				"vakthr":      1,
 			},
 		},
 	)
@@ -118,8 +108,8 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 	// terminal_errors.go.
 	mux.Use(terminalErrorMiddleware)
 
-	// Tasks of switched-off modules are dropped before any handler runs.
-	mux.Use(moduleGuardMiddleware(cfg))
+	// Tasks of archived modules still queued in Redis are dropped before any handler runs.
+	mux.Use(archivedTaskMiddleware)
 
 	// S58-1: emit per-task-type duration + result into Redis so /metrics on the
 	// API side can publish Prometheus counters without needing a worker scrape
@@ -130,64 +120,11 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 		notify.SetPublisher(rdb)
 	}
 
-	// ── SecPulse scan handlers ────────────────────────────────────────────────
-	mux.HandleFunc(vaktscan.TaskScanTrivy, handleScanJob(cfg, pool))
-	mux.HandleFunc(vaktscan.TaskScanNuclei, handleScanJob(cfg, pool))
-	mux.HandleFunc(vaktscan.TaskScanOpenVAS, handleScanJob(cfg, pool))
-
 	// ── SecVitals: daily control-owner due-date reminder ─────────────────────
 	mux.HandleFunc(taskControlOwnerReminder, handleControlOwnerReminder(cfg, pool))
 
 	// ── GitHub CI evidence sync (daily) ──────────────────────────────────────
 	mux.HandleFunc(taskGitHubCISync, handleGitHubCISync(cfg, pool))
-
-	// ── SecPulse EPSS enrichment (daily) ─────────────────────────────────────
-	mux.HandleFunc(vaktscan.TaskEPSSEnrich, handleEPSSEnrich(cfg, pool))
-	mux.HandleFunc(vaktscan.TaskRiskTrendSnapshot, handleRiskTrendSnapshot(pool))
-
-	// ── SecPulse report generation ────────────────────────────────────────────
-	mux.HandleFunc(vaktscan.TaskGenerateReport, handleGenerateReport(cfg, pool))
-
-	// ── SecReflex campaign send ───────────────────────────────────────────────
-	mux.HandleFunc(vaktaware.TaskSendCampaign, handleSendCampaign(cfg, pool))
-
-	// ── SecReflex auto-enrollment (S65-2) ─────────────────────────────────────
-	mux.HandleFunc(vaktaware.TaskAutoEnrollment, handleAutoEnrollment(pool))
-
-	// ── SecVault git scanning ─────────────────────────────────────────────────
-	mux.HandleFunc(vaktvault.TaskGitScan, handleGitScan(cfg, pool))
-
-	// ── SecPrivacy: AVV expiry check ──────────────────────────────────────────
-	mux.HandleFunc(vaktprivacy.TaskAVVExpiryCheck, handleAVVExpiryCheck(cfg, pool))
-
-	// ── SecPrivacy→SecVitals: breach → incident ───────────────────────────────
-	mux.HandleFunc(vaktprivacy.TaskBreachIncidentCreate, handleBreachIncidentCreate(cfg, pool))
-
-	// ── S68-2: daily DSR overdue marking + 3-day warning notifications ────────
-	mux.HandleFunc(vaktprivacy.TaskDSRDeadlineCheck, handleDSRDeadlineCheck(pool))
-
-	// ── S68-5: daily deletion reminder notifications (14-day window) ──────────
-	mux.HandleFunc(vaktprivacy.TaskDeletionReminderCheck, handleDeletionReminderCheck(pool))
-
-	// ── SecPulse→SecVitals: resolved finding → patch-control evidence ─────────
-	mux.HandleFunc(vaktscan.TaskAutoEvidence, handleAutoEvidence(cfg, pool))
-
-	// ── SecPulse SBOM generation (syft) ───────────────────────────────────────
-	mux.HandleFunc(vaktscan.TaskSBOMGenerate, handleSBOMGenerate(cfg, pool, enqueueClient))
-
-	// ── SecPulse EOL check (endoflife.date) ───────────────────────────────────
-	mux.HandleFunc(vaktscan.TaskEOLCheck, handleEOLCheck(cfg, pool))
-
-	// ── SecPulse TLS certificate rescan (daily) ────────────────────────────
-	mux.HandleFunc(vaktscan.TaskCertScan, handleCertScan(pool))
-	// ── S69-3: SLA check (daily) ──────────────────────────────────────────
-	mux.HandleFunc(vaktscan.TaskSLACheck, handleSLACheck(pool))
-	// ── R1-36b-SC06: recurring scan schedule executor (every minute) ──────
-	mux.HandleFunc(vaktscan.TaskScanScheduleDue, handleProcessDueScanSchedules(pool, enqueueClient))
-
-	// ── Alerting: scheduled overdue checks ────────────────────────────────────
-	mux.HandleFunc(alerting.TaskSLAOverdueCheck, handleSLAOverdueCheck(cfg, pool))
-	mux.HandleFunc(alerting.TaskDSROverdueCheck, handleDSROverdueCheck(cfg, pool))
 
 	// Demo cleanup — hourly pruning of ephemeral demo orgs older than 4 hours
 	mux.HandleFunc(demo.TaskCleanupEphemeralOrgs, handleDemoCleanup(pool))
@@ -201,9 +138,6 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 
 	// BSI CERT-Bund feed — daily advisory sync + asset matching
 	mux.HandleFunc(bsi.TaskBSIFeedSync, handleBSIFeedSync(pool))
-
-	// Cross-module evidence — training/DSR/rotation events → SecVitals controls
-	mux.HandleFunc(crossevidence.TaskRecordEvidence, handleRecordEvidence(cfg, pool))
 
 	// SecVitals: daily evidence expiry alert
 	mux.HandleFunc(vaktcomply.TaskEvidenceExpiryAlert, handleEvidenceExpiryAlert(pool))
@@ -270,9 +204,6 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 	// S52-1: daily evidence freshness AI insight generation
 	mux.HandleFunc(vaktcomply.TaskEvidenceFreshnessCheck, handleEvidenceFreshnessCheck(cfg, pool))
 
-	// S52-5: per-finding AI evidence suggestion (enqueued when finding resolved)
-	mux.HandleFunc(vaktcomply.TaskAIEvidenceSuggestion, handleAIEvidenceSuggestion(cfg, pool))
-
 	// S52-4: Monday AI compliance weekly digest
 	mux.HandleFunc(vaktcomply.TaskAIWeeklyDigest, handleAIWeeklyDigest(cfg, pool))
 
@@ -285,11 +216,6 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 	// S67-4: daily evidence staleness sweep
 	mux.HandleFunc(vaktcomply.TaskEvidenceStalenessCheck, handleEvidenceStalenessCheck(cfg, pool))
 
-	// S70-4: daily contractor expiry check
-	mux.HandleFunc(vakthr.TaskContractorExpiryCheck, handleContractorExpiryCheck(cfg, pool))
-	// S70-5: quarterly vault access review creation
-	mux.HandleFunc(vaktvault.TaskQuarterlyAccessReview, handleQuarterlyAccessReview(pool))
-
 	// S74-2: daily BSI check progress snapshot
 	mux.HandleFunc(vaktcomply.TaskBSIKPISnapshot, handleBSIKPISnapshot(cfg, pool))
 
@@ -299,23 +225,7 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux, *asynq.Cli
 	// S88-2: daily backup-freshness check (ISO A.8.13 / DER.4 evidence + staleness)
 	mux.HandleFunc(vaktcomply.TaskBackupFreshnessCheck, handleBackupFreshnessCheck(cfg, pool))
 
-	return srv, mux, enqueueClient
-}
-
-// handleScanJob returns an asynq handler that runs the appropriate scanner
-// (trivy, nuclei, or openvas) based on the task type.
-
-func EnqueueScanTask(client *asynq.Client, taskType string, payload []byte) error {
-	queue := "default"
-	if taskType == vaktscan.TaskScanOpenVAS {
-		queue = "low"
-	}
-	task := asynq.NewTask(taskType, payload,
-		asynq.MaxRetry(3),
-		asynq.Timeout(10*time.Minute),
-	)
-	_, err := client.Enqueue(task, asynq.Queue(queue))
-	return err
+	return srv, mux
 }
 
 func main() {
@@ -329,6 +239,12 @@ func main() {
 
 	if err := cfg.Validate(); err != nil {
 		logger.Fatal().Err(err).Msg("configuration error — check .env file")
+	}
+	// Scan, Vault, Aware, Privacy and HR are archived; naming them no longer
+	// enables anything. One warning so an old configuration is noticed.
+	if archived := cfg.ArchivedModulesRequested(); len(archived) > 0 {
+		logger.Warn().Strs("modules", archived).
+			Msg("VAKT_MODULES_ENABLED nennt archivierte Module — sie werden ignoriert (docs/UPGRADE.md)")
 	}
 
 	// S88-6: opt-in audit Syslog/SIEM forwarder — the worker also emits audit
@@ -362,8 +278,7 @@ func main() {
 		log.Info().Msg("EPSS enrichment disabled — set VAKT_EPSS_ENABLED=true to enable (sends CVE IDs to api.first.org)")
 	}
 
-	srv, mux, enqueueClient := buildServer(pool)
-	defer func() { _ = enqueueClient.Close() }()
+	srv, mux := buildServer(pool)
 	scheduler := buildScheduler(cfg)
 
 	quit := make(chan os.Signal, 1)

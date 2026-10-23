@@ -47,10 +47,7 @@ const wiringFile = "services.go"
 // nachweislich Folgen hat. Schlüssel ist "paket.Funktion".
 var guardedConstructors = map[string]string{
 	"vaktcomply.NewService":             "ohne WithNotifyService gehen die NIS2-/DORA-Meldefrist-Mails still verloren",
-	"vakthr.NewService":                 "ohne WithEvidenceWriter entsteht beim Vertragsablauf kein Offboarding-Nachweis; ohne WithEmployeeOnboardingTrigger erreicht kein Eintritt vaktaware (R1-SA25-01)",
-	"vakthr.NewServiceFromPool":         "ohne WithEvidenceWriter entsteht beim Vertragsablauf kein Offboarding-Nachweis; ohne WithEmployeeOnboardingTrigger erreicht kein Eintritt vaktaware (R1-SA25-01)",
 	"cloudintegration.NewService":       "mit dem Noop-Schreiber erhebt cloud_sync null Nachweise und meldet trotzdem Erfolg",
-	"vaktcomply.NewHREvidenceWriter":    "gehört zu newHRService — gebaut wird an einer Stelle",
 	"vaktcomply.NewCloudEvidenceWriter": "gehört zu newCloudService — gebaut wird an einer Stelle",
 }
 
@@ -62,9 +59,6 @@ var guardedConstructors = map[string]string{
 // das nicht gesetzte Feld lesen, und keine davon ist aus einem Worker-Handler
 // erreichbar. Das ist eine überprüfbare Aussage, keine Vermutung.
 var bareServiceConstructors = map[string]string{
-	"vaktprivacy.NewService":      "WithSubjectErasers/WithSubjectResolver werden nur aus ExecuteErasure gelesen; die drei Worker-Pfade (AVV-Ablauf, überfällige Anträge, Lösch-Erinnerungen) gehen über s.db und notify.Send",
-	"vaktaware.NewService":        "der asynq-Client wird nur in LaunchCampaign/CompleteAssignment/EnqueueAutoEnrollment gelesen; der Worker ruft SendCampaignEmails und HandleAutoEnrollment",
-	"vaktvault.NewService":        "masterKey und queue werden auf dem Worker-Pfad CreateAccessReview nicht berührt",
 	"siem.NewService":             "API und Worker bauen identisch",
 	"alerting.NewService":         "hat keine Setter; alle drei Argumente (Pool, aus \"vakt-alert-v1\" abgeleiteter Schlüssel, SMTP-Konfiguration) sind auf beiden Seiten dieselben",
 	"scheduledreports.NewService": "der Worker setzt hier MEHR als die API (WithBoardReportProvider); die API ruft ProcessDue nicht auf",
@@ -192,7 +186,10 @@ func TestNoUnclassifiedServiceConstructor(t *testing.T) {
 			"und warum keine davon aus einem Worker-Handler erreichbar ist.",
 		strings.Join(unclassified, "\n  "), wiringFile)
 
-	require.Greater(t, classified, 5,
+	// Nicht-Leer-Schwelle: Seit dem Archivieren der Nebenmodule (2026-10-18) baut
+	// der Worker 5 eingeordnete Dienste; vorher lag die Schwelle bei > 5. Fällt
+	// der Zähler darunter, misst der Extraktor ins Leere, nicht der Worker.
+	require.GreaterOrEqual(t, classified, 5,
 		"nur %d eingeordnete Dienst-Konstruktoren gefunden — die Sperrklinke misst ins Leere", classified)
 	t.Logf("geprüft: %d Dateien, %d eingeordnete Dienst-Konstruktoren, %d offen",
 		filesChecked, classified, len(unclassified))

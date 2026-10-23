@@ -1,14 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useDashboardScore, useDashboardAggregate } from '../hooks/useDashboard'
-import { useFindings } from '../modules/vaktscan/hooks/useFindings'
 import { useFrameworks } from '../modules/vaktcomply/hooks/useFrameworks'
-import { useProjects } from '../modules/vaktvault/hooks/useProjects'
-import { useCampaigns } from '../modules/vaktaware/hooks/useCampaigns'
-import { useBreaches } from '../modules/vaktprivacy/hooks/useBreaches'
 import { useScoreHistory } from '../modules/vaktcomply/hooks/useScoreHistory'
 import { useNextMilestone } from '../modules/vaktcomply/hooks/useMilestones'
 import { useRecentPages } from '../shared/hooks/useRecentPages'
-import { isModuleVisible } from '../shared/moduleVisibility'
 import { useDashboardOrder, DEFAULT_WIDGET_ORDER } from './useDashboardOrder'
 import { loadWidgets, WIDGETS_KEY } from './WidgetConfigPanel'
 import type { WidgetKey } from './WidgetConfigPanel'
@@ -19,12 +14,7 @@ export default function Dashboard() {
   const { data: scoreData, isLoading: scoreLoading, isError: scoreError } = useDashboardScore()
   const { data: agg, isLoading: aggLoading, isError: aggError } = useDashboardAggregate()
   const { data: scoreHistory } = useScoreHistory(30)
-  // Abgeschaltete Module haben keine API-Routen — ihre Abfragen laufen gar nicht erst.
-  const { data: critFindings, isLoading: findingsLoading } = useFindings({ severity: 'critical' }, 1, 25, isModuleVisible('vaktscan'))
   const { data: frameworks, isLoading: fwLoading } = useFrameworks()
-  const { data: projects, isLoading: projLoading } = useProjects(isModuleVisible('vaktvault'))
-  const { data: campaigns, isLoading: campLoading } = useCampaigns(isModuleVisible('vaktaware'))
-  const { data: breaches, isLoading: breachLoading } = useBreaches(1, 25, isModuleVisible('vaktprivacy'))
   const { data: nextMilestone } = useNextMilestone()
   const recentPages = useRecentPages()
 
@@ -82,12 +72,7 @@ export default function Dashboard() {
     return scoreHistory[scoreHistory.length - 1].score - scoreHistory[0].score
   })()
 
-  const critCount = critFindings?.pagination.total ?? null
   const fwCount = frameworks?.length ?? null
-  const projCount = projects?.length ?? null
-  const activeCampaignCount =
-    campaigns?.filter((c) => c.status === 'running' || c.status === 'scheduled').length ?? null
-  const openBreachCount = breaches?.filter((b) => b.status === 'open').length ?? null
 
   return (
     <div className="flex flex-col lg:flex-row h-full">
@@ -95,16 +80,8 @@ export default function Dashboard() {
         scoreLoading={scoreLoading}
         scoreData={scoreData}
         scoreTrend={scoreTrend}
-        critCount={critCount}
-        findingsLoading={findingsLoading}
         fwCount={fwCount}
         fwLoading={fwLoading}
-        projCount={projCount}
-        projLoading={projLoading}
-        activeCampaignCount={activeCampaignCount}
-        campLoading={campLoading}
-        openBreachCount={openBreachCount}
-        breachLoading={breachLoading}
         editMode={editMode}
         setEditMode={setEditMode}
         widgets={widgets}
@@ -128,11 +105,7 @@ export default function Dashboard() {
         recentPages={recentPages}
         nextMilestone={nextMilestone}
         kpiLoading={aggLoading}
-        critCount={critCount}
         fwCount={fwCount}
-        projCount={projCount}
-        activeCampaignCount={activeCampaignCount}
-        openBreachCount={openBreachCount}
       />
     </div>
   )

@@ -66,23 +66,12 @@ func TestSpec_DocumentsCoreEndpoints(t *testing.T) {
 		"/auth/login",
 		"/auth/register",
 		"/auth/sessions",
-		// HR
-		"/vakthr/employees",
-		"/vakthr/checklists",
-		"/vakthr/checklist-runs",
-		// SecVitals (core compliance)
+		// Vakt Comply (ISMS core; the other modules are archived)
 		"/vaktcomply/frameworks",
 		"/vaktcomply/controls/{id}",
-		// SecPulse
+		"/vaktcomply/assets",
+		// Compatibility alias of the asset inventory
 		"/vaktscan/assets",
-		"/vaktscan/findings",
-		// SecPrivacy
-		"/vaktprivacy/dsr",
-		// SecVault
-		"/vaktvault/projects",
-		// SecReflex
-		"/vaktaware/campaigns",
-		"/vaktaware/templates/presets",
 		// Cross-module
 		"/search",
 		"/dashboard/score",

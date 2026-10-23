@@ -116,6 +116,26 @@ git pull --ff-only
 
 ## Wichtige Verhaltensänderungen
 
+### Zusatzmodule archiviert (nächstes Release nach v0.44)
+
+Vakt liefert nur noch das ISMS aus (Vakt Comply mit Asset-Inventar). Scan, Vault, Aware, Privacy und HR
+sind archiviert (siehe [Archivierte Module](wiki/configuration.md#archivierte-module)).
+
+> Hinweis (2026-10-18): Das ist ein bewusster Bruch der Regel unten („Breaking-Changes werden in
+> Major-Versionen angekündigt“) und der früheren Zusage, ein Update verändere keine Installation mit
+> eingeschalteten Modulen. Entschieden, weil es keine Kunden mit diesen Modulen gibt; auf der eigenen
+> ISMS-Instanz enthielten ihre Tabellen keine personenbezogenen Daten.
+
+Was beim Update passiert:
+- Seiten, API und Hintergrund-Jobs der fünf Module sind weg. `VAKT_MODULES_ENABLED` mit einem dieser
+  Namen löst beim Start eine Warnung aus, sonst nichts.
+- Die Tabellen bleiben unverändert in der Datenbank, keine Migration löscht Daten.
+- Liegengebliebene Aufgaben dieser Module in Redis verwirft der Worker.
+- Das Asset-Inventar liegt unter `/vaktcomply/assets`; `/vaktscan/assets` funktioniert als Alias weiter.
+
+Wer eines der Module braucht: Es liegt vollständig im Git-Tag `archiv/module-vollstaendig` und lässt
+sich von dort einzeln zurückholen.
+
 ### MFA wird zum echten zweiten Faktor (ab v0.42.35)
 
 Bis v0.42.34 war MFA **enrollment-only**: ein korrektes Passwort stellte sofort

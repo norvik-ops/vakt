@@ -8,13 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/matharnica/vakt/internal/auth"
-	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
-	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
-	"github.com/matharnica/vakt/internal/modules/vaktscan"
-	"github.com/matharnica/vakt/internal/modules/vaktvault"
-	"github.com/matharnica/vakt/internal/services/alerting"
-	"github.com/matharnica/vakt/internal/services/crossevidence"
 	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
@@ -25,11 +19,9 @@ import (
 )
 
 func TestBuildServer_ReturnsNonNil(t *testing.T) {
-	srv, mux, enqueueClient := buildServer(nil)
+	srv, mux := buildServer(nil)
 	require.NotNil(t, srv, "asynq server must not be nil")
 	require.NotNil(t, mux, "asynq mux must not be nil")
-	require.NotNil(t, enqueueClient, "enqueue client must not be nil")
-	_ = enqueueClient.Close()
 }
 
 // TestWorkerConcurrency_Default verifies the default concurrency of 8 when env is unset.
@@ -70,31 +62,6 @@ func TestWorkerConcurrency_NegativeEnv(t *testing.T) {
 // lookup API), but it compiles a reference to every task constant so that renaming or
 // removing a constant will cause a compilation failure here.
 func TestWorkerTaskConstantsRegistered(t *testing.T) {
-	// SecPulse scan handlers.
-	assert.Equal(t, "vaktscan:scan:trivy", vaktscan.TaskScanTrivy)
-	assert.Equal(t, "vaktscan:scan:nuclei", vaktscan.TaskScanNuclei)
-	assert.Equal(t, "vaktscan:scan:openvas", vaktscan.TaskScanOpenVAS)
-	assert.Equal(t, "vaktscan:epss_enrich", vaktscan.TaskEPSSEnrich)
-	assert.Equal(t, "vaktscan:generate_report", vaktscan.TaskGenerateReport)
-	assert.Equal(t, "vaktscan:auto_evidence", vaktscan.TaskAutoEvidence)
-	assert.Equal(t, "vaktscan:sbom:generate", vaktscan.TaskSBOMGenerate)
-	assert.Equal(t, "vaktscan:eol:check", vaktscan.TaskEOLCheck)
-	assert.Equal(t, "vaktscan:cert_scan", vaktscan.TaskCertScan)
-
-	// SecReflex.
-	assert.Equal(t, "vaktaware:send_campaign", vaktaware.TaskSendCampaign)
-
-	// SecVault.
-	assert.Equal(t, "vaktvault:git_scan", vaktvault.TaskGitScan)
-
-	// SecPrivacy.
-	assert.Equal(t, "vaktprivacy:avv_expiry_check", vaktprivacy.TaskAVVExpiryCheck)
-	assert.Equal(t, "vaktprivacy:breach_incident_create", vaktprivacy.TaskBreachIncidentCreate)
-
-	// Alerting.
-	assert.NotEmpty(t, alerting.TaskSLAOverdueCheck)
-	assert.NotEmpty(t, alerting.TaskDSROverdueCheck)
-
 	// Demo cleanup.
 	assert.NotNil(t, demo.NewCleanupTask())
 
@@ -106,9 +73,6 @@ func TestWorkerTaskConstantsRegistered(t *testing.T) {
 
 	// BSI feed.
 	assert.NotEmpty(t, bsi.TaskBSIFeedSync)
-
-	// Cross-module evidence.
-	assert.NotEmpty(t, crossevidence.TaskRecordEvidence)
 
 	// SecVitals.
 	assert.NotEmpty(t, vaktcomply.TaskEvidenceExpiryAlert)
@@ -182,26 +146,5 @@ func TestFromHexChar(t *testing.T) {
 	for _, tc := range cases {
 		got := fromHexChar(tc.c)
 		assert.Equal(t, tc.want, got, "fromHexChar(%q) should be %d", tc.c, tc.want)
-	}
-}
-
-// TestEnqueueScanTask_QueueSelection verifies that OpenVAS scans are placed on
-// the "low" queue and other scan types go to "default".
-// We test the queue selection logic directly since the Asynq client requires Redis.
-func TestEnqueueScanTask_QueueSelection(t *testing.T) {
-	cases := []struct {
-		taskType  string
-		wantQueue string
-	}{
-		{vaktscan.TaskScanTrivy, "default"},
-		{vaktscan.TaskScanNuclei, "default"},
-		{vaktscan.TaskScanOpenVAS, "low"},
-	}
-	for _, tc := range cases {
-		queue := "default"
-		if tc.taskType == vaktscan.TaskScanOpenVAS {
-			queue = "low"
-		}
-		assert.Equal(t, tc.wantQueue, queue, "task type %s should use queue %q", tc.taskType, tc.wantQueue)
 	}
 }

@@ -77,5 +77,6 @@ func TestDashboardNotifications_HideSwitchedOffModules(t *testing.T) {
 	}
 
 	require.ElementsMatch(t, []string{"vaktcomply", "system"}, modules("vaktcomply"))
-	require.ElementsMatch(t, []string{"vaktcomply", "vaktscan", "system"}, modules("vaktcomply,vaktscan"))
+	// Since the archive an old configuration naming Scan keeps its hints hidden too.
+	require.ElementsMatch(t, []string{"vaktcomply", "system"}, modules("vaktcomply,vaktscan"))
 }

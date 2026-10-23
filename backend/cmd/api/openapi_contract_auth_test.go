@@ -45,32 +45,22 @@ import (
 // exactly what drifted. Adding a case here is cheap; add one whenever a response
 // shape is worth freezing.
 var authContractCases = []contractCase{
+	{name: "auth_vaktcomply_assets", method: http.MethodGet,
+		realPath: "/api/v1/vaktcomply/assets", specPath: "/api/v1/vaktcomply/assets"},
 	{name: "auth_vaktscan_assets", method: http.MethodGet,
 		realPath: "/api/v1/vaktscan/assets", specPath: "/api/v1/vaktscan/assets"},
-	{name: "auth_vaktscan_findings", method: http.MethodGet,
-		realPath: "/api/v1/vaktscan/findings", specPath: "/api/v1/vaktscan/findings"},
 	{name: "auth_vaktcomply_frameworks", method: http.MethodGet,
 		realPath: "/api/v1/vaktcomply/frameworks", specPath: "/api/v1/vaktcomply/frameworks"},
 	{name: "auth_vaktcomply_policies", method: http.MethodGet,
 		realPath: "/api/v1/vaktcomply/policies", specPath: "/api/v1/vaktcomply/policies"},
 	{name: "auth_vaktcomply_policy_templates", method: http.MethodGet,
 		realPath: "/api/v1/vaktcomply/policy-templates", specPath: "/api/v1/vaktcomply/policy-templates"},
-	{name: "auth_vaktvault_projects", method: http.MethodGet,
-		realPath: "/api/v1/vaktvault/projects", specPath: "/api/v1/vaktvault/projects"},
 	// NOTE: vaktaware/campaigns and /api-keys are deliberately absent. They are
 	// Pro-gated and answer 402 on a Community licence — correct behaviour, but it
 	// means they can never produce a 200 body here. A case that cannot pass is not
 	// a stricter test, only a broken one.
-	{name: "auth_vaktprivacy_vvt", method: http.MethodGet,
-		realPath: "/api/v1/vaktprivacy/vvt", specPath: "/api/v1/vaktprivacy/vvt"},
-	{name: "auth_vaktprivacy_dsr_portal_settings", method: http.MethodGet,
-		realPath: "/api/v1/vaktprivacy/dsr-portal-settings", specPath: "/api/v1/vaktprivacy/dsr-portal-settings"},
-	{name: "auth_vakthr_employees", method: http.MethodGet,
-		realPath: "/api/v1/vakthr/employees", specPath: "/api/v1/vakthr/employees"},
 	{name: "auth_vaktcomply_capas", method: http.MethodGet,
 		realPath: "/api/v1/vaktcomply/capas", specPath: "/api/v1/vaktcomply/capas"},
-	{name: "auth_vaktprivacy_breaches", method: http.MethodGet,
-		realPath: "/api/v1/vaktprivacy/breaches", specPath: "/api/v1/vaktprivacy/breaches"},
 }
 
 // TestOpenAPIContractAuthenticated validates real 200 bodies against the spec.

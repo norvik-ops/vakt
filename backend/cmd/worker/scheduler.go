@@ -14,14 +14,8 @@ import (
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
-	"github.com/matharnica/vakt/internal/modules/vakthr"
-	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
-	"github.com/matharnica/vakt/internal/modules/vaktscan"
-	"github.com/matharnica/vakt/internal/modules/vaktvault"
-	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/matharnica/vakt/internal/services/siem"
 	"github.com/matharnica/vakt/internal/shared/audit"
-	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
 	"github.com/matharnica/vakt/internal/shared/nis2wizard"
@@ -52,37 +46,8 @@ type cronRegistrar interface {
 }
 
 func registerCrons(scheduler cronRegistrar, cfg *config.Config) {
-	// moduleOn gates the crons of an optional module. VAKT_MODULES_ENABLED
-	// switches routes AND worker jobs (ADR-0004): a disabled module must not keep
-	// sending SLA, DSR or AVV reminders about data nobody can open. Shared tasks
-	// (retention, audit, BSI feed on the asset registry) and the vaktcomply core
-	// run regardless. A nil cfg (tests) schedules everything.
-	moduleOn := func(module string) bool { return cfg == nil || cfg.IsModuleEnabled(module) }
 
 	// --- 01:xx window ---
-
-	// Daily at 01:03 UTC: enrich all findings with EPSS scores from FIRST.org.
-	if moduleOn("vaktscan") {
-		if _, err := scheduler.Register("3 1 * * *",
-			asynq.NewTask(vaktscan.TaskEPSSEnrich, nil),
-			asynq.Unique(23*time.Hour), asynq.Queue(vaktscan.QueueScans),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register EPSS enrich cron")
-		}
-	}
-
-	// Every minute: run due recurring scan schedules (R1-36b-SC06). Cron
-	// granularity is per-minute, so the executor ticks each minute and enqueues
-	// scans whose next_run has come due. Unique(55s) prevents two ticks from
-	// overlapping within the same minute without deduping consecutive minutes.
-	if moduleOn("vaktscan") {
-		if _, err := scheduler.Register("* * * * *",
-			asynq.NewTask(vaktscan.TaskScanScheduleDue, nil),
-			asynq.Unique(55*time.Second), asynq.Queue(vaktscan.QueueScans),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register scan schedule executor cron")
-		}
-	}
 
 	// --- 02:xx window ---
 
@@ -94,29 +59,7 @@ func registerCrons(scheduler cronRegistrar, cfg *config.Config) {
 		log.Error().Err(err).Msg("failed to register retention cron")
 	}
 
-	// Daily at 02:30 UTC: pre-compute risk trend snapshots per org.
-	// The dashboard reads from vb_risk_trend_snapshots instead of running
-	// generate_series × vb_findings at request time.
-	if moduleOn("vaktscan") {
-		if _, err := scheduler.Register("30 2 * * *",
-			asynq.NewTask(vaktscan.TaskRiskTrendSnapshot, nil),
-			asynq.Unique(23*time.Hour), asynq.Queue(vaktscan.QueueScans),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register risk trend snapshot cron")
-		}
-	}
-
 	// --- 03:xx window ---
-
-	// Daily at 03:04 UTC: rescan all tracked TLS certificates and update expiry status.
-	if moduleOn("vaktscan") {
-		if _, err := scheduler.Register("4 3 * * *",
-			asynq.NewTask(vaktscan.TaskCertScan, nil),
-			asynq.Unique(23*time.Hour), asynq.Queue(vaktscan.QueueScans),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register cert scan cron")
-		}
-	}
 
 	// Daily at 03:10 UTC: delete expired and old used password-reset tokens.
 	if _, err := scheduler.Register("10 3 * * *",
@@ -170,16 +113,6 @@ func registerCrons(scheduler cronRegistrar, cfg *config.Config) {
 
 	// --- 04:xx window ---
 
-	// S69-3: Daily at 04:07 UTC — update sla_status on all open findings.
-	if moduleOn("vaktscan") {
-		if _, err := scheduler.Register("7 4 * * *",
-			asynq.NewTask(vaktscan.TaskSLACheck, nil),
-			asynq.Unique(23*time.Hour), asynq.Queue(vaktscan.QueueScans),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register sla check cron")
-		}
-	}
-
 	// Daily at 04:20 UTC: collect cloud evidence from all enabled AWS + Azure integrations.
 	// Shifted from 04:00 to avoid collision with Watchtower restart window.
 	if _, err := scheduler.Register("20 4 * * *",
@@ -209,20 +142,6 @@ func registerCrons(scheduler cronRegistrar, cfg *config.Config) {
 	}
 
 	// --- 06:xx window ---
-
-	// Daily at 06:02 UTC: sync BSI CERT-Bund advisories and match to assets.
-	// Opt-out via VAKT_BSI_FEED_ENABLED=false for air-gapped environments.
-	// The feed writes vb_findings, so it belongs to Vakt Scan.
-	if cfg != nil && cfg.BSIFeedEnabled && moduleOn("vaktscan") {
-		if _, err := scheduler.Register("2 6 * * *",
-			bsi.NewBSIFeedSyncTask(),
-			asynq.Unique(23*time.Hour),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register BSI feed sync cron")
-		}
-	} else {
-		log.Info().Msg("BSI CERT-Bund feed sync disabled (VAKT_BSI_FEED_ENABLED=false or vaktscan off)")
-	}
 
 	// S61-7: daily at 06:05 UTC — compute and persist ISMS KPI snapshots for all orgs.
 	// Shifted +5min from 06:00 to avoid thundering-herd with BSI feed sync.
@@ -276,50 +195,7 @@ func registerCrons(scheduler cronRegistrar, cfg *config.Config) {
 		log.Error().Err(err).Msg("failed to register backup freshness check cron")
 	}
 
-	// S70-4: daily at 07:35 UTC — check contractor expiry and mark expiring_soon/offboarding.
-	// Shifted +5min from 07:30 to avoid thundering-herd with backup freshness check.
-	if moduleOn("vakthr") {
-		if _, err := scheduler.Register("35 7 * * *",
-			asynq.NewTask(vakthr.TaskContractorExpiryCheck, nil),
-			asynq.Unique(23*time.Hour), asynq.Queue(vakthr.Queue),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register contractor expiry check cron")
-		}
-	}
-
 	// --- 08:xx window (staggered to avoid thundering herd) ---
-
-	// Daily at 08:02 UTC: check AVV expiry and send alerts.
-	if moduleOn("vaktprivacy") {
-		if _, err := scheduler.Register("2 8 * * *",
-			asynq.NewTask(vaktprivacy.TaskAVVExpiryCheck, nil),
-			asynq.Unique(23*time.Hour), asynq.Queue(vaktprivacy.Queue),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register AVV expiry cron")
-		}
-	}
-
-	// Daily at 08:05 UTC: check for overdue SLA findings.
-	// Shifted +5min from 08:00 to stagger the 08:xx cluster.
-	if moduleOn("vaktscan") {
-		if _, err := scheduler.Register("5 8 * * *",
-			asynq.NewTask(alerting.TaskSLAOverdueCheck, nil),
-			asynq.Unique(23*time.Hour),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register SLA overdue check cron")
-		}
-	}
-
-	// Daily at 08:10 UTC: check for overdue DSR requests.
-	// Shifted +10min from 08:00 to stagger the 08:xx cluster.
-	if moduleOn("vaktprivacy") {
-		if _, err := scheduler.Register("10 8 * * *",
-			asynq.NewTask(alerting.TaskDSROverdueCheck, nil),
-			asynq.Unique(23*time.Hour),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register DSR overdue check cron")
-		}
-	}
 
 	// Daily at 08:15 UTC: send compliance deadline email alerts.
 	if _, err := scheduler.Register("15 8 * * *",
@@ -327,26 +203,6 @@ func registerCrons(scheduler cronRegistrar, cfg *config.Config) {
 		asynq.Unique(23*time.Hour),
 	); err != nil {
 		log.Error().Err(err).Msg("failed to register deadline notification cron")
-	}
-
-	// S68-2: daily at 08:17 UTC — mark overdue DSRs and send 3-day deadline warnings.
-	if moduleOn("vaktprivacy") {
-		if _, err := scheduler.Register("17 8 * * *",
-			asynq.NewTask(vaktprivacy.TaskDSRDeadlineCheck, nil),
-			asynq.Unique(23*time.Hour), asynq.Queue(vaktprivacy.Queue),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register dsr deadline check cron")
-		}
-	}
-
-	// S68-5: daily at 08:20 UTC — send deletion reminder notifications for reminders due within 14 days.
-	if moduleOn("vaktprivacy") {
-		if _, err := scheduler.Register("20 8 * * *",
-			asynq.NewTask(vaktprivacy.TaskDeletionReminderCheck, nil),
-			asynq.Unique(23*time.Hour), asynq.Queue(vaktprivacy.Queue),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register deletion reminder check cron")
-		}
 	}
 
 	// Daily at 08:25 UTC: process all due scheduled reports.
@@ -439,16 +295,6 @@ func registerCrons(scheduler cronRegistrar, cfg *config.Config) {
 	}
 
 	// --- Quarterly ---
-
-	// S70-5: 1st of Jan/Apr/Jul/Oct at 06:02 UTC — create quarterly vault access reviews.
-	if moduleOn("vaktvault") {
-		if _, err := scheduler.Register("12 6 1 1,4,7,10 *",
-			asynq.NewTask(vaktvault.TaskQuarterlyAccessReview, nil),
-			asynq.Unique(89*24*time.Hour), asynq.Queue(vaktvault.Queue),
-		); err != nil {
-			log.Error().Err(err).Msg("failed to register quarterly access review cron")
-		}
-	}
 
 	// --- Sub-minute / high-frequency tasks ---
 

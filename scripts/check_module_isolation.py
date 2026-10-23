@@ -123,15 +123,8 @@ ALLOWLIST = {}
 # exception that outlives its problem is a hole nobody can see any more, which
 # is the same class as the stale ALLOWLIST in check_routes.py (K2-08).
 KNOWN_SQLC_CROSS_PREFIX = {
-    ("internal/modules/vaktscan/handler_ci_evidence.go", "InsertCKCIEvidence"): (
-        "K2-03 (audit ledger, OPEN). vaktscan (vb_) writes vaktcomply's ck_evidence "
-        "through sqlc: POST /vaktscan/assets/ci-evidence -> ReceiveCIEvidence -> "
-        "q.InsertCKCIEvidence -> INSERT INTO ck_evidence. Same class as A1, routed "
-        "through sqlc instead of a SQL literal. ADR-0079 requires the write to go "
-        "through an owner interface in internal/shared/events; none exists for "
-        "ck_evidence yet, so closing it is a backend change (new interface + wiring), "
-        "not a gate change. REMOVE THIS ENTRY in the commit that routes the write."
-    ),
+    # Empty since 2026-10-18: the only entry (K2-03, vaktscan writing ck_evidence
+    # through InsertCKCIEvidence) left with the archived Scan module.
 }
 
 # Write statement inside SQL: verb + optional schema qualifier + (optional

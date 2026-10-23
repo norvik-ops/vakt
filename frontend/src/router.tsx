@@ -22,8 +22,6 @@ import AuditorAcceptPage from './pages/AuditorAcceptPage'
 import AuditorPortalPage from './pages/AuditorPortalPage'
 import PolicyAcceptPage from './pages/PolicyAcceptPage'
 import InviteAcceptPage from './pages/InviteAcceptPage'
-import DSRPortalPage from './pages/DSRPortalPage'
-import DSRPortalStatusPage from './pages/DSRPortalStatusPage'
 import SupplierPortalPage from './pages/SupplierPortalPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
@@ -53,12 +51,7 @@ const WebhooksPage               = lazy(() => import('./pages/WebhooksPage'))
 const ScheduledReportsPage       = lazy(() => import('./pages/ScheduledReportsPage'))
 const NotificationPreferencesPage = lazy(() => import('./pages/NotificationPreferencesPage'))
 
-const SecPulse    = lazy(() => import('./modules/vaktscan/SecPulseRoutes'))
 const SecVitals   = lazy(() => import('./modules/vaktcomply/SecVitalsRoutes'))
-const SecVault    = lazy(() => import('./modules/vaktvault/SecVaultRoutes'))
-const SecReflex   = lazy(() => import('./modules/vaktaware/SecReflexRoutes'))
-const SecPrivacy  = lazy(() => import('./modules/vaktprivacy/SecPrivacyRoutes'))
-const HR          = lazy(() => import('./modules/vakthr/HRRoutes'))
 
 function LoadingSpinner() {
   return (
@@ -165,14 +158,6 @@ export const router = createBrowserRouter([
     element: <SupplierPortalPage />,
   },
   {
-    path: '/dsr/status/:token',
-    element: <DSRPortalStatusPage />,
-  },
-  {
-    path: '/dsr/:slug',
-    element: <DSRPortalPage />,
-  },
-  {
     // Sprint 19 S19-4: Public NIS2-Wizard — kein Layout, kein Auth.
     // Top-of-Funnel-Akquise-Asset.
     path: '/nis2-check',
@@ -239,28 +224,8 @@ export const router = createBrowserRouter([
           { path: '/vaktscan/assets', element: <LegacyAssetRedirect /> },
           { path: '/vaktscan/assets/:id', element: <LegacyAssetRedirect /> },
           {
-            path: '/vaktscan/*',
-            element: <ModuleShell moduleKey="vaktscan"><SecPulse /></ModuleShell>,
-          },
-          {
             path: '/vaktcomply/*',
             element: <ModuleShell moduleKey="vaktcomply"><SecVitals /></ModuleShell>,
-          },
-          {
-            path: '/vaktvault/*',
-            element: <ModuleShell moduleKey="vaktvault"><SecVault /></ModuleShell>,
-          },
-          {
-            path: '/vaktaware/*',
-            element: <ModuleShell moduleKey="vaktaware"><SecReflex /></ModuleShell>,
-          },
-          {
-            path: '/vaktprivacy/*',
-            element: <ModuleShell moduleKey="vaktprivacy"><SecPrivacy /></ModuleShell>,
-          },
-          {
-            path: '/vakthr/*',
-            element: <ModuleShell moduleKey="vakthr"><HR /></ModuleShell>,
           },
           { path: '/integrations', element: <IntegrationsPage /> },
           { path: '*', element: <NotFoundPage /> },

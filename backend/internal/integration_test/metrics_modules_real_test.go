@@ -76,7 +76,9 @@ func TestMetrics_OmitsSwitchedOffModules(t *testing.T) {
 	assert.NotContains(t, core, "vakt_dsr_overdue_total")
 	assert.Contains(t, core, "vakt_score_current", "ISMS gauges stay")
 
-	all := scrape("vaktcomply,vaktscan,vaktprivacy")
-	assert.Contains(t, all, "# TYPE vakt_findings_total gauge")
-	assert.Contains(t, all, "vakt_dsr_open_total 0")
+	// Since the archive (docs/stories/module-archivieren.md) an old
+	// configuration naming Scan or Privacy changes nothing.
+	old := scrape("vaktcomply,vaktscan,vaktprivacy")
+	assert.NotContains(t, old, "vakt_findings_total")
+	assert.NotContains(t, old, "vakt_dsr_open_total")
 }

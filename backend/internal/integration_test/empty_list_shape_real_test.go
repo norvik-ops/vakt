@@ -8,12 +8,10 @@ package integration_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/matharnica/vakt/internal/modules/vaktaware"
 	auditpkg "github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 )
 
@@ -23,7 +21,8 @@ import (
 // `[]`. The frontend's react-query `= []` destructuring default catches undefined
 // but NOT null, so `audits.length` / `report.campaigns.length` crashed the whole
 // page for every new customer. The fix initialises to `[]T{}`; this test asserts
-// the empty-DB result is a non-nil empty slice for the two confirmed-live crashes.
+// the empty-DB result is a non-nil empty slice. (The second confirmed case, the
+// Aware training report, left with the archived module.)
 func TestEmptyListsSerializeAsArrayNotNull(t *testing.T) {
 	pool, orgID, cleanup := bootPostgresWithOrg(t)
 	defer cleanup()
@@ -35,13 +34,4 @@ func TestEmptyListsSerializeAsArrayNotNull(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, audits, "ListAuditProgramAudits must return [] not nil on the empty state")
 	assert.Len(t, audits, 0)
-
-	// D18-03: training-report campaign summaries — empty org must yield [] not nil.
-	awareRepo := vaktaware.NewRepository(pool)
-	from := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	campaigns, err := awareRepo.ListCampaignSummariesForReport(ctx, orgID, from, to)
-	require.NoError(t, err)
-	assert.NotNil(t, campaigns, "ListCampaignSummariesForReport must return [] not nil on the empty state")
-	assert.Len(t, campaigns, 0)
 }

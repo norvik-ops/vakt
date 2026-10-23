@@ -8,63 +8,56 @@ import (
 	"strings"
 
 	"github.com/hibiken/asynq"
-	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/services/alerting"
 	"github.com/rs/zerolog/log"
 )
 
-// taskModulePrefixes maps task type prefixes to the module that owns them. Task
-// names grew over time with both the package name ("vaktscan:") and a short form
-// ("privacy:"), so both spellings are listed.
-var taskModulePrefixes = []struct {
-	prefix string
-	module string
-}{
-	{"vaktscan:", "vaktscan"},
-	{"bsi:", "vaktscan"}, // the CERT-Bund feed writes vb_findings
-	{"vaktvault:", "vaktvault"},
-	{"vault:", "vaktvault"},
-	{"vaktaware:", "vaktaware"},
-	{"aware:", "vaktaware"},
-	{"vaktprivacy:", "vaktprivacy"},
-	{"privacy:", "vaktprivacy"},
-	{"hr:", "vakthr"},
+// archivedTaskPrefixes are the task type prefixes of the modules archived with
+// docs/stories/module-archivieren.md (Scan, Vault, Aware, Privacy, HR; tag
+// archiv/module-vollstaendig). Task names grew with both the package name
+// ("vaktscan:") and a short form ("privacy:"), so both spellings are listed.
+var archivedTaskPrefixes = []string{
+	"vaktscan:", "bsi:", // the CERT-Bund feed wrote vb_findings
+	"vaktvault:", "vault:",
+	"vaktaware:", "aware:",
+	"vaktprivacy:", "privacy:",
+	"hr:",
 }
 
-// taskModuleExact maps platform-named task types that read a module's data.
-// The alerting checks run under "alerting:" but read vb_findings / po_dsr.
-var taskModuleExact = map[string]string{
-	alerting.TaskSLAOverdueCheck: "vaktscan",
-	alerting.TaskDSROverdueCheck: "vaktprivacy",
+// archivedTaskTypes are platform- or ISMS-named task types whose only producers
+// were archived modules: the alerting checks read vb_findings / po_dsr, cross-
+// module evidence and the per-finding AI suggestion were enqueued by the modules.
+var archivedTaskTypes = map[string]bool{
+	"alerting:sla_overdue_check":        true,
+	"alerting:dsr_overdue_check":        true,
+	"vaktcomply:record_evidence":        true,
+	"vaktcomply:ai_evidence_suggestion": true,
 }
 
-// taskModule returns the module owning a task type, or "" for platform and ISMS
-// tasks, which always run.
-func taskModule(taskType string) string {
-	if m, ok := taskModuleExact[taskType]; ok {
-		return m
+// isArchivedTask reports whether a task type belongs to an archived module.
+func isArchivedTask(taskType string) bool {
+	if archivedTaskTypes[taskType] {
+		return true
 	}
-	for _, p := range taskModulePrefixes {
-		if strings.HasPrefix(taskType, p.prefix) {
-			return p.module
+	for _, p := range archivedTaskPrefixes {
+		if strings.HasPrefix(taskType, p) {
+			return true
 		}
 	}
-	return ""
+	return false
 }
 
-// moduleGuardMiddleware drops tasks of modules switched off via
-// VAKT_MODULES_ENABLED. Without it a task enqueued before the switch — a phishing
-// campaign, a scan, a Git scan — would still run after the module is gone. The
-// task is acknowledged (not retried) so it does not come back.
-func moduleGuardMiddleware(cfg *config.Config) asynq.MiddlewareFunc {
-	return func(next asynq.Handler) asynq.Handler {
-		return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
-			if m := taskModule(t.Type()); m != "" && cfg != nil && !cfg.IsModuleEnabled(m) {
-				log.Warn().Str("task", t.Type()).Str("module", m).
-					Msg("worker: Aufgabe verworfen — Modul ist per VAKT_MODULES_ENABLED abgeschaltet")
-				return nil
-			}
-			return next.ProcessTask(ctx, t)
-		})
-	}
+// archivedTaskMiddleware drops tasks of archived modules. They can still sit in
+// Redis after an update — queued, scheduled or waiting for a retry — and no
+// handler exists for them any more; without this they would fail and retry up
+// to 25 times. The task is acknowledged so it does not come back. main.go keeps
+// serving the archived queues at the lowest weight so they drain.
+func archivedTaskMiddleware(next asynq.Handler) asynq.Handler {
+	return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
+		if isArchivedTask(t.Type()) {
+			log.Warn().Str("task", t.Type()).
+				Msg("worker: Aufgabe eines archivierten Moduls verworfen")
+			return nil
+		}
+		return next.ProcessTask(ctx, t)
+	})
 }

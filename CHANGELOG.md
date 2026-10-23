@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Entfernt
+- **Breaking: Vakt ist ein reines ISMS.** Die Zusatzmodule Vakt Scan, Vault, Aware, Privacy und HR
+  sind archiviert (Git-Tag `archiv/module-vollstaendig`, `docs/stories/module-archivieren.md`):
+  Seiten, API, Hintergrund-Jobs, öffentliche Portale (DSR-Portal, Phishing-Tracking, Vault-Share) und
+  ihre Doku sind entfernt. Ihre Tabellen bleiben in der Datenbank. `VAKT_MODULES_ENABLED` mit einem
+  archivierten Namen löst beim Start eine Warnung aus; liegengebliebene Aufgaben verwirft der Worker.
+  Ausgehende Verbindungen zu `www.bsi.bund.de` und `endoflife.date` entfallen damit. Siehe
+  `docs/UPGRADE.md`.
+
 ### Geändert
 - **Das Asset-Inventar gehört jetzt zu Vakt Comply.** Seiten und API liegen unter
   `/vaktcomply/assets`; alte Lesezeichen und die API-Pfade unter `/vaktscan/assets` leiten weiter bzw.

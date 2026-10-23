@@ -8,64 +8,45 @@ import (
 	"testing"
 
 	"github.com/hibiken/asynq"
-	"github.com/matharnica/vakt/internal/config"
-	"github.com/matharnica/vakt/internal/modules/vaktaware"
-	"github.com/matharnica/vakt/internal/modules/vaktcomply"
-	"github.com/matharnica/vakt/internal/modules/vakthr"
-	"github.com/matharnica/vakt/internal/modules/vaktprivacy"
-	"github.com/matharnica/vakt/internal/modules/vaktscan"
-	"github.com/matharnica/vakt/internal/modules/vaktvault"
-	"github.com/matharnica/vakt/internal/services/alerting"
-	"github.com/matharnica/vakt/internal/shared/platform/events"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 )
 
-func TestTaskModule(t *testing.T) {
-	cases := map[string]string{
-		vaktscan.TaskScanTrivy:                "vaktscan",
-		vaktaware.TaskSendCampaign:            "vaktaware",
-		vaktaware.TaskAutoEnrollment:          "vaktaware",
-		vaktvault.TaskGitScan:                 "vaktvault",
-		vaktvault.TaskQuarterlyAccessReview:   "vaktvault",
-		vaktprivacy.TaskAVVExpiryCheck:        "vaktprivacy",
-		vaktprivacy.TaskDSRDeadlineCheck:      "vaktprivacy",
-		vakthr.TaskContractorExpiryCheck:      "vakthr",
-		vaktcomply.TaskISMSKPISnapshot:        "",
-		vaktcomply.TaskEvidenceStalenessCheck: "",
-		"retention:run":                       "",
-		"bsi:feed_sync":                       "vaktscan",
-		alerting.TaskSLAOverdueCheck:          "vaktscan",
-		alerting.TaskDSROverdueCheck:          "vaktprivacy",
+func TestIsArchivedTask(t *testing.T) {
+	cases := map[string]bool{
+		"vaktscan:trivy":                      true,
+		"vaktaware:send_campaign":             true,
+		"vault:git_scan":                      true,
+		"privacy:avv_expiry_check":            true,
+		"hr:contractor_expiry_check":          true,
+		"bsi:feed_sync":                       true,
+		"alerting:sla_overdue_check":          true,
+		"alerting:dsr_overdue_check":          true,
+		"vaktcomply:record_evidence":          true,
+		"vaktcomply:ai_evidence_suggestion":   true,
+		vaktcomply.TaskISMSKPISnapshot:        false,
+		vaktcomply.TaskEvidenceStalenessCheck: false,
+		"retention:run":                       false,
+		"vaktcomplyx:anything":                false,
 	}
 	for task, want := range cases {
-		assert.Equal(t, want, taskModule(task), task)
+		assert.Equal(t, want, isArchivedTask(task), task)
 	}
 }
 
-// TestModuleGuardMiddleware covers the R1-KW-15 follow-up: a task queued for a
-// switched-off module must not run, ISMS tasks run as before.
-func TestModuleGuardMiddleware(t *testing.T) {
+// TestArchivedTaskMiddleware: a task an archived module queued before the update
+// is acknowledged without running; ISMS tasks run as before.
+func TestArchivedTaskMiddleware(t *testing.T) {
 	ran := map[string]bool{}
-	next := asynq.HandlerFunc(func(_ context.Context, task *asynq.Task) error {
+	h := archivedTaskMiddleware(asynq.HandlerFunc(func(_ context.Context, task *asynq.Task) error {
 		ran[task.Type()] = true
 		return nil
-	})
-	h := moduleGuardMiddleware(&config.Config{ModulesEnabled: "vaktcomply,vaktscan"})(next)
-
-	for _, typ := range []string{vaktaware.TaskSendCampaign, vaktscan.TaskScanTrivy, vaktcomply.TaskISMSKPISnapshot} {
+	}))
+	for _, typ := range []string{"vaktaware:send_campaign", "vaktscan:trivy", vaktcomply.TaskISMSKPISnapshot} {
 		assert.NoError(t, h.ProcessTask(context.Background(), asynq.NewTask(typ, nil)))
 	}
-	assert.False(t, ran[vaktaware.TaskSendCampaign], "Aware ist aus — keine Kampagne")
-	assert.True(t, ran[vaktscan.TaskScanTrivy])
+	assert.False(t, ran["vaktaware:send_campaign"])
+	assert.False(t, ran["vaktscan:trivy"])
 	assert.True(t, ran[vaktcomply.TaskISMSKPISnapshot])
-}
-
-// TestEvidenceSourceEnabled: cross-module evidence all runs as
-// "vaktcomply:record_evidence"; the handler filters by the event source instead.
-func TestEvidenceSourceEnabled(t *testing.T) {
-	cfg := &config.Config{ModulesEnabled: "vaktcomply"}
-	assert.False(t, evidenceSourceEnabled(cfg, events.SourceSecreflex), "Aware aus")
-	assert.False(t, evidenceSourceEnabled(cfg, events.SourceSecpulse), "Scan aus")
-	assert.True(t, evidenceSourceEnabled(cfg, events.SourceSecvitals), "Comply ist Kern")
-	assert.True(t, evidenceSourceEnabled(nil, events.SourceSecreflex))
 }
