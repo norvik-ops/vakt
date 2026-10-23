@@ -6,45 +6,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+---
+## [0.45.0] — 2026-10-23
+
 ### Entfernt
 - **Breaking: Vakt ist ein reines ISMS.** Die Zusatzmodule Vakt Scan, Vault, Aware, Privacy und HR
-  sind archiviert (Git-Tag `archiv/module-vollstaendig`, `docs/stories/module-archivieren.md`):
-  Seiten, API, Hintergrund-Jobs, öffentliche Portale (DSR-Portal, Phishing-Tracking, Vault-Share) und
-  ihre Doku sind entfernt. Ihre Tabellen bleiben in der Datenbank. `VAKT_MODULES_ENABLED` mit einem
-  archivierten Namen löst beim Start eine Warnung aus; liegengebliebene Aufgaben verwirft der Worker.
-  Ausgehende Verbindungen zu `www.bsi.bund.de` und `endoflife.date` entfallen damit. Siehe
-  `docs/UPGRADE.md`.
+  sind archiviert (Git-Tag `archiv/module-vollstaendig`): Seiten, API, Hintergrund-Jobs, öffentliche
+  Portale (DSR-Portal, Phishing-Tracking, Vault-Share) und ihre Doku sind entfernt. **Ihre Tabellen
+  bleiben in der Datenbank**, und der DSGVO-Export der Organisation enthält ihre gespeicherten Daten
+  weiterhin. `VAKT_MODULES_ENABLED` mit einem archivierten Namen löst beim Start eine Warnung aus;
+  liegengebliebene Aufgaben verwirft der Worker. Ausgehende Verbindungen zu `www.bsi.bund.de` und
+  `endoflife.date` entfallen damit. Siehe `docs/UPGRADE.md`.
 
 ### Geändert
 - **Das Asset-Inventar gehört jetzt zu Vakt Comply.** Seiten und API liegen unter
   `/vaktcomply/assets`; alte Lesezeichen und die API-Pfade unter `/vaktscan/assets` leiten weiter bzw.
-  funktionieren als Alias mit derselben Berechtigung. Die Asset-Detailseite zeigt keine Scan-Auslöser
-  und Findings mehr — sie fragten bei abgeschaltetem Scan Endpunkte ab, die es nicht gibt. Daten und
-  Tabelle bleiben unverändert (erster Schritt von `docs/stories/module-archivieren.md`).
-- **Neue Installationen starten nur mit dem ISMS (Vakt Comply).** `.env.example` und das Helm-Chart
-  setzen `VAKT_MODULES_ENABLED=vaktcomply`. Scan, Vault, Aware, Privacy und HR lassen sich über diese
-  Variable dazuschalten. Ein abgeschaltetes Modul hat keine API-Routen und keine Hintergrund-Jobs mehr
-  und erscheint nirgends in der Oberfläche (Seitenleiste, Dashboard, Suche, Tastenkürzel, Querverweise);
-  seine Daten bleiben erhalten. Der Sicherheits-Score zählt Findings und Datenpannen nur bei aktivem
-  Modul. **Bestehende Installationen ändern sich nicht** — ihre `.env` bleibt, und ohne gesetzte
-  Variable laufen weiterhin alle Module.
-- Das Asset-Inventar gehört zum ISMS: Es steht unter Comply → Betrieb, ist immer verfügbar und an die
-  Berechtigung für Vakt Comply gebunden (vorher: Vakt Scan).
+  funktionieren als Alias mit derselben Berechtigung (Vakt Comply). Die Asset-Detailseite zeigt keine
+  Scan-Auslöser und Findings mehr. Daten und Tabelle bleiben unverändert.
 - Neuer Endpunkt `GET /api/v1/modules` liefert die aktiven Module für jeden angemeldeten Nutzer.
-- Die Moduleinstellungen zeigen jetzt auch Vakt HR.
-- **Vakt Comply ist der Kern und lässt sich nicht abschalten** — es ist aktiv, auch wenn es in
-  `VAKT_MODULES_ENABLED` fehlt.
-- Abschalten wirkt jetzt auch auf alles, was ein Modul nebenbei auslöst: Der Worker verwirft bereits
-  eingereihte Aufgaben abgeschalteter Module (z. B. eine vorher geplante Phishing-Kampagne), Fristen-Mails
-  zu Datenpannen, DSR und AVV laufen nur mit Vakt Privacy, der BSI-CERT-Bund-Feed nur mit Vakt Scan, und
-  GitLab/SonarQube schreiben ohne Vakt Scan keine Findings mehr (ihre ISMS-Nachweise sammeln sie weiter).
-- Wochen-Digest: enthält jetzt immer offene Risiken und CAPAs; Findings nur mit Vakt Scan,
-  DSR-Fristen nur mit Vakt Privacy.
-- Rechteverwaltung, „Zuletzt besucht“, Suchverlauf, Einführungstour und geplante Berichte zeigen keine
-  abgeschalteten Module mehr. Einen Findings-Bericht kann man ohne Vakt Scan nicht mehr anlegen.
-- `/metrics` veröffentlicht Findings- und DSR-Werte nur, wenn das jeweilige Modul aktiv ist.
+- Audit-Paket und KI-Berichte nennen keine „0 offenen Sicherheitslücken“ mehr, und das Audit-Paket
+  enthält keine leere `findings.csv` — ohne Scanner gibt es diese Zahl nicht.
+- Die CCM-Prüfung „Trivy — keine kritischen CVEs“ meldet „unbekannt“ statt „bestanden“, weil kein
+  Scanner läuft.
 
 ### Behoben
+- **MFA lässt sich wieder über die Oberfläche einschalten** (R1-KW-3): Der Einrichtungsdialog holte
+  das Secret nie ab. Die Abfrage des 2FA-Status zählt außerdem nicht mehr gegen das Limit für
+  Code-Eingaben (R1-KW-13).
+- **Formulare stürzen bei leeren Auswahlwerten nicht mehr ab** (R1-KW-7, R1-KW-9): u. a. Richtlinien,
+  BSI-Zielobjekte und -Modellierung, CAPAs; ein Teammitglied ohne Namen erscheint mit seiner E-Mail.
 - **Als Nachweis hochgeladene Dokumente fehlen nicht mehr im Audit-Paket** (R1-KW-12). „Nachweis
   hinzufügen → Dokument" legt die Datei jetzt als Anhang des Nachweises ab; sie steckt im Audit-Paket
   und ist herunterladbar. Dokumente, die vorher auf dem alten Weg hochgeladen wurden, nimmt der Export
@@ -53,20 +43,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Der Einrichtungsassistent bot in Schritt 3 eine Modulauswahl an, die nichts bewirkte. Der Schritt
   entfällt; der Assistent hat jetzt zwei Schritte. Der Passworthinweis nennt die tatsächliche
   Mindestlänge von 10 Zeichen statt 8.
-- **DSGVO-Export vollständig:** Das Organisations-Archiv enthielt HR- und Aware-Daten nur bei aktivem
-  Modul. Abschalten löscht aber nichts — der Export enthält jetzt immer alle gespeicherten Daten.
-- **Audit-Paket und KI-Berichte** nannten bei abgeschaltetem Vakt Scan „0 offene Sicherheitslücken“,
-  obwohl kein Scanner lief. Die Zeile entfällt dann; das Audit-Paket enthält keine leere `findings.csv`.
-- Die Rechteverwaltung ließ Vakt HR aus. Jedes Speichern entzog dem Nutzer damit still den Zugriff auf HR;
-  Rechte abgeschalteter Module bleiben beim Speichern jetzt unverändert erhalten.
-- **CCM-Prüfung „Trivy — keine kritischen CVEs“** meldete ohne Vakt Scan „bestanden“, obwohl kein
-  Scanner lief. Sie meldet dann „unbekannt“; im Formular ist der Typ ohne Scan nicht mehr wählbar.
-- Ohne Vakt Scan bzw. Vakt Privacy laufen auch bereits eingereihte SLA- und DSR-Überfälligkeitsalarme
-  und Modul-Nachweise (z. B. „Schulung abgeschlossen“) nicht mehr nach.
-- Glocke und Live-Benachrichtigungen zeigen keine Hinweise abgeschalteter Module mehr; die
-  ISO-27001-Checkliste und die Vorfall-Detailseite verweisen nicht mehr auf abgeschaltete Module.
-- README, SECURITY.md und Konfigurationsdoku: BSI-Feed und `endoflife.date` werden nur mit Vakt Scan
-  aufgerufen, in der ISMS-Grundeinstellung also gar nicht.
 
 ---
 ## [0.44.1] — 2026-10-13
