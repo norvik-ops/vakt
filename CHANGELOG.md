@@ -80,6 +80,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   entfällt; der Assistent hat jetzt zwei Schritte. Der Passworthinweis nennt die tatsächliche
   Mindestlänge von 10 Zeichen statt 8.
 
+### Sicherheit
+- **OpenAPI-Bibliothek (kin-openapi) auf 0.149.0 aktualisiert**, 4 Lücken der Stufe „hoch“ geschlossen
+  (CVE-2026-100351 bis -100354). Die Bibliothek wird nur in den Contract-Tests verwendet und steckt nicht
+  im ausgelieferten Programm; für Installationen ändert sich nichts.
+
 ---
 ## [0.44.1] — 2026-10-13
 
