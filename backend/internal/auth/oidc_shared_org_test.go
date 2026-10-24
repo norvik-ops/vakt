@@ -45,14 +45,14 @@ func TestOIDCLogin_secondSSOUserJoinsTheSameOrganisation(t *testing.T) {
 	alice := map[string]any{
 		"id":            "sharedorg-alice-" + suffix,
 		"name":          "alice",
-		"displayName":   "Alice Example",
+		"displayName":   "Alice Example " + suffix,
 		"email":         "sharedorg-alice-" + suffix + "@example.com",
 		"emailVerified": true,
 	}
 	bob := map[string]any{
 		"id":            "sharedorg-bob-" + suffix,
 		"name":          "bob",
-		"displayName":   "Bob Example",
+		"displayName":   "Bob Example " + suffix,
 		"email":         "sharedorg-bob-" + suffix + "@example.com",
 		"emailVerified": true,
 	}
@@ -71,19 +71,27 @@ func TestOIDCLogin_secondSSOUserJoinsTheSameOrganisation(t *testing.T) {
 		FrontendURL:         "http://localhost:5173",
 	}
 
-	var orgsBefore int
-	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM organizations`).Scan(&orgsBefore))
-
 	_, err := svc.OIDCLogin(ctx, cfg, "keycloak", "code-alice", "state", "go-test")
 	require.NoError(t, err, "first SSO login failed")
 	_, err = svc.OIDCLogin(ctx, cfg, "keycloak", "code-bob", "state", "go-test")
 	require.NoError(t, err, "second SSO login failed")
 
-	var orgsAfter int
-	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM organizations`).Scan(&orgsAfter))
-	assert.Equal(t, orgsBefore, orgsAfter,
-		"SSO just-in-time provisioning founded an organisation — this instance has exactly one, "+
-			"and an IdP login must join it, not create a second one next to it")
+	// Not a global count of organisations: this package shares its database
+	// with every other package, which found and drop organisations of their own
+	// while this test runs (7 of 40 runs red under that load). The pre-fix code
+	// named the founded organisation after the display name, so that name is
+	// what a regression leaves behind.
+	for _, u := range []map[string]any{alice, bob} {
+		var founded int
+		require.NoError(t, pool.QueryRow(ctx,
+			`SELECT count(*) FROM organizations WHERE name = $1`, u["displayName"],
+		).Scan(&founded))
+		assert.Zero(t, founded,
+			"SSO just-in-time provisioning founded an organisation for %s — this instance has exactly one, "+
+				"and an IdP login must join it, not create a second one next to it", u["email"])
+		assert.Equal(t, 1, membershipCount(t, pool, u["email"].(string)),
+			"an SSO user belongs to the instance's organisation and to nothing else")
+	}
 
 	aliceOrg := orgOf(t, pool, alice["email"].(string))
 	bobOrg := orgOf(t, pool, bob["email"].(string))
@@ -152,19 +160,37 @@ func TestOIDCLogin_jitUserJoinsInstanceOrgAsViewer(t *testing.T) {
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-// seedInstanceOrg makes sure the database has an organisation and returns the
-// one the SSO path resolves as the instance's: the oldest.
+// seedInstanceOrg creates the organisation the SSO path resolves as the
+// instance's: the oldest. It is backdated before every other row, because the
+// oldest organisation already in the shared database may belong to another
+// package, whose cleanup can drop it mid-test and move "the instance" elsewhere.
 func seedInstanceOrg(t *testing.T, pool *pgxpool.Pool) string {
 	t.Helper()
-	ctx := context.Background()
+	authOrgSeq++
+	slug := fmt.Sprintf("instance-%d-%d", os.Getpid(), authOrgSeq)
 	var orgID string
-	err := pool.QueryRow(ctx,
-		`SELECT id::text FROM organizations ORDER BY created_at ASC, id ASC LIMIT 1`,
-	).Scan(&orgID)
-	if err == nil {
-		return orgID
-	}
-	return seedAuthOrg(t, pool, "instance")
+	require.NoError(t, pool.QueryRow(context.Background(), `
+		INSERT INTO organizations (name, slug, created_at)
+		VALUES ($1, $1, COALESCE((SELECT min(created_at) FROM organizations), now()) - interval '1 day')
+		RETURNING id::text`, slug,
+	).Scan(&orgID))
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM organizations WHERE id = $1::uuid`, orgID)
+	})
+	return orgID
+}
+
+// membershipCount returns how many organisations the user belongs to.
+func membershipCount(t *testing.T, pool *pgxpool.Pool, email string) int {
+	t.Helper()
+	var n int
+	// orgid-lint: global — Testabfrage, per users.email auf den in diesem Test
+	// erzeugten Nutzer eingegrenzt.
+	require.NoError(t, pool.QueryRow(context.Background(), `
+		SELECT count(*) FROM org_members om
+		JOIN users u ON u.id = om.user_id
+		WHERE u.email = $1`, email).Scan(&n))
+	return n
 }
 
 // orgOf returns the org_id of the user's single membership.
