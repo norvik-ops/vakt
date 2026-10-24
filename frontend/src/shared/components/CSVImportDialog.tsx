@@ -17,7 +17,7 @@ export interface CSVImportDialogProps {
   open: boolean
   onClose: () => void
   /**
-   * Backend path relative to the API base, e.g. "/vaktscan/findings/import/csv".
+   * Backend path relative to the API base, e.g. "/vaktcomply/assets/import/csv".
    * Passed to apiFetch, which prepends /api/v1 and attaches the CSRF and
    * session headers — do NOT include the /api/v1 prefix here.
    */

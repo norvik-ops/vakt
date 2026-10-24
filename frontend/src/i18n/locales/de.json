@@ -2961,12 +2961,6 @@
     "saved": "Score-Konfiguration gespeichert",
     "fields": {
       "base_score": "Basis-Score",
-      "crit_penalty": "Kritisch-Penalty (pro Finding)",
-      "crit_penalty_cap": "Kritisch-Penalty Cap",
-      "high_penalty": "Hoch-Penalty (pro Finding)",
-      "high_penalty_cap": "Hoch-Penalty Cap",
-      "breach_penalty": "Datenpannen-Penalty (pro Breach)",
-      "breach_penalty_cap": "Datenpannen-Penalty Cap",
       "fw_bonus": "Framework-Bonus (pro Framework)",
       "fw_bonus_cap": "Framework-Bonus Cap"
     }

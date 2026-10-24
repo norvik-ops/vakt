@@ -65,7 +65,6 @@ frontend/src/modules/vaktcomply/types.ts::BCMReadinessScore.computed_at  # carri
 frontend/src/modules/vaktcomply/types.ts::BSICockpit.org_id  # carried: the BSI cockpit response emits no org_id
 frontend/src/modules/vaktcomply/types.ts::BSIReportExport.created_at  # carried: Go BSIReportExport emits generated_at
 frontend/src/modules/vaktcomply/types.ts::BSIThreat.threat_id  # carried: Go BSIThreat emits id
-frontend/src/modules/vaktcomply/pages/ISO27001ChecklistPage.tsx::Control.module  # carried: KONV-K5 §4.6 candidate — policy.Control has no module field
 frontend/src/modules/vaktcomply/types.ts::CreateBCPTestInput.plan_id  # carried: Go CreateBCPTestInput binds no plan_id; needs a live check of the create path
 frontend/src/modules/vaktcomply/types.ts::CreateProtectionNeedInput.availability  # carried: KONV-K5 §4.6 candidate — Go input binds name/object_name/object_type
 frontend/src/modules/vaktcomply/types.ts::CreateProtectionNeedInput.confidentiality  # carried: KONV-K5 §4.6 candidate — Go input binds name/object_name/object_type

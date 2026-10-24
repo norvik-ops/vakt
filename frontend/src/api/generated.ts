@@ -8320,58 +8320,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktcomply/controls/{id}/vvt-links": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List VVT entries linked to a control (reverse view) */
-        get: operations["listControlVVTLinks"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/vaktcomply/vvt-links": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List controls linked to a VVT entry */
-        get: operations["listVVTControlLinks"];
-        put?: never;
-        /** Link a VVT entry to a control */
-        post: operations["createVVTControlLink"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/vaktcomply/vvt-links/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Remove a VVT↔control link */
-        delete: operations["deleteVVTControlLink"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/vaktcomply/pentests": {
         parameters: {
             query?: never;
@@ -31741,18 +31689,6 @@ export interface components {
             tester?: string;
             notes?: string;
         };
-        VVTControlLink: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            org_id: string;
-            vvt_id: string;
-            vvt_name?: string;
-            /** Format: uuid */
-            control_id: string;
-            /** Format: date-time */
-            created_at: string;
-        };
         PhysicalControlTemplate: {
             control_code: string;
             title: string;
@@ -35761,113 +35697,6 @@ export interface operations {
             };
             /** @description Invalid .vna file */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    listControlVVTLinks: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Linked VVT entries */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["VVTControlLink"][];
-                };
-            };
-        };
-    };
-    listVVTControlLinks: {
-        parameters: {
-            query: {
-                vvt_id: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Linked controls */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["VVTControlLink"][];
-                };
-            };
-        };
-    };
-    createVVTControlLink: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    vvt_id: string;
-                    vvt_name?: string;
-                    /** Format: uuid */
-                    control_id: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Created link */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["VVTControlLink"];
-                };
-            };
-            /** @description Control not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    deleteVVTControlLink: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Link not found */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };

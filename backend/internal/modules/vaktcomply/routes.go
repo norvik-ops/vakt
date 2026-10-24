@@ -567,12 +567,6 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.POST("/verinice-import/preview", h.PreviewVeriniceImport, rw)
 	g.POST("/verinice-import/commit", h.CommitVeriniceImport, rw)
 
-	// S88-9: VVT→ISO/TOM-Control-Verknüpfung (n:m, beidseitig lesbar).
-	g.GET("/controls/:id/vvt-links", h.ListControlVVTLinks)
-	g.GET("/vvt-links", h.ListVVTControlLinks)
-	g.POST("/vvt-links", h.CreateVVTControlLink, rw)
-	g.DELETE("/vvt-links/:id", h.DeleteVVTControlLink, rw)
-
 	// Management Reviews (S61-2)
 	// CRITICAL: sub-resource routes before /:id to avoid route conflicts
 	g.GET("/management-reviews", h.ListManagementReviews)

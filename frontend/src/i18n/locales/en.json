@@ -2961,12 +2961,6 @@
     "saved": "Score configuration saved",
     "fields": {
       "base_score": "Base score",
-      "crit_penalty": "Critical penalty (per finding)",
-      "crit_penalty_cap": "Critical penalty cap",
-      "high_penalty": "High penalty (per finding)",
-      "high_penalty_cap": "High penalty cap",
-      "breach_penalty": "Breach penalty (per breach)",
-      "breach_penalty_cap": "Breach penalty cap",
       "fw_bonus": "Framework bonus (per framework)",
       "fw_bonus_cap": "Framework bonus cap"
     }

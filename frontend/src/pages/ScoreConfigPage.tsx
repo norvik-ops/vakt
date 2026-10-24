@@ -61,12 +61,17 @@ const DEFAULT_CONFIG: ScoreConfig = {
   fw_bonus_cap: 30,
 }
 
+// Only these weights still reach the score. Findings (Vakt Scan) and data
+// breaches (Vakt Privacy) are archived, their counts are always 0, so the
+// crit/high/breach penalties have no effect. They stay in the API and are sent
+// back unchanged on save, so an older configuration survives a later restore.
+const VISIBLE_FIELDS: (keyof ScoreConfig)[] = ['base_score', 'fw_bonus', 'fw_bonus_cap']
+
 type Errors = Partial<Record<keyof ScoreConfig, string>>
 
 function validate(form: ScoreConfig, fieldError: string): Errors {
   const errors: Errors = {}
-  const fields = Object.keys(form) as (keyof ScoreConfig)[]
-  for (const key of fields) {
+  for (const key of VISIBLE_FIELDS) {
     if (form[key] < 1 || form[key] > 100) {
       errors[key] = fieldError
     }
@@ -105,17 +110,14 @@ export default function ScoreConfigPage() {
 
   const hasErrors = Object.keys(errors).length > 0
 
-  const FIELDS: { label: string; field: keyof ScoreConfig }[] = [
-    { label: t('scoreConfig.fields.base_score'), field: 'base_score' },
-    { label: t('scoreConfig.fields.crit_penalty'), field: 'crit_penalty' },
-    { label: t('scoreConfig.fields.crit_penalty_cap'), field: 'crit_penalty_cap' },
-    { label: t('scoreConfig.fields.high_penalty'), field: 'high_penalty' },
-    { label: t('scoreConfig.fields.high_penalty_cap'), field: 'high_penalty_cap' },
-    { label: t('scoreConfig.fields.breach_penalty'), field: 'breach_penalty' },
-    { label: t('scoreConfig.fields.breach_penalty_cap'), field: 'breach_penalty_cap' },
-    { label: t('scoreConfig.fields.fw_bonus'), field: 'fw_bonus' },
-    { label: t('scoreConfig.fields.fw_bonus_cap'), field: 'fw_bonus_cap' },
-  ]
+  const FIELDS = VISIBLE_FIELDS.map((field) => ({ label: t(`scoreConfig.fields.${field}`), field }))
+
+  function handleReset() {
+    const next = { ...form }
+    for (const key of VISIBLE_FIELDS) next[key] = DEFAULT_CONFIG[key]
+    setForm(next)
+    setErrors({})
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -137,7 +139,7 @@ export default function ScoreConfigPage() {
           <div className="bg-surface border border-border rounded-xl p-5">
             <h2 className="text-sm font-semibold text-primary mb-2">{t('scoreConfig.formulaTitle')}</h2>
             <p className="text-xs text-secondary font-mono leading-relaxed">
-              Score = Basis − CritPenalty(max Cap) − HighPenalty(max Cap) − BreachPenalty(max Cap) + FWBonus(max Cap)
+              Score = Basis + FWBonus(max Cap)
             </p>
             <p className="text-[11px] text-secondary mt-2">{t('scoreConfig.formulaHint')}</p>
           </div>
@@ -168,7 +170,7 @@ export default function ScoreConfigPage() {
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
-              onClick={() => { setForm(DEFAULT_CONFIG); setErrors({}) }}
+              onClick={handleReset}
               disabled={update.isPending || isLoading}
               className="h-8 text-sm"
             >

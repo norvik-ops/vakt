@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Behoben
+- **Die BSI-Grundschutz-Checkliste verlinkte 26 Bausteine auf Seiten archivierter Module**, die es nicht
+  mehr gibt. Alle Bausteine, die ISO-27001-Controls und die NIS2-Anforderungen verweisen jetzt auf die
+  passende Seite in Vakt Comply (z. B. A.5.9 → Asset-Inventar, Lieferkette → Lieferanten).
+- Die Score-Einstellungen zeigen nur noch die Gewichte, die den Score beeinflussen. Die Abzüge für
+  Findings und Datenpannen sind ausgeblendet; gespeicherte Werte bleiben unverändert.
+
 ### Geändert
 - **Der CSV-Import im Asset-Inventar ist kostenlos.** Er war an das Pro-Feature von Vakt Scan
   gebunden und funktioniert jetzt mit jeder Lizenz, auch Community.
@@ -21,6 +28,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   holen keine Schwachstellen mehr ab, nur noch ISMS-Nachweise. Findings-Berichte, Trivy-CCM-Prüfungen sowie
   DSFA- und AVV-Vorlagen lassen sich nicht mehr neu anlegen; ältere Einträge bleiben lesbar.
   `VAKT_BSI_FEED_ENABLED`, `VAKT_EOL_CHECK_ENABLED` und `VAKT_EPSS_ENABLED` liest Vakt nicht mehr.
+- Die API-Endpunkte `/vaktcomply/vvt-links` und `/vaktcomply/controls/{id}/vvt-links` sind entfernt; sie
+  verknüpften Controls mit VVT-Einträgen aus Vakt Privacy.
+- Die Schwärzung von Mitarbeiterdaten in Nachweisen bei einer Art.-17-Löschanfrage lief nur über Vakt
+  Privacy und ist mit ihm archiviert. Solche Daten entstanden nur über Vakt HR.
 
 ---
 ## [0.45.0] — 2026-10-23

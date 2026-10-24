@@ -2961,12 +2961,6 @@
     "saved": "Configuration du score enregistrée",
     "fields": {
       "base_score": "Score de base",
-      "crit_penalty": "Pénalité critique (par finding)",
-      "crit_penalty_cap": "Plafond pénalité critique",
-      "high_penalty": "Pénalité élevée (par finding)",
-      "high_penalty_cap": "Plafond pénalité élevée",
-      "breach_penalty": "Pénalité violation (par violation)",
-      "breach_penalty_cap": "Plafond pénalité violation",
       "fw_bonus": "Bonus cadre (par cadre)",
       "fw_bonus_cap": "Plafond bonus cadre"
     }

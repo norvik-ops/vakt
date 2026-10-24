@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Badge } from '../../../components/ui/badge'
 import { ExternalLink, Sparkles } from 'lucide-react'
-import { isPathVisible } from '../../../shared/moduleVisibility'
 
 interface NIS2Requirement {
   id: string
@@ -49,9 +48,9 @@ const NIS2_REQUIREMENTS: NIS2Requirement[] = [
     title: 'Sicherheit der Lieferkette',
     description:
       'Sicherheit in der Lieferkette einschl. sicherheitsbezogener Aspekte der Beziehungen zwischen Einrichtungen und unmittelbaren Anbietern',
-    module: 'Vakt Privacy (AVV)',
-    path: '/vaktprivacy/avv',
-    checkHint: 'Auftragsverarbeitungsvertrage aktuell und vollstandig',
+    module: 'Vakt Comply (Lieferanten)',
+    path: '/vaktcomply/suppliers',
+    checkHint: 'Lieferanten bewertet, Sicherheitsanforderungen in Verträgen dokumentiert',
   },
   {
     id: 'e',
@@ -59,9 +58,9 @@ const NIS2_REQUIREMENTS: NIS2Requirement[] = [
     title: 'Sicherheit beim Erwerb, Entwicklung und Wartung',
     description:
       'Sicherheit beim Erwerb, bei der Entwicklung und Wartung von Netz- und Informationssystemen',
-    module: 'Vakt Scan',
-    path: '/vaktscan/findings',
-    checkHint: 'Vulnerability-Scanning aktiv, kritische Findings geschlossen',
+    module: 'Vakt Comply (Pentests)',
+    path: '/vaktcomply/pentests',
+    checkHint: 'Schwachstellen- und Pentest-Ergebnisse dokumentiert, kritische Befunde behandelt',
   },
   {
     id: 'f',
@@ -79,9 +78,9 @@ const NIS2_REQUIREMENTS: NIS2Requirement[] = [
     title: 'Grundlegende Cyberhygiene und Schulungen',
     description:
       'Grundlegende Verfahren im Bereich der Cyberhygiene und Schulungen zur Cybersicherheit',
-    module: 'Vakt Aware',
-    path: '/vaktaware',
-    checkHint: 'Awareness-Trainings nachweisbar durchgefuhrt',
+    module: 'Vakt Comply (Richtlinien)',
+    path: '/vaktcomply/policies',
+    checkHint: 'Schulungen und Richtlinien-Bestätigungen nachweisbar',
   },
   {
     id: 'h',
@@ -89,9 +88,9 @@ const NIS2_REQUIREMENTS: NIS2Requirement[] = [
     title: 'Kryptografie und Verschlusselung',
     description:
       'Konzepte und Verfahren fur den Einsatz von Kryptografie und gegebenenfalls Verschlusselung',
-    module: 'Vakt Vault',
-    path: '/vaktvault',
-    checkHint: 'Secrets verschlusselt gespeichert, Verschlusselungsrichtlinie dokumentiert',
+    module: 'Vakt Comply (Kryptoschlüssel)',
+    path: '/vaktcomply/crypto-keys',
+    checkHint: 'Kryptokonzept und Schlüsselverwaltung dokumentiert',
   },
   {
     id: 'i',
@@ -118,10 +117,6 @@ const NIS2_REQUIREMENTS: NIS2Requirement[] = [
 /** Returns a Tailwind colour pair for the module badge. */
 function moduleBadgeClass(module: string): string {
   if (module.startsWith('Vakt Comply')) return 'bg-blue-900/40 text-blue-300 border-blue-800'
-  if (module.startsWith('Vakt Scan')) return 'bg-orange-900/40 text-orange-300 border-orange-800'
-  if (module.startsWith('Vakt Vault')) return 'bg-yellow-900/40 text-yellow-300 border-yellow-800'
-  if (module.startsWith('Vakt Aware')) return 'bg-purple-900/40 text-purple-300 border-purple-800'
-  if (module.startsWith('Vakt Privacy')) return 'bg-teal-900/40 text-teal-300 border-teal-800'
   return 'bg-surface2 text-muted border-transparent'
 }
 
@@ -165,17 +160,13 @@ export default function NIS2ChecklistPage() {
               <Badge className={`text-xs border ${moduleBadgeClass(req.module)}`}>
                 {req.module}
               </Badge>
-              {/* Liegt der Nachweis in einem abgeschalteten Modul, bleibt die Anforderung stehen,
-                  nur der Link entfällt (shared/moduleVisibility.ts). */}
-              {isPathVisible(req.path) && (
-                <Link
-                  to={req.path}
-                  className="flex items-center gap-1 text-xs text-brand hover:underline"
-                >
-                  {t('nis2Checklist.openModule')}
-                  <ExternalLink className="w-3 h-3" />
-                </Link>
-              )}
+              <Link
+                to={req.path}
+                className="flex items-center gap-1 text-xs text-brand hover:underline"
+              >
+                {t('nis2Checklist.openModule')}
+                <ExternalLink className="w-3 h-3" />
+              </Link>
               <p className="text-[11px] text-secondary text-right leading-snug max-w-[200px]">
                 {req.checkHint}
               </p>

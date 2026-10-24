@@ -2955,14 +2955,8 @@
     "save": "Opslaan",
     "saving": "Opslaan…",
     "fields": {
-      "crit_penalty": "Kritisch-Penalty (pro Finding)",
-      "high_penalty_cap": "Hoch-Penalty Cap",
-      "crit_penalty_cap": "Kritisch-Penalty Cap",
-      "breach_penalty": "Datenpannen-Penalty (pro Breach)",
       "base_score": "Basis-Score",
-      "high_penalty": "Hoch-Penalty (pro Finding)",
       "fw_bonus_cap": "Framework-Bonus Cap",
-      "breach_penalty_cap": "Datenpannen-Penalty Cap",
       "fw_bonus": "Framework-Bonus (pro Framework)"
     },
     "weightsTitle": "Gewichtungen",

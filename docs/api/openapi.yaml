@@ -2572,17 +2572,6 @@ components:
         tester: { type: string }
         notes: { type: string }
 
-    VVTControlLink:
-      type: object
-      required: [id, org_id, vvt_id, control_id, created_at]
-      properties:
-        id: { type: string, format: uuid }
-        org_id: { type: string, format: uuid }
-        vvt_id: { type: string }
-        vvt_name: { type: string }
-        control_id: { type: string, format: uuid }
-        created_at: { type: string, format: date-time }
-
     PhysicalControlTemplate:
       type: object
       required: [control_code, title, items]
@@ -9365,87 +9354,6 @@ paths:
                   framework_id: { type: string }
         '400':
           description: Invalid .vna file
-
-  # ── Sprint 88: VVT→Control-Verknüpfung (S88-9) ────────────────────────────
-
-  /vaktcomply/controls/{id}/vvt-links:
-    get:
-      summary: List VVT entries linked to a control (reverse view)
-      operationId: listControlVVTLinks
-      tags: [vaktcomply]
-      security:
-        - BearerAuth: []
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
-      responses:
-        '200':
-          description: Linked VVT entries
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/VVTControlLink'
-
-  /vaktcomply/vvt-links:
-    get:
-      summary: List controls linked to a VVT entry
-      operationId: listVVTControlLinks
-      tags: [vaktcomply]
-      security:
-        - BearerAuth: []
-      parameters:
-        - { name: vvt_id, in: query, required: true, schema: { type: string } }
-      responses:
-        '200':
-          description: Linked controls
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/VVTControlLink'
-    post:
-      summary: Link a VVT entry to a control
-      operationId: createVVTControlLink
-      tags: [vaktcomply]
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [vvt_id, control_id]
-              properties:
-                vvt_id: { type: string }
-                vvt_name: { type: string }
-                control_id: { type: string, format: uuid }
-      responses:
-        '201':
-          description: Created link
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VVTControlLink'
-        '404':
-          description: Control not found
-
-  /vaktcomply/vvt-links/{id}:
-    delete:
-      summary: Remove a VVT↔control link
-      operationId: deleteVVTControlLink
-      tags: [vaktcomply]
-      security:
-        - BearerAuth: []
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
-      responses:
-        '204':
-          description: Deleted
-        '404':
-          description: Link not found
 
   # ── Sprint 61: Pentest Tracking (S61-6) ───────────────────────────────────
 
