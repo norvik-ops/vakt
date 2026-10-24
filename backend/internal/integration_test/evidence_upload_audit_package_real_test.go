@@ -110,7 +110,7 @@ func TestEvidenceUpload_LandsInAuditPackage(t *testing.T) {
 		ctrlID, orgID, "./data/uploads/"+orgID+"/evidence/0b7c1e1e-legacy.pdf", userID, outside)
 	require.NoError(t, err)
 
-	pkg, err := audit.GeneratePackage(ctx, pool, orgID, false)
+	pkg, err := audit.GeneratePackage(ctx, pool, orgID)
 	require.NoError(t, err)
 	zr, err := zip.NewReader(bytes.NewReader(pkg.Zip), int64(len(pkg.Zip)))
 	require.NoError(t, err)

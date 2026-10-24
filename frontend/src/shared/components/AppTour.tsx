@@ -34,13 +34,6 @@ function getTourSteps(t: TFunction): TourStep[] {
       text: t('tour.steps.frameworks.text'),
     },
     {
-      id: 'findings',
-      selector: 'a[href="/vaktscan/findings"]',
-      route: '/vaktscan/findings',
-      title: t('tour.steps.findings.title'),
-      text: t('tour.steps.findings.text'),
-    },
-    {
       id: 'policies',
       selector: 'a[href="/vaktcomply/policies"]',
       route: '/vaktcomply/policies',

@@ -152,31 +152,6 @@ type Config struct {
 	// MetricsEnabled controls whether the /metrics endpoint is registered.
 	// Set VAKT_METRICS_ENABLED=true to expose Prometheus metrics (still IP-allowlisted).
 	MetricsEnabled bool
-	// EPSSEnabled controls whether findings are enriched with EPSS scores from
-	// api.first.org. Disabled by default because enrichment sends CVE IDs to an
-	// external third-party service, which contradicts the self-hosted data-privacy
-	// promise. Set VAKT_EPSS_ENABLED=true to opt in.
-	EPSSEnabled bool
-	// BSIFeedEnabled controls whether Vakt fetches the daily BSI CERT-Bund RSS feed
-	// (https://www.bsi.bund.de/…/RSSNewsfeed_WarnMeldungen.xml). Enabled by default.
-	// Set VAKT_BSI_FEED_ENABLED=false to disable in air-gapped environments or
-	// when the outbound connection to bsi.bund.de is not permitted.
-	BSIFeedEnabled bool
-
-	// EOLCheckEnabled controls whether Vakt asks endoflife.date whether a component
-	// from an SBOM scan is past its end of life.
-	//
-	// This is the only outbound call that carries anything ABOUT the customer: the
-	// name of a software component they run (e.g. "openssl", "postgresql"). Not their
-	// compliance data, but not nothing either — it says something about their stack.
-	// It was undeclared until 2026-07-12, while SECURITY.md called its table of
-	// outbound connections "complete". For a product sold on data sovereignty, a
-	// falsifiable claim is more dangerous than the connection itself: it dies in the
-	// first customer's firewall review.
-	//
-	// Default on (the feature is useless without it), opt-out for air-gapped setups —
-	// exactly like the BSI feed.
-	EOLCheckEnabled bool
 	// ForceSecureCookies forces the Secure attribute on all session/CSRF cookies
 	// regardless of the request's TLS state or X-Forwarded-Proto header. Default
 	// false (Secure is inferred from TLS/XFP). Set VAKT_FORCE_SECURE_COOKIES=true
@@ -446,9 +421,6 @@ func Load() (*Config, error) {
 		// allowlisted auf Loopback + Docker-Netz), opt-out via
 		// VAKT_METRICS_DISABLED=true wenn jemand das explizit nicht will.
 		MetricsEnabled:     getEnv("VAKT_METRICS_DISABLED", "false") != "true",
-		EPSSEnabled:        getEnv("VAKT_EPSS_ENABLED", "false") == "true",
-		BSIFeedEnabled:     getEnv("VAKT_BSI_FEED_ENABLED", "true") == "true",
-		EOLCheckEnabled:    getEnv("VAKT_EOL_CHECK_ENABLED", "true") == "true",
 		ForceSecureCookies: getEnv("VAKT_FORCE_SECURE_COOKIES", "false") == "true",
 	}
 

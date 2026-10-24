@@ -27,10 +27,9 @@ type AuditPackage struct {
 
 // GeneratePackage creates a ZIP containing CSV exports and an HTML gap analysis.
 //
-// scanOn says whether Vakt Scan is enabled. Without it the package has no
-// findings.csv and the gap analysis no findings row: an auditor must not read
-// "0 open vulnerabilities" where no scanner ran.
-func GeneratePackage(ctx context.Context, db *pgxpool.Pool, orgID string, scanOn bool) (*AuditPackage, error) {
+// The package carries no findings: Vakt Scan is archived, and an auditor must
+// not read "0 open vulnerabilities" where no scanner ran.
+func GeneratePackage(ctx context.Context, db *pgxpool.Pool, orgID string) (*AuditPackage, error) {
 	// Fetch org name
 	var orgName string
 	if err := db.QueryRow(ctx, `SELECT name FROM organizations WHERE id = $1::uuid`, orgID).Scan(&orgName); err != nil {
@@ -54,13 +53,6 @@ func GeneratePackage(ctx context.Context, db *pgxpool.Pool, orgID string, scanOn
 		return nil, fmt.Errorf("evidence csv: %w", err)
 	}
 
-	// ── Findings CSV ─────────────────────────────────────────────────────────
-	if scanOn {
-		if err := writeFindingsCSV(ctx, db, orgID, zw); err != nil {
-			return nil, fmt.Errorf("findings csv: %w", err)
-		}
-	}
-
 	// ── Risks CSV ─────────────────────────────────────────────────────────────
 	if err := writeRisksCSV(ctx, db, orgID, zw); err != nil {
 		return nil, fmt.Errorf("risks csv: %w", err)
@@ -77,7 +69,7 @@ func GeneratePackage(ctx context.Context, db *pgxpool.Pool, orgID string, scanOn
 	}
 
 	// ── Gap Analysis HTML ─────────────────────────────────────────────────────
-	if err := writeGapAnalysisHTML(ctx, db, orgID, orgName, now, scanOn, zw); err != nil {
+	if err := writeGapAnalysisHTML(ctx, db, orgID, orgName, now, zw); err != nil {
 		return nil, fmt.Errorf("gap analysis html: %w", err)
 	}
 
@@ -99,9 +91,6 @@ func GeneratePackage(ctx context.Context, db *pgxpool.Pool, orgID string, scanOn
 	fmt.Fprintf(f, "Enthaltene Dateien:\n")
 	fmt.Fprintf(f, "  controls.csv      — Alle Compliance-Controls mit Status\n")
 	fmt.Fprintf(f, "  evidence.csv      — Gesammelte Evidenzen (Metadaten)\n")
-	if scanOn {
-		fmt.Fprintf(f, "  findings.csv      — Offene Sicherheitslücken (Vakt Scan)\n")
-	}
 	fmt.Fprintf(f, "  risks.csv         — Risikoregister (Vakt Comply)\n")
 	fmt.Fprintf(f, "  incidents.csv     — Vorfallsregister (Vakt Comply)\n")
 	fmt.Fprintf(f, "  policies.csv      — Richtlinien (Vakt Comply)\n")
@@ -171,34 +160,6 @@ func writeEvidenceCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *z
 			continue
 		}
 		_ = w.Write(csvsafe.Row([]string{controlID, evType, title, source, createdAt.Format("02.01.2006")}))
-	}
-	w.Flush()
-	return rows.Err()
-}
-
-func writeFindingsCSV(ctx context.Context, db *pgxpool.Pool, orgID string, zw *zip.Writer) error {
-	f, _ := zw.Create("findings.csv")
-	w := csv.NewWriter(f)
-	_ = w.Write([]string{"ID", "Titel", "Schweregrad", "Status", "CVE", "Asset", "SLA-Frist", "Erstellt am"})
-	rows, err := db.Query(ctx, `
-		SELECT f.id, f.title, f.severity, f.status, COALESCE(f.cve_id, ''), a.name,
-		       COALESCE(f.sla_due_at::text, ''), f.created_at
-		FROM vb_findings f
-		JOIN vb_assets a ON a.id = f.asset_id
-		WHERE f.org_id = $1::uuid
-		ORDER BY CASE f.severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END`,
-		orgID)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id, title, severity, status, cve, asset, sla string
-		var createdAt time.Time
-		if err := rows.Scan(&id, &title, &severity, &status, &cve, &asset, &sla, &createdAt); err != nil {
-			continue
-		}
-		_ = w.Write(csvsafe.Row([]string{id, title, severity, status, cve, asset, sla, createdAt.Format("02.01.2006")}))
 	}
 	w.Flush()
 	return rows.Err()
@@ -469,16 +430,12 @@ type gapSummary struct {
 	InProgress    int
 	Missing       int
 	OverallScore  int
-	OpenFindings  int
-	// FindingsTracked is false while Vakt Scan is off; the template then omits
-	// the findings row instead of printing an unmeasured 0.
-	FindingsTracked bool
-	OpenRisks       int
-	OpenIncidents   int
+	OpenRisks     int
+	OpenIncidents int
 }
 
-func writeGapAnalysisHTML(ctx context.Context, db *pgxpool.Pool, orgID, orgName string, now time.Time, scanOn bool, zw *zip.Writer) error {
-	data, err := buildGapData(ctx, db, orgID, orgName, now, scanOn)
+func writeGapAnalysisHTML(ctx context.Context, db *pgxpool.Pool, orgID, orgName string, now time.Time, zw *zip.Writer) error {
+	data, err := buildGapData(ctx, db, orgID, orgName, now)
 	if err != nil {
 		return err
 	}
@@ -509,7 +466,7 @@ func writeGapAnalysisHTML(ctx context.Context, db *pgxpool.Pool, orgID, orgName 
 	return tmpl.Execute(f, data)
 }
 
-func buildGapData(ctx context.Context, db *pgxpool.Pool, orgID, orgName string, now time.Time, scanOn bool) (*gapData, error) {
+func buildGapData(ctx context.Context, db *pgxpool.Pool, orgID, orgName string, now time.Time) (*gapData, error) {
 	// ── Controls grouped by framework and domain ──────────────────────────────
 	rows, err := db.Query(ctx, `
 		SELECT fr.name AS framework_name, c.domain, c.control_id, c.title, c.status
@@ -559,15 +516,6 @@ func buildGapData(ctx context.Context, db *pgxpool.Pool, orgID, orgName string, 
 	}
 
 	// ── Open counts ───────────────────────────────────────────────────────────
-	var openFindings int
-	if scanOn {
-		if err := db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM vb_findings
-		WHERE org_id = $1::uuid AND status NOT IN ('resolved','false_positive')`, orgID).Scan(&openFindings); err != nil {
-			log.Warn().Err(err).Str("org_id", orgID).Msg("audit export: could not count open findings")
-		}
-	}
-
 	var openRisks int
 	if err := db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM ck_risks
@@ -585,10 +533,8 @@ func buildGapData(ctx context.Context, db *pgxpool.Pool, orgID, orgName string, 
 	// ── Assemble framework gaps ───────────────────────────────────────────────
 	var frameworks []frameworkGap
 	summary := gapSummary{
-		OpenFindings:    openFindings,
-		FindingsTracked: scanOn,
-		OpenRisks:       openRisks,
-		OpenIncidents:   openIncidents,
+		OpenRisks:     openRisks,
+		OpenIncidents: openIncidents,
 	}
 
 	for _, fwName := range fwOrder {
@@ -720,7 +666,6 @@ var gapHTMLTemplate = `<!DOCTYPE html>
   <tr><td>Implementiert</td><td><span class="badge implemented">{{.Summary.Implemented}}</span></td></tr>
   <tr><td>In Bearbeitung</td><td><span class="badge in_progress">{{.Summary.InProgress}}</span></td></tr>
   <tr><td>Fehlend / Offen</td><td><span class="badge missing">{{.Summary.Missing}}</span></td></tr>
-  {{if .Summary.FindingsTracked}}<tr><td>Offene Sicherheitslücken</td><td>{{.Summary.OpenFindings}}</td></tr>{{end}}
   <tr><td>Offene Risiken</td><td>{{.Summary.OpenRisks}}</td></tr>
   <tr><td>Offene Vorfälle</td><td>{{.Summary.OpenIncidents}}</td></tr>
 </table>

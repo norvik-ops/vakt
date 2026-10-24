@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"github.com/matharnica/vakt/internal/config"
 	"github.com/matharnica/vakt/internal/shared/dashboard"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
@@ -65,18 +64,12 @@ func TestDashboardNotifications_HideSwitchedOffModules(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	modules := func(enabled string) []string {
-		cfg := &config.Config{ModulesEnabled: enabled}
-		list, err := dashboard.NewService(pool, cfg.IsModuleEnabled).LoadNotifications(ctx, orgID)
-		require.NoError(t, err)
-		out := []string{}
-		for _, n := range list {
-			out = append(out, n.Module)
-		}
-		return out
+	list, err := dashboard.NewService(pool).LoadNotifications(ctx, orgID)
+	require.NoError(t, err)
+	got := []string{}
+	for _, n := range list {
+		got = append(got, n.Module)
 	}
-
-	require.ElementsMatch(t, []string{"vaktcomply", "system"}, modules("vaktcomply"))
-	// Since the archive an old configuration naming Scan keeps its hints hidden too.
-	require.ElementsMatch(t, []string{"vaktcomply", "system"}, modules("vaktcomply,vaktscan"))
+	// Old hints of the archived Scan and Privacy stay hidden.
+	require.ElementsMatch(t, []string{"vaktcomply", "system"}, got)
 }

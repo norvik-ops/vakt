@@ -9135,41 +9135,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/integrations/cloud/personio/config": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Personio webhook config (secrets masked) */
-        get: operations["getPersonioConfig"];
-        /** Save Personio webhook secret */
-        put: operations["savePersonioConfig"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/integrations/cloud/personio/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Personio webhook status and offboarding metrics */
-        get: operations["getPersonioStatus"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/vaktcomply/incidents/{id}/nis2/assess": {
         parameters: {
             query?: never;
@@ -17601,7 +17566,7 @@ export interface paths {
                     "application/json": {
                         name: string;
                         /** @enum {string} */
-                        report_type: "compliance" | "findings" | "risk" | "board_report";
+                        report_type: "compliance" | "risk" | "board_report";
                         /** @enum {string} */
                         schedule: "weekly" | "monthly" | "quarterly";
                         recipients: string[];
@@ -17697,7 +17662,7 @@ export interface paths {
                     "application/json": {
                         name?: string;
                         /** @enum {string} */
-                        report_type?: "compliance" | "findings" | "risk" | "board_report";
+                        report_type?: "compliance" | "risk" | "board_report";
                         /** @enum {string} */
                         schedule?: "weekly" | "monthly" | "quarterly";
                         recipients?: string[];
@@ -31085,20 +31050,6 @@ export interface components {
             quality_gate_failed_count?: number;
             hotspot_count?: number;
         };
-        PersonioConfigResponse: {
-            /** @description "****" if set */
-            webhook_secret: string;
-            is_configured: boolean;
-        };
-        SavePersonioConfigInput: {
-            webhook_secret: string;
-        };
-        PersonioStatus: components["schemas"]["CloudSyncStatus"] & {
-            webhook_url?: string;
-            webhook_configured?: boolean;
-            offboardings_triggered?: number;
-            offboardings_completed_on_time?: number;
-        };
         CryptoKey: {
             /** Format: uuid */
             id?: string;
@@ -37166,72 +37117,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CloudEvidenceItem"][];
-                };
-            };
-        };
-    };
-    getPersonioConfig: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Personio config */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PersonioConfigResponse"];
-                };
-            };
-        };
-    };
-    savePersonioConfig: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SavePersonioConfigInput"];
-            };
-        };
-        responses: {
-            /** @description Saved */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        status?: string;
-                    };
-                };
-            };
-        };
-    };
-    getPersonioStatus: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Personio status */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PersonioStatus"];
                 };
             };
         };

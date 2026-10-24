@@ -52,8 +52,8 @@ import (
 // braucht eine Migration (Spalte oder Zuordnungstabelle) und ist damit eine
 // eigene Story — bis dahin ist das Datenmodell org-weit, und das Gate bildet
 // genau das ab.
-func Register(g *echo.Group, db *pgxpool.Pool, rdb *redis.Client, moduleOn func(module string) bool) {
-	svc := NewService(db, moduleOn)
+func Register(g *echo.Group, db *pgxpool.Pool, rdb *redis.Client) {
+	svc := NewService(db)
 	h := NewHandler(svc, rdb)
 	admin := auth.RequireRole("Admin")
 	write := auth.RequireRole("Admin", "SecurityAnalyst")

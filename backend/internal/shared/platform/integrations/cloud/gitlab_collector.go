@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matharnica/vakt/internal/shared/httputil"
 	"github.com/rs/zerolog/log"
@@ -24,10 +23,9 @@ const gitlabSource = "gitlab-collector"
 
 // GitLabCollector collects compliance evidence from a GitLab instance (self-managed or GitLab.com).
 type GitLabCollector struct {
-	db             *pgxpool.Pool
-	evidence       EvidenceWriter
-	noScanFindings bool         // see Service.noScanFindings
-	httpClient     *http.Client // injectable for tests; nil in production (see clientFor)
+	db         *pgxpool.Pool
+	evidence   EvidenceWriter
+	httpClient *http.Client // injectable for tests; nil in production (see clientFor)
 }
 
 // NewGitLabCollector creates a new GitLabCollector.
@@ -74,18 +72,6 @@ type gitlabApprovalSettings struct {
 type gitlabJob struct {
 	Name   string `json:"name"`
 	Status string `json:"status"`
-}
-
-type gitlabVulnFinding struct {
-	ID       string `json:"id"`
-	Severity string `json:"severity"`
-	Name     string `json:"name"`
-	Location struct {
-		File string `json:"file"`
-	} `json:"location"`
-	Scanner struct {
-		ExternalID string `json:"external_id"`
-	} `json:"scanner"`
 }
 
 // Collect runs all GitLab evidence collectors for the given org and config.
@@ -140,17 +126,8 @@ func (c *GitLabCollector) Collect(ctx context.Context, orgID string, cfg GitLabC
 		} else if hasSAST {
 			sastProjects = append(sastProjects, p.PathWithNamespace)
 		}
-
-		// Vulnerability findings (GitLab EE/Ultimate only — 403 = skip)
-		if !c.noScanFindings {
-			n, err := c.collectVulnerabilityFindings(ctx, client, orgID, cfg, p)
-			if err != nil {
-				log.Warn().Err(err).Int("project_id", p.ID).Msg("gitlab_collector: vuln findings failed")
-				errs = append(errs, err)
-			} else {
-				total += n
-			}
-		}
+		// Vulnerability findings were imported as Vakt Scan findings; Scan is
+		// archived, so only ISMS evidence is collected.
 	}
 
 	// Inventory evidence
@@ -342,84 +319,6 @@ func hasSASTJob(name string) bool {
 		strings.Contains(lower, "gosec")
 }
 
-// collectVulnerabilityFindings imports GitLab EE/Ultimate vulnerability findings as vaktscan findings.
-// Returns 0, nil if GitLab EE is not available (403).
-func (c *GitLabCollector) collectVulnerabilityFindings(ctx context.Context, client *http.Client, orgID string, cfg GitLabConfig, p gitlabProject) (int, error) {
-	apiURL := fmt.Sprintf("%s/api/v4/projects/%d/vulnerability_findings?state=detected&severity=critical,high&per_page=100",
-		strings.TrimRight(cfg.GitLabURL, "/"), p.ID)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
-	if err != nil {
-		return 0, err
-	}
-	req.Header.Set("PRIVATE-TOKEN", cfg.AccessToken)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusNotFound {
-		// GitLab CE/EE without Ultimate — skip silently
-		return 0, nil
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return 0, fmt.Errorf("gitlab vulnerability_findings: unauthorized (401)")
-	}
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("gitlab vulnerability_findings: status %d", resp.StatusCode)
-	}
-
-	body, _ := io.ReadAll(resp.Body)
-	var findings []gitlabVulnFinding
-	if err := json.Unmarshal(body, &findings); err != nil {
-		return 0, err
-	}
-	if len(findings) == 0 {
-		return 0, nil
-	}
-
-	assetID, err := resolveRepoAssetID(ctx, c.db, orgID, p.PathWithNamespace)
-	if err != nil {
-		return 0, fmt.Errorf("resolve asset for %s: %w", p.PathWithNamespace, err)
-	}
-
-	count := 0
-	for _, f := range findings {
-		rawID := fmt.Sprintf("gitlab:%d:%s", p.ID, f.ID)
-		severity := strings.ToLower(f.Severity)
-		if severity != "critical" && severity != "high" {
-			continue
-		}
-
-		title := f.Name
-		if title == "" {
-			title = fmt.Sprintf("GitLab Security Finding (project %d)", p.ID)
-		}
-
-		_, err := c.db.Exec(ctx, `
-			INSERT INTO vb_findings
-				(org_id, asset_id, title, description, severity, status, scanner, raw_id, sources, last_seen_at)
-			VALUES
-				($1::uuid, $2::uuid, $3, $4, $5, 'open', 'gitlab', $6, ARRAY['gitlab'], NOW())
-			ON CONFLICT (org_id, raw_id, scanner) WHERE raw_id IS NOT NULL
-			DO UPDATE SET
-				last_seen_at = NOW(),
-				severity = EXCLUDED.severity`,
-			orgID, assetID, title,
-			fmt.Sprintf("GitLab: %s in %s/%s", f.Name, p.PathWithNamespace, f.Location.File),
-			severity, dedupKey(rawID),
-		)
-		if err != nil {
-			log.Warn().Err(err).Str("raw_id", rawID).Msg("gitlab_collector: upsert finding")
-			continue
-		}
-		count++
-	}
-	return count, nil
-}
-
 // gitlabGetAll fetches all pages from a GitLab REST API endpoint (Link-header pagination).
 func (c *GitLabCollector) gitlabGetAll(ctx context.Context, client *http.Client, startURL, token string) ([]json.RawMessage, error) {
 	var all []json.RawMessage
@@ -527,62 +426,4 @@ func (c *GitLabCollector) CountUnprotectedBranches(ctx context.Context, cfg GitL
 		}
 	}
 	return len(projects), unprotectedCount, nil
-}
-
-// resolveRepoAssetID finds or creates the vb_assets row that cloud-sourced
-// (GitLab/SonarQube) findings attach to, and returns its UUID.
-//
-// vb_findings.asset_id is a NOT NULL UUID foreign key into vb_assets — these
-// collectors used to insert the literal ” for it. Postgres coerces VALUES()
-// literals to the target column's type, so ” was parsed as ::uuid and every
-// single insert failed with 22P02 ("invalid input syntax for type uuid").
-// Cloud findings never landed in the database, silently: BatchUpsertFindings-
-// style callers here just log.Warn and continue past the error (see
-// collectVulnerabilityFindings/collectSecurityHotspots/collectVulnerabilities
-// below), so a scan reported success with zero visible symptoms.
-//
-// One vb_assets row per GitLab project / SonarQube project (type 'repo')
-// keeps findings correctly scoped and filterable by asset, instead of
-// inventing a single org-wide placeholder. vb_assets has no unique
-// constraint on (org_id, name), so this is a plain select-then-insert rather
-// than an INSERT ... ON CONFLICT — a rare concurrent double-run can create a
-// duplicate asset row, which is a cosmetic annoyance, not a correctness bug
-// (findings dedupe on their own raw_id key regardless of which of the two
-// duplicate assets they land on).
-func resolveRepoAssetID(ctx context.Context, db *pgxpool.Pool, orgID, name string) (string, error) {
-	var id string
-	err := db.QueryRow(ctx,
-		`SELECT id::text FROM vb_assets WHERE org_id = $1::uuid AND name = $2 AND is_deleted = FALSE LIMIT 1`,
-		orgID, name,
-	).Scan(&id)
-	if err == nil {
-		return id, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return "", err
-	}
-	err = db.QueryRow(ctx, `
-		INSERT INTO vb_assets (org_id, name, type)
-		VALUES ($1::uuid, $2, 'repo')
-		RETURNING id::text`,
-		orgID, name,
-	).Scan(&id)
-	if err != nil {
-		return "", err
-	}
-	return id, nil
-}
-
-// dedupKey turns an optional text value into what vb_findings expects: NULL
-// when it is absent. vb_findings has partial unique indexes on raw_id (and
-// cve_id/template_id) WHERE ... IS NOT NULL (migration 120) — an empty
-// string is NOT NULL and collides with every other empty-string row under
-// the same dedup key. Local copy of the same pattern documented in
-// internal/modules/vaktscan/dedup_keys.go; not reused directly because
-// package cloud must not import a vaktscan-module package.
-func dedupKey(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
 }

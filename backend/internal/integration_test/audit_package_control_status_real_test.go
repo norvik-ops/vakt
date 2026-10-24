@@ -94,7 +94,7 @@ func TestAuditPackage_ControlStatusReflectsManualStatus(t *testing.T) {
 	seedEvidence(ctx, t, pool, orgID, implID)
 	seedEvidence(ctx, t, pool, orgID, implID)
 
-	pkg, err := audit.GeneratePackage(ctx, pool, orgID, true)
+	pkg, err := audit.GeneratePackage(ctx, pool, orgID)
 	require.NoError(t, err)
 	require.NotNil(t, pkg)
 
@@ -141,16 +141,11 @@ func TestAuditPackage_ControlStatusReflectsManualStatus(t *testing.T) {
 		"gap analysis summary must count the implemented control")
 	require.Contains(t, html, `<span class="badge implemented">Implementiert</span>`,
 		"gap analysis control table must label the implemented control")
-	require.Contains(t, html, "Offene Sicherheitslücken", "Scan on: findings row present")
 
-	// ── Vakt Scan off (R1-KW-15 follow-up) ───────────────────────────────────
+	// ── No scanner (Vakt Scan archived) ──────────────────────────────────────
 	// No scanner ran, so the package must not claim "0 open vulnerabilities".
-	off, err := audit.GeneratePackage(ctx, pool, orgID, false)
-	require.NoError(t, err)
-	offZip, err := zip.NewReader(bytes.NewReader(off.Zip), int64(len(off.Zip)))
-	require.NoError(t, err)
-	for _, f := range offZip.File {
-		require.NotEqual(t, "findings.csv", f.Name, "no findings.csv while Vakt Scan is off")
+	for _, f := range zr.File {
+		require.NotEqual(t, "findings.csv", f.Name, "no findings.csv without a scanner")
 		if f.Name == "gap_analysis.html" || f.Name == "README.txt" {
 			rc, err := f.Open()
 			require.NoError(t, err)

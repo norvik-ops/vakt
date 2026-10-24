@@ -20,7 +20,6 @@ import {
   GitLabTab,
   SonarQubeTab,
 } from '../modules/vaktcomply/integrations/DevOpsTabs'
-import { PersonioTab } from '../modules/vaktcomply/integrations/PersonioTab'
 
 // --- No third-party integrations info box ---
 
@@ -41,7 +40,7 @@ function NoThirdPartyInfoBox() {
 
 // --- Main page ---
 
-type Tab = 'github' | 'aws' | 'azure' | 'hetzner' | 'ionos' | 'wazuh' | 'prometheus' | 'entra-id' | 'intune' | 'keycloak' | 'ldap' | 'gitlab' | 'sonarqube' | 'personio'
+type Tab = 'github' | 'aws' | 'azure' | 'hetzner' | 'ionos' | 'wazuh' | 'prometheus' | 'entra-id' | 'intune' | 'keycloak' | 'ldap' | 'gitlab' | 'sonarqube'
 
 export default function IntegrationsPage() {
   const { t } = useTranslation()
@@ -61,7 +60,6 @@ export default function IntegrationsPage() {
     { id: 'ldap', label: 'LDAP/AD', icon: <ShieldAlert className="w-4 h-4" /> },
     { id: 'gitlab', label: 'GitLab', icon: <GitBranch className="w-4 h-4" /> },
     { id: 'sonarqube', label: 'SonarQube', icon: <ShieldAlert className="w-4 h-4" /> },
-    { id: 'personio', label: 'Personio', icon: <ShieldAlert className="w-4 h-4" /> },
   ]
 
   return (
@@ -107,7 +105,6 @@ export default function IntegrationsPage() {
       {activeTab === 'ldap' && <LDAPTab />}
       {activeTab === 'gitlab' && <GitLabTab />}
       {activeTab === 'sonarqube' && <SonarQubeTab />}
-      {activeTab === 'personio' && <PersonioTab />}
 
       {/* No third-party integrations notice */}
       <div className="mt-6">

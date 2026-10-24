@@ -22,7 +22,6 @@ import (
 	"github.com/matharnica/vakt/internal/services/ai"
 	"github.com/matharnica/vakt/internal/services/siem"
 	"github.com/matharnica/vakt/internal/shared/audit"
-	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
 	"github.com/matharnica/vakt/internal/shared/errorbudget"
@@ -90,38 +89,7 @@ func handleWeeklyDigest(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFun
 			smtpCfg.Pass = cfg.SMTPPass
 			smtpCfg.From = cfg.SMTPFrom
 		}
-		var moduleOn func(string) bool
-		if cfg != nil {
-			moduleOn = cfg.IsModuleEnabled
-		}
-		return emaildigest.SendDigestForAllOrgs(ctx, pool, smtpCfg, moduleOn)
-	}
-}
-
-// handleBSIFeedSync syncs the BSI CERT-Bund RSS feed. The feed is external and
-// occasionally unreachable (DNS hiccups, BSI maintenance windows, IPv6 routing
-// drama on the BSI side). We treat such transient failures as soft errors:
-// log a warning and return nil so Asynq does not enqueue a retry storm that
-// flips the worker's queue_health to unhealthy. The job is scheduled daily,
-// so the next run picks up automatically.
-//
-// Hard errors — DB unreachable, schema drift, panic — still propagate.
-func handleBSIFeedSync(pool *pgxpool.Pool) asynq.HandlerFunc {
-	return func(ctx context.Context, _ *asynq.Task) error {
-		svc := bsi.NewBSIService(pool)
-		err := svc.SyncFeed(ctx)
-		if err == nil {
-			return nil
-		}
-		// SyncFeed wraps FetchAdvisories errors with the "bsi: fetch advisories"
-		// prefix when the upstream HTTP call fails or the response is non-200.
-		// Those are exactly the cases we want to swallow.
-		msg := err.Error()
-		if strings.Contains(msg, "bsi: fetch advisories") {
-			log.Warn().Err(err).Msg("bsi: feed sync skipped — external feed unreachable; will retry on next schedule")
-			return nil
-		}
-		return err
+		return emaildigest.SendDigestForAllOrgs(ctx, pool, smtpCfg)
 	}
 }
 
@@ -129,19 +97,6 @@ func handleBSIFeedSync(pool *pgxpool.Pool) asynq.HandlerFunc {
 func handleNotifyDeadlines(cfg *config.Config, pool *pgxpool.Pool) asynq.HandlerFunc {
 	return func(ctx context.Context, _ *asynq.Task) error {
 		m := notifications.NewMailer(cfg)
-		// Breach, DSR and AVV deadlines belong to Vakt Privacy; no mails about a
-		// switched-off module.
-		if cfg == nil || cfg.IsModuleEnabled("vaktprivacy") {
-			if err := notifications.CheckBreachDeadlines(ctx, pool, m); err != nil {
-				log.Error().Err(err).Msg("breach deadline check failed")
-			}
-			if err := notifications.CheckDSRDeadlines(ctx, pool, m); err != nil {
-				log.Error().Err(err).Msg("dsr deadline check failed")
-			}
-			if err := notifications.CheckAVVExpiry(ctx, pool, m); err != nil {
-				log.Error().Err(err).Msg("avv expiry check failed")
-			}
-		}
 		if err := notifications.CheckCCMFailures(ctx, pool, m); err != nil {
 			log.Error().Err(err).Msg("ccm failure check failed")
 		}
@@ -163,8 +118,7 @@ func handleProcessScheduledReports(cfg *config.Config, pool *pgxpool.Pool) asynq
 			smtpCfg.Pass = cfg.SMTPPass
 			smtpCfg.From = cfg.SMTPFrom
 		}
-		svc := scheduledreports.NewService(pool, smtpCfg).
-			WithoutScan(cfg != nil && !cfg.IsModuleEnabled("vaktscan"))
+		svc := scheduledreports.NewService(pool, smtpCfg)
 		// Wire the vaktcomply service as the board report provider so that
 		// scheduled reports of type "board_report" can generate a PDF attachment.
 		svc.WithBoardReportProvider(newComplyService(cfg, pool))

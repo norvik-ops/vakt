@@ -6,8 +6,6 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -17,7 +15,6 @@ type Querier interface {
 	// ── Control Changelog ───────────────────────────────────────────────────────
 	AppendCKControlChange(ctx context.Context, arg AppendCKControlChangeParams) error
 	ApplyCKApprovedControlStatus(ctx context.Context, arg ApplyCKApprovedControlStatusParams) error
-	ApprovePPDPIA(ctx context.Context, arg ApprovePPDPIAParams) (PoDpias, error)
 	// ── Controls ────────────────────────────────────────────────────────────────
 	// Caller iterates per Control inside a tx (r.q.WithTx(tx)). Title/description
 	// werden bei (framework_id, control_id)-Duplikat aktualisiert — andere Felder
@@ -26,8 +23,6 @@ type Querier interface {
 	BulkUpdateCKCAPAStatus(ctx context.Context, arg BulkUpdateCKCAPAStatusParams) (int64, error)
 	// ── Bulk-Control-Status ─────────────────────────────────────────────────────
 	BulkUpdateCKControlStatus(ctx context.Context, arg BulkUpdateCKControlStatusParams) error
-	// Bulk-Update über IN-Liste via UUID-Array.
-	BulkUpdateSPFindings(ctx context.Context, arg BulkUpdateSPFindingsParams) (int64, error)
 	CKFrameworkExists(ctx context.Context, arg CKFrameworkExistsParams) (bool, error)
 	CKSupplierExists(ctx context.Context, arg CKSupplierExistsParams) (bool, error)
 	CountCKAISystemsWithoutDocs(ctx context.Context, orgID string) (int64, error)
@@ -50,18 +45,7 @@ type Querier interface {
 	CountCKPendingApprovals(ctx context.Context, orgID string) (int64, error)
 	CountCKPolicies(ctx context.Context, orgID string) (int64, error)
 	CountCKRisks(ctx context.Context, orgID string) (int64, error)
-	CountHREmployees(ctx context.Context, orgID string) (int64, error)
-	CountPPBreaches(ctx context.Context, orgID string) (int64, error)
-	CountPPVVT(ctx context.Context, orgID string) (int64, error)
 	CountSPAssets(ctx context.Context, arg CountSPAssetsParams) (int64, error)
-	CountSVDismissals(ctx context.Context, arg CountSVDismissalsParams) (int32, error)
-	CountSVProjectAccessLog(ctx context.Context, arg CountSVProjectAccessLogParams) (int32, error)
-	CountSPFindings(ctx context.Context, arg CountSPFindingsParams) (int64, error)
-	// Anzahl auf 'resolved' gesetzter Findings seit einem Zeitpunkt (Executive Summary).
-	CountSPResolvedFindingsSince(ctx context.Context, arg CountSPResolvedFindingsSinceParams) (int32, error)
-	// ── Tracking events ───────────────────────────────────────────────────────
-	CountSREventsByType(ctx context.Context, arg CountSREventsByTypeParams) (int64, error)
-	CountSRTargetsInGroup(ctx context.Context, groupID string) (int64, error)
 	// ── AI Systems (EU AI Act) ──────────────────────────────────────────────────
 	CreateCKAISystem(ctx context.Context, arg CreateCKAISystemParams) (CkAiSystems, error)
 	// ── Access Review Campaigns ────────────────────────────────────────────────
@@ -119,67 +103,12 @@ type Querier interface {
 	CreateCKSupplier(ctx context.Context, arg CreateCKSupplierParams) (CreateCKSupplierRow, error)
 	// ── Collaborative Tasks ─────────────────────────────────────────────────────
 	CreateCKTask(ctx context.Context, arg CreateCKTaskParams) (CkTasks, error)
-	CreateHRChecklist(ctx context.Context, arg CreateHRChecklistParams) (HrChecklists, error)
-	CreateHREmployee(ctx context.Context, arg CreateHREmployeeParams) (HrEmployees, error)
-	CreatePPAVV(ctx context.Context, arg CreatePPAVVParams) (CreatePPAVVRow, error)
-	CreatePPAVVWithBody(ctx context.Context, arg CreatePPAVVWithBodyParams) (CreatePPAVVWithBodyRow, error)
-	CreatePPBreach(ctx context.Context, arg CreatePPBreachParams) (PoBreaches, error)
-	CreatePPDPIA(ctx context.Context, arg CreatePPDPIAParams) (PoDpias, error)
-	CreatePPDSR(ctx context.Context, arg CreatePPDSRParams) (CreatePPDSRRow, error)
-	CreatePPVVT(ctx context.Context, arg CreatePPVVTParams) (PoVvtEntries, error)
-	CreatePortalPPDSR(ctx context.Context, arg CreatePortalPPDSRParams) (string, error)
-	// Vakt Scan queries — sqlc migration in v0.6.x (ADR-0005).
+	// Asset inventory queries (vb_assets, owned by Vakt Comply since
+	// docs/stories/module-archivieren.md S1). The remaining Vakt Scan queries were
+	// removed with the archived module (tag archiv/module-vollstaendig).
 	//
-	// Migrationsstand:
-	//   ✅ vb_assets     — sqlc (this file)
-	//   ✅ vb_sla_config — sqlc
-	//   ✅ vb_scans      — sqlc
-	//   ⏳ vb_findings   — embedded SQL (Sitzung C2 — Dedup-Logik)
-	//   ⏳ vb_components / vb_sboms / vb_reports / vb_finding_suppressions /
-	//      vb_scan_schedules / vb_eol_cache — embedded SQL (Sitzung C3)
 	// ── Assets ──────────────────────────────────────────────────────────────────
 	CreateSPAsset(ctx context.Context, arg CreateSPAssetParams) (CreateSPAssetRow, error)
-	// ── Reports ─────────────────────────────────────────────────────────────────
-	CreateSPReport(ctx context.Context, arg CreateSPReportParams) (CreateSPReportRow, error)
-	// ── SBOM ────────────────────────────────────────────────────────────────────
-	CreateSPSBOM(ctx context.Context, arg CreateSPSBOMParams) (string, error)
-	// ── Scans ───────────────────────────────────────────────────────────────────
-	CreateSPScan(ctx context.Context, arg CreateSPScanParams) (VbScans, error)
-	// ── Scan Schedules ──────────────────────────────────────────────────────────
-	CreateSPScanSchedule(ctx context.Context, arg CreateSPScanScheduleParams) (VbScanSchedules, error)
-	// ── Suppression Rules ───────────────────────────────────────────────────────
-	CreateSPSuppression(ctx context.Context, arg CreateSPSuppressionParams) (VbFindingSuppressions, error)
-	// ── Campaigns ─────────────────────────────────────────────────────────────
-	CreateSRCampaign(ctx context.Context, arg CreateSRCampaignParams) (CreateSRCampaignRow, error)
-	// ── Landing pages ─────────────────────────────────────────────────────────
-	CreateSRLandingPage(ctx context.Context, arg CreateSRLandingPageParams) (SrLandingPages, error)
-	CreateSRPhishReport(ctx context.Context, arg CreateSRPhishReportParams) (SrPhishReports, error)
-	// ── Target groups ─────────────────────────────────────────────────────────
-	CreateSRTargetGroup(ctx context.Context, arg CreateSRTargetGroupParams) (SrTargetGroups, error)
-	// Vakt Aware (Phishing-Simulation & Awareness-Training)
-	//
-	// Tabellen-Präfix `sr_*` seit Migration 122 (vorher `pg_*` — kollidierte
-	// mit dem PostgreSQL-System-Katalog-Namespace und blockierte den
-	// sqlc-Parser, siehe ADR-0005).
-	// ── Templates ─────────────────────────────────────────────────────────────
-	CreateSRTemplate(ctx context.Context, arg CreateSRTemplateParams) (SrTemplates, error)
-	CreateSRTrackingEvent(ctx context.Context, arg CreateSRTrackingEventParams) error
-	// ── Training modules ──────────────────────────────────────────────────────
-	CreateSRTrainingModule(ctx context.Context, arg CreateSRTrainingModuleParams) (SrTrainingModules, error)
-	CreateSVAPIToken(ctx context.Context, arg CreateSVAPITokenParams) (CreateSVAPITokenRow, error)
-	// ── Environments ────────────────────────────────────────────────────────────
-	CreateSVEnvironment(ctx context.Context, arg CreateSVEnvironmentParams) (SoEnvironments, error)
-	CreateSVGitScan(ctx context.Context, arg CreateSVGitScanParams) (SVGitScanRow, error)
-	CreateSVShareLink(ctx context.Context, arg CreateSVShareLinkParams) (CreateSVShareLinkRow, error)
-	// SecVault queries — migrated to sqlc in Sprint 11+ (ADR-0005, inkrementell).
-	//
-	// Migrationspfad:
-	//   ✅ Projects, Environments, AccessLog, RotationPolicies — sqlc (this file)
-	//   ⏳ Secrets — bleibt embedded SQL in repository.go (Crypto-Felder + dynamische
-	//      Spalten-Auswahl je nach decrypt-Strategie machen sqlc-Generierung holprig).
-	//      Migration on-demand bei nächstem Secrets-Refactor.
-	// ── Projects ────────────────────────────────────────────────────────────────
-	CreateSVProject(ctx context.Context, arg CreateSVProjectParams) (CreateSVProjectRow, error)
 	DeleteCKAISystem(ctx context.Context, arg DeleteCKAISystemParams) (int64, error)
 	DeleteCKAccessReviewCampaign(ctx context.Context, arg DeleteCKAccessReviewCampaignParams) (int64, error)
 	DeleteCKCAPA(ctx context.Context, arg DeleteCKCAPAParams) (int64, error)
@@ -198,25 +127,7 @@ type Querier interface {
 	DeleteCKRisk(ctx context.Context, arg DeleteCKRiskParams) (int64, error)
 	DeleteCKSupplier(ctx context.Context, arg DeleteCKSupplierParams) (int64, error)
 	DeleteCKTask(ctx context.Context, arg DeleteCKTaskParams) (int64, error)
-	DeleteHRChecklist(ctx context.Context, arg DeleteHRChecklistParams) error
-	DeleteHREmployee(ctx context.Context, arg DeleteHREmployeeParams) error
-	DeletePPAVV(ctx context.Context, arg DeletePPAVVParams) error
-	DeletePPBreach(ctx context.Context, arg DeletePPBreachParams) error
-	DeletePPDPIA(ctx context.Context, arg DeletePPDPIAParams) error
-	DeletePPDSR(ctx context.Context, arg DeletePPDSRParams) error
-	DeletePPVVT(ctx context.Context, arg DeletePPVVTParams) error
-	DeleteSPFinding(ctx context.Context, arg DeleteSPFindingParams) (int64, error)
-	DeleteSPScanSchedule(ctx context.Context, arg DeleteSPScanScheduleParams) (int64, error)
-	DeleteSPSuppression(ctx context.Context, arg DeleteSPSuppressionParams) (int64, error)
-	DeleteSRTargetGroup(ctx context.Context, arg DeleteSRTargetGroupParams) (int64, error)
-	DeleteSRTemplate(ctx context.Context, arg DeleteSRTemplateParams) (int64, error)
-	DeleteSVEnvironment(ctx context.Context, arg DeleteSVEnvironmentParams) (int64, error)
-	DeleteSVProject(ctx context.Context, arg DeleteSVProjectParams) (int64, error)
-	DeleteSVSecret(ctx context.Context, arg DeleteSVSecretParams) (int64, error)
-	DismissSVScanResult(ctx context.Context, arg DismissSVScanResultParams) (int64, error)
 	DeleteUserModulePermissions(ctx context.Context, arg DeleteUserModulePermissionsParams) error
-	ExecutePPDSRErasure(ctx context.Context, arg ExecutePPDSRErasureParams) (ExecutePPDSRErasureRow, error)
-	FindActiveSRCampaignForReporter(ctx context.Context, arg FindActiveSRCampaignForReporterParams) (string, error)
 	FindCKControlByCode(ctx context.Context, arg FindCKControlByCodeParams) (string, error)
 	// Erwartet bereits %-umschlossene Keywords (z.B. "%firewall%").
 	FindCKControlsByKeywords(ctx context.Context, arg FindCKControlsByKeywordsParams) ([]FindCKControlsByKeywordsRow, error)
@@ -227,8 +138,6 @@ type Querier interface {
 	FindCKFrameworkByName(ctx context.Context, arg FindCKFrameworkByNameParams) (CkFrameworks, error)
 	// ── Control Discovery (used by SecPulse auto-evidence + AI classifier) ────
 	FindCKPatchControls(ctx context.Context, orgID string) ([]FindCKPatchControlsRow, error)
-	FindSRAssignmentByTarget(ctx context.Context, arg FindSRAssignmentByTargetParams) (SrAssignments, error)
-	FirstHRChecklistByType(ctx context.Context, arg FirstHRChecklistByTypeParams) (HrChecklists, error)
 	// Liefert pro Framework: Gesamtanzahl Controls + Anzahl implemented (Board Report Score).
 	GetBoardReportComplianceScoreRows(ctx context.Context, orgID string) ([]GetBoardReportComplianceScoreRowsRow, error)
 	GetCKAISystem(ctx context.Context, arg GetCKAISystemParams) (CkAiSystems, error)
@@ -289,72 +198,8 @@ type Querier interface {
 	// Minimal projection für den Expiry-Notifier-Worker; nur Evidence die
 	// noch nicht benachrichtigt wurde (expiry_notified_at IS NULL).
 	GetCKUnnotifiedExpiringEvidence(ctx context.Context, arg GetCKUnnotifiedExpiringEvidenceParams) ([]GetCKUnnotifiedExpiringEvidenceRow, error)
-	GetDSRPortalSettings(ctx context.Context, id string) (GetDSRPortalSettingsRow, error)
-	GetHRChecklist(ctx context.Context, arg GetHRChecklistParams) (HrChecklists, error)
-	GetHRChecklistRun(ctx context.Context, arg GetHRChecklistRunParams) (HrChecklistRuns, error)
-	GetHREmployee(ctx context.Context, arg GetHREmployeeParams) (HrEmployees, error)
-	GetHREmployeeByEmail(ctx context.Context, arg GetHREmployeeByEmailParams) (HrEmployees, error)
-	// ── HR user-revocation helpers (sessions/users/api_keys — cross-module) ─
-	HRDisableUser(ctx context.Context, arg HRDisableUserParams) error
-	HRRevokeUserAPIKeys(ctx context.Context, arg HRRevokeUserAPIKeysParams) error
-	HRRevokeUserSessions(ctx context.Context, arg HRRevokeUserSessionsParams) error
 	GetLatestCKAIDocumentation(ctx context.Context, arg GetLatestCKAIDocumentationParams) (CkAiDocumentation, error)
-	GetLatestSPSBOM(ctx context.Context, arg GetLatestSPSBOMParams) (GetLatestSPSBOMRow, error)
-	// ── DSR Portal Settings (on organizations table) ────────────────────────────
-	GetOrgByDSRSlug(ctx context.Context, dsrPortalSlug pgtype.Text) (GetOrgByDSRSlugRow, error)
-	// ── Phish-Button (Feature 5) ──────────────────────────────────────────────
-	GetOrgByPhishReportToken(ctx context.Context, phishReportToken pgtype.Text) (string, error)
-	GetPPAVV(ctx context.Context, arg GetPPAVVParams) (GetPPAVVRow, error)
-	GetPPBreach(ctx context.Context, arg GetPPBreachParams) (PoBreaches, error)
-	GetPPDPIA(ctx context.Context, arg GetPPDPIAParams) (PoDpias, error)
-	GetPPDSR(ctx context.Context, arg GetPPDSRParams) (GetPPDSRRow, error)
-	GetPPDSRByTokenHash(ctx context.Context, tokenHash pgtype.Text) (GetPPDSRByTokenHashRow, error)
-	GetPPVVT(ctx context.Context, arg GetPPVVTParams) (PoVvtEntries, error)
 	GetSPAsset(ctx context.Context, arg GetSPAssetParams) (GetSPAssetRow, error)
-	GetSPAssetByName(ctx context.Context, arg GetSPAssetByNameParams) (GetSPAssetByNameRow, error)
-	// ── EOL Cache ───────────────────────────────────────────────────────────────
-	GetSPEOLCache(ctx context.Context, arg GetSPEOLCacheParams) (GetSPEOLCacheRow, error)
-	// ── Findings (Read + Update) ────────────────────────────────────────────────
-	// Upsert/Dedup queries (UpsertFinding, BatchUpsertFindings) remain embedded for
-	// now — their business logic (cve_id vs template_id dedup, reopen_count rules,
-	// source-set merge) is hard to express as a single sqlc query and currently
-	// sits in the repository (Sitzung C2b).
-	GetSPFinding(ctx context.Context, arg GetSPFindingParams) (VbFindings, error)
-	GetSPReport(ctx context.Context, arg GetSPReportParams) (GetSPReportRow, error)
-	GetSPReportContent(ctx context.Context, arg GetSPReportContentParams) (GetSPReportContentRow, error)
-	// ── Risk Trend ──────────────────────────────────────────────────────────────
-	// Aggregates open findings per day for the last :days days.
-	GetSPRiskTrend(ctx context.Context, arg GetSPRiskTrendParams) ([]GetSPRiskTrendRow, error)
-	// ── SLA-Config ──────────────────────────────────────────────────────────────
-	GetSPSLAConfig(ctx context.Context, orgID string) (GetSPSLAConfigRow, error)
-	GetSPSLADashboard(ctx context.Context, orgID string) ([]GetSPSLADashboardRow, error)
-	GetSPScan(ctx context.Context, arg GetSPScanParams) (VbScans, error)
-	GetSRAssignment(ctx context.Context, arg GetSRAssignmentParams) (SrAssignments, error)
-	GetSRCampaign(ctx context.Context, arg GetSRCampaignParams) (GetSRCampaignRow, error)
-	GetSRCampaignByTrackingToken(ctx context.Context, trackingToken string) (GetSRCampaignByTrackingTokenRow, error)
-	GetSRCampaignGroupID(ctx context.Context, id string) (pgtype.UUID, error)
-	GetSRCompletionByAssignment(ctx context.Context, arg GetSRCompletionByAssignmentParams) (SrCompletions, error)
-	GetSRLandingPageForCampaign(ctx context.Context, id string) (SrLandingPages, error)
-	// ── SecReflex cross-table lookups ─────────────────────────────────────────
-	GetSROrganizationName(ctx context.Context, id string) (string, error)
-	GetSRPhishReportStats(ctx context.Context, orgID string) (GetSRPhishReportStatsRow, error)
-	GetSRTargetByEmail(ctx context.Context, arg GetSRTargetByEmailParams) (SrTargets, error)
-	GetSRTargetEmail(ctx context.Context, id string) (string, error)
-	GetSRTemplate(ctx context.Context, arg GetSRTemplateParams) (SrTemplates, error)
-	GetSRTrainingModuleByAttackType(ctx context.Context, arg GetSRTrainingModuleByAttackTypeParams) (SrTrainingModules, error)
-	GetSRTrainingModuleByID(ctx context.Context, arg GetSRTrainingModuleByIDParams) (SrTrainingModules, error)
-	GetSVAccessLog(ctx context.Context, arg GetSVAccessLogParams) ([]GetSVAccessLogRow, error)
-	GetSVEnvProjectID(ctx context.Context, arg GetSVEnvProjectIDParams) (string, error)
-	GetSVEnvironment(ctx context.Context, arg GetSVEnvironmentParams) (SoEnvironments, error)
-	GetSVGitScan(ctx context.Context, arg GetSVGitScanParams) (SVGitScanRow, error)
-	GetSVProject(ctx context.Context, arg GetSVProjectParams) (GetSVProjectRow, error)
-	GetSVRotationPolicy(ctx context.Context, arg GetSVRotationPolicyParams) (SVRotationPolicyRow, error)
-	GetSVScanResults(ctx context.Context, arg GetSVScanResultsParams) ([]SVScanResultRow, error)
-	GetSVSecretByKey(ctx context.Context, arg GetSVSecretByKeyParams) (GetSVSecretByKeyRow, error)
-	GetSVSecretIDByKey(ctx context.Context, arg GetSVSecretIDByKeyParams) (string, error)
-	GetSVSecretProjectID(ctx context.Context, secretID string) (string, error)
-	GetSVShareLink(ctx context.Context, tokenHash string) (GetSVShareLinkRow, error)
-	GetSVShareLinkOrgID(ctx context.Context, id string) (string, error)
 	GetUserDisplayName(ctx context.Context, id string) (string, error)
 	GetUserModulePermissions(ctx context.Context, arg GetUserModulePermissionsParams) ([]UserModulePermissions, error)
 	IncrementCKAuditorLinkUsage(ctx context.Context, id string) error
@@ -365,12 +210,6 @@ type Querier interface {
 	InsertCKCIEvidence(ctx context.Context, arg InsertCKCIEvidenceParams) (string, error)
 	// ── Score History ───────────────────────────────────────────────────────────
 	InsertCKScoreSnapshot(ctx context.Context, arg InsertCKScoreSnapshotParams) error
-	InsertHRRunEvent(ctx context.Context, arg InsertHRRunEventParams) error
-	// Upsert variant — duplicate (sbom_id, name, version) is a no-op (DO NOTHING).
-	InsertSPComponent(ctx context.Context, arg InsertSPComponentParams) error
-	InsertSRAssignment(ctx context.Context, arg InsertSRAssignmentParams) (SrAssignments, error)
-	// ── Access Log ──────────────────────────────────────────────────────────────
-	InsertSVAccessLog(ctx context.Context, arg InsertSVAccessLogParams) error
 	// ── Risk ↔ Control Links ────────────────────────────────────────────────────
 	LinkCKRiskControl(ctx context.Context, arg LinkCKRiskControlParams) error
 	LinkCKSupplierRisk(ctx context.Context, arg LinkCKSupplierRiskParams) error
@@ -467,64 +306,7 @@ type Querier interface {
 	ListCKTasks(ctx context.Context, arg ListCKTasksParams) ([]CkTasks, error)
 	// Top-10 controls for a framework by weight — used by AI policy generator for context.
 	ListCKTopControlsByFramework(ctx context.Context, arg ListCKTopControlsByFrameworkParams) ([]ListCKTopControlsByFrameworkRow, error)
-	ListExpiringPPAVVs(ctx context.Context, reviewDate pgtype.Date) ([]ListExpiringPPAVVsRow, error)
-	ListHRChecklistRuns(ctx context.Context, arg ListHRChecklistRunsParams) ([]HrChecklistRuns, error)
-	ListHRChecklists(ctx context.Context, orgID string) ([]HrChecklists, error)
-	ListHREmployees(ctx context.Context, arg ListHREmployeesParams) ([]HrEmployees, error)
-	ListHRRunEvents(ctx context.Context, arg ListHRRunEventsParams) ([]HrRunEvents, error)
-	// ── AVV (Auftragsverarbeitungsverträge) — Art. 28 DSGVO ─────────────────────
-	ListPPAVVs(ctx context.Context, orgID string) ([]ListPPAVVsRow, error)
-	// ── Breaches (Datenpannen) — Art. 33/34 DSGVO ───────────────────────────────
-	ListPPBreaches(ctx context.Context, orgID string) ([]PoBreaches, error)
-	ListPPBreachesPaged(ctx context.Context, arg ListPPBreachesPagedParams) ([]PoBreaches, error)
-	// ── DPIA (Data Protection Impact Assessment) — Art. 35 DSGVO ────────────────
-	ListPPDPIAs(ctx context.Context, orgID string) ([]PoDpias, error)
-	// ── DSR (Data Subject Requests) — Art. 15-21 DSGVO ──────────────────────────
-	ListPPDSRs(ctx context.Context, orgID string) ([]ListPPDSRsRow, error)
-	// SecPrivacy queries — sqlc migration started in v0.6.x (ADR-0005, inkrementell).
-	//
-	// Migrationsstand:
-	//   ✅ po_processing_activities — sqlc (this file)
-	//   ✅ po_dpias       — sqlc (this file)
-	//   ✅ po_avvs        — sqlc (this file)
-	//   ⏳ po_breaches    — embedded SQL
-	//   ⏳ po_dsr         — embedded SQL (Portal-Endpoints + DTO-Filtering)
-	//
-	// po_dsr ist als Letztes geplant (öffentliches Portal + DSGVO-sensitive DTO).
-	// ── VVT (Verzeichnis von Verarbeitungstätigkeiten) — Art. 30 DSGVO ──────────
-	ListPPVVT(ctx context.Context, orgID string) ([]PoVvtEntries, error)
-	// ── Paged list helpers ──────────────────────────────────────────────────────
-	ListPPVVTPaged(ctx context.Context, arg ListPPVVTPagedParams) ([]PoVvtEntries, error)
 	ListSPAssets(ctx context.Context, arg ListSPAssetsParams) ([]ListSPAssetsRow, error)
-	ListSPComponentsAll(ctx context.Context, arg ListSPComponentsAllParams) ([]ListSPComponentsAllRow, error)
-	ListSPComponentsBySBOM(ctx context.Context, sbomID string) ([]ListSPComponentsBySBOMRow, error)
-	ListSPComponentsBySBOMFull(ctx context.Context, sbomID string) ([]ListSPComponentsBySBOMFullRow, error)
-	ListSPComponentsEOL(ctx context.Context, arg ListSPComponentsEOLParams) ([]ListSPComponentsEOLRow, error)
-	ListSPFindingsByCreated(ctx context.Context, arg ListSPFindingsByCreatedParams) ([]VbFindings, error)
-	ListSPFindingsByRisk(ctx context.Context, arg ListSPFindingsByRiskParams) ([]VbFindings, error)
-	ListSPReports(ctx context.Context, orgID string) ([]ListSPReportsRow, error)
-	ListSPScanSchedules(ctx context.Context, arg ListSPScanSchedulesParams) ([]VbScanSchedules, error)
-	ListSPSuppressions(ctx context.Context, orgID string) ([]VbFindingSuppressions, error)
-	ListSRAssignments(ctx context.Context, orgID string) ([]SrAssignments, error)
-	ListSRAssignmentsByModule(ctx context.Context, arg ListSRAssignmentsByModuleParams) ([]ListSRAssignmentsByModuleRow, error)
-	ListSRCampaigns(ctx context.Context, orgID string) ([]ListSRCampaignsRow, error)
-	ListSRCompletedAssignments(ctx context.Context, orgID string) ([]SrAssignments, error)
-	ListSRLandingPages(ctx context.Context, orgID string) ([]SrLandingPages, error)
-	ListSROverdueAssignments(ctx context.Context, orgID string) ([]SrAssignments, error)
-	ListSRPhishReports(ctx context.Context, orgID string) ([]SrPhishReports, error)
-	ListSRTargetGroups(ctx context.Context, orgID string) ([]SrTargetGroups, error)
-	ListSRTargets(ctx context.Context, arg ListSRTargetsParams) ([]SrTargets, error)
-	ListSRTemplates(ctx context.Context, orgID string) ([]SrTemplates, error)
-	ListSRTrainingModules(ctx context.Context, orgID string) ([]SrTrainingModules, error)
-	ListSVAccessLog(ctx context.Context, orgID string) ([]SoAccessLog, error)
-	ListSVAPITokens(ctx context.Context, arg ListSVAPITokensParams) ([]CreateSVAPITokenRow, error)
-	ListSVEnvironments(ctx context.Context, arg ListSVEnvironmentsParams) ([]SoEnvironments, error)
-	ListSVGitScans(ctx context.Context, orgID string) ([]SVGitScanRow, error)
-	ListSVProjectAccessLog(ctx context.Context, arg ListSVProjectAccessLogParams) ([]ListSVProjectAccessLogRow, error)
-	ListSVProjectSecrets(ctx context.Context, arg ListSVProjectSecretsParams) ([]ListSVSecretKeysRow, error)
-	ListSVProjects(ctx context.Context, orgID string) ([]ListSVProjectsRow, error)
-	ListSVSecretKeys(ctx context.Context, arg ListSVSecretKeysParams) ([]ListSVSecretKeysRow, error)
-	MarkSVShareLinkUsed(ctx context.Context, arg MarkSVShareLinkUsedParams) error
 	// Setzt Assessment auf 'reviewed' und gibt supplier_id für den nachfolgenden
 	// Supplier-Update zurück. Wird vom Repo in einer TX mit Update-Supplier
 	// kombiniert.
@@ -537,8 +319,6 @@ type Querier interface {
 	MarkCKIncidentWarnNotified(ctx context.Context, arg MarkCKIncidentWarnNotifiedParams) error
 	// Setzt sent_at für einen Akzeptanz-Request (s26-sqlc-vitals-5).
 	MarkCKPolicyAcceptanceRequestSent(ctx context.Context, id string) error
-	MarkExpiredPPAVVs(ctx context.Context) (int64, error)
-	MarkPPBreachAuthorityNotified(ctx context.Context, arg MarkPPBreachAuthorityNotifiedParams) error
 	// Returns MAX(version)+1 für die nächste Doku-Version (oder 1, wenn leer).
 	NextCKAIDocumentationVersion(ctx context.Context, arg NextCKAIDocumentationVersionParams) (int32, error)
 	NextCKMilestone(ctx context.Context, orgID string) (NextCKMilestoneRow, error)
@@ -564,17 +344,12 @@ type Querier interface {
 	// Unique-Constraint — es griff nie (R1-06-D07).
 	SeedCKMeasure(ctx context.Context, arg SeedCKMeasureParams) error
 	SetCKOrgApprovalRequired(ctx context.Context, arg SetCKOrgApprovalRequiredParams) (int64, error)
-	SetHREmployeeStatus(ctx context.Context, arg SetHREmployeeStatusParams) error
-	SetOrgPhishReportToken(ctx context.Context, arg SetOrgPhishReportTokenParams) error
-	SetSRCampaignCompleted(ctx context.Context, arg SetSRCampaignCompletedParams) error
 	// Snapshots the current ck_policies row into ck_policy_versions before UpdatePolicy
 	// bumps version_num. ON CONFLICT (policy_id, version) DO NOTHING macht das
 	// idempotent — wenn der Snapshot durch frühere Updates schon existiert,
 	// bleibt er unverändert.
 	SnapshotCKPolicyVersion(ctx context.Context, arg SnapshotCKPolicyVersionParams) error
 	SoftDeleteSPAsset(ctx context.Context, arg SoftDeleteSPAssetParams) (int64, error)
-	StartHRChecklistRun(ctx context.Context, arg StartHRChecklistRunParams) (HrChecklistRuns, error)
-	StoreSPReportContent(ctx context.Context, arg StoreSPReportContentParams) error
 	UnlinkCKRiskControl(ctx context.Context, arg UnlinkCKRiskControlParams) (int64, error)
 	UnlinkCKSupplierRisk(ctx context.Context, arg UnlinkCKSupplierRiskParams) error
 	UpdateCKAISystem(ctx context.Context, arg UpdateCKAISystemParams) (CkAiSystems, error)
@@ -637,62 +412,13 @@ type Querier interface {
 	UpdateCKSupplier(ctx context.Context, arg UpdateCKSupplierParams) (UpdateCKSupplierRow, error)
 	UpdateCKSupplierAssessmentStatus(ctx context.Context, arg UpdateCKSupplierAssessmentStatusParams) error
 	UpdateCKTask(ctx context.Context, arg UpdateCKTaskParams) (CkTasks, error)
-	UpdateDSRPortalSettings(ctx context.Context, arg UpdateDSRPortalSettingsParams) error
-	UpdateHRChecklistRun(ctx context.Context, arg UpdateHRChecklistRunParams) (HrChecklistRuns, error)
-	UpdateHREmployee(ctx context.Context, arg UpdateHREmployeeParams) (HrEmployees, error)
-	UpdatePPAVV(ctx context.Context, arg UpdatePPAVVParams) (UpdatePPAVVRow, error)
-	UpdatePPAVVBody(ctx context.Context, arg UpdatePPAVVBodyParams) error
-	UpdatePPAVVSCC(ctx context.Context, arg UpdatePPAVVSCCParams) error
-	UpdatePPBreach(ctx context.Context, arg UpdatePPBreachParams) (PoBreaches, error)
-	UpdatePPBreachStatus(ctx context.Context, arg UpdatePPBreachStatusParams) error
-	// vvt_entry_id is intentionally not in the SET list: the link to the originating
-	// VVT entry is set at creation and never re-pointed by an update — DSGVO Art. 35
-	// ties a DPIA to a specific processing activity. Use Delete + Create if the
-	// target activity changes.
-	UpdatePPDPIA(ctx context.Context, arg UpdatePPDPIAParams) (PoDpias, error)
-	UpdatePPDSR(ctx context.Context, arg UpdatePPDSRParams) (UpdatePPDSRRow, error)
-	UpdatePPVVT(ctx context.Context, arg UpdatePPVVTParams) (PoVvtEntries, error)
 	// Updates all fields. Callers must read-merge-write (load current asset, apply
 	// partial updates from UpdateAssetInput, then pass the merged values here).
 	// The dynamic SET-clause builder in the previous embedded SQL is not portable
 	// to sqlc; the read-merge-write trade-off is one extra round-trip in exchange
 	// for type-safe, generated code.
 	UpdateSPAsset(ctx context.Context, arg UpdateSPAssetParams) (UpdateSPAssetRow, error)
-	UpdateSPComponentEOL(ctx context.Context, arg UpdateSPComponentEOLParams) error
-	// Partial update via COALESCE: NULL leaves the column unchanged.
-	UpdateSPFinding(ctx context.Context, arg UpdateSPFindingParams) (VbFindings, error)
-	UpdateSPReport(ctx context.Context, arg UpdateSPReportParams) error
-	// Updates status plus any optional fields. Pass NULL via sqlc.narg() to leave
-	// a column unchanged (COALESCE keeps the existing value).
-	UpdateSPScanStatus(ctx context.Context, arg UpdateSPScanStatusParams) error
-	UpdateSRAssignmentDueDate(ctx context.Context, arg UpdateSRAssignmentDueDateParams) (SrAssignments, error)
-	UpdateSRCampaignStatus(ctx context.Context, arg UpdateSRCampaignStatusParams) error
-	// ── Answers + Reviews ───────────────────────────────────────────────────────
-	RevokeSVAPIToken(ctx context.Context, arg RevokeSVAPITokenParams) (int64, error)
 	UpsertCKAnswer(ctx context.Context, arg UpsertCKAnswerParams) error
-	UpdateSVGitScanStatus(ctx context.Context, arg UpdateSVGitScanStatusParams) error
-	UpdateSVRotationAfterRotate(ctx context.Context, arg UpdateSVRotationAfterRotateParams) error
-	UpdateSVSecretAccess(ctx context.Context, id string) error
-	UpsertSVRotationPolicy(ctx context.Context, arg UpsertSVRotationPolicyParams) (SVRotationPolicyRow, error)
-	BatchUpdateSPComponentEOL(ctx context.Context, arg BatchUpdateSPComponentEOLParams) error
-	GetSPScanOrgID(ctx context.Context, id string) (string, error)
-	UpsertSPEOLCache(ctx context.Context, arg UpsertSPEOLCacheParams) error
-	// ── Findings Upsert (single, by cve_id) ─────────────────────────────────────
-	// Schwester von UpsertSPFindingByRawID fuer Funde mit CVE. Konfliktschluessel:
-	// (org_id, asset_id, cve_id) — der einzige scanner-agnostische Dedup-Schluessel
-	// des Schemas; `raw_id` bleibt bei diesen Zeilen bewusst NULL.
-	UpsertSPFindingByCVE(ctx context.Context, arg UpsertSPFindingByCVEParams) (VbFindings, error)
-	// ── Findings Upsert (single, by raw_id) ─────────────────────────────────────
-	// Single-shot INSERT...ON CONFLICT for importer flows (SARIF/CycloneDX/CSV).
-	// Conflict key: (org_id, raw_id, scanner). Multi-row Upserts with conditional
-	// dedup keys (cve_id vs template_id) remain procedural in the repo because
-	// the conditional INSERT-vs-UPDATE branch isn't expressible in a single sqlc query.
-	UpsertSPFindingByRawID(ctx context.Context, arg UpsertSPFindingByRawIDParams) (VbFindings, error)
-	UpsertSPSLAConfig(ctx context.Context, arg UpsertSPSLAConfigParams) error
-	// ── Assignments ───────────────────────────────────────────────────────────
-	UpsertSRCompletion(ctx context.Context, arg UpsertSRCompletionParams) (SrCompletions, error)
-	// ── Targets ───────────────────────────────────────────────────────────────
-	UpsertSRTarget(ctx context.Context, arg UpsertSRTargetParams) (SrTargets, error)
 	UpsertUserModulePermission(ctx context.Context, arg UpsertUserModulePermissionParams) error
 	// ── S60: BCP / Notfallhandbuch ────────────────────────────────────────────
 	CreateCKBCPPlan(ctx context.Context, arg CreateCKBCPPlanParams) (CkBcpPlans, error)
@@ -714,20 +440,6 @@ type Querier interface {
 	UpdateCKProtectionNeedAssessment(ctx context.Context, arg UpdateCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error)
 	FinalizeCKProtectionNeedAssessment(ctx context.Context, arg FinalizeCKProtectionNeedAssessmentParams) (CkProtectionNeedAssessments, error)
 	DeleteCKProtectionNeedAssessment(ctx context.Context, arg DeleteCKProtectionNeedAssessmentParams) (int64, error)
-	// ── S60: Berechtigungskonzept ─────────────────────────────────────────────
-	CreateHRAccessConcept(ctx context.Context, arg CreateHRAccessConceptParams) (HrAccessConcepts, error)
-	ListHRAccessConcepts(ctx context.Context, orgID string) ([]HrAccessConcepts, error)
-	GetHRAccessConcept(ctx context.Context, arg GetHRAccessConceptParams) (HrAccessConcepts, error)
-	UpdateHRAccessConcept(ctx context.Context, arg UpdateHRAccessConceptParams) (HrAccessConcepts, error)
-	DeleteHRAccessConcept(ctx context.Context, arg DeleteHRAccessConceptParams) (int64, error)
-	IncrementHRAccessConceptVersion(ctx context.Context, arg IncrementHRAccessConceptVersionParams) (int32, error)
-	AddHRAccessRole(ctx context.Context, arg AddHRAccessRoleParams) (HrAccessRoles, error)
-	ListHRAccessRoles(ctx context.Context, arg ListHRAccessRolesParams) ([]HrAccessRoles, error)
-	UpdateHRAccessRole(ctx context.Context, arg UpdateHRAccessRoleParams) (HrAccessRoles, error)
-	DeleteHRAccessRole(ctx context.Context, arg DeleteHRAccessRoleParams) (int64, error)
-	InsertHRAccessConceptVersion(ctx context.Context, arg InsertHRAccessConceptVersionParams) (HrAccessConceptVersions, error)
-	ListHRAccessConceptVersions(ctx context.Context, arg ListHRAccessConceptVersionsParams) ([]ListHRAccessConceptVersionsRow, error)
-	GetHRAccessConceptVersion(ctx context.Context, arg GetHRAccessConceptVersionParams) (HrAccessConceptVersions, error)
 	// ── S86: BIA Processes ────────────────────────────────────────────────────────
 	CreateCKBIAProcess(ctx context.Context, arg CreateCKBIAProcessParams) (CkBiaProcesses, error)
 	ListCKBIAProcesses(ctx context.Context, orgID string) ([]CkBiaProcesses, error)

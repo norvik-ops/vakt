@@ -19,15 +19,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"github.com/matharnica/vakt/internal/config"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
 	"github.com/matharnica/vakt/internal/shared/metrics"
 )
 
-// TestMetrics_OmitsSwitchedOffModules covers the R1-KW-15 follow-up: with only
-// the ISMS enabled /metrics must not publish findings or DSR gauges — a 0 there
-// would tell monitoring "measured, nothing open".
-func TestMetrics_OmitsSwitchedOffModules(t *testing.T) {
+// TestMetrics_OmitsArchivedModules covers the R1-KW-15 follow-up: /metrics must
+// not publish findings or DSR gauges of the archived Scan and Privacy modules —
+// a 0 there would tell monitoring "measured, nothing open".
+func TestMetrics_OmitsArchivedModules(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: -short mode")
 	}
@@ -58,27 +57,17 @@ func TestMetrics_OmitsSwitchedOffModules(t *testing.T) {
 	require.NoError(t, err)
 	defer pool.Close()
 
-	scrape := func(modules string) string {
-		e := echo.New()
-		cfg := &config.Config{ModulesEnabled: modules}
-		metrics.RegisterWithOptions(e, pool, metrics.RegisterOptions{ModuleOn: cfg.IsModuleEnabled})
-		req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
-		req.RemoteAddr = "127.0.0.1:1234"
-		rec := httptest.NewRecorder()
-		e.ServeHTTP(rec, req)
-		require.Equal(t, http.StatusOK, rec.Code)
-		return rec.Body.String()
-	}
+	e := echo.New()
+	metrics.RegisterWithOptions(e, pool, metrics.RegisterOptions{})
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	core := rec.Body.String()
 
-	core := scrape("vaktcomply")
 	assert.NotContains(t, core, "vakt_findings_total")
 	assert.NotContains(t, core, "vakt_dsr_open_total")
 	assert.NotContains(t, core, "vakt_dsr_overdue_total")
 	assert.Contains(t, core, "vakt_score_current", "ISMS gauges stay")
-
-	// Since the archive (docs/stories/module-archivieren.md) an old
-	// configuration naming Scan or Privacy changes nothing.
-	old := scrape("vaktcomply,vaktscan,vaktprivacy")
-	assert.NotContains(t, old, "vakt_findings_total")
-	assert.NotContains(t, old, "vakt_dsr_open_total")
 }

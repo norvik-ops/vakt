@@ -96,14 +96,6 @@ func TestCalculateKPIsForOrgNilDB(t *testing.T) {
 	assert.Nil(t, snap.PhishingClickRate)
 }
 
-// TestCalcFindingSLAComplianceNilDB verifies that calcFindingSLACompliance returns nil
-// when db is nil — matching the nil-guard contract shared by all sub-calculators.
-func TestCalcFindingSLAComplianceNilDB(t *testing.T) {
-	ctx := context.Background()
-	result := calcFindingSLACompliance(ctx, nil, "org-nil")
-	assert.Nil(t, result, "calcFindingSLACompliance must return nil when db is nil")
-}
-
 // TestCalcOpenMajorNCsNilDB verifies that calcOpenMajorNCs returns nil
 // when db is nil.
 func TestCalcOpenMajorNCsNilDB(t *testing.T) {

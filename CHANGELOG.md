@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Entfernt
+- **Reste der archivierten Module entfernt.** Die Personio-Integration (sie lieferte nur an Vakt HR)
+  ist aus den Integrationen verschwunden. Der Management-Bericht nennt keine „behobenen Findings“ mehr,
+  das KPI-Dashboard zeigt keine Finding-SLA-Quote und keine Phishing-Klickrate mehr. GitLab und SonarQube
+  holen keine Schwachstellen mehr ab, nur noch ISMS-Nachweise. Findings-Berichte, Trivy-CCM-Prüfungen sowie
+  DSFA- und AVV-Vorlagen lassen sich nicht mehr neu anlegen; ältere Einträge bleiben lesbar.
+  `VAKT_BSI_FEED_ENABLED`, `VAKT_EOL_CHECK_ENABLED` und `VAKT_EPSS_ENABLED` liest Vakt nicht mehr.
+
 ---
 ## [0.45.0] — 2026-10-23
 

@@ -26,7 +26,7 @@ func NewHandler(svc *Service) *Handler {
 
 // RegisterRoutes wires cloud integration routes under the provided echo group.
 // Expected group prefix: /integrations/cloud
-// Returns the Service so callers can inject it into other handlers (e.g., the vakthr Personio webhook).
+// Returns the Service so callers can inject it into other handlers.
 func RegisterRoutes(g *echo.Group, db *pgxpool.Pool, masterKey []byte, evidence EvidenceWriter) *Service {
 	svc := NewService(db, masterKey, evidence)
 	h := NewHandler(svc)
@@ -128,12 +128,6 @@ func RegisterRoutes(g *echo.Group, db *pgxpool.Pool, masterKey []byte, evidence 
 	sq.POST("/sync", h.SyncSonarQube)
 	sq.GET("/status", h.GetSonarQubeStatus)
 	sq.GET("/evidence", h.GetSonarQubeEvidence)
-
-	// Personio (push-only via webhook — no sync endpoint)
-	pe := g.Group("/personio")
-	pe.GET("/config", h.GetPersonioConfig)
-	pe.PUT("/config", h.SavePersonioConfig)
-	pe.GET("/status", h.GetPersonioStatus)
 
 	return svc
 }
@@ -859,42 +853,6 @@ func (h *Handler) GetSonarQubeEvidence(c echo.Context) error {
 		items = []EvidenceItem{}
 	}
 	return c.JSON(http.StatusOK, items)
-}
-
-// --- Personio handlers ---
-
-func (h *Handler) GetPersonioConfig(c echo.Context) error {
-	orgID := mustString(c, "org_id")
-	cfg, err := h.svc.GetPersonioConfig(c.Request().Context(), orgID)
-	if err != nil {
-		return serverError(c, err)
-	}
-	return c.JSON(http.StatusOK, cfg)
-}
-
-func (h *Handler) SavePersonioConfig(c echo.Context) error {
-	orgID := mustString(c, "org_id")
-	var in SavePersonioConfigInput
-	if err := c.Bind(&in); err != nil {
-		return badRequest(c, "invalid request body")
-	}
-	if err := validate.Struct(in); err != nil {
-		return validationError(c, err)
-	}
-	if err := h.svc.SavePersonioConfig(c.Request().Context(), orgID, in); err != nil {
-		return serverError(c, err)
-	}
-	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-}
-
-func (h *Handler) GetPersonioStatus(c echo.Context) error {
-	orgID := mustString(c, "org_id")
-	st, err := h.svc.GetPersonioStatus(c.Request().Context(), orgID)
-	if err != nil {
-		return serverError(c, err)
-	}
-	st.WebhookURL = "/api/v1/vakthr/webhooks/personio/" + orgID
-	return c.JSON(http.StatusOK, st)
 }
 
 // --- helpers ---

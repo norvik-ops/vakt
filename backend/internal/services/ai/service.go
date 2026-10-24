@@ -28,8 +28,6 @@ type ComplianceContext struct {
 	InProgress       int
 	Missing          int
 	OverallScore     int
-	OpenFindings     int
-	FindingsTracked  bool // false while Vakt Scan is off — OpenFindings is then not a measurement
 	CriticalRisks    int
 	OpenIncidents    int
 	ActiveFrameworks []string
@@ -37,9 +35,9 @@ type ComplianceContext struct {
 	TopRisks         []string // top 5 high/critical risk titles
 }
 
-// scanOn says whether Vakt Scan is enabled; without it no findings are counted, so a
-// report cannot present "0 open vulnerabilities" that nobody measured.
-func GatherContext(ctx context.Context, db *pgxpool.Pool, orgID string, scanOn bool) (*ComplianceContext, error) {
+// GatherContext counts no scanner findings: Vakt Scan is archived, and a report
+// must not present "0 open vulnerabilities" that nobody measured.
+func GatherContext(ctx context.Context, db *pgxpool.Pool, orgID string) (*ComplianceContext, error) {
 	cc := &ComplianceContext{GeneratedAt: time.Now()}
 
 	if err := db.QueryRow(ctx, `SELECT name FROM organizations WHERE id = $1::uuid`, orgID).Scan(&cc.OrgName); err != nil {
@@ -61,17 +59,6 @@ func GatherContext(ctx context.Context, db *pgxpool.Pool, orgID string, scanOn b
 
 	if cc.TotalControls > 0 {
 		cc.OverallScore = (cc.Implemented * 100) / cc.TotalControls
-	}
-
-	// Open findings
-	if scanOn {
-		cc.FindingsTracked = true
-		if err := db.QueryRow(ctx, `
-        SELECT COUNT(*) FROM vb_findings
-        WHERE org_id = $1::uuid AND status NOT IN ('resolved', 'false_positive')`, orgID,
-		).Scan(&cc.OpenFindings); err != nil {
-			log.Warn().Err(err).Str("org_id", orgID).Msg("ai: could not count open findings")
-		}
 	}
 
 	// Critical risks
@@ -149,12 +136,11 @@ type OrgSettings struct {
 type OrgSettingsFunc func(ctx context.Context, orgID string) (OrgSettings, error)
 
 type Service struct {
-	db          *pgxpool.Pool
-	withoutScan bool // see RegisterOptions.WithoutScan
-	client      *AIClient
-	baseURL     string
-	apiKey      string
-	model       string
+	db      *pgxpool.Pool
+	client  *AIClient
+	baseURL string
+	apiKey  string
+	model   string
 	// Sprint 15 / S15-1/2/3: optional. Wenn gesetzt, läuft jede AI-Anfrage durch
 	// Rate-Limit + Daily-Quota + Response-Cache und schreibt einen Usage-Record.
 	// Wenn nil: alte Semantik (unbeschränkt, kein Tracking).
@@ -473,7 +459,7 @@ func (s *Service) ComplianceAdvice(ctx context.Context, orgID string) (string, e
 }
 
 func (s *Service) GenerateReport(ctx context.Context, orgID string, reportType ReportType) (string, error) {
-	cc, err := GatherContext(ctx, s.db, orgID, !s.withoutScan)
+	cc, err := GatherContext(ctx, s.db, orgID)
 	if err != nil {
 		return "", fmt.Errorf("gather context: %w", err)
 	}
@@ -517,7 +503,7 @@ Gesamtscore: %d%%
 Implementierte Controls: %d von %d
 In Bearbeitung: %d
 Fehlende Controls: %d
-%sKritische Risiken: %d
+Kritische Risiken: %d
 Offene Vorfälle: %d
 Erstellt am: %s
 
@@ -534,19 +520,10 @@ Schreibe eine strukturierte Gap-Analyse mit:
 Antworte ausschließlich auf Deutsch. Verwende professionelle aber verständliche Sprache für IT-Führungskräfte.`,
 		wrapUserContent(cc.OrgName), frameworks, cc.OverallScore,
 		cc.Implemented, cc.TotalControls, cc.InProgress, cc.Missing,
-		findingsLine(cc), cc.CriticalRisks, cc.OpenIncidents,
+		cc.CriticalRisks, cc.OpenIncidents,
 		cc.GeneratedAt.Format("02.01.2006"),
 		gaps,
 	)
-}
-
-// findingsLine is the prompt line for open scanner findings, or nothing while Vakt
-// Scan is off.
-func findingsLine(cc *ComplianceContext) string {
-	if !cc.FindingsTracked {
-		return ""
-	}
-	return fmt.Sprintf("Offene Sicherheitslücken: %d\n", cc.OpenFindings)
 }
 
 func buildRiskSummaryPrompt(cc *ComplianceContext) string {
@@ -564,7 +541,7 @@ Organisation: %s
 Kritische und hohe Risiken: %d
 Offene Vorfälle: %d
 Compliance-Score: %d%%
-%s
+
 Wichtigste Risiken:
 - %s
 
@@ -575,7 +552,7 @@ Erstelle eine strukturierte Risikoübersicht mit:
 4. Mittelfristige Risikominderung
 
 Antworte ausschließlich auf Deutsch.`,
-		wrapUserContent(cc.OrgName), cc.CriticalRisks, cc.OpenIncidents, cc.OverallScore, findingsLine(cc), risks,
+		wrapUserContent(cc.OrgName), cc.CriticalRisks, cc.OpenIncidents, cc.OverallScore, risks,
 	)
 }
 
@@ -592,7 +569,7 @@ Datum: %s
 Aktive Compliance-Frameworks: %s
 Gesamter Compliance-Score: %d%%
 Implementierte Controls: %d von %d
-%sKritische Risiken: %d
+Kritische Risiken: %d
 Offene Vorfälle: %d
 
 Schreibe eine prägnante Executive Summary (max. 300 Wörter) mit:
@@ -605,6 +582,6 @@ Schreibe eine prägnante Executive Summary (max. 300 Wörter) mit:
 Sprache: Deutsch, nicht-technisch, für Geschäftsführung geeignet.`,
 		wrapUserContent(cc.OrgName), cc.GeneratedAt.Format("02.01.2006"),
 		frameworks, cc.OverallScore, cc.Implemented, cc.TotalControls,
-		findingsLine(cc), cc.CriticalRisks, cc.OpenIncidents,
+		cc.CriticalRisks, cc.OpenIncidents,
 	)
 }

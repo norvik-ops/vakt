@@ -81,9 +81,6 @@ func (h *Handler) Create(c echo.Context) error {
 			"code":  "VALIDATION_ERROR",
 		})
 	}
-	if in.ReportType == "findings" && h.svc.withoutScan {
-		return errResp(c, http.StatusUnprocessableEntity, "findings reports need Vakt Scan, which is switched off", "SR_MODULE_DISABLED")
-	}
 	r, err := h.svc.Create(c.Request().Context(), orgID(c), in)
 	if err != nil {
 		log.Error().Err(err).Msg("create scheduled report")
@@ -104,9 +101,6 @@ func (h *Handler) Update(c echo.Context) error {
 			"error": "Ungültige Eingabe",
 			"code":  "VALIDATION_ERROR",
 		})
-	}
-	if in.ReportType != nil && *in.ReportType == "findings" && h.svc.withoutScan {
-		return errResp(c, http.StatusUnprocessableEntity, "findings reports need Vakt Scan, which is switched off", "SR_MODULE_DISABLED")
 	}
 	r, err := h.svc.Update(c.Request().Context(), id, orgID(c), in)
 	if err != nil {

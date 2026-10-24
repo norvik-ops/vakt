@@ -29,17 +29,12 @@ type SearchResponse struct {
 
 // Handler holds the DB pool for search queries.
 type Handler struct {
-	db       *pgxpool.Pool
-	moduleOn func(module string) bool
+	db *pgxpool.Pool
 }
 
-// NewHandler creates a new search Handler. moduleOn may be nil, which treats
-// every module as enabled.
-func NewHandler(db *pgxpool.Pool, moduleOn func(module string) bool) *Handler {
-	if moduleOn == nil {
-		moduleOn = func(string) bool { return true }
-	}
-	return &Handler{db: db, moduleOn: moduleOn}
+// NewHandler creates a new search Handler.
+func NewHandler(db *pgxpool.Pool) *Handler {
+	return &Handler{db: db}
 }
 
 // Search handles GET /api/v1/search?q=<term>&limit=<n>
@@ -69,26 +64,15 @@ func (h *Handler) Search(c echo.Context) error {
 
 	type fetcher func(context.Context, *pgxpool.Pool, string, string, int) []SearchResult
 
-	// module "" marks the ISMS core (incl. the asset registry), always searched.
-	candidates := []struct {
-		module string
-		fetch  fetcher
-	}{
-		{"", searchControls},
-		{"", searchRisks},
-		{"", searchPolicies},
-		{"", searchIncidents},
-		{"", searchCAPAs},
-		{"", searchAssets},
-		{"vaktscan", searchFindings},
-		{"vaktprivacy", searchDSRs},
-		{"vaktprivacy", searchBreaches},
-	}
-	var sources []fetcher
-	for _, src := range candidates {
-		if src.module == "" || h.moduleOn(src.module) {
-			sources = append(sources, src.fetch)
-		}
+	// The ISMS core incl. the asset registry. Findings, DSRs and breaches went
+	// with the archived Scan and Privacy modules.
+	sources := []fetcher{
+		searchControls,
+		searchRisks,
+		searchPolicies,
+		searchIncidents,
+		searchCAPAs,
+		searchAssets,
 	}
 
 	var (
@@ -286,72 +270,6 @@ func searchAssets(ctx context.Context, db *pgxpool.Pool, orgID, pattern string, 
 		r.EntityType = "asset"
 		r.Subtitle = "Asset"
 		r.URL = "/vaktcomply/assets/" + r.ID
-		results = append(results, r)
-	}
-	return results
-}
-
-func searchFindings(ctx context.Context, db *pgxpool.Pool, orgID, pattern string, limit int) []SearchResult {
-	rows, err := db.Query(ctx,
-		`SELECT id::text, title FROM vb_findings WHERE org_id=$1::uuid AND lower(title) LIKE $2 ESCAPE '\' LIMIT $3`,
-		orgID, pattern, limit)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var results []SearchResult
-	for rows.Next() {
-		var r SearchResult
-		if err := rows.Scan(&r.ID, &r.Title); err != nil {
-			continue
-		}
-		r.EntityType = "finding"
-		r.Subtitle = "Finding"
-		r.URL = "/vaktscan/findings/" + r.ID
-		results = append(results, r)
-	}
-	return results
-}
-
-func searchDSRs(ctx context.Context, db *pgxpool.Pool, orgID, pattern string, limit int) []SearchResult {
-	rows, err := db.Query(ctx,
-		`SELECT id::text, requester_name FROM po_dsr WHERE org_id=$1::uuid AND lower(requester_name) LIKE $2 ESCAPE '\' LIMIT $3`,
-		orgID, pattern, limit)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var results []SearchResult
-	for rows.Next() {
-		var r SearchResult
-		if err := rows.Scan(&r.ID, &r.Title); err != nil {
-			continue
-		}
-		r.EntityType = "dsr"
-		r.Subtitle = "DSR"
-		r.URL = "/vaktprivacy/dsr"
-		results = append(results, r)
-	}
-	return results
-}
-
-func searchBreaches(ctx context.Context, db *pgxpool.Pool, orgID, pattern string, limit int) []SearchResult {
-	rows, err := db.Query(ctx,
-		`SELECT id::text, title FROM po_breaches WHERE org_id=$1::uuid AND lower(title) LIKE $2 ESCAPE '\' LIMIT $3`,
-		orgID, pattern, limit)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var results []SearchResult
-	for rows.Next() {
-		var r SearchResult
-		if err := rows.Scan(&r.ID, &r.Title); err != nil {
-			continue
-		}
-		r.EntityType = "breach"
-		r.Subtitle = "Datenpanne"
-		r.URL = "/vaktprivacy/breach"
 		results = append(results, r)
 	}
 	return results

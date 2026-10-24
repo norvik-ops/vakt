@@ -1959,29 +1959,6 @@ components:
             quality_gate_failed_count: { type: integer }
             hotspot_count: { type: integer }
 
-    PersonioConfigResponse:
-      type: object
-      required: [webhook_secret, is_configured]
-      properties:
-        webhook_secret: { type: string, description: '"****" if set' }
-        is_configured: { type: boolean }
-
-    SavePersonioConfigInput:
-      type: object
-      required: [webhook_secret]
-      properties:
-        webhook_secret: { type: string }
-
-    PersonioStatus:
-      allOf:
-        - $ref: '#/components/schemas/CloudSyncStatus'
-        - type: object
-          properties:
-            webhook_url: { type: string }
-            webhook_configured: { type: boolean }
-            offboardings_triggered: { type: integer }
-            offboardings_completed_on_time: { type: integer }
-
     CryptoKey:
       type: object
       properties:
@@ -10453,57 +10430,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/CloudEvidenceItem'
 
-  /integrations/cloud/personio/config:
-    get:
-      summary: Get Personio webhook config (secrets masked)
-      operationId: getPersonioConfig
-      tags: [integrations]
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Personio config
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PersonioConfigResponse'
-    put:
-      summary: Save Personio webhook secret
-      operationId: savePersonioConfig
-      tags: [integrations]
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SavePersonioConfigInput'
-      responses:
-        '200':
-          description: Saved
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string }
-
-  /integrations/cloud/personio/status:
-    get:
-      summary: Get Personio webhook status and offboarding metrics
-      operationId: getPersonioStatus
-      tags: [integrations]
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Personio status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PersonioStatus'
-
   # ── Sprint 67: NIS2 Art.23 Stage Reporting ────────────────────────────────
 
   /vaktcomply/incidents/{id}/nis2/assess:
@@ -16342,7 +16268,6 @@ paths:
                   type: string
                   enum:
                   - compliance
-                  - findings
                   - risk
                   - board_report
                 schedule:
@@ -16438,7 +16363,6 @@ paths:
                   type: string
                   enum:
                   - compliance
-                  - findings
                   - risk
                   - board_report
                 schedule:

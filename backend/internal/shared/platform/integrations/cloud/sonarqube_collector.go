@@ -5,7 +5,6 @@ package cloud
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,10 +22,9 @@ const sonarqubeSource = "sonarqube-collector"
 
 // SonarQubeCollector collects compliance evidence from a SonarQube or SonarCloud instance.
 type SonarQubeCollector struct {
-	db             *pgxpool.Pool
-	evidence       EvidenceWriter
-	noScanFindings bool         // see Service.noScanFindings
-	httpClient     *http.Client // injectable for tests; nil in production (see clientFor)
+	db         *pgxpool.Pool
+	evidence   EvidenceWriter
+	httpClient *http.Client // injectable for tests; nil in production (see clientFor)
 }
 
 // NewSonarQubeCollector creates a new SonarQubeCollector.
@@ -88,22 +86,6 @@ type sonarHotspot struct {
 	Project                  string `json:"project"`
 }
 
-type sonarIssuesResponse struct {
-	Total  int          `json:"total"`
-	Issues []sonarIssue `json:"issues"`
-}
-
-type sonarIssue struct {
-	Key       string `json:"key"`
-	Component string `json:"component"`
-	Severity  string `json:"severity"`
-	Type      string `json:"type"`
-	Message   string `json:"message"`
-	Rule      string `json:"rule"`
-	Project   string `json:"project"`
-	Line      int    `json:"line"`
-}
-
 // Collect runs all SonarQube evidence collectors for the given org and config.
 func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg SonarQubeConfig) (int, error) {
 	client := c.clientFor(cfg.AllowPrivateTarget)
@@ -114,7 +96,6 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 	}
 
 	sdlcControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("secure development", "sdlc", "sast", "code quality"))
-	vulnControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("vulnerability", "patch", "cve"))
 	assetControls, _ := c.evidence.FindControlsByKeywords(ctx, orgID, withGerman("asset", "inventory", "software"))
 
 	total := 0
@@ -173,39 +154,8 @@ func (c *SonarQubeCollector) Collect(ctx context.Context, orgID string, cfg Sona
 		}
 	}
 
-	// Security Hotspots and Critical/Blocker vulnerabilities → vaktscan findings.
-	// Skipped while Vakt Scan is off; the summary evidence below then stays out too.
-	var hotspotCount, vulnCount int
-	if !c.noScanFindings {
-		var err error
-		hotspotCount, err = c.collectSecurityHotspots(ctx, client, orgID, cfg)
-		if err != nil {
-			log.Warn().Err(err).Msg("sonarqube_collector: hotspot collection failed")
-			errs = append(errs, err)
-		} else {
-			total += hotspotCount
-		}
-
-		vulnCount, err = c.collectVulnerabilities(ctx, client, orgID, cfg)
-		if err != nil {
-			log.Warn().Err(err).Msg("sonarqube_collector: vulnerability collection failed")
-			errs = append(errs, err)
-		} else {
-			total += vulnCount
-		}
-	}
-
-	// Hotspot summary evidence
-	if hotspotCount > 0 {
-		details := map[string]any{
-			"collected_at":  time.Now().UTC().Format(time.RFC3339),
-			"hotspot_count": hotspotCount,
-		}
-		if err := c.addEvidence(ctx, orgID, firstControlID(vulnControls),
-			fmt.Sprintf("SonarQube: %d unreviewed Security Hotspots importiert", hotspotCount), details); err == nil {
-			total++
-		}
-	}
+	// Security hotspots and blocker/critical vulnerabilities were imported as
+	// Vakt Scan findings; Scan is archived, so only ISMS evidence is collected.
 
 	if total == 0 && len(errs) > 0 {
 		return 0, errors.Join(errs...)
@@ -260,117 +210,6 @@ func (c *SonarQubeCollector) getQualityGateStatus(ctx context.Context, client *h
 	return resp.ProjectStatus.Status, nil
 }
 
-// collectSecurityHotspots imports unreviewed SonarQube security hotspots as vaktscan findings.
-func (c *SonarQubeCollector) collectSecurityHotspots(ctx context.Context, client *http.Client, orgID string, cfg SonarQubeConfig) (int, error) {
-	apiURL := fmt.Sprintf("%s/api/hotspots/search?status=TO_REVIEW&ps=500",
-		strings.TrimRight(cfg.BaseURL, "/"))
-
-	body, err := c.sonarRequest(ctx, client, cfg.Token, apiURL)
-	if err != nil {
-		return 0, err
-	}
-
-	var resp sonarHotspotsResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return 0, err
-	}
-
-	baseURLHash := sonarURLHash(cfg.BaseURL)
-	count := 0
-	assetCache := map[string]string{}
-
-	for _, h := range resp.Hotspots {
-		rawID := fmt.Sprintf("sonarqube:%s:%s:%s:%s", baseURLHash, h.Project, h.RuleKey, h.Component)
-		title := fmt.Sprintf("SonarQube Hotspot: %s", h.Message)
-		if len(title) > 200 {
-			title = title[:200]
-		}
-
-		assetID, err := c.cachedAssetID(ctx, assetCache, orgID, h.Project)
-		if err != nil {
-			log.Warn().Err(err).Str("project", h.Project).Msg("sonarqube_collector: resolve asset for hotspot")
-			continue
-		}
-
-		_, err = c.db.Exec(ctx, `
-			INSERT INTO vb_findings
-				(org_id, asset_id, title, description, severity, status, scanner, raw_id, sources, last_seen_at)
-			VALUES
-				($1::uuid, $2::uuid, $3, $4, 'high', 'open', 'sonarqube', $5, ARRAY['sonarqube'], NOW())
-			ON CONFLICT (org_id, raw_id, scanner) WHERE raw_id IS NOT NULL
-			DO UPDATE SET last_seen_at = NOW()`,
-			orgID, assetID, title,
-			fmt.Sprintf("Kategorie: %s — %s in %s", h.SecurityCategory, h.Message, h.Component),
-			dedupKey(rawID),
-		)
-		if err != nil {
-			log.Warn().Err(err).Str("raw_id", rawID).Msg("sonarqube_collector: upsert hotspot finding")
-			continue
-		}
-		count++
-	}
-	return count, nil
-}
-
-// collectVulnerabilities imports BLOCKER/CRITICAL vulnerability issues as vaktscan findings.
-func (c *SonarQubeCollector) collectVulnerabilities(ctx context.Context, client *http.Client, orgID string, cfg SonarQubeConfig) (int, error) {
-	apiURL := fmt.Sprintf("%s/api/issues/search?severities=BLOCKER,CRITICAL&types=VULNERABILITY&ps=500",
-		strings.TrimRight(cfg.BaseURL, "/"))
-
-	body, err := c.sonarRequest(ctx, client, cfg.Token, apiURL)
-	if err != nil {
-		return 0, err
-	}
-
-	var resp sonarIssuesResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return 0, err
-	}
-
-	baseURLHash := sonarURLHash(cfg.BaseURL)
-	count := 0
-	assetCache := map[string]string{}
-
-	for _, issue := range resp.Issues {
-		rawID := fmt.Sprintf("sonarqube:%s:%s:%s:%s:%d", baseURLHash, issue.Project, issue.Rule, issue.Component, issue.Line)
-		severity := "high"
-		if issue.Severity == "BLOCKER" {
-			severity = "critical"
-		}
-		title := issue.Message
-		if len(title) > 200 {
-			title = title[:200]
-		}
-		if title == "" {
-			title = fmt.Sprintf("SonarQube Vulnerability: %s", issue.Rule)
-		}
-
-		assetID, err := c.cachedAssetID(ctx, assetCache, orgID, issue.Project)
-		if err != nil {
-			log.Warn().Err(err).Str("project", issue.Project).Msg("sonarqube_collector: resolve asset for vulnerability")
-			continue
-		}
-
-		_, err = c.db.Exec(ctx, `
-			INSERT INTO vb_findings
-				(org_id, asset_id, title, description, severity, status, scanner, raw_id, sources, last_seen_at)
-			VALUES
-				($1::uuid, $2::uuid, $3, $4, $5, 'open', 'sonarqube', $6, ARRAY['sonarqube'], NOW())
-			ON CONFLICT (org_id, raw_id, scanner) WHERE raw_id IS NOT NULL
-			DO UPDATE SET last_seen_at = NOW()`,
-			orgID, assetID, title,
-			fmt.Sprintf("Rule: %s — %s in %s", issue.Rule, issue.Message, issue.Component),
-			severity, dedupKey(rawID),
-		)
-		if err != nil {
-			log.Warn().Err(err).Str("raw_id", rawID).Msg("sonarqube_collector: upsert vuln finding")
-			continue
-		}
-		count++
-	}
-	return count, nil
-}
-
 // sonarRequest performs a GET request to the SonarQube API with token auth.
 func (c *SonarQubeCollector) sonarRequest(ctx context.Context, client *http.Client, token, apiURL string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
@@ -403,28 +242,6 @@ func (c *SonarQubeCollector) addEvidence(ctx context.Context, orgID, controlID, 
 	return c.evidence.AddCollectorEvidence(ctx, orgID, controlID, "", sonarqubeSource, title, data)
 }
 
-// sonarURLHash returns a short hash of the SonarQube base URL for raw_id deduplication.
-func sonarURLHash(baseURL string) string {
-	h := sha256.Sum256([]byte(strings.ToLower(strings.TrimRight(baseURL, "/"))))
-	return fmt.Sprintf("%x", h[:4])
-}
-
-// cachedAssetID wraps resolveRepoAssetID with a per-run cache keyed by
-// SonarQube project. Hotspots and issues from the same project are resolved
-// once instead of once per finding — hotspots/issues.search responses can
-// span hundreds of findings across a handful of projects.
-func (c *SonarQubeCollector) cachedAssetID(ctx context.Context, cache map[string]string, orgID, project string) (string, error) {
-	if id, ok := cache[project]; ok {
-		return id, nil
-	}
-	id, err := resolveRepoAssetID(ctx, c.db, orgID, fmt.Sprintf("SonarQube: %s", project))
-	if err != nil {
-		return "", err
-	}
-	cache[project] = id
-	return id, nil
-}
-
 // CountQualityGateFailed returns the number of projects with a failed Quality Gate.
 func (c *SonarQubeCollector) CountQualityGateFailed(ctx context.Context, cfg SonarQubeConfig) (projectCount, failedCount int, err error) {
 	client := c.clientFor(cfg.AllowPrivateTarget)
@@ -447,7 +264,7 @@ func (c *SonarQubeCollector) CountQualityGateFailed(ctx context.Context, cfg Son
 
 // CountHotspots returns the number of unreviewed security hotspots for the status
 // endpoint (used by GetSonarQubeStatus). Read-only — unlike collectSecurityHotspots,
-// it does not write findings into vb_findings.
+// it does not write any findings.
 func (c *SonarQubeCollector) CountHotspots(ctx context.Context, cfg SonarQubeConfig) (int, error) {
 	client := c.clientFor(cfg.AllowPrivateTarget)
 	apiURL := fmt.Sprintf("%s/api/hotspots/search?status=TO_REVIEW&ps=1",

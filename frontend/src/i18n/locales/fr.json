@@ -1003,8 +1003,6 @@
       "labelFinancialImpact": "Dommages financiers estimés",
       "placeholderFinancialImpact": "p. ex. env. 500 000 EUR",
       "labelMajorIncident": "Incident TIC grave (Art. 18 DORA)",
-      "linkedBreach": "Violation de données liée",
-      "openBreach": "Ouvrir la violation →",
       "cardClassification": "Classification",
       "labelSeverity": "Gravité",
       "labelStatus": "Statut",
@@ -2695,12 +2693,6 @@
         "title": "Pas d'intégrations tierces",
         "description": "Pour des raisons de confidentialité (RGPD Art. 28), Vakt n'offre pas d'intégrations transmettant des données de sécurité à des services SaaS externes. Utilisez des webhooks pour vos propres automatisations."
       },
-      "personio": {
-        "lastWebhook": "Dernier webhook : {{date}}",
-        "noWebhook": "Aucun webhook reçu",
-        "configured": "Configuré",
-        "notConfigured": "Non configuré"
-      },
       "syncError": "Erreur",
       "syncPending": "En attente",
       "notSyncedYet": "Pas encore synchronisé",
@@ -3343,10 +3335,6 @@
         "title": "Référentiels (Vakt Comply)",
         "text": "Choisissez votre référentiel et documentez les contrôles — NIS2, ISO 27001, BSI et plus."
       },
-      "findings": {
-        "title": "Résultats (Vakt Scan)",
-        "text": "Les résultats des scanners arrivent ici pour priorisation et suivi."
-      },
       "policies": {
         "title": "Politiques",
         "text": "Créez et versionnez des politiques de sécurité — avec assistance IA et modèles."
@@ -3500,13 +3488,6 @@
     "doneTitle": "Import terminé",
     "skipped": "Ignoré",
     "importAnother": "Importer un autre fichier"
-  },
-  "vvtLinks": {
-    "title": "Activités de traitement liées (RPA)",
-    "empty": "Aucune activité de traitement liée.",
-    "add": "Lier",
-    "remove": "Retirer",
-    "selectPlaceholder": "Choisir une activité de traitement …"
   },
   "beta": {
     "module": "Bêta",

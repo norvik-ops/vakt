@@ -33,7 +33,6 @@ frontend/src/hooks/useCloud.ts::IONOSConfig.is_configured  # mispair: GET return
 frontend/src/hooks/useCloud.ts::IntuneConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
 frontend/src/hooks/useCloud.ts::KeycloakConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
 frontend/src/hooks/useCloud.ts::LDAPConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
-frontend/src/hooks/useCloud.ts::PersonioConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
 frontend/src/hooks/useCloud.ts::PrometheusConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
 frontend/src/hooks/useCloud.ts::SonarQubeConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config
 frontend/src/hooks/useCloud.ts::WazuhConfig.is_configured  # mispair: GET returns the per-provider *Status struct (cloud/models.go), not *Config

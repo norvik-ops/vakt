@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LayoutTemplate, BookOpen, FileSearch, Handshake, ExternalLink } from 'lucide-react'
+import { LayoutTemplate, BookOpen, ExternalLink } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Card, CardContent } from '../../../components/ui/card'
@@ -20,7 +20,6 @@ import { apiFetch } from '../../../api/client'
 import { toast } from '../../../shared/hooks/useToast'
 import { useCreatePolicy } from '../hooks/usePolicies'
 import { handleApiError } from '../../../shared/utils/errorMessages'
-import { isPathVisible } from '../../../shared/moduleVisibility'
 
 interface DBTemplate {
   id: string
@@ -33,24 +32,19 @@ interface DBTemplate {
   created_at: string
 }
 
-type Category = 'policy' | 'dpia' | 'avv'
+// DSFA- und AVV-Vorlagen führten zu Vakt Privacy, das archiviert ist.
+type Category = 'policy'
 
 const CATEGORY_LABELS: Record<Category, string> = {
   policy: 'Richtlinien',
-  dpia: 'DPIAs',
-  avv: 'AVVs',
 }
 
 const CATEGORY_ICONS: Record<Category, React.ElementType> = {
   policy: BookOpen,
-  dpia: FileSearch,
-  avv: Handshake,
 }
 
 const CATEGORY_DESTINATIONS: Record<Category, string> = {
   policy: '/vaktcomply/policies',
-  dpia: '/vaktprivacy/dpia',
-  avv: '/vaktprivacy/avv',
 }
 
 function TagBadge({ tag }: { tag: string }) {
@@ -114,31 +108,22 @@ function TemplateCategoryTab({ category }: { category: Category }) {
 
   function handleUseTemplate(t: DBTemplate) {
     const dest = CATEGORY_DESTINATIONS[category]
-    if (category === 'policy') {
-      // R1-SA28-02: There is NO /vaktcomply/policies/new route — policies/:id would
-      // treat "new" as a UUID path param and ValidateUUIDParams returns 400. The old
-      // code navigated there and fired a success toast that lied. Instead create the
-      // policy directly from the DB template (mirrors the backend
-      // CreatePolicyFromTemplate flow: title=name, body=content) and land on its detail
-      // page. The success toast now fires only after the policy actually exists.
-      createPolicy.mutate(
-        { title: t.name, description: t.content, category: t.framework ?? undefined },
-        {
-          onSuccess: (policy) => {
-            toast(`Richtlinie "${t.name}" aus Vorlage erstellt`, 'success')
-            navigate(`${dest}/${policy.id}`)
-          },
-          onError: (err) => toast(handleApiError(err), 'error'),
+    // R1-SA28-02: There is NO /vaktcomply/policies/new route — policies/:id would
+    // treat "new" as a UUID path param and ValidateUUIDParams returns 400. The old
+    // code navigated there and fired a success toast that lied. Instead create the
+    // policy directly from the DB template (mirrors the backend
+    // CreatePolicyFromTemplate flow: title=name, body=content) and land on its detail
+    // page. The success toast now fires only after the policy actually exists.
+    createPolicy.mutate(
+      { title: t.name, description: t.content, category: t.framework ?? undefined },
+      {
+        onSuccess: (policy) => {
+          toast(`Richtlinie "${t.name}" aus Vorlage erstellt`, 'success')
+          navigate(`${dest}/${policy.id}`)
         },
-      )
-    } else {
-      // S131-G4 (D28-03): DPIA/AVV have NO /new route — the old /new target hit the
-      // catch-all and silently bounced the user to the /vaktprivacy overview, losing
-      // the template. Land on the module's list page instead, where the create dialog
-      // lives (AVV even has its own template picker). URL-prefill is a follow-up.
-      navigate(dest)
-      toast(`Öffne ${category.toUpperCase()} — Vorlage im „Neu"-Dialog auswählen`, 'info')
-    }
+        onError: (err) => toast(handleApiError(err), 'error'),
+      },
+    )
   }
 
   return (
@@ -220,13 +205,13 @@ function TemplateCategoryTab({ category }: { category: Category }) {
 export default function PolicyTemplatesPage() {
   const [activeCategory, setActiveCategory] = useState<Category>('policy')
 
-  const categories = (['policy', 'dpia', 'avv'] as Category[]).filter((c) => isPathVisible(CATEGORY_DESTINATIONS[c]))
+  const categories: Category[] = ['policy']
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         title="Vorlagenbibliothek"
-        description="Vorgefertigte Compliance-Vorlagen für Richtlinien, DSFA und AVV — kein leeres Blatt Papier mehr."
+        description="Vorgefertigte Richtlinien-Vorlagen — kein leeres Blatt Papier mehr."
         actions={null}
       />
 

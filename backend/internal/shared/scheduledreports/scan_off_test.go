@@ -15,11 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestFindingsReportWhileScanOff covers the R1-KW-15 follow-up: with Vakt Scan
-// switched off no findings report can be created, and a stored one is skipped
+// TestFindingsReportArchived covers the R1-KW-15 follow-up: Vakt Scan is
+// archived, so no findings report can be created, and a stored one is skipped
 // before anything touches the database or SMTP (db is nil here on purpose).
-func TestFindingsReportWhileScanOff(t *testing.T) {
-	svc := NewService(nil, SMTPConfig{}).WithoutScan(true)
+func TestFindingsReportArchived(t *testing.T) {
+	svc := NewService(nil, SMTPConfig{})
 	h := NewHandler(svc)
 
 	e := echo.New()
@@ -32,7 +32,7 @@ func TestFindingsReportWhileScanOff(t *testing.T) {
 
 	require.NoError(t, h.Create(c))
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-	assert.Contains(t, rec.Body.String(), "SR_MODULE_DISABLED")
+	assert.Contains(t, rec.Body.String(), "VALIDATION_ERROR")
 
 	err := svc.RunReport(context.Background(), ScheduledReport{ID: "r1", ReportType: "findings", Format: "csv", Recipients: []string{"a@example.org"}})
 	assert.NoError(t, err)

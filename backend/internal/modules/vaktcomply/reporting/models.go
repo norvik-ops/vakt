@@ -31,7 +31,7 @@ type CCMCheck struct {
 type CreateCCMCheckInput struct {
 	ControlID     string            `json:"control_id"     validate:"required"`
 	Name          string            `json:"name"           validate:"required,max=255"`
-	CheckType     string            `json:"check_type"     validate:"required,oneof=http_endpoint trivy_no_critical evidence_freshness custom_script"`
+	CheckType     string            `json:"check_type"     validate:"required,oneof=http_endpoint evidence_freshness custom_script"`
 	Config        map[string]string `json:"config"`
 	IntervalHours int               `json:"interval_hours" validate:"min=1,max=8760"`
 }

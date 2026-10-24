@@ -536,7 +536,6 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		ckSvc.WithRedis(rdb)
 		ckSvc.WithNotifyService(notify.NewService(pool, cfg))
 		ckSvc.WithWebhooks(webhookSvc)
-		ckSvc.Reporting.WithoutScan(!cfg.IsModuleEnabled("vaktscan"))
 		// Reverse protection_need_id link on vb_assets is owned by vaktscan
 		// (module isolation, ADR-0079); vaktcomply writes it via this linker
 		// instead of the vb_ prefix directly. Wired unconditionally — vb_assets
@@ -587,7 +586,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// Policy acceptance — public token routes (no Bearer auth), rate-limited
 		vaktcomply.RegisterPolicyAcceptPublic(api.Group(""), ckHandler, portalRateLimiter)
 		// Audit package export
-		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool, cfg.IsModuleEnabled("vaktscan"))
+		audit.RegisterExport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		// One-click audit report PDF
 		audit.RegisterReport(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		// AI-generated reports via OpenAI-compatible provider.
@@ -606,7 +605,6 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 			CostPerMTokenIn:  cfg.AICostPerMTokenIn,
 			CostPerMTokenOut: cfg.AICostPerMTokenOut,
 			FailOpenOnOutage: aiFailOpen,
-			WithoutScan:      !cfg.IsModuleEnabled("vaktscan"),
 		})
 		// Auditor portal — read-only vaktcomply access via session token (no Bearer auth).
 		// license.DBMiddleware is added so feature gates (FeatureAuditPDF etc.) resolve
@@ -615,7 +613,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		// (not protected), so /auditor/vaktcomply/frameworks/:id skipped
 		// ValidateUUIDParams → 22P02 → 500 on a malformed id. Add the guard.
 		vaktcomply.RegisterAuditor(api.Group("/auditor/vaktcomply", auditorRateLimiter, auditor.AuditorAuth(pool), license.DBMiddleware(pool, licInst, rdb), sharedmw.ValidateUUIDParams()), ckHandler)
-		// Auto-evidence inbox — GitHub, SecReflex, SecPulse
+		// Auto-evidence inbox — GitHub
 		evidence_auto.RegisterRoutes(protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb)), pool)
 		log.Info().Msg("vaktcomply routes registered")
 	}
@@ -650,8 +648,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// S122-B1 (MA-01): Admin-only. These routes write cloud provider credentials
 	// (13 providers × PUT /config). A SecurityAnalyst could store AWS keys. Admin-only.
 	if cfg.SecretKey != "" {
-		cloudSvc := cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud", auth.RequireRole("Admin")), pool, cloudKey, cloudEvidence)
-		cloudSvc.WithScanFindings(cfg.IsModuleEnabled("vaktscan"))
+		cloudintegration.RegisterRoutes(protected.Group("/integrations/cloud", auth.RequireRole("Admin")), pool, cloudKey, cloudEvidence)
 		log.Info().Msg("cloud integration routes registered")
 	}
 
@@ -669,7 +666,6 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		Pass: cfg.SMTPPass,
 		From: cfg.SMTPFrom,
 	})
-	srSvc.WithoutScan(!cfg.IsModuleEnabled("vaktscan"))
 	scheduledreports.Register(protected.Group("/reports"), scheduledreports.NewHandler(srSvc))
 	log.Info().Msg("scheduled reports routes registered")
 
@@ -724,13 +720,13 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// Dashboard — shared cross-module score endpoint (aggregate cached in Redis for 60 s).
 	// S121-B3 (R3): mounted on `protected` (not bare `api`) so state-changing routes
 	// get CSRF/MFA/OrgRL; UpdateScoreConfig is additionally Admin-gated inside Register.
-	dashboard.Register(protected.Group("/dashboard"), pool, rdb, cfg.IsModuleEnabled)
+	dashboard.Register(protected.Group("/dashboard"), pool, rdb)
 	log.Info().Msg("dashboard routes registered")
 
 	// Global search — cross-module text search
 	// S131-C2 (R-H22): mount on `protected`, not the bare `api` group, so /search
 	// inherits org-wide MFA enforcement (and auth/allowlist) instead of bypassing it.
-	search.Register(protected, pool, cfg.IsModuleEnabled)
+	search.Register(protected, pool)
 
 	// Retention config API — data-pruning settings per org.
 	// S121-B5 (R5): mounted on `protected` for CSRF; UpdateConfig is Admin-gated.
@@ -803,7 +799,6 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 			// waehrend der Worker in DB N arbeitete.
 			Redis:        redisOpt,
 			MetricsToken: metricsToken,
-			ModuleOn:     cfg.IsModuleEnabled,
 		})
 		log.Info().Msg("metrics endpoint registered")
 	}

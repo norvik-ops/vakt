@@ -22,10 +22,6 @@ type Service struct {
 	repo      *Repository
 	masterKey []byte
 	evidence  EvidenceWriter
-	// noScanFindings stops the GitLab and SonarQube collectors from importing
-	// vulnerabilities as vb_findings while Vakt Scan is switched off. Their ISMS
-	// evidence (branch protection, quality gates, …) is collected either way.
-	noScanFindings bool
 }
 
 // NewService creates a new cloud integration service.
@@ -36,13 +32,6 @@ func NewService(db *pgxpool.Pool, masterKey []byte, evidence EvidenceWriter) *Se
 		masterKey: masterKey,
 		evidence:  evidence,
 	}
-}
-
-// WithScanFindings tells the collectors whether Vakt Scan is enabled
-// (config.IsModuleEnabled("vaktscan")). Without the call findings are imported.
-func (s *Service) WithScanFindings(enabled bool) *Service {
-	s.noScanFindings = !enabled
-	return s
 }
 
 // maskedSecret is the placeholder the API returns instead of a stored secret.
@@ -1676,7 +1665,6 @@ func (s *Service) SyncGitLab(ctx context.Context, orgID string) (int, error) {
 		return 0, fmt.Errorf("GitLab nicht konfiguriert")
 	}
 	collector := NewGitLabCollector(s.db, s.evidence)
-	collector.noScanFindings = s.noScanFindings
 	count, syncErr := collector.Collect(ctx, orgID, *cfg)
 	status := "success"
 	if syncErr != nil {
@@ -1817,7 +1805,6 @@ func (s *Service) SyncSonarQube(ctx context.Context, orgID string) (int, error) 
 		return 0, fmt.Errorf("SonarQube nicht konfiguriert")
 	}
 	collector := NewSonarQubeCollector(s.db, s.evidence)
-	collector.noScanFindings = s.noScanFindings
 	count, syncErr := collector.Collect(ctx, orgID, *cfg)
 	status := "success"
 	if syncErr != nil {
@@ -1859,140 +1846,6 @@ func (s *Service) GetSonarQubeStatus(ctx context.Context, orgID string) (*SonarQ
 		}
 	}
 	return st, nil
-}
-
-// --- Personio ---
-
-// GetPersonioConfig returns the Personio webhook config with secret masked.
-func (s *Service) GetPersonioConfig(ctx context.Context, orgID string) (*PersonioConfigResponse, error) {
-	raw, err := s.repo.GetConfig(ctx, orgID, ProviderPersonio)
-	if err != nil {
-		return nil, err
-	}
-	resp := &PersonioConfigResponse{}
-	if raw == nil {
-		return resp, nil
-	}
-	var stored map[string]string
-	if err := json.Unmarshal(raw, &stored); err != nil {
-		return resp, nil
-	}
-	if stored["webhook_secret"] != "" {
-		resp.WebhookSecret = "****"
-	}
-	resp.IsConfigured = resp.WebhookSecret == "****"
-	return resp, nil
-}
-
-// SavePersonioConfig persists the Personio webhook secret, encrypted.
-func (s *Service) SavePersonioConfig(ctx context.Context, orgID string, in SavePersonioConfigInput) error {
-	existing, _ := s.getDecryptedPersonioConfig(ctx, orgID)
-
-	secret := in.WebhookSecret
-	if secret == "****" && existing != nil {
-		secret = existing.WebhookSecret
-	}
-
-	encSecret := ""
-	if secret != "" {
-		ct, err := sharedcrypto.Encrypt(s.masterKey, []byte(secret))
-		if err != nil {
-			return fmt.Errorf("encrypt personio webhook secret: %w", err)
-		}
-		encSecret = hex.EncodeToString(ct)
-	}
-
-	return s.repo.UpsertConfig(ctx, orgID, ProviderPersonio, map[string]any{
-		"webhook_secret": encSecret,
-	})
-}
-
-// GetDecryptedPersonioSecret returns the plaintext webhook secret for HMAC verification.
-// Exported so the vakthr webhook handler can verify Personio signatures.
-func (s *Service) GetDecryptedPersonioSecret(ctx context.Context, orgID string) (string, error) {
-	cfg, err := s.getDecryptedPersonioConfig(ctx, orgID)
-	if err != nil {
-		return "", err
-	}
-	if cfg == nil {
-		return "", nil
-	}
-	return cfg.WebhookSecret, nil
-}
-
-func (s *Service) getDecryptedPersonioConfig(ctx context.Context, orgID string) (*PersonioConfig, error) {
-	raw, err := s.repo.GetConfig(ctx, orgID, ProviderPersonio)
-	if err != nil || raw == nil {
-		return nil, err
-	}
-	var stored map[string]string
-	if err := json.Unmarshal(raw, &stored); err != nil {
-		return nil, err
-	}
-	cfg := &PersonioConfig{}
-	if stored["webhook_secret"] != "" {
-		ct, err := hex.DecodeString(stored["webhook_secret"])
-		if err != nil {
-			return nil, fmt.Errorf("decode personio webhook secret: %w", err)
-		}
-		plain, err := sharedcrypto.Decrypt(s.masterKey, ct)
-		if err != nil {
-			return nil, fmt.Errorf("decrypt personio webhook secret: %w", err)
-		}
-		cfg.WebhookSecret = string(plain)
-	}
-	return cfg, nil
-}
-
-// GetPersonioStatus returns status for the Personio integration.
-func (s *Service) GetPersonioStatus(ctx context.Context, orgID string) (*PersonioStatus, error) {
-	ci, err := s.repo.GetIntegration(ctx, orgID, ProviderPersonio)
-	if err != nil {
-		return nil, err
-	}
-	st := &PersonioStatus{SyncStatus: SyncStatus{Provider: ProviderPersonio, Enabled: true}}
-	if ci != nil {
-		st.Enabled = ci.Enabled
-		st.LastSyncAt = ci.LastSyncAt
-		st.LastSyncStatus = ci.LastSyncStatus
-	}
-
-	cfg, _ := s.GetPersonioConfig(ctx, orgID)
-	st.WebhookConfigured = cfg != nil && cfg.IsConfigured
-
-	// Count employees with personio_employee_id as proxy for triggered offboardings
-	var triggered int
-	_ = s.db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM hr_employees
-		WHERE org_id = $1::uuid AND personio_employee_id IS NOT NULL`, orgID,
-	).Scan(&triggered)
-	st.OffboardingsTriggered = triggered
-
-	// S9/CZ-1: OffboardingsOnTime was declared but never assigned — count offboarding
-	// checklist runs triggered by Personio that finished on or before the employee's
-	// departure_date (the SLA an offboarding webhook exists to guarantee).
-	var onTime int
-	_ = s.db.QueryRow(ctx, `
-		SELECT COUNT(*)
-		FROM hr_checklist_runs r
-		JOIN hr_checklists c ON c.id = r.checklist_id
-		JOIN hr_employees e ON e.id = r.employee_id
-		WHERE e.org_id = $1::uuid
-		  AND e.personio_employee_id IS NOT NULL
-		  AND c.type = 'offboarding'
-		  AND r.status = 'completed'
-		  AND r.completed_at IS NOT NULL
-		  AND e.departure_date IS NOT NULL
-		  AND r.completed_at::date <= e.departure_date`, orgID,
-	).Scan(&onTime)
-	st.OffboardingsOnTime = onTime
-
-	return st, nil
-}
-
-// RecordPersonioWebhook updates last_sync_at for the personio integration (push-event timestamp).
-func (s *Service) RecordPersonioWebhook(ctx context.Context, orgID string) error {
-	return s.repo.UpdateSyncResult(ctx, orgID, ProviderPersonio, "success", nil)
 }
 
 // --- Scheduled sync (all enabled integrations) ---
@@ -2079,7 +1932,6 @@ func (s *Service) SyncAllEnabled(ctx context.Context) error {
 			} else {
 				log.Info().Str("org_id", ci.OrgID).Msg("cloud sync: sonarqube completed")
 			}
-			// Personio is push-only — no daily pull sync
 		}
 	}
 	return nil

@@ -12,8 +12,7 @@ import (
 
 // Handler handles HTTP requests for the audit export endpoint.
 type ExportHandler struct {
-	db     *pgxpool.Pool
-	scanOn bool
+	db *pgxpool.Pool
 }
 
 // NewHandler creates a new Handler.
@@ -29,7 +28,7 @@ func (h *ExportHandler) Export(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 
-	pkg, err := GeneratePackage(c.Request().Context(), h.db, orgID, h.scanOn)
+	pkg, err := GeneratePackage(c.Request().Context(), h.db, orgID)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("audit export: generate package")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "export failed"})

@@ -9,7 +9,6 @@ import (
 
 	"github.com/matharnica/vakt/internal/auth"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
-	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
 	"github.com/matharnica/vakt/internal/shared/notifications"
@@ -70,9 +69,6 @@ func TestWorkerTaskConstantsRegistered(t *testing.T) {
 
 	// Email digest.
 	assert.NotEmpty(t, emaildigest.TaskWeeklyDigest)
-
-	// BSI feed.
-	assert.NotEmpty(t, bsi.TaskBSIFeedSync)
 
 	// SecVitals.
 	assert.NotEmpty(t, vaktcomply.TaskEvidenceExpiryAlert)

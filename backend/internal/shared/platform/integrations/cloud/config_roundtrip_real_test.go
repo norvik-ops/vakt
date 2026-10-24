@@ -340,20 +340,6 @@ func cloudProviderCases() []providerCase {
 				return r.AllowPrivateTarget, nil
 			},
 		},
-		{
-			name: "personio",
-			save: func(ctx context.Context, s *Service, org string) error {
-				return s.SavePersonioConfig(ctx, org, SavePersonioConfigInput{WebhookSecret: "personio-secret-13"})
-			},
-			readBack: func(ctx context.Context, s *Service, org string) (string, error) {
-				return s.GetDecryptedPersonioSecret(ctx, org)
-			},
-			wantSecret: "personio-secret-13",
-			isConfigured: func(ctx context.Context, s *Service, org string) (bool, error) {
-				r, err := s.GetPersonioConfig(ctx, org)
-				return configuredOf(err, r, func() bool { return r.IsConfigured })
-			},
-		},
 	}
 }
 

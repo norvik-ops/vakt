@@ -25,72 +25,12 @@ func CalculateKPIsForOrg(ctx context.Context, db *pgxpool.Pool, orgID string) KP
 		IncidentMTTRDays:      calcIncidentMTTR(ctx, db, orgID),
 		EvidenceCoverage:      calcEvidenceCoverage(ctx, db, orgID),
 		ExpiringEvidenceCount: calcExpiringEvidence(ctx, db, orgID),
-		FindingSLACompliance:  calcFindingSLACompliance(ctx, db, orgID),
 		OpenMajorNCs:          calcOpenMajorNCs(ctx, db, orgID),
-		// S121-F5 (T5): both previously-nil KPIs are now computed —
-		// SuppliersOverduePct from ck_suppliers.next_assessment_due (migration 176)
-		// and PhishingClickRate from sr_events over completed campaigns.
+		// SuppliersOverduePct from ck_suppliers.next_assessment_due (migration 176).
 		SuppliersOverduePct: calcSuppliersOverduePct(ctx, db, orgID),
-		PhishingClickRate:   calcPhishingClickRate(ctx, db, orgID),
+		// FindingSLACompliance and PhishingClickRate stay nil: their sources
+		// (Vakt Scan, Vakt Aware) are archived. The columns keep older snapshots.
 	}
-}
-
-// phishingClickWindowDays bounds the phishing KPI to a rolling period so a
-// long-past campaign cannot dominate the current figure. This is the
-// "campaign-period scoping" the KPI was previously blocked on.
-const phishingClickWindowDays = 365
-
-// calcPhishingClickRate returns the share of phished recipients who clicked,
-// across the org's COMPLETED campaigns in the last phishingClickWindowDays.
-//
-// Denominator: the recipients of those campaigns (targets of the campaign's
-// group — the same derivation vaktaware uses for its per-campaign rate).
-// Numerator: DISTINCT tracking tokens with a click. A token is minted per
-// recipient per campaign, so distinct tokens are distinct people who clicked and
-// someone clicking twice cannot push the rate above 100 %. Returns nil (unknown)
-// when the org ran no completed campaign with recipients in the window — the
-// dashboard then hides the KPI rather than showing a misleading 0 %.
-//
-// The numerator used to count DISTINCT (campaign, target_id) and skip rows whose
-// target_id was NULL — which was every row, because vaktaware wrote click events
-// with a nil target (fixed in S126). The KPI was therefore structurally 0 %.
-// Counting tokens instead is also what makes the KPI work under betriebsrat_mode,
-// where the target is deliberately not recorded: the token identifies the click as
-// distinct without identifying the person who made it.
-func calcPhishingClickRate(ctx context.Context, db *pgxpool.Pool, orgID string) *float64 {
-	if db == nil {
-		return nil
-	}
-	var val pgtype.Numeric
-	_ = db.QueryRow(ctx, `
-		WITH camp AS (
-			SELECT c.id,
-			       COALESCE((SELECT COUNT(*) FROM sr_targets t
-			                  WHERE t.group_id = c.group_id
-			                    AND t.org_id = $1::uuid), 0) AS recipients
-			FROM sr_campaigns c
-			WHERE c.org_id = $1::uuid
-			  AND c.status = 'completed'
-			  AND c.completed_at >= NOW() - make_interval(days => $2::int)
-			  -- Only campaigns whose tracking was actually recorded. One sent before
-			  -- migration 242 never stored its tracking tokens, so every click it got
-			  -- was rejected and nothing was measured. Counting its recipients in the
-			  -- denominator would dilute the rate towards zero with people whose
-			  -- behaviour nobody observed — a wrong number that looks like a good one.
-			  AND EXISTS (SELECT 1 FROM sr_events e
-			               WHERE e.campaign_id = c.id AND e.type = 'sent')
-		)
-		SELECT CASE WHEN COALESCE(SUM(camp.recipients), 0) > 0
-			THEN ROUND(100.0 * (
-				SELECT COUNT(DISTINCT e.tracking_token)
-				FROM sr_events e
-				JOIN camp ON camp.id = e.campaign_id
-				WHERE e.org_id = $1::uuid
-				  AND e.type = 'click'
-			)::numeric / SUM(camp.recipients), 2)
-			ELSE NULL END
-		FROM camp`, orgID, phishingClickWindowDays).Scan(&val)
-	return numericToFloat64Ptr(val)
 }
 
 // calcSuppliersOverduePct returns the percentage of assessable suppliers whose
@@ -263,27 +203,6 @@ func calcExpiringEvidence(ctx context.Context, db *pgxpool.Pool, orgID string) *
 	}
 	v := int(val.Int32)
 	return &v
-}
-
-// calcFindingSLACompliance returns the percentage of SLA-tracked findings
-// (sla_status IS NOT NULL) that have not breached their SLA.
-// Compliant = on_track | at_risk | resolved_on_time; non-compliant = overdue | resolved_late.
-// NIS2 Art. 21f: organisations must measure remediation effectiveness.
-func calcFindingSLACompliance(ctx context.Context, db *pgxpool.Pool, orgID string) *float64 {
-	if db == nil {
-		return nil
-	}
-	var val pgtype.Numeric
-	_ = db.QueryRow(ctx, `
-		SELECT CASE WHEN COUNT(*) > 0
-			THEN ROUND(
-				100.0 * COUNT(CASE WHEN sla_status NOT IN ('overdue','resolved_late') THEN 1 END)::numeric
-				/ COUNT(*), 2)
-			ELSE NULL END
-		FROM vb_findings
-		WHERE org_id = $1
-		  AND sla_status IS NOT NULL`, orgID).Scan(&val)
-	return numericToFloat64Ptr(val)
 }
 
 // calcOpenMajorNCs returns the count of open major non-conformities from internal

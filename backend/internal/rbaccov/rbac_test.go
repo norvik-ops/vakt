@@ -101,7 +101,7 @@ func buildSharedRouter(t *testing.T) *echo.Echo {
 
 	scheduledreports.Register(e.Group("/reports", paseto), scheduledreports.NewHandler(nil))
 	trustcenter.RegisterAdmin(e.Group("", paseto), nil)
-	dashboard.Register(e.Group("/dashboard", paseto), nil, nil, nil)
+	dashboard.Register(e.Group("/dashboard", paseto), nil, nil)
 	evidence_auto.RegisterRoutes(e.Group("/vaktcomply", paseto), nil)
 	retention.Register(e.Group("", paseto), nil)
 	alerting.Register(e.Group("", paseto), nil,

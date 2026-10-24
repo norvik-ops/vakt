@@ -34,12 +34,6 @@ func numericToFloat64Ptr(n pgtype.Numeric) *float64 {
 	return &v
 }
 
-// calcFindingSLACompliance is a package-level shim for tests in this package.
-func calcFindingSLACompliance(ctx context.Context, db *pgxpool.Pool, orgID string) *float64 {
-	snap := reporting.CalculateKPIsForOrg(ctx, db, orgID)
-	return snap.FindingSLACompliance
-}
-
 // calcOpenMajorNCs is a package-level shim for tests in this package.
 func calcOpenMajorNCs(ctx context.Context, db *pgxpool.Pool, orgID string) *int {
 	snap := reporting.CalculateKPIsForOrg(ctx, db, orgID)

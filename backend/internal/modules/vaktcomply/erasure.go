@@ -12,9 +12,11 @@ import (
 )
 
 // SubjectEraser redacts the personal data Vakt Comply stores for a data subject
-// inside ck_evidence — the employee name and email that hr_integration.go writes
-// into ck_evidence.description and ck_evidence.collector_data when an HR
-// checklist run or a contractor lifecycle event produces compliance evidence.
+// inside ck_evidence — the employee name and email that the HR integration
+// (archived with Vakt HR, tag archiv/module-vollstaendig) wrote into
+// ck_evidence.description and ck_evidence.collector_data when an HR checklist
+// run or a contractor lifecycle event produced compliance evidence. Those rows
+// stay in the database, so the eraser stays too.
 //
 // Unlike the hr_/sr_ erasers it does NOT delete rows. Compliance evidence is
 // subject to a retention obligation (Art. 17 Abs. 3 lit. b DSGVO / ISO 27001
@@ -48,7 +50,7 @@ func (SubjectEraser) ModuleName() string { return "vaktcomply" }
 //     "[redigiert]" (only the keys that exist; other keys are untouched),
 //   - the email is stripped from the description case-insensitively,
 //   - the name is stripped from the description using that row's own
-//     collector_data.employee_name value (an exact match, since hr_integration
+//     collector_data.employee_name value (an exact match, since the HR integration
 //     built the description from exactly that value).
 //
 // The rest of the description (checklist name, dates, step count) survives, so

@@ -74,17 +74,11 @@ describe('AppTour mit abgeschalteten Modulen', () => {
     return screen.getByRole('dialog').textContent ?? ''
   }
 
-  it('überspringt den Findings-Schritt, wenn Vakt Scan abgeschaltet ist', async () => {
+  it('hat keinen Findings-Schritt mehr (Vakt Scan ist archiviert)', async () => {
     useEnabledModules.setState({ modules: new Set(['vaktcomply']) })
     const text = await stepCount()
     // tour.step-Schlüssel wird im Test ohne Übersetzung gerendert; die Anzahl der Fortschrittsbalken zählt.
     expect(document.querySelectorAll('[role="dialog"] .flex.gap-1 > span')).toHaveLength(4)
     expect(text).not.toContain('tour.steps.findings.title')
-  })
-
-  it('zeigt den Findings-Schritt, wenn Vakt Scan aktiviert ist', async () => {
-    useEnabledModules.setState({ modules: new Set(['vaktcomply', 'vaktscan']) })
-    await stepCount()
-    expect(document.querySelectorAll('[role="dialog"] .flex.gap-1 > span')).toHaveLength(5)
   })
 })

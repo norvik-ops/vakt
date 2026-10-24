@@ -563,8 +563,8 @@ func (r *Repository) UpdateEvidenceStaleness(ctx context.Context, orgID string) 
 		        evidence_expires_at = NULL
 		  WHERE org_id = $1::uuid
 		    AND id NOT IN (
-		        -- control_id IS NOT NULL is required: InsertCKCIEvidence and the
-		        -- hr_integration path write evidence rows with control_id = NULL.
+		        -- control_id IS NOT NULL is required: InsertCKCIEvidence (and the
+		        -- archived HR integration before it) write rows with control_id = NULL.
 		        -- A single NULL in a NOT IN subquery makes the predicate UNKNOWN
 		        -- for every control, so the whole "mark missing" UPDATE silently
 		        -- matches nothing.

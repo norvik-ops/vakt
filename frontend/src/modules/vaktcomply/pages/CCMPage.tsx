@@ -35,7 +35,6 @@ import { ProGate } from '../../../shared/components/ProGate'
 import { useFrameworks } from '../hooks/useFrameworks'
 import type { CCMCheck, CCMCheckType, CCMStatus, CreateCCMCheckInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
-import { isModuleVisible } from '../../../shared/moduleVisibility'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -407,9 +406,6 @@ export default function CCMPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="http_endpoint">HTTP Endpoint</SelectItem>
-                    {isModuleVisible('vaktscan') && (
-                      <SelectItem value="trivy_no_critical">Trivy — Keine kritischen CVEs</SelectItem>
-                    )}
                     <SelectItem value="evidence_freshness">Nachweis-Aktualität</SelectItem>
                     <SelectItem value="custom_script">Custom Script</SelectItem>
                   </SelectContent>

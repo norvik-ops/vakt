@@ -12,55 +12,10 @@ import (
 // Sprint 18 S18-2 + S18-6: konkrete Tools für den AgentRunner.
 //
 // Drei initiale Tools verdrahtet:
-//   - list_open_findings: lädt offene SecPulse-Findings für Triage-Workflow
 //   - list_stale_evidence: lädt SecVitals-Evidence, die in <30 Tagen abläuft
 //   - list_controls_without_evidence: SecVitals-Controls ohne aktiven Evidence-Eintrag
 //
 // S32-2: add_control_note als erstes Write-Tool — erfordert ApproveCard-Freigabe.
-
-// listOpenFindingsTool: SecPulse-Findings mit status='open'. Read-Only.
-type listOpenFindingsTool struct {
-	db *pgxpool.Pool
-}
-
-func (t *listOpenFindingsTool) Name() string { return "list_open_findings" }
-func (t *listOpenFindingsTool) Description() string {
-	return "Liefert die 20 ältesten offenen Findings aus Vakt Scan (Trivy/Nuclei/OpenVAS). Nutze für Triage-Workflows."
-}
-func (t *listOpenFindingsTool) ArgumentsSchema() json.RawMessage {
-	return json.RawMessage(`{"type":"object","properties":{"severity":{"type":"string","enum":["critical","high","medium","low"]}}}`)
-}
-func (t *listOpenFindingsTool) RequireScope() string { return "vaktscan.findings.read" }
-func (t *listOpenFindingsTool) IsWriteTool() bool    { return false }
-func (t *listOpenFindingsTool) Execute(ctx context.Context, orgID string, _ json.RawMessage) (json.RawMessage, error) {
-	rows, err := t.db.Query(ctx, `
-		SELECT id::text, title, severity, created_at
-		FROM vb_findings
-		WHERE org_id = $1::uuid AND status = 'open'
-		ORDER BY created_at ASC
-		LIMIT 20`, orgID)
-	if err != nil {
-		return nil, fmt.Errorf("query open findings: %w", err)
-	}
-	defer rows.Close()
-	type row struct {
-		ID        string `json:"id"`
-		Title     string `json:"title"`
-		Severity  string `json:"severity"`
-		CreatedAt string `json:"created_at"`
-	}
-	var out []row
-	for rows.Next() {
-		var r row
-		var ts pgtype.Timestamptz
-		if err := rows.Scan(&r.ID, &r.Title, &r.Severity, &ts); err == nil {
-			r.CreatedAt = ts.Time.UTC().Format("2006-01-02T15:04:05Z")
-			out = append(out, r)
-		}
-	}
-	body, _ := json.Marshal(out)
-	return body, nil
-}
 
 // listStaleEvidenceTool: SecVitals-Evidence-Einträge, die in 30 Tagen ablaufen.
 type listStaleEvidenceTool struct {
@@ -189,28 +144,11 @@ func (t *addControlNoteTool) Execute(ctx context.Context, orgID string, args jso
 	return result, nil
 }
 
-// agentTools ist DefaultAgentTools ohne das Findings-Tool, solange Vakt Scan
-// abgeschaltet ist.
-func agentTools(db *pgxpool.Pool, withoutScan bool) []AgentTool {
-	all := DefaultAgentTools(db)
-	if !withoutScan {
-		return all
-	}
-	out := make([]AgentTool, 0, len(all))
-	for _, t := range all {
-		if _, scan := t.(*listOpenFindingsTool); !scan {
-			out = append(out, t)
-		}
-	}
-	return out
-}
-
 // DefaultAgentTools liefert die Tool-Liste, die im Standard-Wiring an den
 // AgentRunner gegeben wird. Wer neue Tools registrieren will, erweitert
 // diese Liste in ai/routes.go.
 func DefaultAgentTools(db *pgxpool.Pool) []AgentTool {
 	return []AgentTool{
-		&listOpenFindingsTool{db: db},
 		&listStaleEvidenceTool{db: db},
 		&listControlsWithoutEvidenceTool{db: db},
 		&addControlNoteTool{db: db},

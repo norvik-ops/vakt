@@ -53,7 +53,7 @@ BACKEND = ROOT / "backend"
 # `any`/`interface{}` als gespeicherten/untypisierten Wert.
 # 376 → 347 (2026-10-18): the archived modules Scan, Vault, Aware, Privacy, HR
 # took 29 untyped-interface uses with them (docs/stories/module-archivieren.md).
-BASELINE = 347
+BASELINE = 340
 
 # `interface{}` (old syntax) and the `any` keyword used as a type.
 INTERFACE_RE = re.compile(r"interface\s*\{\s*\}")

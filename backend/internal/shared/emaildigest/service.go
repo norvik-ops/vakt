@@ -25,33 +25,16 @@ type SMTPConfig struct {
 	From string
 }
 
-// findingSeverityCount is a count of open findings per severity level.
-type findingSeverityCount struct {
-	Severity string
-	Count    int
-}
-
 // complySummary carries the ISMS counts every digest contains.
 type complySummary struct {
 	OpenRisks int // ck_risks with status 'open'
 	OpenCAPAs int // ck_capas not yet closed or verified
 }
 
-// digestContent is what one digest reports. Findings and DSR sections belong to
-// Vakt Scan and Vakt Privacy and are only filled when those modules are enabled —
-// a digest must not report on modules switched off via VAKT_MODULES_ENABLED.
+// digestContent is what one digest reports. The findings and DSR sections of
+// Vakt Scan and Vakt Privacy went with the archived modules.
 type digestContent struct {
-	Comply       complySummary
-	ShowFindings bool
-	Findings     []findingSeverityCount
-	ShowDSR      bool
-	DSR          dsrSummary
-}
-
-// dsrSummary carries DSR counts for the digest body.
-type dsrSummary struct {
-	DueSoon int // due_date within the next 7 days
-	Overdue int // due_date already passed, not completed/rejected
+	Comply complySummary
 }
 
 // adminEmail holds the e-mail address, user ID, and preferred language of an admin user.
@@ -63,14 +46,10 @@ type adminEmail struct {
 
 // digestI18n holds the translated strings for a single language.
 type digestI18n struct {
-	Subject  string // printf template with one %s arg (date)
-	Findings string
-	Capas    string
-	Risks    string
-	DSR      string
-	DueSoon  string
-	Overdue  string
-	Footer   string
+	Subject string // printf template with one %s arg (date)
+	Capas   string
+	Risks   string
+	Footer  string
 }
 
 // forLang returns the digestI18n for the given BCP-47 language tag, defaulting to "de".
@@ -78,65 +57,44 @@ func forLang(lang string) digestI18n {
 	switch lang {
 	case "en":
 		return digestI18n{
-			Subject:  "[Vakt] Weekly Security Overview — %s",
-			Findings: "Open Findings",
-			Capas:    "Open CAPAs",
-			Risks:    "Open Risks",
-			DSR:      "DSR Requests",
-			DueSoon:  "Due in 7 days",
-			Overdue:  "Overdue",
-			Footer:   "This email was sent automatically by Vakt. To unsubscribe, disable the digest in your retention settings.",
+			Subject: "[Vakt] Weekly Security Overview — %s",
+			Capas:   "Open CAPAs",
+			Risks:   "Open Risks",
+			Footer:  "This email was sent automatically by Vakt. To unsubscribe, disable the digest in your retention settings.",
 		}
 	case "fr":
 		return digestI18n{
-			Subject:  "[Vakt] Aperçu hebdomadaire de sécurité — %s",
-			Findings: "Constats ouverts",
-			Capas:    "CAPAs ouvertes",
-			Risks:    "Risques ouverts",
-			DSR:      "Demandes DSR",
-			DueSoon:  "Échéance 7 jours",
-			Overdue:  "En retard",
-			Footer:   "Cet e-mail a été envoyé automatiquement par Vakt. Pour vous désabonner, désactivez le résumé dans vos paramètres de rétention.",
+			Subject: "[Vakt] Aperçu hebdomadaire de sécurité — %s",
+			Capas:   "CAPAs ouvertes",
+			Risks:   "Risques ouverts",
+			Footer:  "Cet e-mail a été envoyé automatiquement par Vakt. Pour vous désabonner, désactivez le résumé dans vos paramètres de rétention.",
 		}
 	case "nl":
 		return digestI18n{
-			Subject:  "[Vakt] Wekelijks beveiligingsoverzicht — %s",
-			Findings: "Openstaande bevindingen",
-			Capas:    "Openstaande CAPAs",
-			Risks:    "Openstaande risico's",
-			DSR:      "DSR-verzoeken",
-			DueSoon:  "Vervalt in 7 dagen",
-			Overdue:  "Achterstallig",
-			Footer:   "Deze e-mail werd automatisch verzonden door Vakt. Schakel de samenvatting uit in uw bewaarinstellingen om u af te melden.",
+			Subject: "[Vakt] Wekelijks beveiligingsoverzicht — %s",
+			Capas:   "Openstaande CAPAs",
+			Risks:   "Openstaande risico's",
+			Footer:  "Deze e-mail werd automatisch verzonden door Vakt. Schakel de samenvatting uit in uw bewaarinstellingen om u af te melden.",
 		}
 	default: // "de"
 		return digestI18n{
-			Subject:  "[Vakt] Wöchentlicher Sicherheits-Überblick — %s",
-			Findings: "Offene Findings",
-			Capas:    "Offene CAPAs",
-			Risks:    "Offene Risiken",
-			DSR:      "DSR-Anfragen",
-			DueSoon:  "Fällig in 7 Tagen",
-			Overdue:  "Überfällig",
-			Footer:   "Diese E-Mail wurde automatisch von Vakt versandt. Um den Digest zu deaktivieren, ändern Sie Ihre Aufbewahrungseinstellungen.",
+			Subject: "[Vakt] Wöchentlicher Sicherheits-Überblick — %s",
+			Capas:   "Offene CAPAs",
+			Risks:   "Offene Risiken",
+			Footer:  "Diese E-Mail wurde automatisch von Vakt versandt. Um den Digest zu deaktivieren, ändern Sie Ihre Aufbewahrungseinstellungen.",
 		}
 	}
 }
 
 // DigestService sends weekly digest e-mails for an organisation.
 type DigestService struct {
-	db       *pgxpool.Pool
-	smtp     SMTPConfig
-	moduleOn func(string) bool
+	db   *pgxpool.Pool
+	smtp SMTPConfig
 }
 
 // NewDigestService creates a DigestService.
-// moduleOn reports whether a module is enabled (config.IsModuleEnabled); nil means all.
-func NewDigestService(db *pgxpool.Pool, smtpCfg SMTPConfig, moduleOn func(string) bool) *DigestService {
-	if moduleOn == nil {
-		moduleOn = func(string) bool { return true }
-	}
-	return &DigestService{db: db, smtp: smtpCfg, moduleOn: moduleOn}
+func NewDigestService(db *pgxpool.Pool, smtpCfg SMTPConfig) *DigestService {
+	return &DigestService{db: db, smtp: smtpCfg}
 }
 
 // SendDigest composes and sends the weekly security digest to all Admin users
@@ -161,22 +119,10 @@ func (s *DigestService) SendDigest(ctx context.Context, orgID string) error {
 		return nil
 	}
 
-	// 2. ISMS counts, plus findings and DSR deadlines when their modules are on.
+	// 2. ISMS counts.
 	var content digestContent
 	if content.Comply, err = s.fetchComplySummary(ctx, orgID); err != nil {
 		return fmt.Errorf("emaildigest: fetch comply summary: %w", err)
-	}
-	if s.moduleOn("vaktscan") {
-		content.ShowFindings = true
-		if content.Findings, err = s.fetchSeverityCounts(ctx, orgID); err != nil {
-			return fmt.Errorf("emaildigest: fetch severity counts: %w", err)
-		}
-	}
-	if s.moduleOn("vaktprivacy") {
-		content.ShowDSR = true
-		if content.DSR, err = s.fetchDSRSummary(ctx, orgID); err != nil {
-			return fmt.Errorf("emaildigest: fetch dsr summary: %w", err)
-		}
 	}
 
 	// 4. Admin e-mail addresses.
@@ -206,8 +152,7 @@ func (s *DigestService) SendDigest(ctx context.Context, orgID string) error {
 }
 
 // SendDigestForAllOrgs sends the digest for every org that has digest_enabled = true.
-// moduleOn is passed to NewDigestService.
-func SendDigestForAllOrgs(ctx context.Context, db *pgxpool.Pool, smtpCfg SMTPConfig, moduleOn func(string) bool) error {
+func SendDigestForAllOrgs(ctx context.Context, db *pgxpool.Pool, smtpCfg SMTPConfig) error {
 	rows, err := db.Query(ctx, `
 		SELECT org_id::text FROM retention_config WHERE digest_enabled = true`)
 	if err != nil {
@@ -215,7 +160,7 @@ func SendDigestForAllOrgs(ctx context.Context, db *pgxpool.Pool, smtpCfg SMTPCon
 	}
 	defer rows.Close()
 
-	svc := NewDigestService(db, smtpCfg, moduleOn)
+	svc := NewDigestService(db, smtpCfg)
 	for rows.Next() {
 		var orgID string
 		if err := rows.Scan(&orgID); err != nil {
@@ -240,55 +185,6 @@ func (s *DigestService) fetchComplySummary(ctx context.Context, orgID string) (c
 		orgID,
 	).Scan(&c.OpenRisks, &c.OpenCAPAs)
 	return c, err
-}
-
-func (s *DigestService) fetchSeverityCounts(ctx context.Context, orgID string) ([]findingSeverityCount, error) {
-	rows, err := s.db.Query(ctx, `
-		SELECT severity, COUNT(*) AS cnt
-		FROM   vb_findings
-		WHERE  org_id = $1::uuid
-		  AND  status NOT IN ('resolved','false_positive')
-		GROUP  BY severity
-		ORDER  BY CASE severity
-		    WHEN 'critical' THEN 1
-		    WHEN 'high'     THEN 2
-		    WHEN 'medium'   THEN 3
-		    WHEN 'low'      THEN 4
-		    ELSE 5 END`,
-		orgID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var counts []findingSeverityCount
-	for rows.Next() {
-		var fc findingSeverityCount
-		if err := rows.Scan(&fc.Severity, &fc.Count); err != nil {
-			return nil, err
-		}
-		counts = append(counts, fc)
-	}
-	return counts, rows.Err()
-}
-
-func (s *DigestService) fetchDSRSummary(ctx context.Context, orgID string) (dsrSummary, error) {
-	var dsr dsrSummary
-
-	err := s.db.QueryRow(ctx, `
-		SELECT
-		    COUNT(*) FILTER (WHERE due_date BETWEEN now() AND now() + INTERVAL '7 days') AS due_soon,
-		    COUNT(*) FILTER (WHERE due_date < now() AND status NOT IN ('completed','rejected')) AS overdue
-		FROM po_dsr
-		WHERE org_id = $1::uuid
-		  AND status NOT IN ('completed','rejected')`,
-		orgID,
-	).Scan(&dsr.DueSoon, &dsr.Overdue)
-	if err != nil {
-		return dsr, err
-	}
-	return dsr, nil
 }
 
 func (s *DigestService) fetchAdminEmails(ctx context.Context, orgID string) ([]adminEmail, error) {
@@ -351,50 +247,6 @@ func buildEmail(orgID string, content digestContent, lang string) (subject, body
 	fmt.Fprintf(&buf, `<tr><td>%s</td><td>%d</td></tr>`, i18n.Capas, content.Comply.OpenCAPAs)
 	buf.WriteString(`</table>`)
 
-	if content.ShowFindings {
-		fmt.Fprintf(&buf, `<h3>%s</h3>`, i18n.Findings)
-		if len(content.Findings) == 0 {
-			buf.WriteString(`<p style="color:#38a169;">&#10003;</p>`)
-		} else {
-			buf.WriteString(`<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">`)
-			buf.WriteString(`<tr style="background:#ebf8ff;"><th>Severity</th><th>Count</th></tr>`)
-			for _, fc := range content.Findings {
-				color := "#1a202c"
-				switch fc.Severity {
-				case "critical":
-					color = "#c53030"
-				case "high":
-					color = "#c05621"
-				case "medium":
-					color = "#b7791f"
-				case "low":
-					color = "#2f855a"
-				}
-				fmt.Fprintf(&buf,
-					`<tr><td style="color:%s;font-weight:bold;">%s</td><td>%d</td></tr>`,
-					color, fc.Severity, fc.Count,
-				)
-			}
-			buf.WriteString(`</table>`)
-		}
-	}
-
-	if content.ShowDSR {
-		fmt.Fprintf(&buf, `<h3>%s</h3>`, i18n.DSR)
-		buf.WriteString(`<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">`)
-		buf.WriteString(`<tr style="background:#ebf8ff;"><th>Category</th><th>Count</th></tr>`)
-		fmt.Fprintf(&buf, `<tr><td>%s</td><td>%d</td></tr>`, i18n.DueSoon, content.DSR.DueSoon)
-		overdueColor := "#1a202c"
-		if content.DSR.Overdue > 0 {
-			overdueColor = "#c53030"
-		}
-		fmt.Fprintf(&buf,
-			`<tr><td style="color:%s;">%s</td><td style="color:%s;font-weight:bold;">%d</td></tr>`,
-			overdueColor, i18n.Overdue, overdueColor, content.DSR.Overdue,
-		)
-		buf.WriteString(`</table>`)
-	}
-
 	buf.WriteString(`<hr style="margin-top:24px;"/><p style="font-size:0.75em;color:#a0aec0;">`)
 	buf.WriteString(i18n.Footer)
 	buf.WriteString(`</p></body></html>`)
@@ -410,7 +262,7 @@ func SendAIDigestEmail(ctx context.Context, db *pgxpool.Pool, smtpCfg SMTPConfig
 		return nil
 	}
 
-	svc := NewDigestService(db, smtpCfg, nil)
+	svc := NewDigestService(db, smtpCfg)
 	admins, err := svc.fetchAdminEmails(ctx, orgID)
 	if err != nil {
 		return fmt.Errorf("emaildigest: ai digest: fetch admins: %w", err)

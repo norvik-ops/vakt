@@ -24,8 +24,8 @@ import (
 // Response: text/event-stream mit Frames:
 //   data: {"type":"run_started","message":"<run_id>"}
 //   data: {"type":"plan","step":0,"message":"1. ..."}
-//   data: {"type":"tool_call","step":1,"tool":"list_open_findings","arguments":{}}
-//   data: {"type":"tool_result","step":1,"tool":"list_open_findings","result":[...]}
+//   data: {"type":"tool_call","step":1,"tool":"list_stale_evidence","arguments":{}}
+//   data: {"type":"tool_result","step":1,"tool":"list_stale_evidence","result":[...]}
 //   data: {"type":"approval_required","step":N,"tool":"add_control_note","arguments":{...}}
 //   data: {"type":"final","message":"..."}
 //   data: [DONE]

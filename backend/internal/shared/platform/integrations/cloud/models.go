@@ -19,7 +19,6 @@ const (
 	ProviderLDAP       = "ldap"
 	ProviderGitLab     = "gitlab"
 	ProviderSonarQube  = "sonarqube"
-	ProviderPersonio   = "personio"
 	ProviderIntune     = "intune"
 )
 
@@ -457,32 +456,4 @@ type SonarQubeStatus struct {
 	ProjectCount           int `json:"project_count"`
 	QualityGateFailedCount int `json:"quality_gate_failed_count"`
 	HotspotCount           int `json:"hotspot_count"`
-}
-
-// --- Personio ---
-
-// PersonioConfig holds Personio webhook secret for HMAC verification.
-// Personio is push-only: Vakt does not pull from Personio; Personio pushes employee.departed events.
-type PersonioConfig struct {
-	WebhookSecret string `json:"webhook_secret"` // stored encrypted
-}
-
-// SavePersonioConfigInput is the validated HTTP input for saving Personio config.
-type SavePersonioConfigInput struct {
-	WebhookSecret string `json:"webhook_secret" validate:"required"`
-}
-
-// PersonioConfigResponse is returned from GET /personio/config (secrets masked).
-type PersonioConfigResponse struct {
-	WebhookSecret string `json:"webhook_secret"` // "****" if set
-	IsConfigured  bool   `json:"is_configured"`
-}
-
-// PersonioStatus is returned from GET /personio/status.
-type PersonioStatus struct {
-	SyncStatus
-	WebhookURL            string `json:"webhook_url"`
-	WebhookConfigured     bool   `json:"webhook_configured"`
-	OffboardingsTriggered int    `json:"offboardings_triggered"`
-	OffboardingsOnTime    int    `json:"offboardings_completed_on_time"`
 }

@@ -209,8 +209,12 @@ def case_untracked_counted():
                      "SELECT id FROM ck_bcp_plans WHERE org_id = $1;\n")
         code, out = run(root, "--allow-missing-oracle")
         check("Exit 1 (Datei wurde gesehen)", code == 1, f"exit={code}")
-        check("zaehlt 8 .sql-Dateien statt 7",
-              ".sql-Dateien (git-gelistet):    8" in out,
+        # Basis aus dem echten Repo zaehlen statt festschreiben: das Archivieren
+        # von Modulen hat die Zahl schon einmal veraendert (7 -> 3).
+        base = len([f for f in os.listdir(os.path.join(REPO_ROOT, "backend", "db", "queries"))
+                    if f.endswith(".sql")])
+        check(f"zaehlt {base + 1} .sql-Dateien statt {base}",
+              f".sql-Dateien (git-gelistet):    {base + 1}" in out,
               [l for l in out.split("\n") if ".sql-Dateien" in l][:1])
         check("nennt `SelftestUntrackedQuery`",
               "SelftestUntrackedQuery" in out)

@@ -25,7 +25,6 @@ const SHORTCUTS = [
     category: 'Navigation',
     items: [
       { keys: ['g', 'd'], label: 'Dashboard' },
-      { keys: ['g', 'f'], label: 'Findings' },
       { keys: ['g', 'r'], label: 'Risiken' },
       { keys: ['g', 'i'], label: 'Incidents' },
     ],

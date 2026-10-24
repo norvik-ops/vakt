@@ -29,24 +29,6 @@ ALLOWLIST = {
     # ab jetzt gegenstandsbezogen. (Die Go-Seite dieser Zugriffe ist hand-gepflegtes
     # sqlc in internal/db und wird von Pass 1 ohnehin nie gelesen.)
 
-    # ── vaktaware ─────────────────────────────────────────────────────────────
-    # sr_targets.group_id is a FK into sr_target_groups (which has org_id);
-    # org isolation is maintained via the caller owning the group.
-    "vaktaware.sql:CountSRTargetsInGroup": "scoped by group_id FK; caller verifies group org ownership",
-    # sr_campaigns has org_id; group_id is a safe surrogate here — caller verifies.
-    "vaktaware.sql:GetSRCampaignGroupID": "SELECT by campaign PK; caller holds org-verified campaign reference",
-    # COUNT events by campaign_id — same pattern; campaign is org-scoped.
-    "vaktaware.sql:CountSREventsByType": "scoped by campaign_id FK; caller verifies campaign org ownership",
-    # Public phishing-report webhook — lookup org by unique token (no auth, no tenant context yet).
-    "vaktaware.sql:GetOrgByPhishReportToken": "public webhook lookup by unique phish_report_token; returns org id for subsequent scoped queries",
-    # UPDATE organizations WHERE id = $2 — $2 is the org_id (primary key); $1 is the token value.
-    "vaktaware.sql:SetOrgPhishReportToken": "UPDATE organizations by PK (org_id is param $2)",
-    # SELECT name FROM organizations WHERE id = $1 — $1 is org_id passed by caller.
-    "vaktaware.sql:GetSROrganizationName": "SELECT org name by PK (org_id is param $1)",
-    # SELECT email FROM sr_targets WHERE id = $1 — used internally in the phishing flow after
-    # org ownership is already verified via the campaign/group chain.
-    "vaktaware.sql:GetSRTargetEmail": "SELECT target email by PK; org ownership verified earlier in call chain",
-
     # ── vaktcomply ────────────────────────────────────────────────────────────
     # Background job passes pre-fetched evidence IDs belonging to a single org.
     "vaktcomply.sql:MarkCKEvidenceExpiryNotified": "background worker passes org-filtered evidence IDs from a prior scoped query",
@@ -97,36 +79,6 @@ ALLOWLIST = {
     # Public accept-portal: employee clicks token link, no org context; request UUID is the auth.
     "vaktcomply.sql:RecordCKPolicyAcceptance": "public token-based accept endpoint; request PK is the auth token",
 
-    # ── vaktprivacy ───────────────────────────────────────────────────────────
-    # Background job that globally expires AVVs past their review_date — intentionally all orgs.
-    "vaktprivacy.sql:MarkExpiredPPAVVs": "background job: intentionally marks expired AVVs across all orgs",
-    # Public DSR portal: visitor looks up org by slug before any auth exists.
-    "vaktprivacy.sql:GetOrgByDSRSlug": "public DSR portal: org lookup by unique slug before any auth",
-    # SELECT/UPDATE org DSR settings by PK; $1 is org_id passed by authenticated handler.
-    "vaktprivacy.sql:GetDSRPortalSettings": "SELECT from organizations WHERE id = $1 (org_id passed as param)",
-    "vaktprivacy.sql:UpdateDSRPortalSettings": "UPDATE organizations WHERE id = $1 (org_id passed as param)",
-
-    # ── vaktscan ──────────────────────────────────────────────────────────────
-    # Background scanner worker updates its own scan/report rows by PK (UUIDs issued by the system).
-    "vaktscan.sql:UpdateSPScanStatus": "background worker updates own scan row by PK (system-issued UUID, no user input)",
-    "vaktscan.sql:UpdateSPReport": "background worker updates own report row by PK (system-issued UUID)",
-    "vaktscan.sql:StoreSPReportContent": "background worker stores report content by PK (system-issued UUID)",
-    # SELECT components by sbom_id — vb_sboms has org_id; handler verifies sbom org before calling.
-    "vaktscan.sql:ListSPComponentsBySBOM": "scoped by sbom_id FK into org-scoped vb_sboms; caller verifies sbom org ownership",
-    "vaktscan.sql:ListSPComponentsBySBOMFull": "scoped by sbom_id FK into org-scoped vb_sboms; caller verifies sbom org ownership",
-    # EOL-check background job: updates individual component rows by PK after global EOL API call.
-    "vaktscan.sql:UpdateSPComponentEOL": "background EOL-check job: component UUID from prior org-scoped query",
-    "vaktscan.sql:BatchUpdateSPComponentEOL": "background EOL-check job: component UUIDs from prior org-scoped query",
-    # vb_eol_cache is a global product/cycle cache — not per-org (no org data stored).
-    "vaktscan.sql:GetSPEOLCache": "vb_eol_cache is a global product lifecycle cache; contains no org data",
-
-    # ── vaktvault ─────────────────────────────────────────────────────────────
-    # UPDATE access counter by PK — handler verifies org ownership before decrypting/counting.
-    "vaktvault.sql:UpdateSVSecretAccess": "access counter UPDATE by PK; handler verifies org ownership before this call",
-    # Public share-link endpoint: token_hash is the auth credential — no org context yet.
-    "vaktvault.sql:GetSVShareLink": "public share link: token_hash is globally unique auth; handler verifies org after",
-    # Used internally to resolve secret → project → org_id for authorization check.
-    "vaktvault.sql:GetSVSecretProjectID": "helper to resolve secret PK → project_id for org ownership check (result used for auth)",
 }
 
 # Patterns that count as org_id filtering in a query body.

@@ -101,14 +101,13 @@ VAKT_METRICS_TOKEN=<random-secret>
 
 ### Real Metric Names
 
-These are all metrics emitted by a running Vakt instance (verified against `metrics/handler.go`):
+These are all metrics emitted by a running Vakt instance (verified against `metrics/handler.go`).
+`vakt_findings_total`, `vakt_dsr_open_total` and `vakt_dsr_overdue_total` went with the archived Scan and
+Privacy modules:
 
 | Metric | Type | Description |
 |---|---|---|
-| `vakt_findings_total{severity}` | gauge | Open findings by severity (critical/high/medium/low) |
 | `vakt_score_current` | gauge | Current aggregate security score (0–100) |
-| `vakt_dsr_open_total` | gauge | Open data subject requests |
-| `vakt_dsr_overdue_total` | gauge | Overdue DSRs (past `due_date`) |
 | `vakt_backup_age_hours` | gauge | Hours since last recorded backup (999 = never) |
 | `vakt_organizations_total` | gauge | Total organisations on this instance |
 | `vakt_active_sessions_total` | gauge | Active user sessions |
@@ -234,15 +233,6 @@ groups:
         annotations:
           summary: "Vakt backup overdue"
           description: "Last backup was {{ $value | printf \"%.0f\" }} hours ago."
-
-      # Critical findings present
-      - alert: VaktCriticalFindings
-        expr: vakt_findings_total{severity="critical"} > 0
-        for: 30m
-        labels:
-          severity: warning
-        annotations:
-          summary: "{{ $value }} critical findings in Vakt"
 ```
 
 ---

@@ -9969,23 +9969,6 @@ func (q *Queries) CountCKIncidentsSince(ctx context.Context, arg CountCKIncident
 	return count, err
 }
 
-const countSPResolvedFindingsSince = `-- name: CountSPResolvedFindingsSince :one
-SELECT COUNT(*)::int FROM vb_findings
-WHERE org_id = $1::uuid AND status = 'resolved' AND updated_at >= $2
-`
-
-type CountSPResolvedFindingsSinceParams struct {
-	OrgID string    `json:"org_id"`
-	Since time.Time `json:"since"`
-}
-
-func (q *Queries) CountSPResolvedFindingsSince(ctx context.Context, arg CountSPResolvedFindingsSinceParams) (int32, error) {
-	row := q.db.QueryRow(ctx, countSPResolvedFindingsSince, arg.OrgID, arg.Since)
-	var count int32
-	err := row.Scan(&count)
-	return count, err
-}
-
 // ── Policy Acceptance (s26-sqlc-vitals-5 — DSGVO-sensitiv) ──────────────────
 
 const getCKOrgName = `-- name: GetCKOrgName :one

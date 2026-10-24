@@ -28,10 +28,8 @@ const kpiConfig: KPIConfig[] = [
   { key: 'kpi_incident_mttr_days', label: 'MTTR Incidents', unit: ' Tage', warn: 30, higher_is_better: false },
   { key: 'kpi_evidence_coverage', label: 'Evidence-Abdeckung', unit: '%', warn: 60, goal: 80, higher_is_better: true },
   { key: 'kpi_expiring_evidence_count', label: 'Ablaufende Evidenz', unit: '', warn: 10, higher_is_better: false },
-  { key: 'kpi_finding_sla_compliance', label: 'SLA-Einhaltung', unit: '%', warn: 80, higher_is_better: true },
   { key: 'kpi_open_major_ncs', label: 'Offene Major NCs', unit: '', warn: 3, higher_is_better: false },
   { key: 'kpi_suppliers_overdue_pct', label: 'Lieferanten überfällig', unit: '%', warn: 20, higher_is_better: false },
-  { key: 'kpi_phishing_click_rate', label: 'Phishing Click-Rate', unit: '%', warn: 15, higher_is_better: false },
 ]
 
 // ── Color logic ────────────────────────────────────────────────────────────

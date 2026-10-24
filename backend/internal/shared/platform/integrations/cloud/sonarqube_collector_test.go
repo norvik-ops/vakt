@@ -124,19 +124,10 @@ func TestSonarQube_InvalidToken(t *testing.T) {
 	assert.Contains(t, err.Error(), "unauthorized")
 }
 
-// TestSonarQube_URLHash verifies that the sonarURLHash function is stable and
-// strips trailing slashes consistently.
-func TestSonarQube_URLHash(t *testing.T) {
-	h1 := sonarURLHash("https://sonarqube.example.com/")
-	h2 := sonarURLHash("https://sonarqube.example.com")
-	assert.Equal(t, h1, h2, "URL hash must be slash-insensitive")
-	assert.NotEmpty(t, h1)
-}
-
-// TestSonarQube_NoScanFindingsWhileScanOff covers the R1-KW-15 follow-up: with
-// Vakt Scan switched off the collector must not import hotspots or
-// vulnerabilities as vb_findings, but still writes its ISMS evidence.
-func TestSonarQube_NoScanFindingsWhileScanOff(t *testing.T) {
+// TestSonarQube_NoScanFindings covers the R1-KW-15 follow-up: Vakt Scan is
+// archived, so the collector must not import hotspots or vulnerabilities as
+// vb_findings, but still writes its ISMS evidence.
+func TestSonarQube_NoScanFindings(t *testing.T) {
 	findingCalls := 0
 	inner := sonarTestServer(t, "OK", []map[string]any{{"key": "h1", "message": "x", "vulnerabilityProbability": "HIGH"}})
 	defer inner.Close()
@@ -149,11 +140,10 @@ func TestSonarQube_NoScanFindingsWhileScanOff(t *testing.T) {
 	defer srv.Close()
 
 	c, mock := newTestSonarCollector(srv)
-	c.noScanFindings = true
 	_, err := c.Collect(context.Background(), "00000000-0000-0000-0000-000000000001",
 		SonarQubeConfig{BaseURL: srv.URL, Token: "test-token"})
 
 	require.NoError(t, err)
-	assert.Zero(t, findingCalls, "no finding import while vaktscan is off")
+	assert.Zero(t, findingCalls, "no finding import — Vakt Scan is archived")
 	assert.NotEmpty(t, mock.added, "quality gate evidence is still collected")
 }

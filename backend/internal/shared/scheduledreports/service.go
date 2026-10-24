@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/csv"
 	"fmt"
 	"net/smtp"
 	"strings"
@@ -18,7 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/shared/apperr"
-	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/mailhdr"
 )
 
@@ -39,7 +37,7 @@ type ScheduledReport struct {
 	ID         string     `json:"id"`
 	OrgID      string     `json:"org_id"`
 	Name       string     `json:"name"`
-	ReportType string     `json:"report_type"` // compliance | findings | risk
+	ReportType string     `json:"report_type"` // compliance | risk | board_report (findings: archived, skipped)
 	Schedule   string     `json:"schedule"`    // weekly | monthly | quarterly
 	Recipients []string   `json:"recipients"`
 	Format     string     `json:"format"` // pdf | csv
@@ -52,7 +50,7 @@ type ScheduledReport struct {
 // CreateScheduledReportInput is the validated input for creating a report schedule.
 type CreateScheduledReportInput struct {
 	Name       string   `json:"name"        validate:"required,min=1,max=255"`
-	ReportType string   `json:"report_type" validate:"required,oneof=compliance findings risk board_report"`
+	ReportType string   `json:"report_type" validate:"required,oneof=compliance risk board_report"`
 	Schedule   string   `json:"schedule"    validate:"required,oneof=weekly monthly quarterly"`
 	Recipients []string `json:"recipients"  validate:"required,min=1"`
 	Format     string   `json:"format"      validate:"omitempty,oneof=pdf csv"`
@@ -62,7 +60,7 @@ type CreateScheduledReportInput struct {
 // UpdateScheduledReportInput is the validated input for updating a report schedule.
 type UpdateScheduledReportInput struct {
 	Name       *string  `json:"name"        validate:"omitempty,min=1,max=255"`
-	ReportType *string  `json:"report_type" validate:"omitempty,oneof=compliance findings risk board_report"`
+	ReportType *string  `json:"report_type" validate:"omitempty,oneof=compliance risk board_report"`
 	Schedule   *string  `json:"schedule"    validate:"omitempty,oneof=weekly monthly quarterly"`
 	Recipients []string `json:"recipients"`
 	Format     *string  `json:"format"      validate:"omitempty,oneof=pdf csv"`
@@ -79,7 +77,6 @@ type BoardReportProvider interface {
 // Service manages scheduled report CRUD and delivery.
 type Service struct {
 	db          *pgxpool.Pool
-	withoutScan bool // Vakt Scan is switched off: no findings reports (see WithoutScan)
 	smtp        SMTPConfig
 	boardReport BoardReportProvider
 }
@@ -87,14 +84,6 @@ type Service struct {
 // NewService creates a new scheduled reports service.
 func NewService(db *pgxpool.Pool, smtpCfg SMTPConfig) *Service {
 	return &Service{db: db, smtp: smtpCfg}
-}
-
-// WithoutScan marks Vakt Scan as switched off (VAKT_MODULES_ENABLED). Findings
-// reports can then not be created, and existing ones are skipped instead of
-// mailing an empty findings.csv.
-func (s *Service) WithoutScan(off bool) *Service {
-	s.withoutScan = off
-	return s
 }
 
 // WithBoardReportProvider attaches a board report provider to the service.
@@ -333,11 +322,12 @@ func (s *Service) ProcessDue(ctx context.Context) error {
 }
 
 // RunReport executes the report and sends it to all recipients.
-// For findings+csv it fetches findings and sends a CSV attachment.
-// For other types it sends a placeholder email.
+// For other types than board_report it sends a placeholder email.
 func (s *Service) RunReport(ctx context.Context, r ScheduledReport) error {
-	if r.ReportType == "findings" && s.withoutScan {
-		log.Warn().Str("report_id", r.ID).Msg("scheduled_reports: findings report skipped — Vakt Scan is switched off")
+	// Findings reports belonged to the archived Vakt Scan. New ones are rejected
+	// at create; one stored earlier is skipped instead of mailing an empty CSV.
+	if r.ReportType == "findings" {
+		log.Warn().Str("report_id", r.ID).Msg("scheduled_reports: findings report skipped — Vakt Scan is archived")
 		return nil
 	}
 	if len(r.Recipients) == 0 {
@@ -352,24 +342,8 @@ func (s *Service) RunReport(ctx context.Context, r ScheduledReport) error {
 		attachFn func() ([]byte, string, error) // returns data, filename, error
 	)
 
-	switch {
-	case r.ReportType == "findings" && r.Format == "csv":
-		csvData, buildErr := s.buildFindingsCSV(ctx, r.OrgID)
-		af, err := findingsAttachment(csvData, buildErr)
-		if err != nil {
-			// Abort: sending a bare header row would deliver an "empty" report
-			// that looks legitimate and hides the failure. Surface the error so
-			// the caller records the run as failed and it can be retried.
-			log.Error().Err(buildErr).Str("report_id", r.ID).Msg("scheduled_reports: build findings CSV failed")
-			return fmt.Errorf("scheduled_reports: report %s: %w", r.ID, err)
-		}
-		body = fmt.Sprintf(
-			"<p>Ihr geplanter Findings-Bericht <strong>%s</strong> ist beigefügt.</p>"+
-				"<p>Format: CSV | Zeitraum: %s</p>",
-			r.Name, r.Schedule,
-		)
-		attachFn = af
-	case r.ReportType == "board_report":
+	switch r.ReportType {
+	case "board_report":
 		body = fmt.Sprintf(
 			"<p>Ihr geplanter Management-Board-Bericht <strong>%s</strong> ist beigefügt.</p>"+
 				"<p>Zeitplan: %s</p>",
@@ -414,57 +388,6 @@ func (s *Service) RunReport(ctx context.Context, r ScheduledReport) error {
 		}
 	}
 	return nil
-}
-
-// findingsAttachment turns the result of buildFindingsCSV into the attachment
-// closure for a findings report. A non-nil buildErr means the CSV could not be
-// produced: it returns an error so RunReport aborts delivery instead of sending
-// a bare-header "empty" report that hides the failure. On success it returns a
-// closure yielding exactly the built bytes under the name findings.csv.
-func findingsAttachment(csvData []byte, buildErr error) (func() ([]byte, string, error), error) {
-	if buildErr != nil {
-		return nil, fmt.Errorf("build findings CSV: %w", buildErr)
-	}
-	data := csvData
-	return func() ([]byte, string, error) {
-		return data, "findings.csv", nil
-	}, nil
-}
-
-// buildFindingsCSV queries open findings for the org and returns a CSV byte slice.
-func (s *Service) buildFindingsCSV(ctx context.Context, orgID string) ([]byte, error) {
-	rows, err := s.db.Query(ctx, `
-		SELECT f.id::text, f.title, f.severity, f.status,
-		       f.asset_id::text, f.created_at
-		FROM vb_findings f
-		WHERE f.org_id = $1::uuid
-		ORDER BY f.created_at DESC
-		LIMIT 5000`,
-		orgID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("query findings: %w", err)
-	}
-	defer rows.Close()
-
-	var buf bytes.Buffer
-	w := csv.NewWriter(&buf)
-	_ = w.Write([]string{"id", "title", "severity", "status", "asset_id", "created_at"})
-	for rows.Next() {
-		var (
-			id, title, severity, status, assetID string
-			createdAt                            time.Time
-		)
-		if err := rows.Scan(&id, &title, &severity, &status, &assetID, &createdAt); err != nil {
-			continue
-		}
-		_ = w.Write(csvsafe.Row([]string{id, title, severity, status, assetID, createdAt.Format(time.RFC3339)}))
-	}
-	w.Flush()
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }
 
 // sendHTML sends a plain HTML email (no attachment).

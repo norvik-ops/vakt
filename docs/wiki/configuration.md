@@ -414,11 +414,10 @@ VAKT_LICENSE_TOKEN=550e8400-e29b-41d4-a716-446655440000
 
 **Datenschutz-Hinweis zu `VAKT_LICENSE_TOKEN`:** Die Instanz stellt einmal täglich eine ausgehende HTTPS-Verbindung zu `api.norvikops.de` her. Dabei wird ausschließlich der Token übertragen — keine Geschäftsdaten, keine Nutzungsdaten. Wer ausgehende Verbindungen in der Firewall kontrolliert (typisch für ISO 27001 / NIS2 Umgebungen), muss `api.norvikops.de:443` in der Egress-Whitelist eintragen oder `VAKT_LICENSE_TOKEN` weglassen und die manuelle Aktivierung nutzen.
 
-**Hinweis zu `VAKT_BSI_FEED_ENABLED` und `VAKT_EOL_CHECK_ENABLED`:** Beide gehörten zu Vakt Scan
-(BSI-CERT-Bund-Feed, `endoflife.date` bei SBOM-Scans). Mit der Archivierung von Scan am 2026-10-18 ruft
-Vakt `www.bsi.bund.de` und `endoflife.date` nicht mehr ab; die Variablen haben keine Wirkung mehr.
-
-**Datenschutz-Hinweis zu `VAKT_EPSS_ENABLED`:** **Standardmäßig aus.** Wenn auf `true` gesetzt, reichert Vakt Findings mit EPSS-Scores (Exploit Prediction Scoring System) aus einer externen API an — eine ausgehende Verbindung. Bewusst opt-in, um das No-Phone-Home-Versprechen nicht zu unterlaufen. In Air-Gap-/strikten Egress-Umgebungen auf `false` (Default) belassen.
+**Hinweis zu `VAKT_BSI_FEED_ENABLED`, `VAKT_EOL_CHECK_ENABLED` und `VAKT_EPSS_ENABLED`:** Alle drei
+gehörten zu Vakt Scan (BSI-CERT-Bund-Feed, `endoflife.date` bei SBOM-Scans, EPSS-Anreicherung von
+Findings). Mit der Archivierung von Scan am 2026-10-18 ruft Vakt keinen dieser Dienste mehr ab; Vakt liest
+die Variablen nicht mehr (seit dem Release nach v0.45.0), eine gesetzte Variable bleibt wirkungslos.
 
 > **Hinweis:** Die Variablen `VAKT_LICENSE_PRIVATE_KEY`, `VAKT_LEXWARE_API_KEY`, `VAKT_BILLING_BASE_URL`, `VAKT_BILLING_NOTIFY_EMAIL`, `VAKT_BILLING_CORS_ORIGINS`, `VAKT_BILLING_SMALL_BUSINESS`, `VAKT_BILLING_VAT_ID`, `VAKT_PORTAL_BASE_URL` sowie `VAKT_BILLING_ADMIN_MODE` / `VAKT_BILLING_ADMIN_PORT` / `VAKT_BILLING_ADMIN_CF_TEAM` / `VAKT_BILLING_ADMIN_CF_AUD` sind ausschließlich für den Norvik-eigenen Billing-Dienst — sie gehören **nicht** in die Kunden-Konfiguration.
 

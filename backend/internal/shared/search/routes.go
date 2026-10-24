@@ -13,10 +13,7 @@ import (
 // `api` group with only AuthMiddleware, which let a user who had not completed the
 // org-required TOTP setup search — and read — across every module, bypassing the
 // MFA gate that every other authenticated route enforces.
-//
-// moduleOn (nil = all enabled) drops the sources of disabled modules, so search
-// never links to a page the frontend does not mount.
-func Register(g *echo.Group, db *pgxpool.Pool, moduleOn func(module string) bool) {
-	h := NewHandler(db, moduleOn)
+func Register(g *echo.Group, db *pgxpool.Pool) {
+	h := NewHandler(db)
 	g.GET("/search", h.Search)
 }

@@ -2221,7 +2221,6 @@ func GenerateExecutiveSummaryPDF(d *ExecutiveSummaryData) ([]byte, error) {
 	pdf.SetY(pdf.GetY() + 2)
 	renderActivityRow("Controls als 'Umgesetzt' markiert:", fmt.Sprintf("%d", act.ClosedControls), act.ClosedControls > 0)
 	renderActivityRow("Neue Vorfälle erfasst:", fmt.Sprintf("%d", act.NewIncidents), false)
-	renderActivityRow("Findings als 'Behoben' markiert:", fmt.Sprintf("%d", act.ResolvedFindings), act.ResolvedFindings > 0)
 
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {

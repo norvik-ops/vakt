@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Search, Shield, AlertTriangle, FileText, Siren, ClipboardCheck,
-  Server, Bug, Users, Clock, Loader2, LayoutDashboard, ShieldAlert,
+  Server, Clock, Loader2, LayoutDashboard, ShieldAlert,
   BookOpen,
 } from 'lucide-react'
 import { useSearch, SearchResult } from '../../hooks/useSearch'
@@ -23,7 +23,6 @@ const QUICK_NAV: QuickNavItem[] = [
   { label: 'Risiken',       path: '/vaktcomply/risks',        icon: <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" /> },
   { label: 'Vorfälle',      path: '/vaktcomply/incidents',    icon: <Siren className="w-3.5 h-3.5 text-red-500 shrink-0" /> },
   { label: 'Richtlinien',   path: '/vaktcomply/policies',     icon: <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" /> },
-  { label: 'Findings',      path: '/vaktscan/findings',      icon: <Bug className="w-3.5 h-3.5 text-orange-500 shrink-0" /> },
   // S131-G4 (D28-02): the "Board-Bericht" entry pointed at /vaktcomply/board-report,
   // a route that does not exist — the catch-all silently redirected every click to
   // the Comply overview. There is no board-report SPA page (only the scheduled-report
@@ -37,9 +36,6 @@ const ENTITY_ICONS: Record<string, React.ReactNode> = {
   incident: <Siren         className="w-3.5 h-3.5 text-red-500 shrink-0" />,
   capa:     <ClipboardCheck className="w-3.5 h-3.5 text-green-500 shrink-0" />,
   asset:    <Server        className="w-3.5 h-3.5 text-purple-500 shrink-0" />,
-  finding:  <Bug           className="w-3.5 h-3.5 text-orange-500 shrink-0" />,
-  dsr:      <Users         className="w-3.5 h-3.5 text-cyan-500 shrink-0" />,
-  breach:   <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />,
 }
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -49,9 +45,6 @@ const ENTITY_LABELS: Record<string, string> = {
   incident: 'Vorfall',
   capa:     'Korrekturmaßnahme',
   asset:    'Asset',
-  finding:  'Finding',
-  dsr:      'DSR',
-  breach:   'Datenpanne',
 }
 
 const RECENT_KEY = 'vakt_search_recent'

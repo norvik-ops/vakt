@@ -40,7 +40,6 @@ import { apiFetch } from '../api/client'
 import { toast } from '../shared/hooks/useToast'
 import { SkeletonTable } from '../shared/components/SkeletonLoaders'
 import { useFormatDate } from '../shared/hooks/useFormatDate'
-import { isModuleVisible } from '../shared/moduleVisibility'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -282,9 +281,10 @@ function ReportDialog({ open, onClose, initial, onSave, isSaving }: ReportDialog
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {/* Findings-Berichte brauchen Vakt Scan; das Backend lehnt sie sonst ab (SR_MODULE_DISABLED). */}
+                {/* Findings-Berichte gehörten zu Vakt Scan (archiviert); das Backend lehnt sie ab.
+                    Das Label bleibt für ältere, gespeicherte Berichte. */}
                 {(Object.entries(reportTypeLabels) as [ReportType, string][])
-                  .filter(([v]) => v !== 'findings' || isModuleVisible('vaktscan'))
+                  .filter(([v]) => v !== 'findings')
                   .map(([v, l]) => (
                     <SelectItem key={v} value={v}>{l}</SelectItem>
                   ))}

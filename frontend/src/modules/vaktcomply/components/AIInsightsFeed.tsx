@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAIInsights, useDismissInsight } from '../hooks/useAIInsights'
 import { AIDisclaimer } from '../../../shared/components/AIDisclaimer'
 import type { AIInsight } from '../types'
-import { isPathVisible } from '../../../shared/moduleVisibility'
 
 function urgencyIcon(urgency: AIInsight['urgency']) {
   if (urgency === 1) return <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
@@ -14,7 +13,6 @@ function urgencyIcon(urgency: AIInsight['urgency']) {
 function insightLink(insight: AIInsight): string | null {
   if (insight.control_id) return `/vaktcomply/controls/${insight.control_id}`
   if (insight.risk_id) return `/vaktcomply/risks/${insight.risk_id}`
-  if (insight.finding_id && isPathVisible('/vaktscan/findings')) return `/vaktscan/findings/${insight.finding_id}`
   return null
 }
 

@@ -609,9 +609,8 @@ type ExecutiveRiskRow struct {
 
 // ExecutiveActivity holds counts of key activities in the last 30 days.
 type ExecutiveActivity struct {
-	ClosedControls   int
-	NewIncidents     int
-	ResolvedFindings int
+	ClosedControls int
+	NewIncidents   int
 }
 
 // GetExecutiveSummaryData collects data required for the Executive Summary PDF.
@@ -668,12 +667,6 @@ func (s *Service) GetExecutiveSummaryData(ctx context.Context, orgID string) (*E
 		log.Warn().Err(err).Str("org_id", orgID).Msg("executive-summary: NewIncidents counter failed")
 	} else {
 		d.Last30DaysActivity.NewIncidents = n
-	}
-
-	if n, err := s.repo.CountResolvedFindingsSince(ctx, orgID, since); err != nil {
-		log.Warn().Err(err).Str("org_id", orgID).Msg("executive-summary: ResolvedFindings counter failed")
-	} else {
-		d.Last30DaysActivity.ResolvedFindings = n
 	}
 
 	return d, nil

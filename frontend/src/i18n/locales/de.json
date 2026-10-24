@@ -1003,8 +1003,6 @@
       "labelFinancialImpact": "Geschätzter finanzieller Schaden",
       "placeholderFinancialImpact": "z.B. ca. 500.000 EUR",
       "labelMajorIncident": "Schwerwiegender IKT-Vorfall (Art. 18 DORA)",
-      "linkedBreach": "Verknüpfte Datenpanne",
-      "openBreach": "Datenpanne öffnen →",
       "cardClassification": "Klassifizierung",
       "labelSeverity": "Schweregrad",
       "labelStatus": "Status",
@@ -2695,12 +2693,6 @@
         "title": "Keine Drittanbieter-Integrationen",
         "description": "Aus Datenschutzgründen (DSGVO Art. 28) verzichtet Vakt auf Integrationen, die Sicherheitsdaten an externe SaaS-Dienste übertragen. Nutze Webhooks für eigene Automatisierungen."
       },
-      "personio": {
-        "lastWebhook": "Letzter Webhook: {{date}}",
-        "noWebhook": "Noch kein Webhook empfangen",
-        "configured": "Konfiguriert",
-        "notConfigured": "Nicht konfiguriert"
-      },
       "syncError": "Fehler",
       "syncPending": "Ausstehend",
       "notSyncedYet": "Noch nicht synchronisiert",
@@ -3343,10 +3335,6 @@
         "title": "Frameworks (Vakt Comply)",
         "text": "Wählen Sie Ihr Framework und dokumentieren Sie Controls — NIS2, ISO 27001, BSI und mehr."
       },
-      "findings": {
-        "title": "Findings (Vakt Scan)",
-        "text": "Scanner-Ergebnisse landen hier zur Priorisierung und Nachverfolgung."
-      },
       "policies": {
         "title": "Richtlinien",
         "text": "Erstelle und versioniere Sicherheitsrichtlinien — mit KI-Unterstützung und Vorlagen."
@@ -3500,13 +3488,6 @@
     "doneTitle": "Import abgeschlossen",
     "skipped": "Übersprungen",
     "importAnother": "Weitere Datei importieren"
-  },
-  "vvtLinks": {
-    "title": "Verknüpfte Verarbeitungstätigkeiten (VVT)",
-    "empty": "Noch keine VVT verknüpft.",
-    "add": "Verknüpfen",
-    "remove": "Entfernen",
-    "selectPlaceholder": "Verarbeitungstätigkeit wählen …"
   },
   "beta": {
     "module": "Beta",

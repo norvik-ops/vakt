@@ -58,7 +58,10 @@ BACKEND = ROOT / "backend"
 # holt den nächsten Pro-Key von api.norvikops.de). cmd/** fügt null neue Treffer
 # hinzu (geprüft, keine Annahme) — bleibt drin, weil ein Gate, das einen Teil des
 # Codes nie anschaut, nur seinen Ausschnitt einfriert, nicht den Zustand.
-HTTPCLIENT_BASELINE = 15
+#
+# 2026-10-23 (module-archivieren S3) — 15 → 14: der BSI-CERT-Bund-Feed-Client
+# (internal/shared/bsi) ging mit dem archivierten Vakt Scan.
+HTTPCLIENT_BASELINE = 14
 
 REDIS_RE = re.compile(r"RedisClientOpt\{")
 HTTPCLIENT_RE = re.compile(r"\bhttp\.Client\{")

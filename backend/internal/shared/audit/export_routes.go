@@ -6,10 +6,8 @@ import (
 )
 
 // Register mounts the audit export endpoint onto the given group.
-// The group must already have auth middleware applied. scanOn says whether Vakt
-// Scan is enabled; without it the package carries no findings (see GeneratePackage).
-func RegisterExport(g *echo.Group, db *pgxpool.Pool, scanOn bool) {
+// The group must already have auth middleware applied.
+func RegisterExport(g *echo.Group, db *pgxpool.Pool) {
 	h := NewExportHandler(db)
-	h.scanOn = scanOn
 	g.GET("/export/audit-package", h.Export)
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/admin"
 	"github.com/matharnica/vakt/internal/auth"
@@ -25,7 +24,6 @@ import (
 	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/services/siem"
 	"github.com/matharnica/vakt/internal/shared/audit"
-	"github.com/matharnica/vakt/internal/shared/bsi"
 	"github.com/matharnica/vakt/internal/shared/demo"
 	"github.com/matharnica/vakt/internal/shared/emaildigest"
 	"github.com/matharnica/vakt/internal/shared/logging"
@@ -137,7 +135,6 @@ func buildServer(pool *pgxpool.Pool) (*asynq.Server, *asynq.ServeMux) {
 	mux.HandleFunc(emaildigest.TaskWeeklyDigest, handleWeeklyDigest(cfg, pool))
 
 	// BSI CERT-Bund feed — daily advisory sync + asset matching
-	mux.HandleFunc(bsi.TaskBSIFeedSync, handleBSIFeedSync(pool))
 
 	// SecVitals: daily evidence expiry alert
 	mux.HandleFunc(vaktcomply.TaskEvidenceExpiryAlert, handleEvidenceExpiryAlert(pool))
@@ -260,7 +257,6 @@ func main() {
 	logger.Info().
 		Str("version", cfg.Version).
 		Bool("demo_mode", cfg.DemoSeed).
-		Bool("epss_enabled", cfg.EPSSEnabled).
 		Int("worker_concurrency", workerConcurrency()).
 		Msg("vakt worker startup complete")
 
@@ -272,11 +268,6 @@ func main() {
 		logger.Fatal().Err(err).Msg("failed to connect to database")
 	}
 	defer pool.Close()
-
-	// Log EPSS opt-in status so operators know whether external enrichment is active.
-	if !cfg.EPSSEnabled {
-		log.Info().Msg("EPSS enrichment disabled — set VAKT_EPSS_ENABLED=true to enable (sends CVE IDs to api.first.org)")
-	}
 
 	srv, mux := buildServer(pool)
 	scheduler := buildScheduler(cfg)

@@ -20,20 +20,11 @@ import (
 // Handlers call Service methods exclusively — no direct pgxpool usage in handlers.
 type Service struct {
 	db *pgxpool.Pool
-	// moduleOn reports whether an optional module is enabled. The score only
-	// counts findings (vaktscan) and breaches (vaktprivacy) of active modules:
-	// a user cannot see or close data of a disabled module, so it must not
-	// pull the score down.
-	moduleOn func(module string) bool
 }
 
 // NewService creates a Service backed by the provided connection pool.
-// moduleOn may be nil, which treats every module as enabled.
-func NewService(db *pgxpool.Pool, moduleOn func(module string) bool) *Service {
-	if moduleOn == nil {
-		moduleOn = func(string) bool { return true }
-	}
-	return &Service{db: db, moduleOn: moduleOn}
+func NewService(db *pgxpool.Pool) *Service {
+	return &Service{db: db}
 }
 
 // ScoreInputs holds the raw counts used to compute the security health score.
@@ -98,28 +89,12 @@ func (s *Service) UpsertScoreConfig(ctx context.Context, orgID string, cfg Score
 	return err
 }
 
-// LoadScoreInputs fetches the raw finding / breach / framework counts used in the score formula.
+// LoadScoreInputs fetches the raw counts used in the score formula.
 func (s *Service) LoadScoreInputs(ctx context.Context, orgID string, cfg ScoreConfig) ScoreInputs {
 	inp := ScoreInputs{Cfg: cfg}
-	if s.moduleOn("vaktscan") {
-		if err := s.db.QueryRow(ctx,
-			`SELECT COUNT(*) FROM vb_findings WHERE org_id=$1::uuid AND severity='critical' AND status NOT IN ('resolved','false_positive')`,
-			orgID).Scan(&inp.CritCount); err != nil {
-			log.Error().Err(err).Msg("dashboard: count critical findings")
-		}
-		if err := s.db.QueryRow(ctx,
-			`SELECT COUNT(*) FROM vb_findings WHERE org_id=$1::uuid AND severity='high' AND status NOT IN ('resolved','false_positive')`,
-			orgID).Scan(&inp.HighCount); err != nil {
-			log.Error().Err(err).Msg("dashboard: count high findings")
-		}
-	}
-	if s.moduleOn("vaktprivacy") {
-		if err := s.db.QueryRow(ctx,
-			`SELECT COUNT(*) FROM po_breaches WHERE org_id=$1::uuid AND status='open'`,
-			orgID).Scan(&inp.BreachCount); err != nil {
-			log.Error().Err(err).Msg("dashboard: count breaches")
-		}
-	}
+	// Findings (Vakt Scan) and breaches (Vakt Privacy) are archived: a user can
+	// neither see nor close them, so they do not pull the score down. Their
+	// counts stay 0; the penalty settings remain for older configurations.
 	if err := s.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM ck_frameworks WHERE org_id=$1::uuid`,
 		orgID).Scan(&inp.FwCount); err != nil {
@@ -176,23 +151,16 @@ func (s *Service) LastBackupAt(ctx context.Context, orgID string) (*time.Time, e
 	return lastBackup, err
 }
 
-// disabledModules lists the switched-off modules. Notifications carry their
-// module name; hints of a disabled module (old scan alerts, DSR reminders)
-// would point to pages that no longer exist.
+// disabledModules lists the archived modules. Notifications carry their module
+// name; old hints of an archived module (scan alerts, DSR reminders) still sit
+// in user_notifications and link to pages that no longer exist
+// (docs/stories/module-archivieren.md).
 func (s *Service) disabledModules() []string {
-	off := []string{}
-	// ArchivedModules too: their old hints still sit in user_notifications and
-	// link to pages that no longer exist (docs/stories/module-archivieren.md).
-	for _, m := range append(append([]string{}, config.KnownModules...), config.ArchivedModules...) {
-		if !s.moduleOn(m) {
-			off = append(off, m)
-		}
-	}
-	return off
+	return config.ArchivedModules
 }
 
 // LoadNotifications returns the 50 most recent notifications for the org,
-// without those of disabled modules.
+// without those of archived modules.
 func (s *Service) LoadNotifications(ctx context.Context, orgID string) ([]UserNotification, error) {
 	rows, err := s.db.Query(ctx,
 		`SELECT id, title, body, type, module, read, created_at

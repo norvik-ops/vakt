@@ -2089,11 +2089,6 @@ WHERE org_id = $1::uuid AND manual_status = 'implemented' AND last_reviewed_at >
 SELECT COUNT(*)::int FROM ck_incidents
 WHERE org_id = $1::uuid AND created_at >= $2;
 
--- name: CountSPResolvedFindingsSince :one
--- Anzahl auf 'resolved' gesetzter Findings seit einem Zeitpunkt.
-SELECT COUNT(*)::int FROM vb_findings
-WHERE org_id = $1::uuid AND status = 'resolved' AND updated_at >= $2;
-
 -- ── iCal Deadlines (handler_ical.go — s26-sqlc-vitals-3) ────────────────────
 
 -- name: ListCKICalMilestones :many

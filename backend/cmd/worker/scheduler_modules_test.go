@@ -27,7 +27,7 @@ func scheduledTypes(cfg *config.Config) map[string]bool {
 // cron left over from an archived module fails here instead of being dropped
 // silently every day at runtime.
 func TestRegisterCrons_NoArchivedModuleTask(t *testing.T) {
-	got := scheduledTypes(&config.Config{BSIFeedEnabled: true})
+	got := scheduledTypes(&config.Config{})
 	for task := range got {
 		if isArchivedTask(task) {
 			t.Errorf("cron %q belongs to an archived module", task)

@@ -84,10 +84,8 @@ func GenerateKPIReportPDF(dashboard reporting.KPIDashboard, orgName string, gene
 		{"Incident-MTTR (Tage)", numPtr(kpiFloat(cur, func(s *reporting.KPISnapshot) *float64 { return s.IncidentMTTRDays }))},
 		{"Evidence-Abdeckung", pctPtr(kpiFloat(cur, func(s *reporting.KPISnapshot) *float64 { return s.EvidenceCoverage }))},
 		{"Ablaufende Evidence", intPtrStr(kpiInt(cur, func(s *reporting.KPISnapshot) *int { return s.ExpiringEvidenceCount }))},
-		{"Finding-SLA-Einhaltung", pctPtr(kpiFloat(cur, func(s *reporting.KPISnapshot) *float64 { return s.FindingSLACompliance }))},
 		{"Offene Major-NCs", intPtrStr(kpiInt(cur, func(s *reporting.KPISnapshot) *int { return s.OpenMajorNCs }))},
 		{"Lieferanten überfällig", pctPtr(kpiFloat(cur, func(s *reporting.KPISnapshot) *float64 { return s.SuppliersOverduePct }))},
-		{"Phishing-Klickrate", pctPtr(kpiFloat(cur, func(s *reporting.KPISnapshot) *float64 { return s.PhishingClickRate }))},
 	}
 
 	// Two-column KPI table with zebra striping.

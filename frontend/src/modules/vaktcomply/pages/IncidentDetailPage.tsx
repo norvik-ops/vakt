@@ -24,7 +24,6 @@ import { Sparkles } from 'lucide-react'
 import { ReportabilityWizard } from '../components/ReportabilityWizard'
 import { ClassifyReportingWizard } from '../components/ClassifyReportingWizard'
 import { NIS2StagePanel } from '../components/NIS2StagePanel'
-import { isPathVisible } from '../../../shared/moduleVisibility'
 import type { Incident, UpdateIncidentInput, DeadlineInfo, IncidentReport } from '../types'
 
 const SEVERITY_CLASS: Record<Incident['severity'], string> = {
@@ -449,25 +448,6 @@ export default function IncidentDetailPage() {
                       {t('vaktcomply.incidentDetail.labelMajorIncident')}
                     </Label>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {incident?.breach_id && isPathVisible('/vaktprivacy/breach') && (
-              <Card className="border-amber-500/30 bg-amber-500/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-amber-400" />
-                    {t('vaktcomply.incidentDetail.linkedBreach')}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <a
-                    href="/vaktprivacy/breach"
-                    className="text-sm text-amber-400 hover:underline"
-                  >
-                    {t('vaktcomply.incidentDetail.openBreach')}
-                  </a>
                 </CardContent>
               </Card>
             )}

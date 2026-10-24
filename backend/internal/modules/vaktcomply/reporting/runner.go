@@ -16,18 +16,16 @@ import (
 )
 
 // RunCheck executes a CCM check and returns the status and output.
-// status is one of "pass", "fail", "unknown". scanOn reports whether Vakt Scan
-// is enabled: without it no scanner runs, so "no open critical findings" would
-// be a false pass (R1-KW-15 follow-up).
-func RunCheck(ctx context.Context, db *pgxpool.Pool, check CCMCheck, scanOn bool) (status string, output string, err error) {
+// status is one of "pass", "fail", "unknown".
+func RunCheck(ctx context.Context, db *pgxpool.Pool, check CCMCheck) (status string, output string, err error) {
 	switch check.CheckType {
 	case "http_endpoint":
 		return runHTTPEndpointCheck(ctx, check)
 	case "trivy_no_critical":
-		if !scanOn {
-			return "unknown", "Vakt Scan ist abgeschaltet (VAKT_MODULES_ENABLED) — ohne Scanner keine Aussage", nil
-		}
-		return runTrivyNoCriticalCheck(ctx, db, check)
+		// Vakt Scan is archived: no scanner runs, so "no open critical findings"
+		// would be a false pass. New checks of this type are rejected at create;
+		// rows created earlier still load and report "unknown".
+		return "unknown", "Vakt Scan ist archiviert — ohne Scanner keine Aussage", nil
 	case "evidence_freshness":
 		return runEvidenceFreshnessCheck(ctx, db, check)
 	case "custom_script":
@@ -130,29 +128,6 @@ func runHTTPEndpointCheck(ctx context.Context, check CCMCheck) (string, string, 
 		return "pass", fmt.Sprintf("HTTP %d OK", resp.StatusCode), nil
 	}
 	return "fail", fmt.Sprintf("HTTP %d", resp.StatusCode), nil
-}
-
-// runTrivyNoCriticalCheck queries vb_findings for any open critical findings for the org.
-// Passes if no critical findings exist.
-func runTrivyNoCriticalCheck(ctx context.Context, db *pgxpool.Pool, check CCMCheck) (string, string, error) {
-	var count int
-	err := db.QueryRow(ctx, `
-		SELECT COUNT(*)
-		FROM vb_findings
-		WHERE org_id = $1::uuid
-		  AND severity = 'critical'
-		  AND status NOT IN ('resolved', 'false_positive')`,
-		check.OrgID,
-	).Scan(&count)
-	if err != nil {
-		// vb_findings may not exist if the SecPulse module is disabled.
-		return "unknown", "SecPulse module required for this check type", nil
-	}
-
-	if count == 0 {
-		return "pass", "No open critical findings", nil
-	}
-	return "fail", fmt.Sprintf("%d open critical finding(s) found", count), nil
 }
 
 // runEvidenceFreshnessCheck verifies that at least one evidence item for the control

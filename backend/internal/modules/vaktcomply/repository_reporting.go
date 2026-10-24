@@ -177,15 +177,6 @@ func (r *Repository) CountClosedControlsSince(ctx context.Context, orgID string,
 	return int(n), nil
 }
 
-// CountResolvedFindingsSince returns the number of findings set to 'resolved' since `since`.
-func (r *Repository) CountResolvedFindingsSince(ctx context.Context, orgID string, since time.Time) (int, error) {
-	n, err := r.q.CountSPResolvedFindingsSince(ctx, db.CountSPResolvedFindingsSinceParams{OrgID: orgID, Since: since})
-	if err != nil {
-		return 0, fmt.Errorf("count resolved findings since: %w", err)
-	}
-	return int(n), nil
-}
-
 // CountRecentIncidents returns the number of incidents created at or after `since`.
 func (r *Repository) CountRecentIncidents(ctx context.Context, orgID string, since time.Time) (int, error) {
 	n, err := r.q.CountCKRecentIncidents(ctx, db.CountCKRecentIncidentsParams{OrgID: orgID, Since: since})

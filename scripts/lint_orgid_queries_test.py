@@ -244,16 +244,17 @@ with tempfile.TemporaryDirectory() as td:
 # unpruefbar (fremder Baum) — siehe naechste Abnahme.
 with tempfile.TemporaryDirectory() as td:
     root = fixture(td, {"clean.go": CLEAN_GO}, queries=None)
-    (root / "queries" / "vaktaware.sql").write_text(
-        "-- name: CountSREventsByType :one\n"
-        "SELECT count(*) FROM ck_things WHERE org_id = $1;\n", encoding="utf-8")
+    # Die Datei enthaelt genau EINE der freigestellten Queries: dieser Eintrag
+    # greift, alle anderen vaktcomply.sql-Eintraege sind ohne Gegenstand.
+    (root / "queries" / "vaktcomply.sql").write_text(
+        "-- name: GetCKOrgName :one\n"
+        "SELECT name FROM organizations WHERE id = $1;\n", encoding="utf-8")
     code, out = run_gate(root)
     expect("A3b ALLOWLIST-Eintrag ohne Query in vorhandener Datei ist ROT",
            code, out, 1,
-           ["STALE ALLOWLIST", "vaktaware.sql:CountSRTargetsInGroup", "allowlist_stale=6"],
-           # Eintraege aus Dateien, die es hier gar nicht gibt, sind unpruefbar,
-           # nicht stale — sonst faerbte jeder Teil-Checkout das Gate rot.
-           must_not_contain=["STALE  vaktcomply.sql:"])
+           ["STALE ALLOWLIST", "vaktcomply.sql:MarkCKEvidenceExpiryNotified", "allowlist_stale=25"],
+           # Der Eintrag, dessen Query existiert, ist nicht stale.
+           must_not_contain=["STALE  vaktcomply.sql:GetCKOrgName"])
 
 with tempfile.TemporaryDirectory() as td:
     root = fixture(td, {"clean.go": CLEAN_GO},
@@ -261,7 +262,7 @@ with tempfile.TemporaryDirectory() as td:
                            "SELECT 1 FROM ck_things WHERE org_id = $1;\n")
     code, out = run_gate(root)
     expect("A3c fremder Query-Baum: ALLOWLIST unpruefbar statt stale, gezaehlt",
-           code, out, 0, ["unpruefbar=48", "allowlist_stale=0"])
+           code, out, 0, ["unpruefbar=26", "allowlist_stale=0"])
 
 
 # ── Gegenproben: der Fix darf nicht zu streng sein ───────────────────────────

@@ -125,9 +125,10 @@ func TestGitLabCollect_UnprotectedBranch(t *testing.T) {
 	assert.True(t, warningFound, "expected a warning evidence for unprotected branch")
 }
 
-// TestGitLabCollect_VulnFindings403_SilentSkip verifies that a 403 on the vulnerability
-// findings endpoint (GitLab CE) is silently skipped — no error returned.
-func TestGitLabCollect_VulnFindings403_SilentSkip(t *testing.T) {
+// TestGitLabCollect_VulnFindingsEndpointUnused verifies that a run succeeds
+// although the test server answers the vulnerability findings endpoint (which
+// fed the archived Vakt Scan) with 403.
+func TestGitLabCollect_VulnFindingsEndpointUnused(t *testing.T) {
 	projects := []map[string]any{
 		{"id": 3, "name": "app", "path_with_namespace": "corp/app",
 			"visibility": "private", "default_branch": "main"},
@@ -145,8 +146,7 @@ func TestGitLabCollect_VulnFindings403_SilentSkip(t *testing.T) {
 	cfg := GitLabConfig{GitLabURL: srv.URL, AccessToken: "test-token"}
 	_, err := c.Collect(context.Background(), "00000000-0000-0000-0000-000000000001", cfg)
 
-	// Must not return an error despite 403 on vulnerability_findings
-	assert.NoError(t, err, "403 on vulnerability_findings should be silently skipped")
+	assert.NoError(t, err, "a 403 on vulnerability_findings must not fail the run")
 }
 
 // TestGitLabCollect_InvalidToken verifies that a 401 response produces an error.

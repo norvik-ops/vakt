@@ -130,7 +130,7 @@ func TestMiddlewareChain_EndToEnd(t *testing.T) {
 	protected.GET("/auth/me", ok)
 	// S131-C2 (R-H22): /search must sit UNDER the MFA-enforcing protected group,
 	// not on the bare api group. Register it the way cmd/api/routes.go now does.
-	search.Register(protected, pool, nil)
+	search.Register(protected, pool)
 	// Module-gated routes.
 	mod := protected.Group("/vaktcomply", auth.RequireModuleAccess(pool, "vaktcomply", rdb))
 	mod.GET("/x", ok)
