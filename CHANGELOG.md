@@ -6,7 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Geändert
+- **Der CSV-Import im Asset-Inventar ist kostenlos.** Er war an das Pro-Feature von Vakt Scan
+  gebunden und funktioniert jetzt mit jeder Lizenz, auch Community.
+
 ### Entfernt
+- **Lizenz-Features der archivierten Module** (`vaktaware_advanced`, `vaktscan_advanced`,
+  `vaktvault_advanced`, `vaktprivacy_advanced`). Neue Pro-Schlüssel enthalten sie nicht mehr.
+  Bereits ausgestellte Schlüssel bleiben gültig und Pro; die Lizenzseite zeigt die alten Einträge
+  als „Modul archiviert“.
 - **Reste der archivierten Module entfernt.** Die Personio-Integration (sie lieferte nur an Vakt HR)
   ist aus den Integrationen verschwunden. Der Management-Bericht nennt keine „behobenen Findings“ mehr,
   das KPI-Dashboard zeigt keine Finding-SLA-Quote und keine Phishing-Klickrate mehr. GitLab und SonarQube

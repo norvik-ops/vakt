@@ -29,10 +29,6 @@ const (
 	FeatureAuditPDF            Feature = license.FeatureAuditPDF
 	FeatureSSO                 Feature = license.FeatureSSO
 	FeatureAPI                 Feature = license.FeatureAPI
-	FeatureSecReflex           Feature = license.FeatureSecReflex
-	FeatureSecPulse            Feature = license.FeatureSecPulse
-	FeatureSecVault            Feature = license.FeatureSecVault
-	FeatureSecPrivacy          Feature = license.FeatureSecPrivacy
 	FeatureBSIGrundschutz      Feature = license.FeatureBSIGrundschutz
 	FeatureISO42001            Feature = license.FeatureISO42001
 	FeatureGranularPermissions Feature = license.FeatureGranularPermissions

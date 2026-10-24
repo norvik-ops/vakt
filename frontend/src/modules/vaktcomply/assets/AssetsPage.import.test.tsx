@@ -6,19 +6,13 @@ import AssetsPage from './AssetsPage'
 import { mockApiServer, type ApiServerHandle } from '../../../test-utils/apiServer'
 
 /**
- * R23-02 — the asset CSV import had one dialog nobody could open and one that
- * pointed at a route half the customers cannot use.
+ * R23-02 — the asset CSV import once had one dialog nobody could open and one
+ * that pointed at a Pro route a Community licence could not use.
  *
- * `importOpen` was set to false in two places and to true in none, so the
- * hand-rolled dialog for POST /vaktcomply/assets/import was unreachable and
- * useImportAssets had a single dead caller. That much was already reported.
- * What the repro turned up on top: the two endpoints are not duplicates.
- * /vaktcomply/assets/import is Community; /vaktcomply/assets/import/csv sits behind
- * FeatureSecPulse (backend vaktcomply/assets/routes.go). The button that DID work
- * pointed at the Pro route, so on a Community licence asset import answered 402
- * and the route that would have worked had no way in.
- *
- * These tests therefore assert the URL the upload actually goes to, per licence.
+ * Since 2026-10-23 the extended import (POST /vaktcomply/assets/import/csv) is
+ * Community: its gate vaktscan_advanced left with Vakt Scan. These tests assert
+ * the URL the upload actually goes to — the same one on every licence, including
+ * an old Pro key that still lists vaktscan_advanced.
  */
 
 let server: ApiServerHandle
@@ -63,21 +57,11 @@ beforeEach(() => { vi.clearAllMocks() })
 afterEach(() => { server.restore(); vi.unstubAllGlobals() })
 
 describe('AssetsPage — CSV import reachability (R23-02)', () => {
-  it('uploads to the Community route when the licence has no SecPulse', async () => {
-    armServer(false)
-    renderPage()
-    await uploadThroughDialog()
-
-    await waitFor(() => {
-      const posts = server.requests.filter((r) => r.method === 'POST')
-      expect(posts).toHaveLength(1)
-      expect(posts[0].url).toContain('/vaktcomply/assets/import')
-      expect(posts[0].url).not.toContain('/import/csv')
-    })
-  })
-
-  it('uploads to the Pro route when SecPulse is licensed', async () => {
-    armServer(true)
+  it.each([
+    ['a Community licence', false],
+    ['a Pro licence', true],
+  ])('uploads to the Community CSV route on %s', async (_label, isPro) => {
+    armServer(isPro)
     renderPage()
     await uploadThroughDialog()
 
@@ -87,5 +71,4 @@ describe('AssetsPage — CSV import reachability (R23-02)', () => {
       expect(posts[0].url).toContain('/vaktcomply/assets/import/csv')
     })
   })
-
 })

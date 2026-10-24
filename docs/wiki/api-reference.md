@@ -49,8 +49,8 @@ Read-only keys (`:ro` suffix) are rejected with `403 AUTH_READONLY_KEY` on any
 write method (`POST`/`PUT`/`PATCH`/`DELETE`). Use them for dashboards, monitoring
 or auditor-export jobs that must never mutate state. The same module name works
 in bare (`vaktcomply`), wildcard (`vaktcomply.*`) and read-only
-(`vaktcomply:ro`) form. Replace `vaktcomply` with any module
-(`vaktscan`, `vaktvault`, `vaktaware`, `vaktprivacy`, `vakthr`).
+(`vaktcomply:ro`) form. `vaktcomply` is the only module since the others were
+archived (2026-10-23).
 
 ## Pagination
 
@@ -91,16 +91,6 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 | `POST` | `/auth/password-reset/request` | Send reset e-mail |
 | `POST` | `/auth/password-reset/confirm` | Set new password |
 
-### Vakt Scan (`vaktscan`)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/vaktscan/findings` | List findings (filterable by asset, severity, status) |
-| `GET` | `/vaktscan/findings/:id` | Get finding |
-| `PUT` | `/vaktscan/findings/:id` | Update finding status/severity |
-| `GET` | `/vaktscan/scans` | List scans |
-| `POST` | `/vaktscan/assets/:id/scans` | Trigger scan for an asset |
-
 ### Vakt Comply (`vaktcomply`)
 
 | Method | Path | Description |
@@ -120,7 +110,7 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 | `GET` | `/vaktcomply/assets/:id` | Get asset |
 | `PUT` | `/vaktcomply/assets/:id` | Update asset |
 | `DELETE` | `/vaktcomply/assets/:id` | Delete asset |
-| `POST` | `/vaktcomply/assets/import/csv` | Bulk import via CSV (Pro) |
+| `POST` | `/vaktcomply/assets/import/csv` | Bulk import via CSV |
 | `GET` | `/vaktcomply/risks` | List risks |
 | `POST` | `/vaktcomply/risks` | Create risk |
 | `GET` | `/vaktcomply/risks/export/xlsx` | Export risks as XLSX |
@@ -128,40 +118,6 @@ Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-R
 | `POST` | `/vaktcomply/incidents` | Create incident |
 | `GET` | `/vaktcomply/incidents/:id` | Get incident |
 | `PUT` | `/vaktcomply/incidents/:id` | Update incident |
-
-### Vakt Privacy (`vaktprivacy`)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/vaktprivacy/vvt` | List processing activities (VVT, Art. 30) |
-| `POST` | `/vaktprivacy/vvt` | Create VVT entry |
-| `GET/PUT/DELETE` | `/vaktprivacy/vvt/:id` | CRUD VVT entry |
-| `GET` | `/vaktprivacy/dpias` | List DPIAs (Art. 35) |
-| `POST` | `/vaktprivacy/dpias` | Create DPIA |
-| `GET/PUT/DELETE` | `/vaktprivacy/dpias/:id` | CRUD DPIA |
-| `GET` | `/vaktprivacy/avvs` | List processor agreements (AVV, Art. 28) |
-| `POST` | `/vaktprivacy/avvs` | Create AVV |
-| `GET/PUT/DELETE` | `/vaktprivacy/avvs/:id` | CRUD AVV |
-| `GET` | `/vaktprivacy/breaches` | List breach records (Art. 33/34) |
-| `POST` | `/vaktprivacy/breaches` | Create breach record |
-| `POST` | `/vaktprivacy/breaches/:id/notify-authority` | Mark authority notified |
-| `GET` | `/vaktprivacy/dsr` | List data subject requests |
-| `POST` | `/vaktprivacy/dsr` | Create DSR |
-
-### Vakt Vault (`vaktvault`)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/vaktvault/projects` | List projects |
-| `POST` | `/vaktvault/projects` | Create project |
-| `DELETE` | `/vaktvault/projects/:id` | Delete project |
-| `GET` | `/vaktvault/projects/:id/envs` | List environments |
-| `GET` | `/vaktvault/projects/:pid/envs/:eid/secrets` | List secret keys |
-| `GET` | `/vaktvault/projects/:pid/envs/:eid/secrets/:key` | Get secret (decrypted) |
-| `PUT` | `/vaktvault/projects/:pid/envs/:eid/secrets/:key` | Set secret |
-| `DELETE` | `/vaktvault/projects/:pid/envs/:eid/secrets/:key` | Delete secret |
-| `POST` | `/vaktvault/git-scans` | Trigger Git repo scan for leaked secrets |
-| `GET` | `/vaktvault/git-scans/:id/results` | Get scan results |
 
 ### Webhooks
 
@@ -184,61 +140,12 @@ Payloads are HMAC-SHA256 signed with the `X-Vakt-Signature` header when a secret
 | `GET` | `/notifications/preferences` | Get current user's preferences |
 | `PUT` | `/notifications/preferences` | Update preferences |
 
-### Vakt HR (`vakthr`)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/vakthr/employees` | List employees (paginated) |
-| `POST` | `/vakthr/employees` | Create employee |
-| `GET` | `/vakthr/employees/:id` | Get employee |
-| `PUT` | `/vakthr/employees/:id` | Update employee (status, role, end date) |
-| `DELETE` | `/vakthr/employees/:id` | Delete employee |
-| `GET` | `/vakthr/employees/:id/checklist-runs` | List checklist runs for employee |
-| `GET` | `/vakthr/checklists` | List checklist templates |
-| `POST` | `/vakthr/checklists` | Create checklist template |
-| `DELETE` | `/vakthr/checklists/:id` | Delete checklist template |
-| `POST` | `/vakthr/checklist-runs` | Start checklist run |
-| `GET` | `/vakthr/checklist-runs/:id` | Get checklist run |
-| `PUT` | `/vakthr/checklist-runs/:id` | Update run progress / mark completed |
-
-### Vakt Aware (`vaktaware`)
-
-Training assignment and completion tracking are available in Community. The phishing-campaign, template and target-group endpoints below require **Pro** (`vaktaware_advanced`, `features.FeatureSecReflex`).
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/vaktaware/templates` | List phishing email templates |
-| `GET` | `/vaktaware/templates/presets` | List built-in preset templates |
-| `POST` | `/vaktaware/templates` | Create template |
-| `GET` | `/vaktaware/groups` | List target groups |
-| `POST` | `/vaktaware/groups` | Create target group |
-| `GET` | `/vaktaware/groups/:id/targets` | List targets in group |
-| `POST` | `/vaktaware/groups/:id/targets/import` | Import targets from CSV |
-| `GET` | `/vaktaware/landing-pages` | List landing pages |
-| `POST` | `/vaktaware/landing-pages` | Create landing page |
-| `GET` | `/vaktaware/campaigns` | List campaigns |
-| `POST` | `/vaktaware/campaigns` | Create campaign |
-| `GET` | `/vaktaware/campaigns/:id` | Get campaign |
-| `POST` | `/vaktaware/campaigns/:id/launch` | Launch campaign (sends emails) |
-| `POST` | `/vaktaware/campaigns/:id/abort` | Abort running campaign |
-| `GET` | `/vaktaware/campaigns/:id/stats` | Campaign statistics |
-| `GET` | `/vaktaware/campaigns/:id/report` | Export PDF report |
-| `GET` | `/vaktaware/training-modules` | List training modules |
-| `POST` | `/vaktaware/training-modules` | Create training module |
-| `GET` | `/vaktaware/assignments` | List assignments for current user |
-| `POST` | `/vaktaware/assignments/:id/complete` | Mark assignment completed |
-| `GET` | `/vaktaware/phish-reports` | List phish reports |
-| `GET` | `/vaktaware/phish-reports/stats` | Aggregate phish-report stats |
-| `POST` | `/vaktaware/phish-report-token/regenerate` | Regenerate webhook token |
-
----
-
 ## Example: create an asset
 
 ```bash
 TOKEN="v4.local.xxx"
 
-curl -X POST https://vakt.example.com/api/v1/vaktscan/assets \
+curl -X POST https://vakt.example.com/api/v1/vaktcomply/assets \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

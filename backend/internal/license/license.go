@@ -29,12 +29,6 @@ const (
 	FeatureAuditPDF  = "audit_pdf"
 	FeatureSSO       = "sso"
 	FeatureAPI       = "api_access"
-	// FeatureSecReflex gates advanced phishing campaign management, detailed analytics,
-	// template management, and target group management. Basic training assignment is Community.
-	FeatureSecReflex = "vaktaware_advanced"
-	// FeatureSecPulse gates SBOM scanning, EOL tracking, and report generation/export.
-	// Basic findings listing and the vulnerability dashboard remain Community.
-	FeatureSecPulse = "vaktscan_advanced"
 	// FeatureGranularPermissions gates the per-user module permission management API.
 	// Admins on Community may still see permissions; only writing (PUT) is gated.
 	FeatureGranularPermissions = "granular_permissions"
@@ -44,14 +38,11 @@ const (
 	// FeatureNIS2Reporting gates NIS2/BSI incident reportability assessment, deadline tracking,
 	// and the structured notification form generator.
 	FeatureNIS2Reporting = "nis2_reporting"
-	// FeatureSecVault gates advanced vault workflows: secret rotation, git leak scans,
-	// and access reviews. Basic secret storage (projects, envs, secret CRUD, sharing,
-	// import/export) remains Community.
-	FeatureSecVault = "vaktvault_advanced"
-	// FeatureSecPrivacy gates advanced privacy workflows: DPIA management, transfer
-	// impact assessments (TIA/Schrems II), deletion reminders, and privacy-by-design
-	// assessments. VVT, AVV register, breach register, and DSR handling remain Community.
-	FeatureSecPrivacy = "vaktprivacy_advanced"
+	// The module features vaktaware_advanced, vaktscan_advanced, vaktvault_advanced
+	// and vaktprivacy_advanced were removed with the archived modules (2026-10-23).
+	// Keys issued before still carry them in their features array; that is harmless —
+	// parse() keeps unknown strings, Has() just finds no gate that asks for them, and
+	// the key stays a valid Pro key (TestLoad_ProKeyWithArchivedModuleFeatures).
 	// FeatureBSIGrundschutz gates the BSI IT-Grundschutz workflow: enabling the BSI
 	// framework, Baustein modelling, target objects (Strukturanalyse), Grundschutz-Check,
 	// 200-3 risk assessments, cockpit/GAP report, and reference reports.
@@ -83,10 +74,6 @@ var allFeatures = []string{
 	FeatureAuditPDF,
 	FeatureSSO,
 	FeatureAPI,
-	FeatureSecReflex,
-	FeatureSecPulse,
-	FeatureSecVault,
-	FeatureSecPrivacy,
 	FeatureBSIGrundschutz,
 	FeatureISO42001,
 	FeatureGranularPermissions,
@@ -201,7 +188,7 @@ func Load(licenseKey string, isDemo bool) *License {
 // legacyProFeatures lists features that every Pro license grants implicitly,
 // even when the key was issued before these feature strings were introduced.
 // A Pro key issued via Polar.sh before a new feature string was added to
-// proFeatures (e.g. bsi_grundschutz, vaktvault_advanced, vaktprivacy_advanced)
+// proFeatures (e.g. bsi_grundschutz, agent_write_tools)
 // would otherwise receive HTTP 402 on previously-free routes.
 //
 // Add a feature here when it is included in the current proFeatures list
@@ -210,8 +197,6 @@ func Load(licenseKey string, isDemo bool) *License {
 // (typically 90 days after adding to proFeatures).
 var legacyProFeatures = []string{
 	FeatureBSIGrundschutz,  // added S74; old Pro keys lack this string
-	FeatureSecVault,        // added S70; old Pro keys lack this string
-	FeatureSecPrivacy,      // added S70; old Pro keys lack this string
 	FeatureAgentWriteTools, // added S79-4; old Pro keys lack this string
 }
 

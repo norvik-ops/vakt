@@ -18,7 +18,6 @@ import { Label } from '../../../components/ui/label'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../../../components/ui/select'
 import { useAssets, useCreateAsset } from './hooks'
 import { useFirstAction } from '../../../shared/hooks/useFirstAction'
-import { useFeature } from '../../../shared/hooks/useFeature'
 import { ClassificationBadge } from './ClassificationBadge'
 import type { Asset, ClassificationLevel } from './types'
 import type { CreateAssetInput } from './hooks'
@@ -155,20 +154,11 @@ export default function AssetsPage() {
   const [csvImportOpen, setCsvImportOpen] = useState(false)
   const [form, setForm] = useState<CreateAssetInput>(emptyForm)
 
-  // R23-02: the page carried a SECOND, hand-rolled import dialog for
-  // POST /vaktcomply/assets/import, and its `importOpen` state was only ever set
-  // to false — no call site anywhere set it to true, so the dialog could not be
-  // opened and useImportAssets had exactly one caller, a dead one.
-  //
-  // Deleting it would have hidden a worse problem than it solved. The two
-  // endpoints are not duplicates: /vaktcomply/assets/import is Community, while
-  // /vaktcomply/assets/import/csv is gated behind FeatureSecPulse
-  // (backend vaktcomply/assets/routes.go). The only REACHABLE button pointed at the
-  // Pro route, so on a Community licence asset CSV import answered 402 and the
-  // route that would have worked had no way in. Picking the endpoint by licence
-  // keeps one button and makes the feature work on both tiers.
-  const { enabled: hasSecPulse } = useFeature('vaktscan_advanced')
-  const importEndpoint = hasSecPulse ? '/vaktcomply/assets/import/csv' : '/vaktcomply/assets/import'
+  // The extended CSV import (POST /vaktcomply/assets/import/csv) is Community
+  // since 2026-10-23. Before, it sat behind vaktscan_advanced and the page had to
+  // fall back to /assets/import on a Community licence (R23-02); with the gate
+  // gone every licence uses the one endpoint the dialog was built for.
+  const importEndpoint = '/vaktcomply/assets/import/csv'
   const [tagsInput, setTagsInput] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
 

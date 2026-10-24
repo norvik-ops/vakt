@@ -65,7 +65,7 @@ func TestRequireMiddleware_NilLicense(t *testing.T) {
 	c := e.NewContext(req, rec)
 	// Intentionally do NOT set "license" on the context.
 
-	handler := Require(FeatureSecReflex)(func(c echo.Context) error {
+	handler := Require(FeatureSupplierPortal)(func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	})
 	_ = handler(c)
@@ -132,9 +132,9 @@ func TestRequireMiddleware_ResponseBodyContainsFeatureName(t *testing.T) {
 	e := echo.New()
 	lic := communityLicense()
 
-	rec := makeRequest(e, lic, FeatureSecPulse)
+	rec := makeRequest(e, lic, FeatureNIS2Reporting)
 	body := rec.Body.String()
-	assert.Contains(t, body, FeatureSecPulse, "response body must name the missing feature")
+	assert.Contains(t, body, FeatureNIS2Reporting, "response body must name the missing feature")
 	assert.Contains(t, body, "feature_not_available", "response body must contain error code")
 }
 

@@ -334,8 +334,12 @@ const FEATURE_LABELS: Record<string, string> = {
   audit_pdf: 'Audit-PDF Export',
   sso: 'SSO (OIDC/SAML)',
   api_access: 'API-Zugang',
-  vaktaware_advanced: 'Vakt Aware Pro',
-  vaktscan_advanced: 'Vakt Scan Pro',
+  // Module features of the archived modules (2026-10-23). Keys issued before
+  // still list them; they are shown, labelled, and grant nothing any more.
+  vaktaware_advanced: 'Vakt Aware Pro (Modul archiviert)',
+  vaktscan_advanced: 'Vakt Scan Pro (Modul archiviert)',
+  vaktvault_advanced: 'Vakt Vault Pro (Modul archiviert)',
+  vaktprivacy_advanced: 'Vakt Privacy Pro (Modul archiviert)',
   granular_permissions: 'Granulare Modul-Berechtigungen pro Benutzer',
 }
 

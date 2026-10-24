@@ -90,7 +90,7 @@ func TestAssetInventoryRBAC(t *testing.T) {
 				{http.MethodPut, prefix + "/assets/abc"},
 				{http.MethodDelete, prefix + "/assets/abc"},
 				{http.MethodPost, prefix + "/assets/import"},
-				{http.MethodPost, prefix + "/assets/import/csv"}, // Pro (SecPulse)
+				{http.MethodPost, prefix + "/assets/import/csv"},
 			}
 			runModuleRBAC(t, prefix, func(g *echo.Group) {
 				assets.Register(g, &assets.Handler{})
@@ -117,4 +117,39 @@ func TestVaktcomplyModuleRBAC(t *testing.T) {
 	runModuleRBAC(t, "/vaktcomply", func(g *echo.Group) {
 		vaktcomply.Register(g)
 	}, routes)
+}
+
+// TestAssetCSVImportIsCommunity: the extended asset CSV import was Pro, gated by
+// vaktscan_advanced. That feature left with Vakt Scan (2026-10-23) and the
+// import became Community — so a Community licence must reach the handler on
+// both mounts instead of being answered with 402 by a leftover feature gate.
+func TestAssetCSVImportIsCommunity(t *testing.T) {
+	key, err := auth.GenerateSymmetricKey(testHexKey)
+	require.NoError(t, err)
+	adminTok, err := auth.IssueAccessToken(key, auth.Claims{
+		UserID: "admin-1", OrgID: "org-1", Roles: []string{"Admin"},
+	})
+	require.NoError(t, err)
+
+	community := license.Load("", false)
+	for _, prefix := range []string{"/vaktcomply", "/vaktscan"} {
+		t.Run(prefix, func(t *testing.T) {
+			e := echo.New()
+			e.Use(echomw.Recover())
+			g := e.Group(prefix, auth.PasetoMiddleware(key, nil), func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					c.Set("license", community)
+					return next(c)
+				}
+			})
+			assets.Register(g, &assets.Handler{})
+
+			req := httptest.NewRequest(http.MethodPost, prefix+"/assets/import/csv", nil)
+			req.Header.Set("Authorization", "Bearer "+adminTok)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.NotEqual(t, http.StatusPaymentRequired, rec.Code,
+				"Community licence must not get 402 on %s/assets/import/csv", prefix)
+		})
+	}
 }

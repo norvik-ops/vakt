@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -568,5 +569,45 @@ func TestRenewalTokenSurvivesTheRoundTrip(t *testing.T) {
 	}
 	if oldLic.RenewalToken != "" {
 		t.Errorf("want empty renewal token on a legacy key, got %q", oldLic.RenewalToken)
+	}
+}
+
+// TestLoad_ProKeyWithArchivedModuleFeatures pins that a Pro key issued before
+// the module archive (2026-10-23) keeps working. Such keys carry the removed
+// strings vaktaware_advanced, vaktscan_advanced, vaktvault_advanced and
+// vaktprivacy_advanced; the build no longer knows them, and that must not
+// downgrade the key or drop the features it still grants.
+func TestLoad_ProKeyWithArchivedModuleFeatures(t *testing.T) {
+	priv, restore := setupTestKeys(t)
+	defer restore()
+
+	exp := int64(1830211200) // 2028
+	p := payload{
+		Tier: "pro",
+		Features: []string{
+			FeatureAuditPDF, "vaktaware_advanced", "vaktscan_advanced",
+			"vaktvault_advanced", "vaktprivacy_advanced", FeatureBSIGrundschutz,
+		},
+		Org:      "Bestand GmbH",
+		IssuedAt: 1778923388,
+		Exp:      &exp,
+	}
+	lic := Load(makeTestKey(t, priv, p), false)
+
+	if !lic.IsPro() {
+		t.Fatalf("old Pro key must stay Pro, got tier=%q", lic.Tier)
+	}
+	if lic.OrgName != "Bestand GmbH" {
+		t.Fatalf("old Pro key must keep its org, got %q", lic.OrgName)
+	}
+	for _, f := range []string{FeatureAuditPDF, FeatureBSIGrundschutz} {
+		if !lic.Has(f) {
+			t.Errorf("old Pro key must still grant %q", f)
+		}
+	}
+	for _, f := range AllFeatures() {
+		if strings.HasSuffix(f, "_advanced") {
+			t.Errorf("archived module feature %q must not be sellable any more", f)
+		}
 	}
 }

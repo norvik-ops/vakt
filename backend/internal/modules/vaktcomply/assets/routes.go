@@ -7,7 +7,6 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/matharnica/vakt/internal/auth"
-	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
 // Register wires the asset inventory into g. cmd/api mounts it twice with the
@@ -27,8 +26,8 @@ func Register(g *echo.Group, h *Handler) {
 	assets.PUT("/assets/:id", h.UpdateAsset, rw)
 	assets.DELETE("/assets/:id", h.DeleteAsset, rw)
 	assets.POST("/assets/import", h.ImportAssets, rw)
-	// Pro: extended CSV format (name,type,ip,owner,criticality). Still gated by
-	// the historic vaktscan_advanced feature; its new licence tier is decided
-	// with the licence list in S5.
-	assets.POST("/assets/import/csv", h.ImportAssetsCSVExtended, rw, features.Require(features.FeatureSecPulse))
+	// Extended CSV format (name,type,ip,owner,criticality). Community since
+	// 2026-10-23: it was gated by vaktscan_advanced, which left with Vakt Scan,
+	// and importing an inventory is a basic ISMS function, not a Pro extra.
+	assets.POST("/assets/import/csv", h.ImportAssetsCSVExtended, rw)
 }
