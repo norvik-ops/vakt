@@ -60,7 +60,12 @@ test.describe('KW7 Richtlinien', () => {
     await page.getByRole('combobox').filter({ hasText: 'Entwurf' }).click()
     await page.getByRole('option', { name: 'Aktiv', exact: true }).click()
     await page.getByLabel(/Änderungsnotiz/).fill('Freigabe durch die Geschäftsführung (Kernwege-Test)')
+    // Auf die PATCH-Antwort warten, nicht nur auf einen Text: „aktualisiert“ kann schon vorher auf
+    // der Seite stehen, und ein Reload bricht den laufenden Request sonst ab (Flake 2026-10-24).
+    const saved = page.waitForResponse(r => r.request().method() === 'PATCH'
+      && r.url().includes(`/vaktcomply/policies/${policyId}`))
     await page.getByRole('button', { name: 'Speichern' }).click()
+    expect((await saved).status()).toBeLessThan(300)
     await expect(page.getByText(/Gespeichert|gespeichert|aktualisiert/).first()).toBeVisible()
     await page.reload()
     await expect(page.getByRole('combobox').filter({ hasText: 'Aktiv' })).toBeVisible()
