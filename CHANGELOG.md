@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+---
+## [0.45.1] — 2026-10-24
+
+### Sicherheit
+- **Web-Framework Echo auf v4.16.1 aktualisiert** (GHSA-cxf3-9h37-7rr8, kritisch, sowie
+  GHSA-9969-6676-49h5, GHSA-f48p-c9v4-h7xv, GHSA-h7wr-284f-5qvc, hoch). Die Lücken betreffen
+  WebSocket-Upgrades und die Middlewares Decompress, BodyDump und Proxy; Vakt nutzt keine davon direkt.
+  Ein Update wird trotzdem empfohlen.
+
 ### Behoben
 - **Die BSI-Grundschutz-Checkliste verlinkte 26 Bausteine auf Seiten archivierter Module**, die es nicht
   mehr gibt. Alle Bausteine, die ISO-27001-Controls und die NIS2-Anforderungen verweisen jetzt auf die
