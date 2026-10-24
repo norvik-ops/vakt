@@ -107,9 +107,6 @@ install_env() {
   set_env VAKT_SMTP_FROM kernwege@vakt.test
   set_env VAKT_FRONTEND_URL "http://localhost:$KW_HTTP_PORT" # Links in Mails zeigen auf die Testinstanz
   set_env VAKT_LICENSE_REFRESH_URL http://licstub:8000       # Verlaengerung gegen den Stub
-  set_env VAKT_EPSS_ENABLED false                            # keine Feeds aus dem Netz
-  set_env VAKT_BSI_FEED_ENABLED false
-  set_env VAKT_EOL_CHECK_ENABLED false
   set_env VAKT_UPDATE_CHECK false
   KW_RENEWAL_TOKEN="kw-$(openssl rand -hex 12)"
   export KW_RENEWAL_TOKEN
@@ -138,7 +135,7 @@ make_license_keys() {
     mkdir -p "$cache" && chmod 700 "$cache"
     cp "$KW_DIR/license-priv.pem" "$KW_DIR/license-pub.pem" "$cache/"
   fi
-  local pro_features="eu_ai_act,cra,ai_advisor,audit_pdf,sso,api_access,vaktaware_advanced,vaktscan_advanced,vaktvault_advanced,vaktprivacy_advanced,bsi_grundschutz,granular_permissions,supplier_portal,nis2_reporting,saml_auth,agent_write_tools,scim_provisioning,siem_export,multi_framework"
+  local pro_features="eu_ai_act,cra,ai_advisor,audit_pdf,sso,api_access,bsi_grundschutz,granular_permissions,supplier_portal,nis2_reporting,saml_auth,agent_write_tools,scim_provisioning,siem_export,multi_framework"
   local expires
   expires=$(date -u -d '+400 days' +%Y-%m-%d)
   if [[ ! -d $ROOT/backend/internal/license/generator ]]; then

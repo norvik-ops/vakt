@@ -20,8 +20,7 @@ import { KW, compose, openAs, readProKey, signLicense, waitForHealthy, closeCont
  */
 
 const PRO_FEATURES = [
-  'eu_ai_act', 'cra', 'ai_advisor', 'audit_pdf', 'sso', 'api_access', 'vaktaware_advanced',
-  'vaktscan_advanced', 'vaktvault_advanced', 'vaktprivacy_advanced', 'bsi_grundschutz',
+  'eu_ai_act', 'cra', 'ai_advisor', 'audit_pdf', 'sso', 'api_access', 'bsi_grundschutz',
   'granular_permissions', 'supplier_portal', 'nis2_reporting', 'saml_auth', 'agent_write_tools',
   'scim_provisioning', 'siem_export', 'multi_framework',
 ]
