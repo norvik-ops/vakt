@@ -11731,6 +11731,11 @@ paths:
                       format: email
                     role:
                       type: string
+                      description: >-
+                        Platform role name (roles.name), same vocabulary as platform_role on
+                        GET /admin/users. Legacy rows stored as admin/editor/viewer are mapped
+                        on read (R1-KW-2).
+                      enum: [Admin, SecurityAnalyst, Viewer, AuditorReadOnly, InternalAuditor]
                     invited_by:
                       type: string
                     accepted_at:
@@ -11766,10 +11771,10 @@ paths:
                   format: email
                 role:
                   type: string
-                  enum:
-                  - admin
-                  - editor
-                  - viewer
+                  description: >-
+                    Platform role name; the legacy names admin/editor/viewer are still
+                    accepted as aliases. Stored as the platform role name.
+                  enum: [Admin, SecurityAnalyst, Viewer, AuditorReadOnly, InternalAuditor, admin, editor, viewer]
       responses:
         '201':
           description: Created invitation (the raw token is never returned)
@@ -11789,6 +11794,11 @@ paths:
                     format: email
                   role:
                     type: string
+                    description: >-
+                      Platform role name (roles.name), same vocabulary as platform_role on
+                      GET /admin/users. Legacy rows stored as admin/editor/viewer are mapped
+                      on read (R1-KW-2).
+                    enum: [Admin, SecurityAnalyst, Viewer, AuditorReadOnly, InternalAuditor]
                   invited_by:
                     type: string
                   accepted_at:
@@ -15433,10 +15443,11 @@ paths:
                     format: email
                   role:
                     type: string
-                    enum:
-                    - admin
-                    - editor
-                    - viewer
+                    description: >-
+                      Platform role name (roles.name), same vocabulary as platform_role on
+                      GET /admin/users. Legacy rows stored as admin/editor/viewer are mapped
+                      on read (R1-KW-2).
+                    enum: [Admin, SecurityAnalyst, Viewer, AuditorReadOnly, InternalAuditor]
                   invited_by:
                     type: string
                   accepted_at:

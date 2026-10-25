@@ -2230,9 +2230,13 @@ SELECT id, framework_id, org_id, control_id, title, description, domain,
 FROM ck_controls
 WHERE org_id = $1
   AND not_applicable = false
-  AND (lower(title) ILIKE ANY($2::text[])
+  AND ('%' || lower(control_id) || '%' = ANY($2::text[])
+       OR lower(title) ILIKE ANY($2::text[])
        OR lower(domain) ILIKE ANY($2::text[])
        OR lower(description) ILIKE ANY($2::text[]))
+ORDER BY ('%' || lower(control_id) || '%' = ANY($2::text[])) DESC,
+         (lower(title) ILIKE ANY($2::text[])) DESC,
+         framework_id, control_id
 LIMIT 10
 `
 

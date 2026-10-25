@@ -415,6 +415,7 @@ func (s *Service) ListInvitations(ctx context.Context, orgID string) ([]Invitati
 		); err != nil {
 			return nil, fmt.Errorf("scan invitation: %w", err)
 		}
+		inv.Role = invitationRoleForResponse(inv.Role)
 		invs = append(invs, inv)
 	}
 	if invs == nil {
@@ -460,6 +461,7 @@ func (s *Service) GetInvitationByToken(ctx context.Context, rawToken string) (In
 	if err != nil {
 		return Invitation{}, fmt.Errorf("invitation not found or expired")
 	}
+	inv.Role = invitationRoleForResponse(inv.Role)
 	return inv, nil
 }
 
@@ -704,6 +706,17 @@ func assignmentFor(role string) roleAssignment {
 		return assign
 	}
 	return roleAssignment{platform: "Viewer", simple: "viewer"}
+}
+
+// invitationRoleForResponse is the role an invitation reports over the API:
+// always the platform role name (roles.name), the same vocabulary as
+// platform_role on GET /admin/users (R1-KW-2). Rows written before migration
+// 255 still carry the legacy lowercase names (admin/editor/viewer) in
+// user_invitations.role; they are mapped on read, not rewritten, so persisted
+// data stays as it is. The mapping is the one AcceptInvitation applies, so the
+// list shows the role the invitee will actually get.
+func invitationRoleForResponse(stored string) string {
+	return assignmentFor(stored).platform
 }
 
 // platformRoleName maps an invitation's role to the name in the roles table.

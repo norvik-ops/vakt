@@ -7,15 +7,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { useInviteInfo } from '../hooks/useTeam'
-
-function roleName(role: string) {
-  switch (role) {
-    case 'admin':  return 'Admin'
-    case 'editor': return 'Editor'
-    case 'viewer': return 'Viewer'
-    default: return role
-  }
-}
+import { roleLabel } from '../shared/utils/roleLabel'
 
 export default function InviteAcceptPage() {
   const { t } = useTranslation()
@@ -103,7 +95,7 @@ export default function InviteAcceptPage() {
           </div>
           <h1 className="text-xl font-semibold text-primary">{t('invite.createAccount')}</h1>
           <p className="text-sm text-secondary">
-            {t('invite.invitedBy', { inviter: invite.invited_by || 'deinem Team', role: roleName(invite.role) })}
+            {t('invite.invitedBy', { inviter: invite.invited_by || 'deinem Team', role: roleLabel(invite.role, t) })}
           </p>
           <p className="text-sm text-secondary">
             {t('invite.email')} <strong>{invite.email}</strong>

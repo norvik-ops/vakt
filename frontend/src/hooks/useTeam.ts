@@ -33,7 +33,9 @@ export interface TeamInvitation {
   id: string
   org_id: string
   email: string
-  role: 'admin' | 'editor' | 'viewer'
+  // Platform role name, the same vocabulary as TeamMember.platform_role. The
+  // backend maps legacy rows (admin/editor/viewer) on read (R1-KW-2).
+  role: PlatformRole
   invited_by: string
   accepted_at?: string | null
   expires_at: string
@@ -67,7 +69,9 @@ export interface UpdateRoleInput {
 export interface InviteInfo {
   id: string
   email: string
-  role: 'admin' | 'editor' | 'viewer'
+  // Platform role name, the same vocabulary as TeamMember.platform_role. The
+  // backend maps legacy rows (admin/editor/viewer) on read (R1-KW-2).
+  role: PlatformRole
   invited_by: string
   expires_at: string
 }

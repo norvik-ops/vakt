@@ -6,6 +6,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Behoben
+- **Einladungs- und Bestätigungsmails kamen bei einer Installation nach README nie an.** In
+  `.env.example` standen Kommentare hinter leeren Werten (`VAKT_SMTP_USER=   # …`); docker compose
+  las den Kommentar als Benutzername und Passwort, und die SMTP-Anmeldung schlug fehl. Alle
+  Kommentare stehen jetzt in eigenen Zeilen über dem Wert. Wer seine `.env` aus einer älteren
+  Vorlage kopiert hat, prüft `VAKT_SMTP_USER` und `VAKT_SMTP_PASS` und leert sie, wenn dort Text steht.
+- **Die Liste der offenen Einladungen zeigt wieder die Rolle.** Die API meldet die Rolle jetzt
+  durchgängig mit dem Plattform-Namen (`Viewer`, `SecurityAnalyst`, …), wie bei den Mitgliedern;
+  ältere Einladungen mit den Kleinbuchstaben-Namen werden beim Lesen umgesetzt.
+- **Anmeldungen hinter einer gemeinsamen IP sperren sich nicht mehr gegenseitig.** Das Login-Limit
+  zählt 5 Versuche pro Minute je Kombination aus IP und E-Mail statt 5 je IP; dazu kommt eine
+  Obergrenze von 30 Anmeldungen pro Minute je IP gegen das Durchprobieren vieler Konten. Ein Büro
+  hinter einem NAT bekam vorher ab der sechsten Anmeldung in der Minute „Zu viele Anfragen“.
+  Registrierung und Passwort-Reset bleiben bei 5 pro Minute je IP. Anmeldungen, die nicht als JSON
+  gesendet werden (Formular, XML), zählen weiter mit 5 pro Minute je IP.
+- Die Einladungsseite benennt die Rolle wie die Team-Einstellungen.
+- **Bestätigte Richtlinien landen als Nachweis wieder an ISO 27001 A.5.1.** Die Zuordnung suchte
+  nur per Stichwort und nahm die ersten zehn Treffer in zufälliger Reihenfolge; mit mehreren
+  Frameworks fiel A.5.1 heraus. Eine exakt passende Kontroll-ID steht jetzt immer vorn.
+
 ---
 ## [0.45.1] — 2026-10-24
 

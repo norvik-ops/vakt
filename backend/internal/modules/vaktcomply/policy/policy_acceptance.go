@@ -329,6 +329,12 @@ func (s *Service) ListCampaignRequests(ctx context.Context, orgID, campaignID st
 	return s.repo.ListAcceptanceRequests(ctx, orgID, campaignID)
 }
 
+// policyAcceptanceKeywords selects the controls an accepted policy is filed
+// against. "A.5.1" is matched as an exact control_id and ranked first by
+// FindCKControlsByKeywords (R1-KW-16); the words find related controls in the
+// other frameworks.
+var policyAcceptanceKeywords = []string{"a.5.1", "policy", "richtlinie", "information security policies", "a5.1"}
+
 // AcceptPolicy records an acceptance for the given token and creates evidence in SecVitals.
 func (s *Service) AcceptPolicy(ctx context.Context, token, ip string) error {
 	tokenHash := hashToken(token)
@@ -355,7 +361,7 @@ func (s *Service) AcceptPolicy(ctx context.Context, token, ip string) error {
 		defer bgCancel()
 		title := fmt.Sprintf("Richtlinien-Akzeptanz: %s", policyTitle)
 
-		controls, err := s.repo.FindControlsByKeywords(bgCtx, orgID, []string{"policy", "richtlinie", "information security policies", "a.5.1", "a5.1"})
+		controls, err := s.repo.FindControlsByKeywords(bgCtx, orgID, policyAcceptanceKeywords)
 		if err != nil || len(controls) == 0 {
 			log.Info().Str("org_id", orgID).Msg("policy acceptance: no matching A.5.1 controls found for evidence")
 			return nil

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
+import { roleLabel } from '../../../shared/utils/roleLabel'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { useFieldValidation, required, email as emailRule } from '../../../shared/hooks/useFieldValidation'
@@ -74,28 +75,15 @@ const ASSIGNABLE_ROLES: { value: PlatformRole; labelKey: string; descriptionKey?
 function roleBadge(role: PlatformRole, t: (key: string) => string) {
   switch (role) {
     case 'Admin':
-      return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-0">{t('settings.team.roleAdmin')}</Badge>
+      return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-0">{roleLabel(role, t)}</Badge>
     case 'SecurityAnalyst':
-      return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-0">{t('settings.team.roleEditor')}</Badge>
+      return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-0">{roleLabel(role, t)}</Badge>
     case 'AuditorReadOnly':
-      return <Badge variant="secondary">{t('settings.team.roleAuditorReadOnly')}</Badge>
+      return <Badge variant="secondary">{roleLabel(role, t)}</Badge>
     case 'InternalAuditor':
-      return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-0">{t('settings.team.roleInternalAuditor')}</Badge>
+      return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-0">{roleLabel(role, t)}</Badge>
     case 'Viewer':
-      return <Badge variant="secondary">{t('settings.team.roleViewer')}</Badge>
-  }
-}
-
-// inviteRoleBadge renders the invitation vocabulary, which is a separate,
-// narrower set (POST /admin/invitations still takes admin/editor/viewer only).
-function inviteRoleBadge(role: Role, t: (key: string) => string) {
-  switch (role) {
-    case 'admin':
-      return roleBadge('Admin', t)
-    case 'editor':
-      return roleBadge('SecurityAnalyst', t)
-    case 'viewer':
-      return roleBadge('Viewer', t)
+      return <Badge variant="secondary">{roleLabel(role, t)}</Badge>
   }
 }
 
@@ -526,7 +514,10 @@ function InvitationsTable({ invitations }: { invitations: TeamInvitation[] }) {
             {pending.map((inv) => (
               <TableRow key={inv.id}>
                 <TableCell className="font-medium text-sm">{inv.email}</TableCell>
-                <TableCell>{inviteRoleBadge(inv.role, t)}</TableCell>
+                {/* R1-KW-2: the list reports the platform role name ("Viewer"), the same
+                    vocabulary as platform_role on the members table. The old
+                    lowercase switch matched nothing and left the column empty. */}
+                <TableCell>{roleBadge(inv.role, t)}</TableCell>
                 <TableCell className="text-secondary text-sm">{inv.invited_by || '—'}</TableCell>
                 <TableCell className="text-secondary text-sm">
                   {daysUntil(inv.expires_at)} {t('teamSettingsPage.days')}

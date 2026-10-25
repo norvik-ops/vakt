@@ -105,7 +105,6 @@ test.describe('KW7 Richtlinien', () => {
     await expect(page.getByText(/0 von 1 bestätigt/)).toBeVisible()
 
     // Ab hier braucht es die Mail an die Mitarbeiterin — R1-KW-1 verhindert sie.
-    test.fail(true, 'R1-KW-1: Akzeptanz-Mail wird nie zugestellt (SMTP-AUTH mit Kommentartext aus .env.example)')
     const mail = await waitForMail(page, EMPLOYEE)
     const link = /(https?:\/\/[^\s"<>]+\/policy\/accept\/[A-Za-z0-9_-]+)/.exec(`${mail.text} ${mail.html}`)?.[1]
     expect(link, 'Mail enthält den Bestätigungslink').toBeTruthy()

@@ -6,6 +6,7 @@ import {
   useTeamMembers,
   useUpdateRole,
   useInvitations,
+  type TeamInvitation,
   type TeamMember,
 } from '../../../hooks/useTeam'
 
@@ -132,5 +133,32 @@ describe('TeamSettingsPage — assigning the InternalAuditor role', () => {
     // green because the whole table lost its selects.
     const auditorRow = screen.getByText('auditor@example.test').closest('tr')
     expect(within(auditorRow as HTMLElement).getByRole('combobox')).toBeInTheDocument()
+  })
+})
+
+// R1-KW-2: GET /admin/invitations reports the platform role name ("Viewer"), the
+// same vocabulary as platform_role. The table used to switch over the lowercase
+// invitation names only, matched nothing and rendered an empty role cell.
+describe('TeamSettingsPage — pending invitations', () => {
+  const invitation = (email: string, role: TeamInvitation['role']): TeamInvitation => ({
+    id: `inv-${email}`, org_id: 'org-1', email, role, invited_by: 'admin@example.test',
+    accepted_at: null, expires_at: '2099-01-01T00:00:00Z', created_at: '2026-01-01T00:00:00Z',
+  })
+
+  it('shows the invited role in the role column', () => {
+    vi.mocked(useInvitations).mockReturnValue({
+      data: [
+        invitation('viewer-invite@example.test', 'Viewer'),
+        invitation('analyst-invite@example.test', 'SecurityAnalyst'),
+      ],
+      isLoading: false, isError: false, refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useInvitations>)
+
+    renderWithProviders(<TeamSettingsPage />)
+
+    const viewerRow = screen.getByText('viewer-invite@example.test').closest('tr') as HTMLElement
+    expect(within(viewerRow).getAllByRole('cell')[1]).toHaveTextContent('Viewer')
+    const analystRow = screen.getByText('analyst-invite@example.test').closest('tr') as HTMLElement
+    expect(within(analystRow).getAllByRole('cell')[1]).toHaveTextContent('Editor')
   })
 })

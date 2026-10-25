@@ -44,6 +44,8 @@ redis-cli KEYS 'login_fail_ip_email:*' | xargs redis-cli DEL
 - Lösung: 5 Minuten warten.
 
 **Login (`POST /api/v1/auth/login`):**
+- Anfrage-Limit (seit R1-KW-4): 5 Anmeldungen pro Minute je (IP, E-Mail)-Paar und 30 pro Minute je IP über alle E-Mails. Antwort `429 {"code":"AUTH_RATE_LIMIT"}`. Ein Büro hinter einer NAT-IP sperrt sich damit nicht mehr ab der 6. Anmeldung gegenseitig. Redis-Schlüssel: `auth_rl:login_ip:<ip>` und `auth_rl:login:<ip>:<sha256(email)>` (die E-Mail steht nur als Hash im Schlüssel). Lösung: eine Minute warten.
+- Registrierung und Passwort-Reset: 5 Anfragen pro Minute je IP (`auth_rl:<ip>`).
 - Primär: 10 Fehlversuche pro (IP, Email)-Paar → 15 Minuten gesperrt (nur das Konto, nicht die IP).
 - Sekundär: 50 Fehlversuche von einer IP insgesamt → 15 Minuten gesperrt (alle Konten dieser IP).
 - Lösung: Warten oder Redis-Key löschen (siehe IP-Lockout oben).

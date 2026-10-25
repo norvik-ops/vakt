@@ -10941,7 +10941,11 @@ export interface paths {
                             org_id?: string;
                             /** Format: email */
                             email?: string;
-                            role?: string;
+                            /**
+                             * @description Platform role name (roles.name), same vocabulary as platform_role on GET /admin/users. Legacy rows stored as admin/editor/viewer are mapped on read (R1-KW-2).
+                             * @enum {string}
+                             */
+                            role?: "Admin" | "SecurityAnalyst" | "Viewer" | "AuditorReadOnly" | "InternalAuditor";
                             invited_by?: string;
                             /** Format: date-time */
                             accepted_at?: string | null;
@@ -10982,8 +10986,11 @@ export interface paths {
                     "application/json": {
                         /** Format: email */
                         email: string;
-                        /** @enum {string} */
-                        role: "admin" | "editor" | "viewer";
+                        /**
+                         * @description Platform role name; the legacy names admin/editor/viewer are still accepted as aliases. Stored as the platform role name.
+                         * @enum {string}
+                         */
+                        role: "Admin" | "SecurityAnalyst" | "Viewer" | "AuditorReadOnly" | "InternalAuditor" | "admin" | "editor" | "viewer";
                     };
                 };
             };
@@ -11001,7 +11008,11 @@ export interface paths {
                             org_id?: string;
                             /** Format: email */
                             email?: string;
-                            role?: string;
+                            /**
+                             * @description Platform role name (roles.name), same vocabulary as platform_role on GET /admin/users. Legacy rows stored as admin/editor/viewer are mapped on read (R1-KW-2).
+                             * @enum {string}
+                             */
+                            role?: "Admin" | "SecurityAnalyst" | "Viewer" | "AuditorReadOnly" | "InternalAuditor";
                             invited_by?: string;
                             /** Format: date-time */
                             accepted_at?: string | null;
@@ -16649,8 +16660,11 @@ export interface paths {
                             org_id: string;
                             /** Format: email */
                             email: string;
-                            /** @enum {string} */
-                            role: "admin" | "editor" | "viewer";
+                            /**
+                             * @description Platform role name (roles.name), same vocabulary as platform_role on GET /admin/users. Legacy rows stored as admin/editor/viewer are mapped on read (R1-KW-2).
+                             * @enum {string}
+                             */
+                            role: "Admin" | "SecurityAnalyst" | "Viewer" | "AuditorReadOnly" | "InternalAuditor";
                             invited_by: string;
                             /** Format: date-time */
                             accepted_at: string | null;

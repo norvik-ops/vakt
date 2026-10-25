@@ -1839,6 +1839,13 @@ LIMIT 10;
 
 -- name: FindCKControlsByKeywords :many
 -- Erwartet bereits %-umschlossene Keywords (z.B. "%firewall%").
+-- R1-KW-16: Ein Keyword, das GENAU eine control_id ist ("a.5.1"), trifft diese
+-- Kontrolle und steht vorne. Vorher wurde control_id gar nicht verglichen und
+-- LIMIT 10 schnitt ohne ORDER BY in physischer Reihenfolge ab — mit allen
+-- Frameworks einer Org trafen mehr als 10 Kontrollen das Stichwort, und A.5.1
+-- fiel heraus. Exakter Vergleich ('%'||id||'%' = Pattern) statt ILIKE, damit
+-- "a.5.1" nicht auch A.5.10..A.5.19 nach vorn zieht. Danach Titel- vor
+-- Domain-/Beschreibungstreffern, Rest stabil nach framework_id, control_id.
 SELECT id, framework_id, org_id, control_id, title, description, domain,
        evidence_type, weight, not_applicable, not_applicable_reason,
        manual_status, maturity_score, owner,
@@ -1847,9 +1854,13 @@ SELECT id, framework_id, org_id, control_id, title, description, domain,
 FROM ck_controls
 WHERE org_id = $1
   AND not_applicable = false
-  AND (lower(title) ILIKE ANY(sqlc.arg('patterns')::text[])
+  AND ('%' || lower(control_id) || '%' = ANY(sqlc.arg('patterns')::text[])
+       OR lower(title) ILIKE ANY(sqlc.arg('patterns')::text[])
        OR lower(domain) ILIKE ANY(sqlc.arg('patterns')::text[])
        OR lower(description) ILIKE ANY(sqlc.arg('patterns')::text[]))
+ORDER BY ('%' || lower(control_id) || '%' = ANY(sqlc.arg('patterns')::text[])) DESC,
+         (lower(title) ILIKE ANY(sqlc.arg('patterns')::text[])) DESC,
+         framework_id, control_id
 LIMIT 10;
 
 -- name: FindCKControlByCode :one

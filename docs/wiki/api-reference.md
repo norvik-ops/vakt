@@ -74,7 +74,9 @@ Common HTTP status codes: `400` (validation), `401` (unauthenticated), `403` (fo
 ## Rate limiting
 
 - Authenticated requests: **300 req/min per organisation** (Redis token bucket)
-- Login (`/auth/login`): failure-based lockout — **10 failed attempts per (IP, email)** → 15 min block (only that account, NAT-safe); secondary **50 failed attempts per IP** total (`VAKT_RATELIMIT_IP_MAX`)
+- Login (`/auth/login`): request limit **5 req/min per (IP, email)** plus **30 req/min per IP** across all emails — colleagues behind one office NAT do not block each other (R1-KW-4). Requests without a readable JSON email count at 5 req/min per IP. Answer: `429 {"code":"AUTH_RATE_LIMIT"}`
+- Register and password reset (`/auth/register`, `/auth/password-reset/*`): **5 req/min per IP**
+- Login (`/auth/login`), additionally: failure-based lockout — **10 failed attempts per (IP, email)** → 15 min block (only that account, NAT-safe); secondary **50 failed attempts per IP** total (`VAKT_RATELIMIT_IP_MAX`)
 
 Rate-limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`.
 

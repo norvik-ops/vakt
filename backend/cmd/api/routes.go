@@ -262,7 +262,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 		return
 	}
 
-	// Auth routes — rate-limited (5 req/min per IP, S45-5), no token middleware (they issue tokens).
+	// Auth routes — rate-limited (see authRateLimiter below), no token middleware (they issue tokens).
 
 	// S46-3 / S90-8 (#9): re-register /health now that pool + rdb exist. This
 	// intentionally overrides the nil-db/rdb fallback registered earlier (search
@@ -275,10 +275,14 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// Extend readiness check to include Redis now that rdb is available.
 	e.GET("/health/ready", readinessHandler(pool, rdb, version, log))
 
-	// Auth routes — Redis-backed IP rate limit (5 req/min) on the four
-	// credential-submission endpoints, plus a per-IP Redis limiter on the full
-	// auth group for burst protection on other endpoints (S45-5, S78-6d).
-	authRateLimiter := sharedmw.IPRateLimitRedis(rdb, "auth", 5, time.Minute, false)
+	// Auth routes — Redis-backed limits on the four credential-submission
+	// endpoints (redisAuthRL: login 5/min per (IP, e-mail) + 30/min per IP,
+	// register and password reset 5/min per IP — R1-KW-4, S45-5), plus a per-IP
+	// Redis limiter on the full auth group for burst protection on the other
+	// endpoints (S78-6d). The group limiter skips POST /auth/login: login brings
+	// its own per-IP cap, and 5/min per IP on top would lock a whole office NAT
+	// out again from the 6th login of the minute.
+	authRateLimiter := sharedmw.SkipLogin(sharedmw.IPRateLimitRedis(rdb, "auth", 5, time.Minute, false))
 	redisAuthRL := sharedmw.AuthRateLimit(rdb)
 	authSvc := auth.NewService(pool, rdb, pasetoKey)
 	// ADR-0044: default fail-closed on Redis outage. Operators can opt back

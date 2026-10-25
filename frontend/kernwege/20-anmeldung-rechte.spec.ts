@@ -95,7 +95,6 @@ test.describe('KW3 Anmeldung & Rechte', () => {
 
     // Ab hier der bekannte Befund. test.fail() steht bewusst NACH den Vorbedingungen:
     // scheitert schon das Einladen, ist der Lauf ROT, nicht „erwartet-rot".
-    test.fail(true, 'R1-KW-1: .env.example → SMTP_USER/PASS = Kommentartext, Einladungsmail wird nie zugestellt')
     const mail = await waitForMail(page, invitee.email)
     const link = /(https?:\/\/[^\s"<>]+\/invite\/accept\?[^\s"<>]+)/.exec(`${mail.text} ${mail.html}`)?.[1]
     expect(link, 'Einladungsmail enthält einen Annahme-Link').toBeTruthy()
@@ -119,7 +118,6 @@ test.describe('KW3 Anmeldung & Rechte', () => {
     await invite(page, 'rolle@kernwege.test')
     const row = page.getByRole('row', { name: /rolle@kernwege\.test/ })
     await expect(row).toBeVisible()
-    test.fail(true, 'R1-KW-2: API liefert role "Viewer", TeamSettingsPage erwartet "viewer" — Rollenspalte bleibt leer')
     await expect(row.getByRole('cell').nth(1)).toHaveText('Viewer', { timeout: 3000 })
   })
 
@@ -266,7 +264,6 @@ test.describe('KW3 Anmeldung & Rechte', () => {
       }
       // Vorbedingung: ein korrekter Login liefert 200.
       expect(codes[0], `Statuscodes: ${codes.join(',')}`).toBe(200)
-      test.fail(true, 'R1-KW-4: Login-Limits zählen pro IP, nicht pro Konto — ab der 5. Anmeldung/Minute hinter einem NAT 429')
       expect(codes, `Statuscodes: ${codes.join(',')}`).toEqual([200, 200, 200, 200, 200, 200])
     } finally {
       // Das Fenster ist verbraucht — die nächsten Logins der Suite warten es ab.
