@@ -25,6 +25,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Bestätigte Richtlinien landen als Nachweis wieder an ISO 27001 A.5.1.** Die Zuordnung suchte
   nur per Stichwort und nahm die ersten zehn Treffer in zufälliger Reihenfolge; mit mehreren
   Frameworks fiel A.5.1 heraus. Eine exakt passende Kontroll-ID steht jetzt immer vorn.
+- **Das Framework-Detail zeigt alle Kontrollen, nicht nur die ersten 25.** Bei ISO 27001 fehlten
+  68 von 93 Kontrollen (u. a. alle A.8-Maßnahmen), und der Reiter rechnete seinen Prozentwert auf 25.
+  Derselbe Fehler steckte im „Control verknüpfen“-Dialog am Risiko: A.6 bis A.8 waren nicht wählbar.
+  Die Kontrollen werden jetzt vollständig geladen.
+- **Framework-Übersicht, Detail und Dashboard zeigen denselben Umsetzungsgrad.** Die Karte in der
+  Übersicht zeigte immer 0 %. Das Dashboard rechnete mit einer eigenen Formel, die Nachweise
+  ignorierte und nicht anwendbare Kontrollen mitzählte. Alle drei nutzen jetzt die eine Formel aus
+  ADR-0086. Die Dashboard-Zeile „x / y“ zählt dabei wirksam umgesetzte von anwendbaren Kontrollen.
+  Auch der Reiter „Kontrollen“ im Framework-Detail und die Dashboard-Karte „Compliance-Fortschritt“
+  zeigen jetzt diese Zahl; vorher rechneten beide selbst und zählten teilweise umgesetzte
+  Kontrollen nicht mit. Die Gesamtzahl über alle Frameworks bildet das Backend aus den Summen,
+  nicht als Mittelwert der Framework-Prozente.
+- **Das Kontroll-Detail zeigt denselben Status wie die Framework-Liste.** Eine als „Umgesetzt“
+  markierte Kontrolle erschien im Detail als „Offen“, weil die Detail-Antwort keinen Status trug.
 
 ---
 ## [0.45.1] — 2026-10-24

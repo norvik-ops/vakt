@@ -247,7 +247,9 @@ function EnabledFrameworkCard({ framework, onDelete, onSwitchVariant }: {
           </div>
           <CardDescription className="mt-0.5">v{framework.version}</CardDescription>
         </div>
-        <ScoreCircle score={0} />
+        {/* R1-KW-6: stand fest auf 0. readiness_score ist der kanonische Wert
+            (ADR-0086), gerundet wie im Framework-Detail und im Dashboard. */}
+        <ScoreCircle score={Math.round(framework.readiness_score ?? 0)} />
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between text-sm text-secondary">

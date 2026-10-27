@@ -678,12 +678,43 @@ func (s *Service) ListControls(ctx context.Context, orgID, frameworkID string) (
 		return nil, fmt.Errorf("list controls: %w", err)
 	}
 
-	// Enrich with evidence counts.
+	if err := s.resolveControls(ctx, orgID, frameworkID, controls); err != nil {
+		return nil, err
+	}
+	return controls, nil
+}
+
+// ListControlsCursor returns one keyset page of a framework's controls
+// (limit+1 rows, so the caller can detect has_more), with the same derived
+// fields as ListControls.
+//
+// R1-KW-5: the frontend pages through ALL controls of a framework with this
+// branch (ISO 27001 has 93, the old single page held 25). Before, the cursor
+// rows went out raw — without evidence_count and without `status` — so the
+// switch to this branch would have shown every control as "Offen".
+func (s *Service) ListControlsCursor(ctx context.Context, orgID, frameworkID, cursorControlID, cursorID string, limit int) ([]Control, error) {
+	controls, err := s.repo.ListControlsCursor(ctx, orgID, frameworkID, cursorControlID, cursorID, limit)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.resolveControls(ctx, orgID, frameworkID, controls); err != nil {
+		return nil, err
+	}
+	return controls, nil
+}
+
+// resolveControls fills the derived fields every control response carries:
+// evidence_count, the effective `status` (ADR-0086: ResolveStatus —
+// not_applicable > manual_status > evidence count) and the DORA→ISO mapping.
+// One place, so list, cursor page and detail cannot drift apart (R1-KW-10).
+func (s *Service) resolveControls(ctx context.Context, orgID, frameworkID string, controls []Control) error {
+	if len(controls) == 0 {
+		return nil
+	}
 	counts, err := s.repo.CountEvidenceByControl(ctx, orgID, frameworkID)
 	if err != nil {
-		return nil, fmt.Errorf("count evidence for controls: %w", err)
+		return fmt.Errorf("count evidence for controls: %w", err)
 	}
-
 	for i := range controls {
 		controls[i].EvidenceCount = counts[controls[i].ID]
 		controls[i].Status = ResolveStatus(controls[i])
@@ -693,8 +724,7 @@ func (s *Service) ListControls(ctx context.Context, orgID, frameworkID string) (
 			}
 		}
 	}
-
-	return controls, nil
+	return nil
 }
 
 // UpdateControl updates not_applicable, reason, manual_status, and optionally maturity_score on a control.
@@ -1111,12 +1141,13 @@ func (s *Service) GetControl(ctx context.Context, orgID, controlID string) (*Con
 	if err != nil {
 		return nil, fmt.Errorf("get control: %w", err)
 	}
-	if strings.HasPrefix(c.ControlID, "DORA-") {
-		if m, ok := DoraISO27001Mapping[c.ControlID]; ok {
-			c.ISO27001Mapping = m
-		}
+	// R1-KW-10: without this the detail response had no `status`; the control
+	// page fell back to "Offen" while the framework list said "Umgesetzt".
+	one := []Control{*c}
+	if err := s.resolveControls(ctx, orgID, c.FrameworkID, one); err != nil {
+		return nil, fmt.Errorf("get control: %w", err)
 	}
-	return c, nil
+	return &one[0], nil
 }
 
 // --- Control Tasks ---

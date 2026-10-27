@@ -1745,10 +1745,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List controls for a framework */
+        /**
+         * List controls for a framework
+         * @description Dual-branch. Cursor mode (default, no `page`): keyset pages ordered by control_id; follow `pagination.next_cursor` while `has_more` is true — the frontend loads every control this way (R1-KW-5). Offset mode (`page` given) is deprecated (Deprecation/Sunset headers).
+         */
         get: {
             parameters: {
                 query?: {
+                    /** @description Opaque cursor from the previous page's pagination.next_cursor. */
+                    cursor?: string;
                     page?: components["parameters"]["PageParam"];
                     limit?: components["parameters"]["LimitParam"];
                 };
@@ -1767,8 +1772,16 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            data?: components["schemas"]["Control"][];
-                            pagination?: components["schemas"]["Pagination"];
+                            data: components["schemas"]["Control"][];
+                            /** @description Cursor metadata (limit, next_cursor, has_more) in cursor mode; offset metadata (page, limit, total, total_pages) when page is passed. */
+                            pagination: {
+                                limit?: number;
+                                next_cursor?: string;
+                                has_more?: boolean;
+                                page?: number;
+                                total?: number;
+                                total_pages?: number;
+                            };
                         };
                     };
                 };
@@ -6144,7 +6157,34 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": Record<string, never>;
+                        "application/json": {
+                            framework_scores?: {
+                                /** Format: uuid */
+                                framework_id?: string;
+                                framework_name?: string;
+                                /** @description Applicable controls (not_applicable excluded). */
+                                total_controls?: number;
+                                /** @description Effective status implemented or covered. */
+                                implemented_controls?: number;
+                                /** @description Canonical readiness 0–100 (ADR-0086). */
+                                score_pct?: number;
+                            }[];
+                            /** @description Org-wide readiness over all frameworks, pooled per ADR-0086 (sum covered/partial/applicable, then one ReadinessScore). */
+                            overall_readiness?: {
+                                covered: number;
+                                partial: number;
+                                applicable: number;
+                                score_pct: number;
+                            };
+                            open_capas?: number;
+                            overdue_controls?: number;
+                            overdue_tasks?: number;
+                            critical_risks?: number;
+                            top_risks?: Record<string, never>[];
+                            recent_activity?: Record<string, never>[];
+                            policies_total?: number;
+                            policies_approved?: number;
+                        };
                     };
                 };
             };
@@ -30024,8 +30064,14 @@ export interface components {
             code?: string;
             title?: string;
             description?: string;
+            /**
+             * @description Effective status (ADR-0086, policy.ResolveStatus): not_applicable > manual_status > derived from evidence_count (covered ≥ 2, partial = 1, missing = 0). Set on every control response — list, cursor page and detail (R1-KW-5, R1-KW-10).
+             * @enum {string}
+             */
+            status?: "missing" | "partial" | "covered" | "in_progress" | "implemented" | "not_applicable";
             /** @enum {string} */
-            status?: "not_started" | "in_progress" | "implemented" | "not_applicable";
+            manual_status?: "" | "in_progress" | "implemented";
+            evidence_count?: number;
             responsible?: string;
             /** Format: date */
             due_date?: string;

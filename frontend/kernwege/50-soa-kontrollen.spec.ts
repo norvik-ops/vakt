@@ -57,7 +57,6 @@ test.describe('KW6 Anwendbarkeit & Kontrollen', () => {
     const page = await openAs(browser, 'admin')
     await openIsoDetail(page)
     await expect(page.getByText(/93\s*Gesamt/)).toBeVisible()
-    test.fail(true, 'R1-KW-5: Framework-Detail zeigt nur 25 von 93 Kontrollen (limit=25, kein Blättern), Reiter-Prozent auf 25 gerechnet')
     await expect(page.getByRole('tab', { name: 'Controls (93)' })).toBeVisible({ timeout: 5000 })
   })
 
@@ -74,7 +73,6 @@ test.describe('KW6 Anwendbarkeit & Kontrollen', () => {
     await expect(fw, 'Dashboard „Framework-Fortschritt" zeigt 1 / 93').toBeVisible()
     await expect(page.getByText(`1 / 93 · ${detail}%`)).toBeVisible()
 
-    test.fail(true, 'R1-KW-6: Framework-Übersicht zeigt 0 %, Detail und Dashboard 1 %')
     await page.goto('/vaktcomply/frameworks')
     const card = page.getByRole('heading', { name: 'ISO27001', level: 3 }).locator('xpath=ancestor::div[.//button][1]')
     await expect(card).toContainText(`${detail}%`, { timeout: 5000 })
@@ -89,7 +87,6 @@ test.describe('KW6 Anwendbarkeit & Kontrollen', () => {
     await expect(page.getByRole('row', { name: /A\.5\.1 Richtlinien/ }).getByRole('combobox')).toHaveText('Umgesetzt')
     await openControlFromTable(page, 'Richtlinien zur Informationssicherheit')
     await expect(page.getByText('→ implemented')).toBeVisible()
-    test.fail(true, 'R1-KW-10: Kontroll-Detail zeigt „Offen", Framework-Liste „Umgesetzt" (manual_status vs. status)')
     await expect(page.getByRole('main').getByRole('combobox').first()).toHaveText('Umgesetzt', { timeout: 5000 })
   })
 

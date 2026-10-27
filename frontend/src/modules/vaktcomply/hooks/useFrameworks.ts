@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
 import type { Framework, ReadinessReport, GapAnalysis, Control } from '../types'
-import type { PaginatedResponse } from '../../../shared/types/pagination'
+import type { CursorPaginatedResponse } from '../../../shared/types/pagination'
 
 export function useTISAXReport(frameworkId: string) {
   return useQuery<ReadinessReport>({
@@ -88,22 +88,53 @@ export function useGapAnalysis(frameworkId: string) {
   })
 }
 
-export function useFrameworkControls(frameworkId: string, page = 1, limit = 25) {
-  const query = useQuery<PaginatedResponse<Control>>({
-    queryKey: ['vaktcomply', 'frameworks', frameworkId, 'controls', page, limit],
-    queryFn: () =>
-      apiFetch<PaginatedResponse<Control>>(
-        `/vaktcomply/frameworks/${frameworkId}/controls?page=${page}&limit=${limit}`,
-      ),
+// Backend pagination.MaxLimit — larger values fall back to 25 on the server.
+const CONTROLS_PAGE_SIZE = 100
+const CONTROLS_MAX_PAGES = 50
+
+/**
+ * Loads ALL controls of a framework by following the cursor to the end.
+ *
+ * R1-KW-5: this used to fetch only page 1 with limit=25 and never paged on —
+ * the framework detail showed 25 of 93 ISO controls, computed its tab
+ * percentage on 25, and the control picker on a risk could not offer A.6–A.8.
+ * Every consumer (framework detail, control picker, CIS/DORA pages) needs the
+ * complete list, not a page: they group, count and search across it. A
+ * framework has at most a few hundred controls, so loading them all in pages
+ * of 100 stays small — and unlike a bigger magic limit it cannot silently cut
+ * off again when a catalogue grows. The cursor branch is used because the
+ * offset branch is deprecated (Sunset header) and reports no real total.
+ */
+async function fetchAllFrameworkControls(frameworkId: string): Promise<Control[]> {
+  const all: Control[] = []
+  let cursor = ''
+  // Obergrenze: 50 × 100 = 5000 Kontrollen, weit über jedem Katalog. Ein Server,
+  // der immer neue Cursor liefert, darf den Browser nicht endlos laden lassen.
+  for (let pageNo = 1; ; pageNo++) {
+    if (pageNo > CONTROLS_MAX_PAGES) {
+      throw new Error(`controls pagination: more than ${String(CONTROLS_MAX_PAGES)} pages`)
+    }
+    const qs = new URLSearchParams({ limit: String(CONTROLS_PAGE_SIZE) })
+    if (cursor) qs.set('cursor', cursor)
+    const page = await apiFetch<CursorPaginatedResponse<Control>>(
+      `/vaktcomply/frameworks/${frameworkId}/controls?${qs.toString()}`,
+    )
+    all.push(...page.data)
+    const next = page.pagination.next_cursor ?? ''
+    if (!page.pagination.has_more || !next) return all
+    // A repeated cursor would loop forever — fail loudly instead.
+    if (next === cursor) throw new Error('controls pagination: cursor did not advance')
+    cursor = next
+  }
+}
+
+export function useFrameworkControls(frameworkId: string) {
+  return useQuery<Control[]>({
+    queryKey: ['vaktcomply', 'frameworks', frameworkId, 'controls', 'all'],
+    queryFn: () => fetchAllFrameworkControls(frameworkId),
     enabled: !!frameworkId,
     staleTime: 5 * 60 * 1000,
   })
-  return {
-    ...query,
-    // Expose items directly for backward-compat consumers that spread into data: Control[]
-    data: query.data?.data,
-    pagination: query.data?.pagination,
-  }
 }
 
 export function useDownloadFrameworkPDF() {

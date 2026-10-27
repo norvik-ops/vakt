@@ -52,8 +52,11 @@ import (
 // braucht eine Migration (Spalte oder Zuordnungstabelle) und ist damit eine
 // eigene Story — bis dahin ist das Datenmodell org-weit, und das Gate bildet
 // genau das ab.
-func Register(g *echo.Group, db *pgxpool.Pool, rdb *redis.Client) {
-	svc := NewService(db)
+//
+// readiness liefert den kanonischen Umsetzungsgrad (ADR-0086); cmd/api
+// verdrahtet die Implementierung aus vaktcomply (R1-KW-6).
+func Register(g *echo.Group, db *pgxpool.Pool, rdb *redis.Client, readiness ReadinessSource) {
+	svc := NewService(db, readiness)
 	h := NewHandler(svc, rdb)
 	admin := auth.RequireRole("Admin")
 	write := auth.RequireRole("Admin", "SecurityAnalyst")

@@ -3,7 +3,7 @@ import {
   Shield, FileText, TriangleAlert, Flame, Eye, User, ClipboardList, Database,
 } from 'lucide-react'
 import { Skeleton } from '../components/ui/skeleton'
-import type { RiskSummary, ActivityEntry, FrameworkScore } from '../hooks/useDashboard'
+import type { RiskSummary, ActivityEntry, FrameworkScore, OverallReadiness } from '../hooks/useDashboard'
 
 export function fmt(n: number | null | undefined): string {
   return n == null ? '—' : n.toString()
@@ -211,22 +211,29 @@ export function ActivityTimeline({ entries }: { entries: ActivityEntry[] }) {
   )
 }
 
-export function ComplianceProgressCard({ scores, isLoading }: {
+export function ComplianceProgressCard({ scores, overall, isLoading }: {
   scores: FrameworkScore[]
+  /** Org-wide value pooled in the backend (ADR-0086). */
+  overall: OverallReadiness | undefined
   isLoading?: boolean
 }) {
-  const totals = scores.reduce(
-    (acc, fw) => { acc.total += fw.total_controls; acc.implemented += fw.implemented_controls; return acc },
-    { total: 0, implemented: 0 },
-  )
-  const pct = totals.total > 0 ? Math.round((totals.implemented / totals.total) * 100) : 0
+  // R1-KW-6: the card used to sum implemented/total of the frameworks itself,
+  // without partial weight — a different number than every other view. The
+  // backend pools per ADR-0086; this card only displays it.
+  const totals = {
+    total: overall?.applicable ?? 0,
+    implemented: overall?.covered ?? 0,
+  }
+  const pct = Math.round(overall?.score_pct ?? 0)
+  // `scores` only decides whether any framework is configured at all.
+  const hasFrameworks = scores.length > 0 && totals.total > 0
   const color = barColor(pct)
 
   return (
     <section className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[13px] font-semibold text-primary">Compliance-Fortschritt</h2>
-        {!isLoading && totals.total > 0 && (
+        {!isLoading && hasFrameworks && (
           <span className="text-[11px] text-secondary">{pct}%</span>
         )}
       </div>
@@ -235,7 +242,7 @@ export function ComplianceProgressCard({ scores, isLoading }: {
           <Skeleton className="h-4 w-40" />
           <Skeleton className="h-2 w-full" />
         </div>
-      ) : totals.total === 0 ? (
+      ) : !hasFrameworks ? (
         <p className="text-[12px] text-secondary">Keine Frameworks konfiguriert.</p>
       ) : (
         <>

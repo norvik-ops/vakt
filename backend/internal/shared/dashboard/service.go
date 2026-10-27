@@ -16,15 +16,42 @@ import (
 	"github.com/matharnica/vakt/internal/config"
 )
 
+// FrameworkReadiness is one readiness tally (ADR-0086): Covered = effectively
+// implemented/covered, Partial = in_progress/partial (half weight),
+// Applicable = all controls except not_applicable, Score = 0–100.
+type FrameworkReadiness struct {
+	Covered    int
+	Partial    int
+	Applicable int
+	Score      float64
+}
+
+// ReadinessSummary is what the dashboard needs from the compliance module:
+// the tally per framework ID and the org-wide pooled value.
+type ReadinessSummary struct {
+	ByFramework map[string]FrameworkReadiness
+	Overall     FrameworkReadiness
+}
+
+// ReadinessSource computes the canonical readiness (ADR-0086). The dashboard
+// does not compute it itself and does not import the module that owns the
+// formula (shared must not depend on a module, ADR-0004/ADR-0066): cmd/api
+// injects the implementation from vaktcomply (R1-KW-6).
+type ReadinessSource interface {
+	ReadinessSummary(ctx context.Context, orgID string) (ReadinessSummary, error)
+}
+
 // Service encapsulates all database access for the dashboard package.
 // Handlers call Service methods exclusively — no direct pgxpool usage in handlers.
 type Service struct {
-	db *pgxpool.Pool
+	db        *pgxpool.Pool
+	readiness ReadinessSource // nil → framework scores stay empty (logged)
 }
 
-// NewService creates a Service backed by the provided connection pool.
-func NewService(db *pgxpool.Pool) *Service {
-	return &Service{db: db}
+// NewService creates a Service backed by the provided connection pool and the
+// readiness source for the framework progress widgets.
+func NewService(db *pgxpool.Pool, readiness ReadinessSource) *Service {
+	return &Service{db: db, readiness: readiness}
 }
 
 // ScoreInputs holds the raw counts used to compute the security health score.
@@ -205,6 +232,7 @@ func (s *Service) MarkAllNotificationsRead(ctx context.Context, orgID string) er
 func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateResponse, error) {
 	var (
 		fwScores         []FrameworkScore
+		overall          OverallReadiness
 		openCAPAs        int64
 		overdueControls  int64
 		overdueTasks     int64
@@ -218,14 +246,34 @@ func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateRes
 	g, gctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
+		// R1-KW-6 / ADR-0086: the percentages come from the one canonical
+		// formula (injected ReadinessSource), the same the framework overview
+		// and detail show. The dashboard used to count manual_status =
+		// implemented over ALL controls in its own SQL — evidence ignored,
+		// not_applicable in the denominator — and showed a different number as
+		// soon as either occurred.
+		// ImplementedControls = effectively implemented/covered,
+		// TotalControls = applicable controls (the denominator of ScorePct).
+		if s.readiness == nil {
+			log.Error().Msg("dashboard aggregate: no readiness source wired — framework scores empty")
+			return nil
+		}
+		summary, err := s.readiness.ReadinessSummary(gctx, orgID)
+		if err != nil {
+			log.Error().Err(err).Msg("dashboard aggregate: framework readiness")
+			return nil
+		}
+		readiness := summary.ByFramework
+		overall = OverallReadiness{
+			Covered:    summary.Overall.Covered,
+			Partial:    summary.Overall.Partial,
+			Applicable: summary.Overall.Applicable,
+			ScorePct:   summary.Overall.Score,
+		}
 		rows, err := s.db.Query(gctx, `
-			SELECT f.id::text, f.name,
-			       COUNT(c.id)::int                                                              AS total,
-			       COUNT(c.id) FILTER (WHERE c.manual_status IN ('implemented','partially_implemented'))::int AS implemented
+			SELECT f.id::text, f.name
 			FROM ck_frameworks f
-			LEFT JOIN ck_controls c ON c.framework_id = f.id AND c.org_id = f.org_id
 			WHERE f.org_id = $1::uuid
-			GROUP BY f.id, f.name
 			ORDER BY f.name`, orgID)
 		if err != nil {
 			log.Error().Err(err).Msg("dashboard aggregate: framework scores")
@@ -234,13 +282,14 @@ func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateRes
 		defer rows.Close()
 		for rows.Next() {
 			var fs FrameworkScore
-			if err := rows.Scan(&fs.FrameworkID, &fs.FrameworkName, &fs.TotalControls, &fs.ImplementedControls); err != nil {
+			if err := rows.Scan(&fs.FrameworkID, &fs.FrameworkName); err != nil {
 				log.Error().Err(err).Msg("dashboard aggregate: scan framework score")
 				continue
 			}
-			if fs.TotalControls > 0 {
-				fs.ScorePct = float64(fs.ImplementedControls) / float64(fs.TotalControls) * 100
-			}
+			r := readiness[fs.FrameworkID]
+			fs.TotalControls = r.Applicable
+			fs.ImplementedControls = r.Covered
+			fs.ScorePct = r.Score
 			fwScores = append(fwScores, fs)
 		}
 		return rows.Err()
@@ -367,6 +416,7 @@ func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateRes
 
 	return AggregateResponse{
 		FrameworkScores:  fwScores,
+		OverallReadiness: overall,
 		OpenCAPAs:        int(openCAPAs),
 		OverdueControls:  int(overdueControls),
 		OverdueTasks:     int(overdueTasks),

@@ -60,7 +60,7 @@ function AssignDialog({ evidence, onClose }: AssignDialogProps) {
   const [controlId, setControlId] = useState('')
 
   const { data: frameworks = [] } = useFrameworks()
-  const { data: controls = [] } = useFrameworkControls(frameworkId, 1, 100)
+  const { data: controls = [] } = useFrameworkControls(frameworkId)
   const assign = useAssignEvidence()
 
   function handleAssign() {

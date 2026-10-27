@@ -724,7 +724,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// Dashboard — shared cross-module score endpoint (aggregate cached in Redis for 60 s).
 	// S121-B3 (R3): mounted on `protected` (not bare `api`) so state-changing routes
 	// get CSRF/MFA/OrgRL; UpdateScoreConfig is additionally Admin-gated inside Register.
-	dashboard.Register(protected.Group("/dashboard"), pool, rdb)
+	dashboard.Register(protected.Group("/dashboard"), pool, rdb, vaktcomply.NewDashboardReadiness(pool))
 	log.Info().Msg("dashboard routes registered")
 
 	// Global search — cross-module text search

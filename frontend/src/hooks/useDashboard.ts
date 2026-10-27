@@ -141,9 +141,9 @@ export function useMarkAllRead() {
 export interface FrameworkScore {
   framework_id: string
   framework_name: string
-  total_controls: number
-  implemented_controls: number
-  score_pct: number
+  total_controls: number // applicable controls (not_applicable excluded)
+  implemented_controls: number // effective status implemented or covered
+  score_pct: number // canonical readiness (ADR-0086), same number as framework overview and detail
 }
 
 export interface RiskSummary {
@@ -163,8 +163,17 @@ export interface ActivityEntry {
   created_at: string
 }
 
+/** Org-wide readiness, pooled over all frameworks in the backend (ADR-0086). */
+export interface OverallReadiness {
+  covered: number
+  partial: number
+  applicable: number
+  score_pct: number
+}
+
 export interface DashboardAggregate {
   framework_scores: FrameworkScore[]
+  overall_readiness: OverallReadiness
   open_capas: number
   overdue_controls: number
   overdue_tasks: number

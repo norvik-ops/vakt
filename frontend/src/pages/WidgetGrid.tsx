@@ -185,7 +185,7 @@ export function WidgetGrid({
                 <div key={widgetId} {...wrapperProps}>
                   {dragHandle}
                   <div className={widgetOpacity}>
-                    <ComplianceProgressCard scores={agg?.framework_scores ?? []} isLoading={aggLoading} />
+                    <ComplianceProgressCard scores={agg?.framework_scores ?? []} overall={agg?.overall_readiness} isLoading={aggLoading} />
                     <div className="mt-4">
                       <Suspense fallback={<div className="h-32 animate-pulse rounded bg-muted" />}>
                         <ScoreHistoryCard />

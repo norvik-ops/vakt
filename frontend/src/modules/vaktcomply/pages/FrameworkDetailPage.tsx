@@ -610,10 +610,13 @@ function ControlsTab({
   frameworkId,
   controls,
   controlsLoading,
+  readinessScore,
 }: {
   frameworkId: string
   controls: Control[] | undefined
   controlsLoading: boolean
+  /** Kanonischer Umsetzungsgrad aus dem Backend (ADR-0086), derselbe wie im Seitenkopf. */
+  readinessScore: number | undefined
 }) {
   const { t } = useTranslation()
   const updateControl = useUpdateControl(frameworkId)
@@ -706,11 +709,16 @@ function ControlsTab({
     byDomain.set(ctrl.domain, list)
   }
 
-  const total = controls.length
   const covered = controls.filter((c) => c.status === 'covered' || c.status === 'implemented').length
   const partial = controls.filter((c) => c.status === 'partial' || c.status === 'in_progress').length
   const notApplicable = controls.filter((c) => c.status === 'not_applicable').length
   const open = controls.filter((c) => c.status === 'missing').length
+  // R1-KW-6: der Reiter rechnete covered/total selbst — nicht anwendbare
+  // Kontrollen im Nenner, teilweise umgesetzte gar nicht — und wich so von der
+  // Kopfzahl ab. Prozent und Balken kommen jetzt aus dem Backend (ADR-0086);
+  // die Zählung „x von y" nennt die anwendbaren Kontrollen als y.
+  const applicable = controls.length - notApplicable
+  const pct = readinessScore ?? 0
 
   return (
     <>
@@ -764,13 +772,13 @@ function ControlsTab({
         {/* Progress bar */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-secondary">
-            <span>{t('vaktcomply.frameworkDetail.coveredOf', { covered, total })}</span>
-            <span>{Math.round((covered / total) * 100)}%</span>
+            <span>{t('vaktcomply.frameworkDetail.coveredOf', { covered, total: applicable })}</span>
+            <span>{readinessScore === undefined ? '–' : `${String(Math.round(pct))}%`}</span>
           </div>
           <div className="h-2 bg-surface2 rounded-full overflow-hidden">
             <div
               className="h-full bg-green-500 rounded-full transition-all"
-              style={{ width: `${(covered / total) * 100}%` }}
+              style={{ width: `${String(pct)}%` }}
             />
           </div>
         </div>
@@ -985,6 +993,7 @@ export default function FrameworkDetailPage() {
               frameworkId={frameworkId}
               controls={controls}
               controlsLoading={controlsLoading}
+              readinessScore={report?.readiness_score}
             />
           </TabsContent>
 

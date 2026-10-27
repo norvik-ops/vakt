@@ -104,7 +104,6 @@ test.describe('KW8 Risiken', () => {
     const link = page.getByRole('dialog', { name: 'Control verknüpfen' })
     await link.getByRole('combobox').selectOption({ label: 'ISO27001' })
     await expect(link.getByRole('button', { name: /^A\.5\.1 / })).toBeVisible()
-    test.fail(true, 'R1-KW-5: Control-Picker lädt nur 25 von 93 Kontrollen (limit=25) — A.6–A.8 nicht verknüpfbar')
     await link.getByPlaceholder('Controls durchsuchen …').fill('A.8.13')
     await expect(link.getByRole('button', { name: /^A\.8\.13 / })).toBeVisible({ timeout: 5000 })
   })

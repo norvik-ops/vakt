@@ -207,7 +207,8 @@ func TestScoreConfigValidation_ExactBoundaries(t *testing.T) {
 
 func TestAggregateCacheKey_Format(t *testing.T) {
 	orgID := "test-org-uuid"
-	assert.Equal(t, fmt.Sprintf("dashboard:aggregate:%s", orgID), aggregateCacheKey(orgID))
+	// v2: payload gained overall_readiness — an old cached payload must not be served.
+	assert.Equal(t, fmt.Sprintf("dashboard:aggregate:v2:%s", orgID), aggregateCacheKey(orgID))
 }
 
 func TestAggregateCacheKey_DifferentOrgs(t *testing.T) {
@@ -215,5 +216,5 @@ func TestAggregateCacheKey_DifferentOrgs(t *testing.T) {
 }
 
 func TestAggregateCacheKey_EmptyOrg(t *testing.T) {
-	assert.Equal(t, "dashboard:aggregate:", aggregateCacheKey(""))
+	assert.Equal(t, "dashboard:aggregate:v2:", aggregateCacheKey(""))
 }

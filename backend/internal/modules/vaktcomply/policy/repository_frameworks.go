@@ -72,37 +72,87 @@ func (r *Repository) ListFrameworks(ctx context.Context, orgID string) ([]Framew
 // Funktionen wie ComputeReadinessReport. Nicht-anwendbare Controls bleiben
 // aussen vor, genau wie dort.
 func (r *Repository) ReadinessScoresByFramework(ctx context.Context, orgID string) (map[string]float64, error) {
+	byFW, err := r.ReadinessByFramework(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]float64, len(byFW))
+	for fwID, t := range byFW {
+		out[fwID] = t.Score
+	}
+	return out, nil
+}
+
+// FrameworkReadiness is the canonical readiness tally of one framework
+// (ADR-0086): Covered = effective status implemented/covered, Partial =
+// in_progress/partial (half weight), Applicable = all controls except
+// not_applicable, Score = ReadinessScore over them.
+type FrameworkReadiness struct {
+	Covered    int
+	Partial    int
+	Applicable int
+	Score      float64
+}
+
+// ReadinessByFramework returns the canonical readiness tally per framework of
+// the organisation, from one query over all controls. Frameworks without
+// controls are absent from the map.
+//
+// R1-KW-6: the dashboard counted manual_status = implemented over ALL
+// controls with its own SQL — evidence ignored, not_applicable in the
+// denominator — and so showed a different percentage than the framework
+// overview and detail. It reads this tally now.
+func (r *Repository) ReadinessByFramework(ctx context.Context, orgID string) (map[string]FrameworkReadiness, error) {
 	rows, err := r.q.ListCKFrameworkReadinessRows(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("framework readiness rows: %w", err)
 	}
-	type tally struct{ covered, partial, total int }
-	byFW := map[string]*tally{}
+	return TallyReadiness(rows), nil
+}
+
+// PoolReadiness is the org-wide readiness over several frameworks, pooled as
+// ADR-0086 prescribes for aggregates: sum Covered, Partial and Applicable over
+// all frameworks, then apply ReadinessScore ONCE — not an average of the
+// per-framework percentages.
+func PoolReadiness(byFW map[string]FrameworkReadiness) FrameworkReadiness {
+	var out FrameworkReadiness
+	for _, t := range byFW {
+		out.Covered += t.Covered
+		out.Partial += t.Partial
+		out.Applicable += t.Applicable
+	}
+	out.Score = ReadinessScore(out.Covered, out.Partial, out.Applicable)
+	return out
+}
+
+// TallyReadiness folds readiness rows (one per control) into a
+// FrameworkReadiness per framework, with ResolveStatus and ReadinessScore —
+// the same functions ComputeReadinessReport uses.
+func TallyReadiness(rows []db.ListCKFrameworkReadinessRowsRow) map[string]FrameworkReadiness {
+	byFW := map[string]FrameworkReadiness{}
 	for _, row := range rows {
-		t, ok := byFW[row.FrameworkID]
-		if !ok {
-			t = &tally{}
-			byFW[row.FrameworkID] = t
-		}
+		t := byFW[row.FrameworkID]
 		switch ResolveStatus(Control{
 			NotApplicable: row.NotApplicable,
 			ManualStatus:  row.ManualStatus,
 			EvidenceCount: int(row.EvidenceCount),
 		}) {
 		case "not_applicable":
+			byFW[row.FrameworkID] = t
 			continue
 		case "covered", "implemented":
-			t.covered++
+			t.Covered++
 		case "partial", "in_progress":
-			t.partial++
+			t.Partial++
 		}
-		t.total++
+		t.Applicable++
+		byFW[row.FrameworkID] = t
 	}
-	out := make(map[string]float64, len(byFW))
 	for fwID, t := range byFW {
-		out[fwID] = ReadinessScore(t.covered, t.partial, t.total)
+		t.Score = ReadinessScore(t.Covered, t.Partial, t.Applicable)
+		byFW[fwID] = t
 	}
-	return out, nil
+	return byFW
 }
 
 // DeleteFramework removes a framework and all its controls/evidence (cascade).

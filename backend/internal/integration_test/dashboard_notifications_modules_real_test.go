@@ -64,7 +64,7 @@ func TestDashboardNotifications_HideSwitchedOffModules(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	list, err := dashboard.NewService(pool).LoadNotifications(ctx, orgID)
+	list, err := dashboard.NewService(pool, nil).LoadNotifications(ctx, orgID)
 	require.NoError(t, err)
 	got := []string{}
 	for _, n := range list {

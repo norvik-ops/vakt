@@ -336,9 +336,11 @@ func (s *Service) ListCAPAsPaged(ctx context.Context, orgID, statusFilter string
 	return s.repo.ListCAPAsPaged(ctx, orgID, statusFilter, offset, limit)
 }
 
-// ListControlsCursor returns controls using keyset pagination.
+// ListControlsCursor returns controls using keyset pagination, with
+// evidence_count and the effective status resolved like every other control
+// response (R1-KW-5).
 func (s *Service) ListControlsCursor(ctx context.Context, orgID, frameworkID string, cursorControlID, cursorID string, limit int) ([]Control, error) {
-	return s.repo.ListControlsCursor(ctx, orgID, frameworkID, cursorControlID, cursorID, limit)
+	return s.Policy.ListControlsCursor(ctx, orgID, frameworkID, cursorControlID, cursorID, limit)
 }
 
 type CryptoKey struct {

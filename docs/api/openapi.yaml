@@ -518,7 +518,17 @@ components:
           type: string
         status:
           type: string
-          enum: [not_started, in_progress, implemented, not_applicable]
+          description: >-
+            Effective status (ADR-0086, policy.ResolveStatus): not_applicable >
+            manual_status > derived from evidence_count (covered ≥ 2, partial = 1,
+            missing = 0). Set on every control response — list, cursor page and
+            detail (R1-KW-5, R1-KW-10).
+          enum: [missing, partial, covered, in_progress, implemented, not_applicable]
+        manual_status:
+          type: string
+          enum: ['', in_progress, implemented]
+        evidence_count:
+          type: integer
         responsible:
           type: string
         due_date:
@@ -3544,6 +3554,11 @@ paths:
   /vaktcomply/frameworks/{id}/controls:
     get:
       summary: List controls for a framework
+      description: >-
+        Dual-branch. Cursor mode (default, no `page`): keyset pages ordered by
+        control_id; follow `pagination.next_cursor` while `has_more` is true —
+        the frontend loads every control this way (R1-KW-5). Offset mode
+        (`page` given) is deprecated (Deprecation/Sunset headers).
       tags: [vaktcomply]
       parameters:
         - name: id
@@ -3552,6 +3567,11 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: cursor
+          in: query
+          description: Opaque cursor from the previous page's pagination.next_cursor.
+          schema:
+            type: string
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
       responses:
@@ -3561,13 +3581,31 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                - data
+                - pagination
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Control'
                   pagination:
-                    $ref: '#/components/schemas/Pagination'
+                    type: object
+                    description: Cursor metadata (limit, next_cursor, has_more) in cursor mode; offset metadata
+                      (page, limit, total, total_pages) when page is passed.
+                    properties:
+                      limit:
+                        type: integer
+                      next_cursor:
+                        type: string
+                      has_more:
+                        type: boolean
+                      page:
+                        type: integer
+                      total:
+                        type: integer
+                      total_pages:
+                        type: integer
 
   /vaktcomply/frameworks/{id}/report:
     get:
@@ -5866,6 +5904,46 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  framework_scores:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        framework_id: { type: string, format: uuid }
+                        framework_name: { type: string }
+                        total_controls:
+                          type: integer
+                          description: Applicable controls (not_applicable excluded).
+                        implemented_controls:
+                          type: integer
+                          description: Effective status implemented or covered.
+                        score_pct:
+                          type: number
+                          description: Canonical readiness 0–100 (ADR-0086).
+                  overall_readiness:
+                    type: object
+                    description: >-
+                      Org-wide readiness over all frameworks, pooled per ADR-0086
+                      (sum covered/partial/applicable, then one ReadinessScore).
+                    required: [covered, partial, applicable, score_pct]
+                    properties:
+                      covered: { type: integer }
+                      partial: { type: integer }
+                      applicable: { type: integer }
+                      score_pct: { type: number }
+                  open_capas: { type: integer }
+                  overdue_controls: { type: integer }
+                  overdue_tasks: { type: integer }
+                  critical_risks: { type: integer }
+                  top_risks:
+                    type: array
+                    items: { type: object }
+                  recent_activity:
+                    type: array
+                    items: { type: object }
+                  policies_total: { type: integer }
+                  policies_approved: { type: integer }
 
   /dashboard/notifications:
     get:
