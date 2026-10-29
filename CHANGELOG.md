@@ -39,6 +39,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   nicht als Mittelwert der Framework-Prozente.
 - **Das Kontroll-Detail zeigt denselben Status wie die Framework-Liste.** Eine als „Umgesetzt“
   markierte Kontrolle erschien im Detail als „Offen“, weil die Detail-Antwort keinen Status trug.
+- **„Aus Vorlage“ auf der Richtlinienseite legt die Richtlinie wieder an.** Jeder Klick endete mit
+  „invalid id: must be a UUID“ (HTTP 400), weil die Vorlage per Kurzname angesprochen wird und eine
+  Eingabeprüfung an dieser Stelle eine UUID erwartete. Der API-Pfad heißt jetzt
+  `POST /api/v1/vaktcomply/policy-templates/{slug}/apply`; die URL bleibt gleich, nur der
+  Parametername in der API-Beschreibung ändert sich.
+- **Die Mitarbeiter-Bestätigung einer Richtlinie ist aus der Oberfläche erreichbar.** Die
+  Akzeptanz-Kampagnen ließen sich bisher nur über eine von Hand getippte URL öffnen. Die Detailseite
+  einer Richtlinie hat jetzt den Button „Von Mitarbeitern bestätigen lassen“.
 
 ---
 ## [0.45.1] — 2026-10-24

@@ -894,6 +894,7 @@
       "savingBtn": "Speichern…"
     },
     "policyDetail": {
+      "acceptanceLink": "Von Mitarbeitern bestätigen lassen",
       "notFound": "Richtlinie nicht gefunden.",
       "cardContent": "Richtlinieninhalt",
       "labelTitle": "Titel",

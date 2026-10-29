@@ -4212,12 +4212,12 @@ paths:
                   $ref: '#/components/schemas/BuiltinPolicyTemplate'
         '401': { description: Unauthorized }
 
-  /vaktcomply/policy-templates/{id}/apply:
+  /vaktcomply/policy-templates/{slug}/apply:
     post:
       summary: Create a policy from a built-in template
       tags: [vaktcomply]
       parameters:
-        - name: id
+        - name: slug
           in: path
           required: true
           description: Built-in template id (a slug such as `isms-policy`, not a UUID).

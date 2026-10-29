@@ -39,7 +39,6 @@ test.describe('KW7 Richtlinien', () => {
       page.waitForResponse((r) => r.url().includes('/policy-templates/') && r.request().method() === 'POST'),
       dlg.getByRole('button', { name: /^Richtlinie zur akzeptablen Nutzung/ }).click(),
     ])
-    test.fail(true, 'R1-KW-8: „Aus Vorlage" → 400 „invalid id: must be a UUID" (Slug-Parameter vom UUID-Wächter abgelehnt)')
     expect(resp.status(), await resp.text()).toBeLessThan(300)
   })
 
@@ -84,7 +83,6 @@ test.describe('KW7 Richtlinien', () => {
     const page = await openAs(browser, 'admin')
     await page.goto(`/vaktcomply/policies/${s.policyId}`)
     await expect(page.getByRole('heading', { name: POLICY, level: 1 })).toBeVisible()
-    test.fail(true, 'R1-KW-11: Akzeptanz-Kampagnen (policies/:id/acceptance) sind nirgends verlinkt')
     await expect(page.getByRole('link', { name: /Akzeptanz|bestätigen/i })
       .or(page.getByRole('button', { name: /Akzeptanz|bestätigen/i })).first()).toBeVisible({ timeout: 3000 })
   })

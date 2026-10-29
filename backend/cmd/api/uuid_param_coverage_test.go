@@ -143,6 +143,7 @@ var knownUnprovenRoutes = map[string]string{
 	"POST /api/v1/admin/users/:email/password-reset-token":   "`:email` auf der Denylist → Guard laesst passieren, CSRF antwortet 403",
 	"POST /api/v1/vaktcomply/frameworks/:name/enable":        "`:name` auf der Denylist → CSRF 403",
 	"POST /api/v1/vaktcomply/physical-templates/:code/apply": "`:code` auf der Denylist → CSRF 403",
+	"POST /api/v1/vaktcomply/policy-templates/:slug/apply":   "`:slug` auf der Denylist (Vorlagen-Slug, R1-KW-8) → CSRF 403",
 	"PUT /api/v1/vaktcomply/soa/entries/:control_ref":        "`:control_ref` auf der Denylist → CSRF 403",
 	"GET /api/v1/vaktcomply/bsi/reports/:type":               "`:type` auf der Denylist; BSI-Feature-Gate antwortet 402 vor dem Handler",
 	"GET /api/v1/vaktcomply/bsi/reports/:type/preview":       "`:type` auf der Denylist; BSI-Feature-Gate antwortet 402 vor dem Handler",

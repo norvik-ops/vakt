@@ -894,6 +894,7 @@
       "savingBtn": "Enregistrement…"
     },
     "policyDetail": {
+      "acceptanceLink": "Confirmation par les employés",
       "notFound": "Politique introuvable.",
       "cardContent": "Contenu de la politique",
       "labelTitle": "Titre",

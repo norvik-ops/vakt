@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -98,6 +98,11 @@ export default function PolicyDetailPage() {
             <Button variant="outline" onClick={() => { navigate('/vaktcomply/policies'); }}>
               <ArrowLeft className="w-4 h-4 mr-1" />
               {t('common.back')}
+            </Button>
+            {/* R1-KW-11: einziger UI-Weg zu den Akzeptanz-Kampagnen dieser Richtlinie. */}
+            <Button variant="outline" onClick={() => { navigate(`/vaktcomply/policies/${policy.id}/acceptance`); }}>
+              <Users className="w-4 h-4 mr-1" />
+              {t('vaktcomply.policyDetail.acceptanceLink')}
             </Button>
             <Button onClick={handleSave} disabled={!dirty || update.isPending}>
               <Save className="w-4 h-4 mr-1" />

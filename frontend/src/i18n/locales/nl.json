@@ -894,6 +894,7 @@
       "savingBtn": "Opslaan…"
     },
     "policyDetail": {
+      "acceptanceLink": "Bevestiging door medewerkers",
       "notFound": "Beleid niet gevonden.",
       "cardContent": "Beleidsinhoud",
       "labelTitle": "Titel",

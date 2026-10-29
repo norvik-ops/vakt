@@ -894,6 +894,7 @@
       "savingBtn": "Saving…"
     },
     "policyDetail": {
+      "acceptanceLink": "Employee acknowledgement",
       "notFound": "Policy not found.",
       "cardContent": "Policy Content",
       "labelTitle": "Title",

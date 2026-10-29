@@ -594,14 +594,14 @@ func (h *Handler) ListPolicyTemplates(c echo.Context) error {
 	return c.JSON(http.StatusOK, BuiltinPolicyTemplates())
 }
 
-// CreatePolicyFromTemplate handles POST /api/v1/vaktcomply/policy-templates/:id/apply.
+// CreatePolicyFromTemplate handles POST /api/v1/vaktcomply/policy-templates/:slug/apply.
 // Creates a new policy using the template content as description.
 func (h *Handler) CreatePolicyFromTemplate(c echo.Context) error {
 	orgID := orgID(c)
 	if orgID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
-	templateID := c.Param("id")
+	templateID := c.Param("slug")
 	templates := BuiltinPolicyTemplates()
 	var found *PolicyTemplate
 	for i := range templates {

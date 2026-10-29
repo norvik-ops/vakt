@@ -2760,7 +2760,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/vaktcomply/policy-templates/{id}/apply": {
+    "/vaktcomply/policy-templates/{slug}/apply": {
         parameters: {
             query?: never;
             header?: never;
@@ -2776,7 +2776,7 @@ export interface paths {
                 header?: never;
                 path: {
                     /** @description Built-in template id (a slug such as `isms-policy`, not a UUID). */
-                    id: string;
+                    slug: string;
                 };
                 cookie?: never;
             };

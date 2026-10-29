@@ -352,7 +352,10 @@ func registerRoutes(g *echo.Group, h *Handler) {
 
 	// Policy Templates
 	g.GET("/policy-templates", h.ListPolicyTemplates)
-	g.POST("/policy-templates/:id/apply", h.CreatePolicyFromTemplate, rw)
+	// :slug, nicht :id — der Wert ist ein Vorlagen-Slug („isms-policy“), keine UUID.
+	// Unter :id lehnte ValidateUUIDParams jeden Aufruf mit 400 ab (R1-KW-8);
+	// "slug" steht auf dessen Denylist (internal/shared/middleware/uuid_param.go).
+	g.POST("/policy-templates/:slug/apply", h.CreatePolicyFromTemplate, rw)
 
 	// DB-backed compliance templates (policy/dpia/avv), used by PolicyTemplatesPage.tsx
 	g.GET("/templates", h.ListDBPolicyTemplates)
