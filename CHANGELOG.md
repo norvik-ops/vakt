@@ -4,7 +4,7 @@ All notable user-facing changes to Vakt are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
-## [Unreleased]
+## [0.46.0] — 2026-10-29
 
 ### Behoben
 - **Einladungs- und Bestätigungsmails kamen bei einer Installation nach README nie an.** In
