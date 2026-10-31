@@ -7,6 +7,18 @@ import { apiWrite, loadState, openAs, patchState, closeContexts } from './lib/kw
  */
 
 const RISK = 'Ransomware verschlüsselt den Fileserver'
+const RISK_10 = 'Ausfall der Produktionsdatenbank'
+
+/** Bildet Stufennamen auf eine Grundform ab: „Hohes Risiko" und „Hoch" sind dieselbe Stufe. */
+function stufe(text: string): string {
+  const t = text.toLowerCase()
+  if (/krit/.test(t)) return 'kritisch'
+  if (/sehr\s*hoch/.test(t)) return 'sehr hoch'
+  if (/\bho(ch|h)/.test(t)) return 'hoch'
+  if (/mitt/.test(t)) return 'mittel'
+  if (/niedrig|gering/.test(t)) return 'niedrig'
+  return `unbekannt: ${text}`
+}
 
 async function riskList(page: Page): Promise<void> {
   await page.goto('/vaktcomply/risks')
@@ -106,5 +118,40 @@ test.describe('KW8 Risiken', () => {
     await expect(link.getByRole('button', { name: /^A\.5\.1 / })).toBeVisible()
     await link.getByPlaceholder('Controls durchsuchen …').fill('A.8.13')
     await expect(link.getByRole('button', { name: /^A\.8\.13 / })).toBeVisible({ timeout: 5000 })
+  })
+
+  // Die Risikostufen sind in jeder Ansicht anders geschnitten: Legende und Zellfarbe der
+  // Matrix sagen „Hoch (10–14)", die Liste gruppiert ab 9 als „Mittleres Risiko", die
+  // Score-Badges schneiden bei 15/9/4, das Restrisiko bei 12/6, die SecVitals-Übersicht bei 12.
+  // Dasselbe Risiko (Score 10) heißt damit je nach Ansicht „hoch" oder „mittel".
+  // Die Prüfung verlangt kein bestimmtes Schema: Sie vergleicht nur die Stufe, die die
+  // Legende für Score 10 nennt, mit der Stufe der Listengruppe, in der die Karte steht.
+  test('KW8 R1-KW-17 Risiko mit Score 10 steht in der Listengruppe, deren Stufe die Legende nennt', async ({ browser }) => {
+    const page = await openAs(browser, 'admin')
+    await riskList(page)
+    const r = await apiWrite(page.context(), 'POST', '/api/v1/vaktcomply/risks', {
+      title: RISK_10, category: 'Betrieb', likelihood: 2, impact: 5, treatment: 'mitigate',
+    })
+    expect(r.status(), await r.text()).toBe(201)
+    await riskList(page)
+    const card = page.getByText(RISK_10)
+    await expect(card, 'Vorbedingung: das neue Risiko steht in der Liste').toBeVisible()
+
+    // Legende der Matrix lesen: Einträge der Form „Stufe (von–bis)".
+    const matrix = page.getByRole('heading', { name: /Risikomatrix/ }).locator('xpath=..')
+    const legendText = await matrix.innerText()
+    const ranges = [...legendText.matchAll(/(\p{L}[\p{L} ]*?)\s*\((\d+)\s*[–-]\s*(\d+)\)/gu)]
+      .map((m) => ({ label: m[1]!.trim(), from: Number(m[2]), to: Number(m[3]) }))
+    const legendFor10 = ranges.find((x) => x.from <= 10 && 10 <= x.to)
+    expect(legendFor10, `Vorbedingung: Legende nennt eine Stufe für Score 10 (gelesen: ${JSON.stringify(ranges)})`).toBeTruthy()
+
+    // Überschrift der Gruppe, in der die Karte steht.
+    const groupHeading = card.locator('xpath=ancestor::*[h2][1]/h2')
+    await expect(groupHeading, 'Vorbedingung: die Karte steht unter einer Gruppenüberschrift').toHaveCount(1)
+    const groupText = await groupHeading.innerText()
+
+    // Ab hier der bekannte Befund. test.fail() steht bewusst NACH den Vorbedingungen.
+    test.fail(true, 'R1-KW-17: Legende nennt Score 10 „Hoch (10–14)", die Liste gruppiert ihn unter „Mittleres Risiko (Score 9–14)"')
+    expect(stufe(groupText), `Gruppe „${groupText}" vs. Legende „${legendFor10!.label}"`).toBe(stufe(legendFor10!.label))
   })
 })
