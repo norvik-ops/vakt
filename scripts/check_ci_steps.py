@@ -335,6 +335,9 @@ REQUIRED_STEPS = {
         "Lint",
         "Secret scanning (gitleaks)",
         "Vulnerability scan (govulncheck)",
+        # ADR-0093: ohne diesen Schritt urteilt niemand ueber die JSON-Ausgabe
+        "govulncheck-Allowlist-Gate",
+        "govulncheck-Allowlist-Gate Selbsttest",
         "Route reconciliation (FE apiFetch ↔ BE routes)",
         "Worker-Wiring-Gate (G7 — Asynq Producer/Consumer)",
         "Image-Referenz-Gate Selbsttest",

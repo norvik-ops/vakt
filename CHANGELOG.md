@@ -4,6 +4,36 @@ All notable user-facing changes to Vakt are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [Unreleased]
+
+### Sicherheit
+- **Bibliothek `golang.org/x/net` auf v0.62.0 aktualisiert** (CVE-2026-78661, hoch: Denial of
+  Service in `x/net/html` durch präpariertes HTML). Dabei steigen `x/crypto`, `x/sync`, `x/sys`,
+  `x/term` (v0.46.0 → v0.47.0) und `x/text` auf ihre jeweils nächste Version, weil v0.62.0 sie
+  voraussetzt.
+- **Direct-SAML: keine Kontoübernahme über die Organisationsgrenze mehr** (R1-SEC-01, hoch). Ein
+  IdP, den eine Organisation für Direct-SAML eingerichtet hat, konnte sich als Konto einer anderen
+  Organisation anmelden: mit einer NameID, die dem SSO-Subject dieses Kontos entsprach, oder mit
+  dessen E-Mail-Adresse im Attribut. Der Login sucht Subject und E-Mail jetzt nur unter den
+  Mitgliedern der Organisation, deren IdP die Assertion signiert hat. Das Subject wird dazu je
+  Organisation gespeichert (`saml:<Organisation>:<NameID>`); bestehende Direct-SAML-Konten stellt
+  Migration 270 beim Update um (erkannt an der Direct-SAML-Konfiguration ihrer Organisation oder
+  an einem Direct-SAML-Login im Anmeldeverlauf). Ein dabei mit erfasstes Casdoor-SAML-Konto wird
+  beim nächsten Login über die bestätigte E-Mail neu verknüpft. Eine fremde Organisation kann eine NameID damit weder übernehmen
+  noch für andere besetzen, und ein Login über Casdoor landet nie in einem Direct-SAML-Konto. Eine
+  Assertion ohne Subject führt zu `saml_assertion_invalid` statt zu einem Absturz der Anfrage.
+  Betrifft nur die Pro-Funktion Direct-SAML.
+- **SAML-Login nimmt die E-Mail nur noch aus dem E-Mail-Attribut, nie mehr aus der NameID**
+  (GO-2026-6909). Die SAML-Bibliothek prüft den Namespace der NameID nicht; eine NameID, die wie
+  die Adresse eines anderen Kontos aussieht, konnte sonst dieses Konto treffen. **Handlung nötig,
+  falls Ihr IdP nur die NameID sendet:** Attribut `email` im Attribute Mapping ergänzen, sonst
+  schlägt der Login mit `saml_missing_email` fehl (siehe `docs/wiki/enterprise-sso.md`). Leere
+  Attributwerte zählen als fehlend, Leerzeichen am Rand werden entfernt.
+- **Befristete Ausnahmen für govulncheck** (ADR-0093). Für drei gemeldete Lücken ohne verfügbares
+  Update (GO-2026-6872 und GO-2026-6875 in echo/v4, GO-2026-6909 in crewjam/saml) gibt es
+  begründete Ausnahmen bis 2026-12-09 in `.github/govulncheck-allowlist.json`. Jede andere
+  erreichbare Lücke und jede abgelaufene Ausnahme macht die CI weiterhin rot.
+
 ## [0.46.0] — 2026-10-29
 
 ### Behoben

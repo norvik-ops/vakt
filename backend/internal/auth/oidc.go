@@ -68,6 +68,18 @@ var ErrEmailNotVerified = errors.New("OIDC: email not verified by identity provi
 // the SAML user has no pre-existing account.
 var ErrSAMLUserNotProvisioned = errors.New("SAML: user not found and JIT provisioning is disabled")
 
+// providerSAMLDirect marks accounts provisioned by the direct SAML SP. Their
+// oidc_subject is org-qualified (directSAMLSubject), so it can never equal a
+// Casdoor subject or the NameID another organisation's IdP chose (R1-SEC-01).
+const providerSAMLDirect = "saml_direct"
+
+// directSAMLSubject is the stored identity of a direct-SAML account: provider,
+// organisation and NameID together. The NameID alone is chosen by the customer
+// IdP and is only unique within that IdP.
+func directSAMLSubject(orgID, nameID string) string {
+	return "saml:" + orgID + ":" + nameID
+}
+
 // ErrOIDCNoEmail is returned when the identity provider hands back a profile
 // without an email address.
 //
@@ -405,7 +417,29 @@ func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, d
 	// against — the organisation that configured this IdP. It used to be read
 	// here and then dropped, and JIT provisioning founded a personal org
 	// instead (R1-W2FIX-SSO-01); it is now the org the new user joins.
-	userID, resolvedOrgID, roles, err := s.provisionOIDCUser(ctx, nameID, "saml", email, displayName, "", orgID, true, jitEnabled)
+	subject := directSAMLSubject(orgID, nameID)
+
+	// Accounts provisioned before 2026-11-09 carry the raw NameID with provider
+	// "saml". Upgrade the one that belongs to THIS organisation in place, so its
+	// user keeps the account. A row of another organisation is never touched.
+	// orgid-lint: global — bound to orgID via the org_members subquery.
+	// Zero rows is the normal case (no legacy row), so the CommandTag is not checked.
+	//idempotent: legacy-subject upgrade, 0 or 1 row by design
+	if _, err := s.db.Exec(ctx, `
+		UPDATE users SET oidc_subject = $1, oidc_provider = $2
+		WHERE id = (
+			SELECT u.id FROM users u
+			WHERE u.oidc_subject = $3 AND u.oidc_provider = 'saml'
+			  AND EXISTS (SELECT 1 FROM org_members om
+			              WHERE om.user_id = u.id AND om.org_id::text = $4)
+			ORDER BY u.created_at ASC
+			LIMIT 1)`,
+		subject, providerSAMLDirect, nameID, orgID,
+	); err != nil {
+		return nil, fmt.Errorf("upgrade legacy SAML subject: %w", err)
+	}
+
+	userID, resolvedOrgID, roles, err := s.provisionOIDCUser(ctx, subject, providerSAMLDirect, email, displayName, "", orgID, true, jitEnabled)
 	if err != nil {
 		s.recordLogin(ctx, orgID, "", email, deviceHint, "saml_direct", "provision_failed")
 		return nil, err
@@ -443,18 +477,38 @@ func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, 
 		return "", "", nil, ErrOIDCNoEmail
 	}
 
-	// Try to find an existing user by OIDC subject.
+	// R1-SEC-01: a direct-SAML login (targetOrgID set) is bound to the
+	// organisation whose IdP signed the assertion. Its subject arrives
+	// org-qualified (directSAMLSubject) and must additionally match the provider
+	// and an org membership; the e-mail match below is bound the same way.
+	// The Casdoor-proxied paths pass targetOrgID "" and keep their unbound
+	// lookup, which is what lets a user sign in through a second provider —
+	// but they never match a direct-SAML account: that subject belongs to a
+	// customer IdP, not to Casdoor.
+	// orgid-lint: global — targetOrgID == "" only on the Casdoor paths (see above).
 	var userID string
-	err := s.db.QueryRow(ctx,
-		`SELECT id::text FROM users WHERE oidc_subject = $1`,
-		oidcSubject,
+	err := s.db.QueryRow(ctx, `
+		SELECT u.id::text FROM users u
+		WHERE u.oidc_subject = $1
+		  AND CASE WHEN $2::text = ''
+		      THEN u.oidc_provider IS DISTINCT FROM $4
+		      ELSE u.oidc_provider = $3 AND EXISTS (
+		        SELECT 1 FROM org_members om
+		        WHERE om.user_id = u.id AND om.org_id::text = $2)
+		      END`,
+		oidcSubject, targetOrgID, provider, providerSAMLDirect,
 	).Scan(&userID)
 
 	if err != nil {
 		// No existing user by subject — try to find by email (may already have a local account).
-		emailErr := s.db.QueryRow(ctx,
-			`SELECT id::text FROM users WHERE email = $1`,
-			email,
+		// orgid-lint: global — bound to targetOrgID for direct SAML, unbound only on the Casdoor paths.
+		emailErr := s.db.QueryRow(ctx, `
+			SELECT u.id::text FROM users u
+			WHERE u.email = $1
+			  AND ($2::text = '' OR EXISTS (
+			        SELECT 1 FROM org_members om
+			        WHERE om.user_id = u.id AND om.org_id::text = $2))`,
+			email, targetOrgID,
 		).Scan(&userID)
 		if emailErr == nil {
 			// Linking would let an unverified-email IdP take over an existing local
@@ -504,9 +558,10 @@ func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, 
 		FROM org_members om
 		JOIN roles r ON r.id = om.role_id
 		WHERE om.user_id = $1::uuid
+		  AND ($2::text = '' OR om.org_id::text = $2)
 		ORDER BY om.joined_at ASC
 		LIMIT 1`,
-		userID,
+		userID, targetOrgID,
 	).Scan(&orgID, &roleName)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("fetch org membership: %w", err)

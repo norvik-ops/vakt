@@ -21,6 +21,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/crewjam/saml"
@@ -43,14 +44,25 @@ func samlAttr(a *saml.Assertion, names ...string) string {
 		for _, attr := range stmt.Attributes {
 			for _, want := range names {
 				if attr.Name == want || attr.FriendlyName == want {
-					if len(attr.Values) > 0 {
-						return attr.Values[0].Value
+					for _, v := range attr.Values {
+						if val := strings.TrimSpace(v.Value); val != "" {
+							return val
+						}
 					}
 				}
 			}
 		}
 	}
 	return ""
+}
+
+// samlLoginEmail returns the login e-mail from the assertion's attribute
+// statements only. There is deliberately no fallback to the NameID:
+// crewjam/saml v0.5.1 does not check the NameID's namespace (GO-2026-6909),
+// so a NameID that looks like another account's e-mail must never pick the
+// account. Without an e-mail attribute the login is rejected.
+func samlLoginEmail(a *saml.Assertion) string {
+	return samlAttr(a, "email", "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
 }
 
 // OrgSAMLConfig holds the persisted SAML SP configuration for one org.
@@ -528,14 +540,20 @@ func (h *Handler) SAMLDirectACS(c echo.Context) error {
 		return c.Redirect(http.StatusFound, "/login?error=saml_assertion_invalid")
 	}
 
+	return h.completeSAMLLogin(c, orgID, cfg.JITProvisioning, assertion)
+}
+
+// completeSAMLLogin finishes a direct-SAML login once the assertion is
+// signature- and InResponseTo-verified. Split out of SAMLDirectACS so it can be
+// driven with a hand-built assertion in tests (ParseResponse needs a real
+// signing IdP).
+func (h *Handler) completeSAMLLogin(c echo.Context, orgID string, jitProvisioning bool, assertion *saml.Assertion) error {
 	// Extract user attributes from assertion
-	email := samlAttr(assertion, "email", "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
-	if email == "" {
-		email = assertion.Subject.NameID.Value
-	}
+	email := samlLoginEmail(assertion)
 	name := samlAttr(assertion, "displayName", "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname")
 
 	if email == "" {
+		log.Warn().Str("org_id", orgID).Msg("saml_acs: assertion without email attribute rejected")
 		return c.Redirect(http.StatusFound, "/login?error=saml_missing_email")
 	}
 
@@ -544,7 +562,13 @@ func (h *Handler) SAMLDirectACS(c echo.Context) error {
 		deviceHint = deviceHint[:120]
 	}
 
-	authResp, err := h.service.provisionSAMLUser(c.Request().Context(), orgID, assertion.Subject.NameID.Value, email, name, deviceHint, cfg.JITProvisioning)
+	// R1-SEC-01: a verified assertion without Subject/NameID used to panic here.
+	if assertion.Subject == nil || assertion.Subject.NameID == nil || strings.TrimSpace(assertion.Subject.NameID.Value) == "" {
+		log.Warn().Str("org_id", orgID).Msg("saml_acs: assertion without subject rejected")
+		return c.Redirect(http.StatusFound, "/login?error=saml_assertion_invalid")
+	}
+
+	authResp, err := h.service.provisionSAMLUser(c.Request().Context(), orgID, assertion.Subject.NameID.Value, email, name, deviceHint, jitProvisioning)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Str("email_redacted", logsafe.RedactEmail(email)).Msg("saml_acs: provision user failed")
 		if err == ErrSAMLUserNotProvisioned {

@@ -51,6 +51,18 @@ Unterstützte IdPs: Azure Entra ID (Microsoft 365), Okta, OneLogin, Google Works
 
 > **Attribute Mapping:** Vakt liest `email` und `displayName`. Azure liefert diese standardmäßig als `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` und `displayName`.
 
+> **Pflicht: E-Mail-Attribut.** Der IdP muss die E-Mail als Attribut `email` (oder als Claim
+> `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress`) senden. Fehlt es, lehnt
+> Vakt den Login mit `saml_missing_email` ab. Die NameID wird seit 2026-11-09 nicht mehr als
+> E-Mail verwendet (GO-2026-6909: die SAML-Bibliothek prüft ihren Namespace nicht).
+>
+> **Bindung an die Organisation.** Direct-SAML meldet nur Konten an, die Mitglied der Organisation
+> sind, deren IdP die Assertion signiert hat. Gehört die NameID oder die E-Mail einem Konto einer
+> anderen Organisation, schlägt der Login mit `saml_provision_failed` fehl (R1-SEC-01). Die
+> NameID wird je Organisation gespeichert; dieselbe NameID in zwei Organisationen ergibt zwei
+> getrennte Konten. Grenze: Eine E-Mail-Adresse gibt es instanzweit nur einmal. Existiert sie
+> schon als Konto einer anderen Organisation, kann Direct-SAML dafür kein zweites Konto anlegen.
+
 ---
 
 ### 1.2 Okta
@@ -162,9 +174,9 @@ SAML-ACS-Fehler werden als Browser-Redirects zurückgegeben:
 | Error-Param | Ursache |
 |-------------|---------|
 | `saml_assertion_invalid` | Assertion abgelaufen oder Signatur ungültig |
-| `saml_missing_email` | IdP hat kein Email-Attribut übermittelt |
+| `saml_missing_email` | IdP hat kein E-Mail-Attribut übermittelt (die NameID zählt nicht als E-Mail) |
 | `saml_user_not_provisioned` | JIT deaktiviert, Nutzer nicht in Vakt vorhanden |
-| `saml_provision_failed` | Interner Fehler beim Anlegen |
+| `saml_provision_failed` | Interner Fehler beim Anlegen, oder NameID/E-Mail gehört einem Konto einer anderen Organisation |
 
 ---
 
@@ -314,7 +326,7 @@ SCIM-Operationen erscheinen als `actor: "scim_provisioner"` mit der jeweiligen O
 | Problem | Mögliche Ursache | Lösung |
 |---------|-----------------|--------|
 | SAML: "assertion validation failed" | Zertifikat-Mismatch oder abgelaufenes SP-Cert | Zertifikat in Vakt und IdP synchronisieren |
-| SAML: "missing email claim" | IdP sendet NameID statt email-Attribut | Attribute Mapping im IdP prüfen |
+| SAML: "missing email claim" / `saml_missing_email` | IdP sendet nur die NameID, kein `email`-Attribut | Attribut `email` im Attribute Mapping des IdP ergänzen |
 | SCIM: 401 Unauthorized | Token falsch oder widerrufen | Neues SCIM-Token erstellen |
 | SCIM: User wird nicht angelegt | Filter-Syntax falsch | `?filter=userName+eq+"user%40example.com"` |
 | SIEM: Kein Event in Splunk | HEC-Token oder Endpunkt falsch | Test-Event in Admin-UI senden und Splunk-HEC-Logs prüfen |

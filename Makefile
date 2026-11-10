@@ -259,6 +259,7 @@ gates:
 	python3 scripts/check_sqlc_frozen.py
 	python3 scripts/check_module_isolation.py
 	python3 scripts/check_module_isolation_test.py
+	python3 scripts/check_govulncheck_test.py
 	python3 scripts/check_openapi_coverage.py
 	python3 scripts/check_outbound_security.py
 	python3 scripts/check_user_role_insert.py
