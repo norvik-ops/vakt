@@ -422,6 +422,9 @@ func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, d
 	// Accounts provisioned before 2026-11-09 carry the raw NameID with provider
 	// "saml". Upgrade the one that belongs to THIS organisation in place, so its
 	// user keeps the account. A row of another organisation is never touched.
+	// If an account of this organisation already carries the qualified subject,
+	// nothing is upgraded: a second row with the same subject would leave it to
+	// row order which account the next login lands in. The existing holder wins.
 	// orgid-lint: global — bound to orgID via the org_members subquery.
 	// Zero rows is the normal case (no legacy row), so the CommandTag is not checked.
 	//idempotent: legacy-subject upgrade, 0 or 1 row by design
@@ -432,6 +435,10 @@ func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, d
 			WHERE u.oidc_subject = $3 AND u.oidc_provider = 'saml'
 			  AND EXISTS (SELECT 1 FROM org_members om
 			              WHERE om.user_id = u.id AND om.org_id::text = $4)
+			  AND NOT EXISTS (
+			        SELECT 1 FROM users h
+			        JOIN org_members hm ON hm.user_id = h.id AND hm.org_id::text = $4
+			        WHERE h.oidc_subject = $1 AND h.oidc_provider = $2)
 			ORDER BY u.created_at ASC
 			LIMIT 1)`,
 		subject, providerSAMLDirect, nameID, orgID,
@@ -482,9 +489,11 @@ func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, 
 	// org-qualified (directSAMLSubject) and must additionally match the provider
 	// and an org membership; the e-mail match below is bound the same way.
 	// The Casdoor-proxied paths pass targetOrgID "" and keep their unbound
-	// lookup, which is what lets a user sign in through a second provider —
-	// but they never match a direct-SAML account: that subject belongs to a
-	// customer IdP, not to Casdoor.
+	// lookup, which is what lets a user sign in through a second provider.
+	// Their SUBJECT lookup never matches a direct-SAML account (that subject
+	// belongs to a customer IdP, not to Casdoor). Their unbound e-mail match
+	// below does: with a verified e-mail it links that account and rewrites
+	// its subject to the Casdoor one.
 	// orgid-lint: global — targetOrgID == "" only on the Casdoor paths (see above).
 	var userID string
 	err := s.db.QueryRow(ctx, `

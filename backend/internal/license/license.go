@@ -10,9 +10,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -171,6 +174,11 @@ func KnownTier(tier string) bool { return sellableTiers[tier] }
 // If isDemo is true a full-feature demo license is returned regardless of the key.
 // An empty key or any parse/verification error yields a community license — and
 // so does a correctly signed key carrying a tier this platform no longer sells.
+//
+// A rejected or expired key is logged as a warning with its reason, so an
+// operator can tell "no key" from "key thrown away". The key, its signature and
+// the raw payload are never logged — only the reason, plus the tier name or the
+// expiry date where one applies.
 func Load(licenseKey string, isDemo bool) *License {
 	if isDemo {
 		return demoLicense()
@@ -180,9 +188,35 @@ func Load(licenseKey string, isDemo bool) *License {
 	}
 	lic, err := parse(licenseKey)
 	if err != nil {
+		ev := log.Warn().Str("reason", rejectReason(err))
+		var ut unknownTierError
+		if errors.As(err, &ut) {
+			ev = ev.Str("tier", ut.tier)
+		}
+		ev.Msg("license: key rejected — running as community")
 		return communityLicense()
 	}
+	if lic.Expired && lic.ExpiresAt != nil {
+		log.Warn().Str("reason", "license has expired").Str("tier", lic.Tier).
+			Time("expires_at", *lic.ExpiresAt).
+			Msg("license: key has expired — paid features are read-only")
+	}
 	return lic
+}
+
+// rejectReason turns a parse error into a fixed, loggable reason. Only this
+// package's own error strings pass through; base64, JSON and x509 errors can
+// quote bytes of the key or payload, so they are reduced to a generic reason.
+func rejectReason(err error) string {
+	var le licenseError
+	if errors.As(err, &le) {
+		return le.Error()
+	}
+	var ut unknownTierError
+	if errors.As(err, &ut) {
+		return ut.Error()
+	}
+	return "license key could not be decoded"
 }
 
 // legacyProFeatures lists features that every Pro license grants implicitly,
@@ -348,7 +382,7 @@ func parse(key string) (*License, error) {
 	// AFTER signature verification so an attacker learns nothing new, and before
 	// the License is built so no code below can read a tier nobody vetted.
 	if !sellableTiers[p.Tier] {
-		return nil, errUnknownTier
+		return nil, unknownTierError{tier: truncateTier(p.Tier)}
 	}
 
 	var expiresAt *time.Time
@@ -402,10 +436,25 @@ func verifySignature(pub *ecdsa.PublicKey, hash, sig []byte) bool {
 var (
 	errInvalidFormat    = licenseError("invalid license key format")
 	errInvalidSignature = licenseError("license signature verification failed")
-	errUnknownTier      = licenseError("license tier is not sold by this build")
 	errInvalidKey       = licenseError("invalid public key")
 )
 
 type licenseError string
 
 func (e licenseError) Error() string { return string(e) }
+
+// unknownTierError is a correctly signed key whose tier this build does not
+// sell. It carries the tier name so Load can say which one it threw away.
+type unknownTierError struct{ tier string }
+
+func (e unknownTierError) Error() string { return "license tier is not sold by this build" }
+
+// truncateTier bounds the tier name before it reaches a log line. The payload
+// is signed, so this is hygiene, not a defence.
+func truncateTier(tier string) string {
+	const maxTier = 32
+	if len(tier) > maxTier {
+		return tier[:maxTier]
+	}
+	return tier
+}

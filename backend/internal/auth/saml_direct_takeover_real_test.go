@@ -357,3 +357,38 @@ func readMigration(t *testing.T, name string) string {
 	require.NoError(t, err)
 	return string(b)
 }
+
+// Doppel-Subject: Trägt in einer Org schon ein Konto das org-qualifizierte
+// Subject (saml_direct), darf das Hochstufen eines Altkontos (Provider "saml",
+// rohe NameID) derselben Org kein zweites Konto mit demselben Subject erzeugen.
+// Sonst entscheidet bei jedem weiteren Login die Zeilenreihenfolge der
+// Datenbank, in welchem Konto der Nutzer landet.
+func TestDirectSAML_LegacyUpgradeDoesNotDuplicateSubject(t *testing.T) {
+	pool := samlTakeoverDB(t)
+	ctx := context.Background()
+	tag := samlTakeoverTag()
+	orgB := seedSAMLOrg(t, pool, "b-"+tag)
+	nameID := "dup-nameid-" + tag
+	subject := directSAMLSubject(orgB, nameID)
+	holderEmail := "holder-" + tag + "@b.example"
+	holder := seedSSOUser(t, pool, orgB, holderEmail, subject, providerSAMLDirect)
+	legacy := seedSSOUser(t, pool, orgB, "legacy-dup-"+tag+"@b.example", nameID, "saml")
+
+	code, loc, got := runSAMLLogin(t, pool, orgB, samlAssertion(nameID, holderEmail))
+	require.Equal(t, http.StatusOK, code, "Redirect %s", loc)
+	require.Equal(t, holder, got, "Login muss im Konto landen, das das Subject schon trägt")
+
+	var n int
+	// orgid-lint: global — Testabfrage, auf das org-qualifizierte Subject eingegrenzt.
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT count(*) FROM users WHERE oidc_subject = $1 AND oidc_provider = $2`,
+		subject, providerSAMLDirect).Scan(&n))
+	require.Equal(t, 1, n, "zwei Konten tragen dasselbe Direct-SAML-Subject")
+
+	var subj, prov string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT oidc_subject, oidc_provider FROM users WHERE id = $1::uuid`, legacy,
+	).Scan(&subj, &prov))
+	require.Equal(t, nameID, subj, "Altkonto wurde trotz bestehendem Subject hochgestuft")
+	require.Equal(t, "saml", prov)
+}

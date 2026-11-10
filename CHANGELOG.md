@@ -23,6 +23,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   noch für andere besetzen, und ein Login über Casdoor landet nie in einem Direct-SAML-Konto. Eine
   Assertion ohne Subject führt zu `saml_assertion_invalid` statt zu einem Absturz der Anfrage.
   Betrifft nur die Pro-Funktion Direct-SAML.
+- **Direct-SAML: kein zweites Konto mit demselben Subject mehr.** Trägt in einer Organisation schon
+  ein Konto das Subject `saml:<Organisation>:<NameID>`, stuft der Login kein Altkonto mit derselben
+  NameID mehr darauf hoch. Bisher konnten danach zwei Konten dasselbe Subject tragen, und es hing
+  an der Reihenfolge in der Datenbank, in welchem der Nutzer landete.
 - **SAML-Login nimmt die E-Mail nur noch aus dem E-Mail-Attribut, nie mehr aus der NameID**
   (GO-2026-6909). Die SAML-Bibliothek prüft den Namespace der NameID nicht; eine NameID, die wie
   die Adresse eines anderen Kontos aussieht, konnte sonst dieses Konto treffen. **Handlung nötig,
@@ -33,8 +37,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Update (GO-2026-6872 und GO-2026-6875 in echo/v4, GO-2026-6909 in crewjam/saml) gibt es
   begründete Ausnahmen bis 2026-12-09 in `.github/govulncheck-allowlist.json`. Jede andere
   erreichbare Lücke und jede abgelaufene Ausnahme macht die CI weiterhin rot.
+  Die Begründung zu GO-2026-6909 ist korrigiert: Ein Login über Casdoor trifft ein Direct-SAML-Konto
+  zwar nicht über das Subject, wohl aber über die bestätigte E-Mail-Adresse und verknüpft es dann neu.
 
 ### Behoben
+- **Ein abgelehnter Lizenzschlüssel steht jetzt im Log.** Ist der Schlüssel aus `VAKT_LICENSE_KEY`
+  ungültig signiert, unlesbar, für einen nicht verkauften Tarif oder abgelaufen, schreibt die API
+  beim Start eine Warnung mit dem Grund (bei Tarif bzw. Ablauf auch Tarifname bzw. Ablaufdatum).
+  Bisher lief die Instanz still als Community weiter. Der Schlüssel selbst wird nie geloggt.
 - **Risikostufen sind in allen Ansichten gleich.** Bisher schnitt jede Ansicht den Risiko-Score
   (Wahrscheinlichkeit × Auswirkung) anders: Die Matrix-Legende nannte Score 10 „Hoch“, die Liste
   sortierte ihn unter „Mittleres Risiko“; Badges, Restrisiko, Dashboard, SecVitals, die große
