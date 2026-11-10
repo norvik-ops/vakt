@@ -5,6 +5,7 @@ package xlsxexport
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 	"time"
 
@@ -239,4 +240,47 @@ func TestRenderRisiken_MatrixCountsInOwnCell(t *testing.T) {
 	// Achsen-Kopfzeile und Nachbarzellen bleiben unberührt.
 	assert.Equal(t, "A=5", get("F3"))
 	assert.Equal(t, "6", get("D7")) // W=2 × A=3, ohne Anzahl
+}
+
+// fillOf returns the pattern fill colour of a cell (upper case, no '#').
+func fillOf(t *testing.T, f *excelize.File, sheet, cell string) string {
+	t.Helper()
+	id, err := f.GetCellStyle(sheet, cell)
+	require.NoError(t, err)
+	st, err := f.GetStyle(id)
+	require.NoError(t, err)
+	if len(st.Fill.Color) == 0 {
+		return ""
+	}
+	return st.Fill.Color[0]
+}
+
+// R1-KW-17: the XLSX export colours the score with the same four levels as the
+// risk register (15/10/5). Before the fix it cut at 15/8, so score 8 (Mittel)
+// and score 10 (Hoch) shared one colour.
+func TestRenderRisiken_LevelColoursFollowRiskRegister(t *testing.T) {
+	// likelihood × impact as a user would enter them: 4×5=20, 2×5=10, 2×4=8, 1×4=4.
+	pairs := [][2]int{{4, 5}, {2, 5}, {2, 4}, {1, 4}}
+	rows := make([]RiskRow, 0, len(pairs))
+	for i, p := range pairs {
+		rows = append(rows, RiskRow{ID: fmt.Sprintf("0000000%d-aaaa", i), Title: "R", Likelihood: p[0], Impact: p[1], RiskScore: p[0] * p[1]})
+	}
+	data, err := RenderRisiken(rows)
+	require.NoError(t, err)
+	f, err := excelize.OpenReader(bytes.NewReader(data))
+	require.NoError(t, err)
+	defer f.Close()
+
+	// Column F = score ("Risikostufe"), rows 2..5.
+	assert.Equal(t, "FEE2E2", fillOf(t, f, "Risiken", "F2"), "score 20 = Kritisch")
+	assert.Equal(t, "FFEDD5", fillOf(t, f, "Risiken", "F3"), "score 10 = Hoch")
+	assert.Equal(t, "FEF3C7", fillOf(t, f, "Risiken", "F4"), "score 8 = Mittel")
+	assert.Equal(t, "DCFCE7", fillOf(t, f, "Risiken", "F5"), "score 4 = Niedrig")
+
+	// Matrix sheet: row 4 = W=5 … row 8 = W=1; column B = A=1 … F = A=5.
+	assert.Equal(t, "FCA5A5", fillOf(t, f, "Matrix", "F6"), "matrix W=3×A=5=15 Kritisch")
+	assert.Equal(t, "FDBA74", fillOf(t, f, "Matrix", "F7"), "matrix W=2×A=5=10 Hoch")
+	assert.Equal(t, "FDE68A", fillOf(t, f, "Matrix", "E7"), "matrix W=2×A=4=8 Mittel")
+	assert.Equal(t, "FDE68A", fillOf(t, f, "Matrix", "F8"), "matrix W=1×A=5=5 Mittel")
+	assert.Equal(t, "86EFAC", fillOf(t, f, "Matrix", "E8"), "matrix W=1×A=4=4 Niedrig")
 }

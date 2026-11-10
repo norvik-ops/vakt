@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/xuri/excelize/v2"
+
+	"github.com/matharnica/vakt/internal/shared/risklevel"
 )
 
 // SoARow is one entry in the Statement of Applicability export.
@@ -48,6 +50,14 @@ type RiskRow struct {
 	Owner         string
 	DueDate       *time.Time
 	ResidualScore *int
+}
+
+// matrixFill is the cell colour of the XLSX risk matrix per risk level.
+var matrixFill = map[risklevel.Level]string{
+	risklevel.Critical: "FCA5A5", // red
+	risklevel.High:     "FDBA74", // orange
+	risklevel.Medium:   "FDE68A", // amber
+	risklevel.Low:      "86EFAC", // green
 }
 
 // RenderSoA produces a two-sheet XLSX for the Statement of Applicability.
@@ -182,9 +192,16 @@ func RenderRisiken(rows []RiskRow) ([]byte, error) {
 	_ = f.SetPanes(sheet, &excelize.Panes{Freeze: true, YSplit: 1, TopLeftCell: "A2", ActivePane: "bottomLeft"})
 	_ = f.AutoFilter(sheet, "A1:K1", []excelize.AutoFilterOptions{})
 
-	highStyle, _ := f.NewStyle(&excelize.Style{Fill: excelize.Fill{Type: "pattern", Color: []string{"FEE2E2"}, Pattern: 1}})
-	medStyle, _ := f.NewStyle(&excelize.Style{Fill: excelize.Fill{Type: "pattern", Color: []string{"FEF3C7"}, Pattern: 1}})
-	lowStyle, _ := f.NewStyle(&excelize.Style{Fill: excelize.Fill{Type: "pattern", Color: []string{"DCFCE7"}, Pattern: 1}})
+	// Score cell colour per risk level — same four levels as the risk register (R1-KW-17).
+	levelStyle := map[risklevel.Level]int{}
+	for level, color := range map[risklevel.Level]string{
+		risklevel.Critical: "FEE2E2",
+		risklevel.High:     "FFEDD5",
+		risklevel.Medium:   "FEF3C7",
+		risklevel.Low:      "DCFCE7",
+	} {
+		levelStyle[level], _ = f.NewStyle(&excelize.Style{Fill: excelize.Fill{Type: "pattern", Color: []string{color}, Pattern: 1}})
+	}
 
 	for i, r := range rows {
 		row := i + 2
@@ -210,14 +227,7 @@ func RenderRisiken(rows []RiskRow) ([]byte, error) {
 
 		// Color-code the score cell by risk level.
 		scoreCell := colName(6) + fmt.Sprint(row)
-		switch {
-		case r.RiskScore >= 15:
-			_ = f.SetCellStyle(sheet, scoreCell, scoreCell, highStyle)
-		case r.RiskScore >= 8:
-			_ = f.SetCellStyle(sheet, scoreCell, scoreCell, medStyle)
-		default:
-			_ = f.SetCellStyle(sheet, scoreCell, scoreCell, lowStyle)
-		}
+		_ = f.SetCellStyle(sheet, scoreCell, scoreCell, levelStyle[risklevel.Of(r.RiskScore)])
 	}
 
 	// ── Sheet 2: Matrix (5×5 heatmap) ────────────────────────────────────────
@@ -254,15 +264,7 @@ func RenderRisiken(rows []RiskRow) ([]byte, error) {
 			cell := colName(colOff+2) + fmt.Sprint(row)
 			_ = f.SetCellValue(matSheet, cell, score)
 
-			var fillColor string
-			switch {
-			case score >= 15:
-				fillColor = "FCA5A5" // red
-			case score >= 8:
-				fillColor = "FDE68A" // amber
-			default:
-				fillColor = "86EFAC" // green
-			}
+			fillColor := matrixFill[risklevel.Of(score)]
 			cellStyle, _ := f.NewStyle(&excelize.Style{
 				Fill:      excelize.Fill{Type: "pattern", Color: []string{fillColor}, Pattern: 1},
 				Alignment: &excelize.Alignment{Horizontal: "center"},

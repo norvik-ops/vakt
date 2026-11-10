@@ -34,6 +34,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   begründete Ausnahmen bis 2026-12-09 in `.github/govulncheck-allowlist.json`. Jede andere
   erreichbare Lücke und jede abgelaufene Ausnahme macht die CI weiterhin rot.
 
+### Behoben
+- **Risikostufen sind in allen Ansichten gleich.** Bisher schnitt jede Ansicht den Risiko-Score
+  (Wahrscheinlichkeit × Auswirkung) anders: Die Matrix-Legende nannte Score 10 „Hoch“, die Liste
+  sortierte ihn unter „Mittleres Risiko“; Badges, Restrisiko, Dashboard, SecVitals, die große
+  Heatmap (mit fünf Stufen), der Excel-Export und das Executive-Summary-PDF nutzten jeweils eigene
+  Grenzen. Jetzt gilt überall dieselbe Einteilung, auch für das
+  Restrisiko: **Kritisch 15–25 · Hoch 10–14 · Mittel 5–9 · Niedrig 1–4**. Die Risikoliste hat dafür
+  vier Gruppen statt drei. Die Kennzahl „Offene hohe Risiken“ (Score ≥ 15) heißt jetzt „Offene
+  kritische Risiken“.
+
 ## [0.46.0] — 2026-10-29
 
 ### Behoben

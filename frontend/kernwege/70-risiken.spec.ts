@@ -65,9 +65,9 @@ test.describe('KW8 Risiken', () => {
       patchState({ riskTitle: RISK })
       await riskList(page)
     }
-    // Bewertung sichtbar: Score 20 in der Gruppe „Hohes Risiko".
+    // Bewertung sichtbar: Score 20 in der Gruppe „Kritisches Risiko".
     await expect(page.getByText(RISK)).toBeVisible()
-    await expect(page.getByRole('heading', { name: /Hohes Risiko/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Kritisches Risiko/ })).toBeVisible()
     await page.getByText(RISK).click()
     await expect(page.getByRole('heading', { name: RISK, level: 1 })).toBeVisible()
     await expect(page.getByText(/Risiko-Score\s*20\s*\/\s*25/)).toBeVisible()
@@ -150,8 +150,6 @@ test.describe('KW8 Risiken', () => {
     await expect(groupHeading, 'Vorbedingung: die Karte steht unter einer Gruppenüberschrift').toHaveCount(1)
     const groupText = await groupHeading.innerText()
 
-    // Ab hier der bekannte Befund. test.fail() steht bewusst NACH den Vorbedingungen.
-    test.fail(true, 'R1-KW-17: Legende nennt Score 10 „Hoch (10–14)", die Liste gruppiert ihn unter „Mittleres Risiko (Score 9–14)"')
     expect(stufe(groupText), `Gruppe „${groupText}" vs. Legende „${legendFor10!.label}"`).toBe(stufe(legendFor10!.label))
   })
 })

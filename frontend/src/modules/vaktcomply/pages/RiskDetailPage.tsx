@@ -20,13 +20,9 @@ import RiskTreatmentPanel from '../components/RiskTreatmentPanel'
 import type { Risk, UpdateRiskInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
+import { riskLevel, RISK_LEVEL_BADGE } from '../../../shared/utils/riskLevel'
 
-const SCORE_COLOR = (score: number) => {
-  if (score >= 15) return 'bg-red-500/20 text-red-400 border-red-500/30'
-  if (score >= 9)  return 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-  if (score >= 4)  return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-  return 'bg-green-500/20 text-green-400 border-green-500/30'
-}
+const SCORE_COLOR = (score: number) => RISK_LEVEL_BADGE[riskLevel(score)]
 
 function AIRiskNarrativePanel({ riskId, existingNarrative }: { riskId: string; existingNarrative: string | null }) {
   const generate = useRiskNarrative(riskId)
@@ -66,9 +62,8 @@ function AIRiskNarrativePanel({ riskId, existingNarrative }: { riskId: string; e
 
 function residualScoreColor(score: number | undefined): string {
   if (score === undefined) return 'bg-muted text-muted-foreground border-border'
-  if (score > 12) return 'bg-red-500/20 text-red-400 border-red-500/30'
-  if (score >= 6)  return 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-  return 'bg-green-500/20 text-green-400 border-green-500/30'
+  // Residual risk uses the same levels as gross risk (R1-KW-17).
+  return RISK_LEVEL_BADGE[riskLevel(score)]
 }
 
 export default function RiskDetailPage() {

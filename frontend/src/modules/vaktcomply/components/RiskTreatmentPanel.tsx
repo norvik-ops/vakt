@@ -16,6 +16,7 @@ import {
 } from '../hooks/useRisks'
 import { useFrameworks, useFrameworkControls } from '../hooks/useFrameworks'
 import type { Risk, UpdateRiskTreatmentInput, TreatmentOption, TreatmentStatus, Control } from '../types'
+import { riskLevel, type RiskLevel } from '../../../shared/utils/riskLevel'
 
 // ---------------------------------------------------------------------------
 // Treatment option button configuration
@@ -68,12 +69,16 @@ const TREATMENT_STATUS_LABELS: Record<TreatmentStatus, string> = {
 }
 
 // Residual score color preview
+// Same levels as gross risk (R1-KW-17).
+const RESIDUAL_COLOR: Record<RiskLevel, string> = {
+  critical: 'bg-red-500',
+  high: 'bg-orange-500',
+  medium: 'bg-yellow-500',
+  low: 'bg-green-500',
+}
+
 function residualColor(likelihood: number, impact: number): string {
-  const score = likelihood * impact
-  if (score >= 15) return 'bg-red-500'
-  if (score >= 9)  return 'bg-amber-500'
-  if (score >= 4)  return 'bg-yellow-500'
-  return 'bg-green-500'
+  return RESIDUAL_COLOR[riskLevel(likelihood * impact)]
 }
 
 // ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 import { useFocusTrap } from '../../../shared/hooks/useFocusTrap'
+import { riskLevel, RISK_LEVELS, RISK_LEVEL_LABEL_KEY, type RiskLevel } from '../../../shared/utils/riskLevel'
 
 export interface HeatmapRisk {
   id: string
@@ -19,14 +20,16 @@ interface Props {
   risks: HeatmapRisk[]
 }
 
+const HEATMAP_FILL: Record<RiskLevel, string> = {
+  critical: 'bg-red-600/70',
+  high: 'bg-orange-500/70',
+  medium: 'bg-yellow-500/70',
+  low: 'bg-green-600/60',
+}
+
 // Color for a cell based on its score (likelihood × impact)
 function cellColor(likelihood: number, impact: number): string {
-  const score = likelihood * impact
-  if (score >= 20) return 'bg-red-900/80'
-  if (score >= 15) return 'bg-red-600/70'
-  if (score >= 10) return 'bg-orange-500/70'
-  if (score >= 5)  return 'bg-yellow-500/70'
-  return 'bg-green-600/60'
+  return HEATMAP_FILL[riskLevel(likelihood * impact)]
 }
 
 function statusVariant(status: string | undefined): 'default' | 'secondary' | 'success' | 'destructive' {
@@ -241,21 +244,11 @@ const RiskHeatmap: React.FC<Props> = ({ risks }) => {
 
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-green-600/60 inline-block" /> {t('vaktcomply.riskHeatmap.legendLow')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-yellow-500/70 inline-block" /> {t('vaktcomply.riskHeatmap.legendMedium')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-orange-500/70 inline-block" /> {t('vaktcomply.riskHeatmap.legendElevated')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-red-600/70 inline-block" /> {t('vaktcomply.riskHeatmap.legendHigh')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-red-900/80 inline-block" /> {t('vaktcomply.riskHeatmap.legendCritical')}
-            </span>
+            {[...RISK_LEVELS].reverse().map(({ level, from, to }) => (
+              <span key={level} className="flex items-center gap-1.5">
+                <span className={`w-3 h-3 rounded-sm inline-block ${HEATMAP_FILL[level]}`} /> {t('vaktcomply.riskHeatmap.legendLevel', { from, to, level: t(RISK_LEVEL_LABEL_KEY[level]) })}
+              </span>
+            ))}
             <span className="flex items-center gap-1.5">
               <span className="w-4 h-4 rounded-full bg-white border border-white/40 opacity-40 inline-block" /> {t('vaktcomply.riskHeatmap.legendAccepted')}
             </span>

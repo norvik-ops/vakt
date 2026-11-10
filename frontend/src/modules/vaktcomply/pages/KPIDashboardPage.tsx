@@ -7,6 +7,7 @@ import { toast } from '../../../shared/hooks/useToast'
 import { useKPIDashboard } from '../hooks/useKPIDashboard'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
 import type { KPISnapshot } from '../types'
+import { CRITICAL_FROM } from '../../../shared/utils/riskLevel'
 
 // ── KPI configuration ──────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ interface KPIConfig {
 const kpiConfig: KPIConfig[] = [
   { key: 'kpi_compliance_score', label: 'Compliance-Score', unit: '%', warn: 70, goal: 85, higher_is_better: true },
   { key: 'kpi_open_critical_controls', label: 'Krit. offene Kontrollen', unit: '', warn: 10, higher_is_better: false },
-  { key: 'kpi_open_high_risks', label: 'Offene Hochrisiken', unit: '', warn: 15, higher_is_better: false },
+  { key: 'kpi_open_high_risks', label: `Offene kritische Risiken (Score ≥ ${CRITICAL_FROM})`, unit: '', warn: 15, higher_is_better: false },
   { key: 'kpi_residual_risk_avg', label: 'Ø Residualrisiko', unit: '', warn: 8, higher_is_better: false },
   { key: 'kpi_open_incidents', label: 'Offene Incidents', unit: '', warn: 5, higher_is_better: false },
   { key: 'kpi_incident_mttr_days', label: 'MTTR Incidents', unit: ' Tage', warn: 30, higher_is_better: false },

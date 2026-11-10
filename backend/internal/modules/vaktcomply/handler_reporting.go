@@ -15,6 +15,7 @@ import (
 	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/pagination"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
+	"github.com/matharnica/vakt/internal/shared/risklevel"
 	"github.com/matharnica/vakt/internal/shared/xlsxexport"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
@@ -109,7 +110,7 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 		for _, r := range risks {
 			if r.Status == "open" {
 				openRisks++
-				if r.RiskScore >= 15 {
+				if risklevel.Of(r.RiskScore) == risklevel.Critical {
 					criticalRisks++
 				}
 			}

@@ -9900,13 +9900,7 @@ func (q *Queries) GetExecutiveFrameworkScores(ctx context.Context, orgID string)
 
 const getExecutiveTopRisks = `-- name: GetExecutiveTopRisks :many
 SELECT title,
-       (likelihood * impact)::int AS score,
-       CASE
-           WHEN (likelihood * impact) >= 15 THEN 'critical'
-           WHEN (likelihood * impact) >= 9  THEN 'high'
-           WHEN (likelihood * impact) >= 4  THEN 'medium'
-           ELSE 'low'
-       END AS severity
+       (likelihood * impact)::int AS score
 FROM ck_risks
 WHERE org_id = $1::uuid AND status = 'open'
 ORDER BY score DESC, updated_at DESC
@@ -9914,9 +9908,8 @@ LIMIT 5
 `
 
 type GetExecutiveTopRisksRow struct {
-	Title    string `json:"title"`
-	Score    int32  `json:"score"`
-	Severity string `json:"severity"`
+	Title string `json:"title"`
+	Score int32  `json:"score"`
 }
 
 func (q *Queries) GetExecutiveTopRisks(ctx context.Context, orgID string) ([]GetExecutiveTopRisksRow, error) {
@@ -9928,7 +9921,7 @@ func (q *Queries) GetExecutiveTopRisks(ctx context.Context, orgID string) ([]Get
 	items := []GetExecutiveTopRisksRow{}
 	for rows.Next() {
 		var i GetExecutiveTopRisksRow
-		if err := rows.Scan(&i.Title, &i.Score, &i.Severity); err != nil {
+		if err := rows.Scan(&i.Title, &i.Score); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

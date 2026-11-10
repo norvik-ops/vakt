@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/matharnica/vakt/internal/shared/httputil"
+	"github.com/matharnica/vakt/internal/shared/risklevel"
 )
 
 type ReportType string
@@ -65,7 +66,7 @@ func GatherContext(ctx context.Context, db *pgxpool.Pool, orgID string) (*Compli
 	if err := db.QueryRow(ctx, `
         SELECT COUNT(*) FROM ck_risks
         WHERE org_id = $1::uuid AND status NOT IN ('accepted','closed','mitigated')
-          AND likelihood * impact >= 15`, orgID,
+          AND likelihood * impact >= $2`, orgID, risklevel.CriticalFrom,
 	).Scan(&cc.CriticalRisks); err != nil {
 		log.Warn().Err(err).Str("org_id", orgID).Msg("ai: could not count critical risks")
 	}
@@ -286,7 +287,7 @@ type AdviceContext struct {
 	OpenCAPAs       int
 	OverdueControls int
 	OverdueTasks    int
-	CriticalRisks   []string // top 5 titles (score >= 15)
+	CriticalRisks   []string // top 5 titles (level Kritisch, risklevel.CriticalFrom)
 	OpenIncidents   int
 	DraftPolicies   int
 }
@@ -353,12 +354,12 @@ func GatherAdviceContext(ctx context.Context, db *pgxpool.Pool, orgID string) (*
 		log.Warn().Err(err).Str("org_id", orgID).Msg("ai advice: could not count overdue tasks")
 	}
 
-	// Critical risk titles (score >= 15, top 5)
+	// Critical risk titles (level Kritisch, top 5)
 	riskRows, err := db.Query(ctx,
 		`SELECT title FROM ck_risks
 		 WHERE org_id=$1::uuid AND status NOT IN ('accepted','closed','mitigated')
-		   AND likelihood * impact >= 15
-		 ORDER BY likelihood * impact DESC LIMIT 5`, orgID)
+		   AND likelihood * impact >= $2
+		 ORDER BY likelihood * impact DESC LIMIT 5`, orgID, risklevel.CriticalFrom)
 	if err == nil {
 		defer riskRows.Close()
 		for riskRows.Next() {

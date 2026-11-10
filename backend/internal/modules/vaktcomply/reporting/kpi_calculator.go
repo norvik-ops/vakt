@@ -9,6 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/matharnica/vakt/internal/shared/risklevel"
 )
 
 // CalculateKPIsForOrg computes all 12 ISMS KPIs for a single organisation
@@ -96,7 +98,8 @@ func calcOpenCriticalControls(ctx context.Context, db *pgxpool.Pool, orgID strin
 	return &v
 }
 
-// calcOpenHighRisks returns the count of high-severity risks (risk_score >= 15)
+// calcOpenHighRisks returns the count of critical risks (level "Kritisch",
+// risk_score >= risklevel.CriticalFrom; the field name predates R1-KW-17)
 // that have not been accepted or closed.
 func calcOpenHighRisks(ctx context.Context, db *pgxpool.Pool, orgID string) *int {
 	if db == nil {
@@ -106,9 +109,9 @@ func calcOpenHighRisks(ctx context.Context, db *pgxpool.Pool, orgID string) *int
 	_ = db.QueryRow(ctx, `
 		SELECT COUNT(*)::int FROM ck_risks
 		WHERE org_id = $1
-		  AND risk_score >= 15
+		  AND risk_score >= $2
 		  AND treatment != 'accept'
-		  AND status NOT IN ('accepted','closed')`, orgID).Scan(&val)
+		  AND status NOT IN ('accepted','closed')`, orgID, risklevel.CriticalFrom).Scan(&val)
 	if !val.Valid {
 		return nil
 	}

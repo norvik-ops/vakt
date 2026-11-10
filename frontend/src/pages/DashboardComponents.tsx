@@ -4,6 +4,7 @@ import {
 } from 'lucide-react'
 import { Skeleton } from '../components/ui/skeleton'
 import type { RiskSummary, ActivityEntry, FrameworkScore, OverallReadiness } from '../hooks/useDashboard'
+import { riskLevel, type RiskLevel } from '../shared/utils/riskLevel'
 
 export function fmt(n: number | null | undefined): string {
   return n == null ? '—' : n.toString()
@@ -22,10 +23,16 @@ export function barColor(pct: number): string {
   return 'bg-severity-critical'
 }
 
+const RISK_BADGE: Record<RiskLevel, string> = {
+  critical: 'bg-severity-critical/15 text-severity-critical',
+  high: 'bg-severity-high/15 text-severity-high',
+  medium: 'bg-severity-medium/15 text-severity-medium',
+  low: 'bg-severity-low/15 text-severity-low',
+}
+
+/** Top-5 risk badge — same levels as the risk register (R1-KW-17). */
 export function riskBadgeColor(score: number): string {
-  if (score >= 15) return 'bg-severity-critical/15 text-severity-critical'
-  if (score >= 9) return 'bg-severity-medium/15 text-severity-medium'
-  return 'bg-severity-low/15 text-severity-low'
+  return RISK_BADGE[riskLevel(score)]
 }
 
 export function scoreStrokeColor(score: number | undefined): string {

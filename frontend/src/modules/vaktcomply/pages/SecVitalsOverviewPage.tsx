@@ -29,6 +29,7 @@ import { ExpiringEvidenceWidget } from '../components/ExpiringEvidenceWidget'
 import { AIAdvisor } from '../components/AIAdvisor'
 import { AIInsightsFeed } from '../components/AIInsightsFeed'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { riskLevel } from '../../../shared/utils/riskLevel'
 
 // ── Item 59: Score Trend Chart ────────────────────────────────────────────────
 function ScoreTrendChart({ data }: { data: Array<{ date: string; score: number }> }) {
@@ -340,7 +341,8 @@ export default function SecVitalsOverviewPage() {
   }
 
   const openRisks = risks?.filter((r) => r.status === 'open') ?? []
-  const highRisks = openRisks.filter((r) => r.risk_score >= 12)
+  // „kritisch/hoch" = the two upper levels of the risk register (R1-KW-17).
+  const highRisks = openRisks.filter((r) => { const l = riskLevel(r.risk_score); return l === 'critical' || l === 'high' })
   const openIncidents = incidents?.filter((i) => i.status === 'open' || i.status === 'investigating') ?? []
   const criticalIncidents = openIncidents.filter((i) => i.severity === 'critical' || i.severity === 'high')
 

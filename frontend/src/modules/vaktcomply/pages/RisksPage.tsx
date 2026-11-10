@@ -28,10 +28,12 @@ import RiskHeatmap from '../components/RiskHeatmap'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { UserPicker } from '../../../shared/components/UserPicker'
 import type { Risk, CreateRiskInput } from '../types'
+import { riskLevel, RISK_LEVELS, RISK_LEVEL_BADGE, RISK_LEVEL_FILL, RISK_LEVEL_LABEL_KEY, type RiskLevel } from '../../../shared/utils/riskLevel'
 
 // ---- Risk Matrix Heatmap (inline, list-view summary) -------------------------
 
 function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
+  const { t } = useTranslation()
   const counts: Record<string, number> = {}
   for (const r of risks) {
     if (r.status !== 'open') continue
@@ -40,11 +42,7 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
   }
 
   function cellColor(l: number, i: number): string {
-    const score = l * i
-    if (score >= 15) return '#fecaca'
-    if (score >= 10) return '#fed7aa'
-    if (score >= 5) return '#fef3c7'
-    return '#d1fae5'
+    return RISK_LEVEL_FILL[riskLevel(l * i)]
   }
 
   return (
@@ -89,15 +87,10 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
         </div>
         {/* Legend */}
         <div className="ml-0 mt-3 sm:ml-4 sm:mt-0 flex flex-row flex-wrap sm:flex-col gap-x-3 gap-y-1 sm:justify-center text-xs shrink-0">
-          {[
-            { color: '#fecaca', label: 'Kritisch (15–25)' },
-            { color: '#fed7aa', label: 'Hoch (10–14)' },
-            { color: '#fef3c7', label: 'Mittel (5–9)' },
-            { color: '#d1fae5', label: 'Niedrig (1–4)' },
-          ].map(({ color, label }) => (
-            <div key={label} className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: color }} />
-              <span className="text-gray-600 dark:text-gray-500 whitespace-nowrap">{label}</span>
+          {RISK_LEVELS.map(({ level, from, to }) => (
+            <div key={level} className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: RISK_LEVEL_FILL[level] }} />
+              <span className="text-gray-600 dark:text-gray-500 whitespace-nowrap">{t(RISK_LEVEL_LABEL_KEY[level])} ({from}–{to})</span>
             </div>
           ))}
         </div>
@@ -107,11 +100,21 @@ function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
   )
 }
 
-const SCORE_COLOR = (score: number) => {
-  if (score >= 15) return 'bg-red-500/20 text-red-400 border-red-500/30'
-  if (score >= 9) return 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-  if (score >= 4) return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-  return 'bg-green-500/20 text-green-400 border-green-500/30'
+const SCORE_COLOR = (score: number) => RISK_LEVEL_BADGE[riskLevel(score)]
+
+const METHODOLOGY_KEY: Record<RiskLevel, string> = {
+  critical: 'vaktcomply.risksPage.methodologyScoreCritical',
+  high: 'vaktcomply.risksPage.methodologyScoreHigh',
+  medium: 'vaktcomply.risksPage.methodologyScoreMedium',
+  low: 'vaktcomply.risksPage.methodologyScoreLow',
+}
+
+// List groups: one per level, same cut as legend and badges (R1-KW-17).
+const GROUP_HEADING: Record<RiskLevel, { key: string; className: string }> = {
+  critical: { key: 'vaktcomply.risksPage.criticalRisk', className: 'text-red-400' },
+  high: { key: 'vaktcomply.risksPage.highRisk', className: 'text-orange-400' },
+  medium: { key: 'vaktcomply.risksPage.mediumRisk', className: 'text-amber-400' },
+  low: { key: 'vaktcomply.risksPage.lowRisk', className: 'text-muted-foreground' },
 }
 
 function InlineRiskStatus({
@@ -365,9 +368,10 @@ export default function RisksPage() {
   }
 
   const displayRisks = (view === 'list' ? sortedRisks : (risks ?? [])).filter((r) => !hiddenIds.has(r.id))
-  const high = displayRisks.filter((r) => r.risk_score >= 15)
-  const medium = displayRisks.filter((r) => r.risk_score >= 9 && r.risk_score < 15)
-  const low = displayRisks.filter((r) => r.risk_score < 9)
+  const groups = RISK_LEVELS.map((range) => ({
+    ...range,
+    risks: displayRisks.filter((r) => riskLevel(r.risk_score) === range.level),
+  }))
 
   return (
     <div className="flex flex-col h-full">
@@ -454,15 +458,10 @@ export default function RisksPage() {
           <div className="mt-3">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">{t('vaktcomply.risksPage.methodologyScoreTitle')}</h4>
             <ul className="space-y-1 text-xs">
-              {[
-                { key: 'Low', color: '#d1fae5' },
-                { key: 'Medium', color: '#fef3c7' },
-                { key: 'High', color: '#fed7aa' },
-                { key: 'Critical', color: '#fecaca' },
-              ].map(({ key, color }) => (
-                <li key={key} className="flex items-center gap-2">
-                  <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: color }} />
-                  {t(`vaktcomply.risksPage.methodologyScore${key}`)}
+              {[...RISK_LEVELS].reverse().map(({ level, from, to }) => (
+                <li key={level} className="flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: RISK_LEVEL_FILL[level] }} />
+                  {t(METHODOLOGY_KEY[level], { from, to })}
                 </li>
               ))}
             </ul>
@@ -525,11 +524,11 @@ export default function RisksPage() {
         {!isLoading && !isError && risks && risks.length > 0 && view === 'list' && (
           <>
             <RiskMatrixHeatmap risks={risks} />
-            {high.length > 0 && (
-              <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-red-400">{t('vaktcomply.risksPage.highRisk')}</h2>
+            {groups.filter((g) => g.risks.length > 0).map(({ level, from, to, risks: groupRisks }) => (
+              <div key={level} className="space-y-3">
+                <h2 className={`text-sm font-semibold ${GROUP_HEADING[level].className}`}>{t(GROUP_HEADING[level].key, { from, to })}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {high.map((r) => (
+                  {groupRisks.map((r) => (
                     <RiskCard
                       key={r.id}
                       risk={r}
@@ -542,43 +541,7 @@ export default function RisksPage() {
                   ))}
                 </div>
               </div>
-            )}
-            {medium.length > 0 && (
-              <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-amber-400">{t('vaktcomply.risksPage.mediumRisk')}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {medium.map((r) => (
-                    <RiskCard
-                      key={r.id}
-                      risk={r}
-                      onClick={() => { navigate(`/vaktcomply/risks/${r.id}`); }}
-                      selected={selected.has(r.id)}
-                      onToggleSelect={toggleSelect}
-                      onStatusChange={handleStatusChange}
-                      onDelete={handleDeleteRisk}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            {low.length > 0 && (
-              <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted-foreground">{t('vaktcomply.risksPage.lowRisk')}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {low.map((r) => (
-                    <RiskCard
-                      key={r.id}
-                      risk={r}
-                      onClick={() => { navigate(`/vaktcomply/risks/${r.id}`); }}
-                      selected={selected.has(r.id)}
-                      onToggleSelect={toggleSelect}
-                      onStatusChange={handleStatusChange}
-                      onDelete={handleDeleteRisk}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+            ))}
           </>
         )}
         <Pagination

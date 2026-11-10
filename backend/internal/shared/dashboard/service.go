@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/matharnica/vakt/internal/config"
+	"github.com/matharnica/vakt/internal/shared/risklevel"
 )
 
 // FrameworkReadiness is one readiness tally (ADR-0086): Covered = effectively
@@ -327,8 +328,8 @@ func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateRes
 	g.Go(func() error {
 		if err := s.db.QueryRow(gctx,
 			`SELECT COUNT(*)::bigint FROM ck_risks
-			 WHERE org_id=$1::uuid AND (likelihood * impact) >= 15`,
-			orgID).Scan(&criticalRisks); err != nil {
+			 WHERE org_id=$1::uuid AND (likelihood * impact) >= $2`,
+			orgID, risklevel.CriticalFrom).Scan(&criticalRisks); err != nil {
 			log.Error().Err(err).Msg("dashboard aggregate: critical risks")
 		}
 		return nil

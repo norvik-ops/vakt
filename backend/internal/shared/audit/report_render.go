@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-pdf/fpdf"
 	"github.com/matharnica/vakt/internal/shared/pdfutil"
+	"github.com/matharnica/vakt/internal/shared/risklevel"
 )
 
 const (
@@ -159,13 +160,13 @@ func Render(d *ReportData) ([]byte, error) {
 	openCAPACount := len(d.OpenCAPAs)
 	critRisks := 0
 	for _, r := range d.Risks {
-		if r.Score >= 15 {
+		if risklevel.Of(r.Score) == risklevel.Critical {
 			critRisks++
 		}
 	}
 	kpiRows := []kpiRow{
 		{"Offene CAPAs", fmt.Sprintf("%d", openCAPACount), "Status: offen oder in Bearbeitung"},
-		{"Kritische Risiken", fmt.Sprintf("%d", critRisks), "Score ≥ 15 (Wahrscheinlichkeit × Auswirkung)"},
+		{"Kritische Risiken", fmt.Sprintf("%d", critRisks), fmt.Sprintf("Score ≥ %d (Wahrscheinlichkeit × Auswirkung)", risklevel.CriticalFrom)},
 		{"Offene Vorfälle", fmt.Sprintf("%d", len(d.OpenIncidents)), "Status: offen oder in Untersuchung"},
 		{"Richtlinien gesamt", fmt.Sprintf("%d", len(d.ActivePolicies)), "Alle Richtlinien (alle Status)"},
 		{"Aktive Richtlinien", fmt.Sprintf("%d", countActive(d.ActivePolicies)), "Status: aktiv / freigegeben"},
@@ -487,12 +488,12 @@ func scoreToRGB(pct float64) [3]int {
 }
 
 func riskScoreColor(score int) [3]int {
-	switch {
-	case score >= 15:
+	switch risklevel.Of(score) {
+	case risklevel.Critical:
 		return [3]int{220, 38, 38}
-	case score >= 10:
+	case risklevel.High:
 		return [3]int{234, 88, 12}
-	case score >= 5:
+	case risklevel.Medium:
 		return [3]int{234, 179, 8}
 	default:
 		return [3]int{59, 130, 246}

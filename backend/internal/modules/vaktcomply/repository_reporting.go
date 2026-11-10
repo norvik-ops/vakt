@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matharnica/vakt/internal/db"
+	"github.com/matharnica/vakt/internal/shared/risklevel"
 	"github.com/rs/zerolog/log"
 )
 
@@ -157,15 +158,22 @@ func (r *Repository) GetExecutiveTopRisks(ctx context.Context, orgID string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("executive top risks: %w", err)
 	}
+	return toExecutiveTopRisks(rows), nil
+}
+
+// toExecutiveTopRisks derives each row's level from its score with
+// risklevel.Of — the same levels as the risk register (R1-KW-17). Before, the
+// SQL cut at 15/9/4 and the executive summary printed score 9 as „Hoch“.
+func toExecutiveTopRisks(rows []db.GetExecutiveTopRisksRow) []ExecutiveTopRiskRow {
 	out := make([]ExecutiveTopRiskRow, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, ExecutiveTopRiskRow{
 			Title:    row.Title,
 			Score:    int(row.Score),
-			Severity: row.Severity,
+			Severity: string(risklevel.Of(int(row.Score))),
 		})
 	}
-	return out, nil
+	return out
 }
 
 // CountClosedControlsSince returns the number of controls set to 'implemented' since `since`.

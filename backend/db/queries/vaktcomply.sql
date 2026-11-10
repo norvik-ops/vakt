@@ -2077,14 +2077,9 @@ ORDER BY f.name;
 
 -- name: GetExecutiveTopRisks :many
 -- Top-5 offene Risiken nach Score (likelihood * impact) für Executive Summary.
+-- Die Stufe bestimmt der Aufrufer per risklevel.Of (R1-KW-17), nicht das SQL.
 SELECT title,
-       (likelihood * impact)::int AS score,
-       CASE
-           WHEN (likelihood * impact) >= 15 THEN 'critical'
-           WHEN (likelihood * impact) >= 9  THEN 'high'
-           WHEN (likelihood * impact) >= 4  THEN 'medium'
-           ELSE 'low'
-       END AS severity
+       (likelihood * impact)::int AS score
 FROM ck_risks
 WHERE org_id = $1::uuid AND status = 'open'
 ORDER BY score DESC, updated_at DESC

@@ -1,0 +1,109 @@
+{
+  "_comment": "R1-KW-17: Score -> Stufe, gemeinsame Quelle fuer risklevel_test.go und frontend/src/shared/utils/riskLevel.test.ts. Schema Kritisch >= 15, Hoch >= 10, Mittel >= 5, sonst Niedrig; gilt fuer Brutto- und Restrisiko.",
+  "cases": [
+    {
+      "score": 0,
+      "level": "low"
+    },
+    {
+      "score": 1,
+      "level": "low"
+    },
+    {
+      "score": 2,
+      "level": "low"
+    },
+    {
+      "score": 3,
+      "level": "low"
+    },
+    {
+      "score": 4,
+      "level": "low"
+    },
+    {
+      "score": 5,
+      "level": "medium"
+    },
+    {
+      "score": 6,
+      "level": "medium"
+    },
+    {
+      "score": 7,
+      "level": "medium"
+    },
+    {
+      "score": 8,
+      "level": "medium"
+    },
+    {
+      "score": 9,
+      "level": "medium"
+    },
+    {
+      "score": 10,
+      "level": "high"
+    },
+    {
+      "score": 11,
+      "level": "high"
+    },
+    {
+      "score": 12,
+      "level": "high"
+    },
+    {
+      "score": 13,
+      "level": "high"
+    },
+    {
+      "score": 14,
+      "level": "high"
+    },
+    {
+      "score": 15,
+      "level": "critical"
+    },
+    {
+      "score": 16,
+      "level": "critical"
+    },
+    {
+      "score": 17,
+      "level": "critical"
+    },
+    {
+      "score": 18,
+      "level": "critical"
+    },
+    {
+      "score": 19,
+      "level": "critical"
+    },
+    {
+      "score": 20,
+      "level": "critical"
+    },
+    {
+      "score": 21,
+      "level": "critical"
+    },
+    {
+      "score": 22,
+      "level": "critical"
+    },
+    {
+      "score": 23,
+      "level": "critical"
+    },
+    {
+      "score": 24,
+      "level": "critical"
+    },
+    {
+      "score": 25,
+      "level": "critical"
+    }
+  ]
+}

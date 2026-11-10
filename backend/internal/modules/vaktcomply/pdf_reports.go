@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-pdf/fpdf"
 	"github.com/matharnica/vakt/internal/shared/pdfutil"
+	"github.com/matharnica/vakt/internal/shared/risklevel"
 
 	auditmod "github.com/matharnica/vakt/internal/modules/vaktcomply/audit"
 	"github.com/matharnica/vakt/internal/modules/vaktcomply/reporting"
@@ -78,7 +79,7 @@ func GenerateKPIReportPDF(dashboard reporting.KPIDashboard, orgName string, gene
 	rows := [][2]string{
 		{"Compliance-Score", pctPtr(kpiFloat(cur, func(s *reporting.KPISnapshot) *float64 { return s.ComplianceScore }))},
 		{"Offene kritische Controls", intPtrStr(kpiInt(cur, func(s *reporting.KPISnapshot) *int { return s.OpenCriticalControls }))},
-		{"Offene hohe Risiken", intPtrStr(kpiInt(cur, func(s *reporting.KPISnapshot) *int { return s.OpenHighRisks }))},
+		{fmt.Sprintf("Offene kritische Risiken (Score ≥ %d)", risklevel.CriticalFrom), intPtrStr(kpiInt(cur, func(s *reporting.KPISnapshot) *int { return s.OpenHighRisks }))},
 		{"Ø Restrisiko", numPtr(kpiFloat(cur, func(s *reporting.KPISnapshot) *float64 { return s.ResidualRiskAvg }))},
 		{"Offene Incidents", intPtrStr(kpiInt(cur, func(s *reporting.KPISnapshot) *int { return s.OpenIncidents }))},
 		{"Incident-MTTR (Tage)", numPtr(kpiFloat(cur, func(s *reporting.KPISnapshot) *float64 { return s.IncidentMTTRDays }))},
