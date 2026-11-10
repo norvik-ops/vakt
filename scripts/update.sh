@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
 # update.sh — Safely update a self-hosted Vakt instance.
 # Usage: ./scripts/update.sh [--no-backup] [--skip-artifacts] [--tag <version>]
+#
+# Zielversion (R1-KW-19): VAKT_TAG aus der .env, ohne Zeile "latest". --tag ist
+# nur noch eine Gegenprobe: weicht es von der .env ab, stoppt das Update vor der
+# ersten Aenderung — sonst startet das naechste `docker compose up -d` (das die
+# .env liest) wieder die alte Version gegen die schon migrierte Datenbank.
 set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
+# R1-UPD-B1: KEIN `-f "$COMPOSE_FILE"` mehr an den compose-Aufrufen. Ein
+# ausdrueckliches -f schaltet das automatische Laden von
+# docker-compose.override.yml ab — genau der Ort, an dem docs/wiki/upgrade.md
+# eigene Anpassungen empfiehlt — und kann keine Liste wie
+# "docker-compose.yml:docker-compose.observability.yml". Compose liest
+# COMPOSE_FILE selbst (Umgebung oder .env), ohne Angabe docker-compose.yml plus
+# die Override-Datei.
 SERVICE_API="api"
 SERVICE_WORKER="worker"
 SERVICE_FRONTEND="frontend"
@@ -14,7 +25,7 @@ HEALTH_RETRIES=30
 HEALTH_WAIT=2
 SKIP_BACKUP=false
 SKIP_ARTIFACTS=false
-TAG="latest"
+TAG=""
 TOTAL_STEPS=6
 
 # ── Dependency checks ─────────────────────────────────────────────────────────
@@ -48,7 +59,11 @@ while [[ $# -gt 0 ]]; do
 		shift
 		;;
 	--tag)
-		TAG="$2"
+		TAG="${2:-}"
+		[[ -n "$TAG" ]] || {
+			echo "ERROR: --tag braucht eine Version, z. B. --tag v0.46.0" >&2
+			exit 1
+		}
 		shift 2
 		;;
 	*)
@@ -67,12 +82,47 @@ fi
 
 BACKUP_DIR="${VAKT_BACKUP_DIR:-./backups}"
 
+# ── Zielversion bestimmen (R1-KW-19) ─────────────────────────────────────────
+# Bis 2026-10-31 stand hier fest TAG="latest", und weiter unten ueberschrieb
+# `export VAKT_TAG="$TAG"` einen Pin aus der .env still. Der Betreiber glaubte,
+# auf seiner gepinnten Version zu bleiben, und bekam latest — oder umgekehrt:
+# Nach dem Update startete ein spaeteres `docker compose up -d` mit dem Pin aus
+# der .env wieder die alte Version gegen die migrierte Datenbank.
+#
+# --tag muss mit der .env uebereinstimmen. Jedes spaetere `docker compose up -d`
+# liest VAKT_TAG aus der .env — ohne Zeile ist das `latest`, und zwar das LOKAL
+# liegende latest-Image, also meist das alte. Ein --tag, das die .env nicht
+# traegt, gilt deshalb nur fuer diesen einen Lauf und kippt beim naechsten
+# Neustart zurueck auf die alte Version gegen die migrierte Datenbank.
+PINNED_TAG="${VAKT_TAG:-}"
+if [[ -n "$TAG" ]]; then
+	if [[ "${PINNED_TAG:-latest}" != "$TAG" ]]; then
+		echo "ERROR: Das Update soll auf '${TAG}' (--tag), VAKT_TAG in der .env (bzw. Umgebung)" >&2
+		echo "       steht aber auf '${PINNED_TAG:-<nicht gesetzt> = latest}'." >&2
+		echo "       Jedes spaetere 'docker compose up -d' liest die .env und wuerde wieder" >&2
+		echo "       '${PINNED_TAG:-latest}' starten — gegen eine schon auf '${TAG}' migrierte Datenbank." >&2
+		echo "       Erst in der .env 'VAKT_TAG=${TAG}' setzen, dann ./scripts/update.sh" >&2
+		echo "       (ohne --tag) starten. Es wurde nichts veraendert." >&2
+		exit 1
+	fi
+elif [[ -n "$PINNED_TAG" ]]; then
+	TAG="$PINNED_TAG"
+else
+	TAG="latest"
+fi
+
 echo "==> Vakt Update — $(date '+%Y-%m-%d %H:%M:%S')"
 echo "    Target tag:   ${TAG}"
-echo "    Compose file: ${COMPOSE_FILE}"
+echo "    Compose file: ${COMPOSE_FILE:-docker-compose.yml (+ docker-compose.override.yml, falls vorhanden)}"
+if [[ -n "$PINNED_TAG" ]] && [[ "$PINNED_TAG" != "latest" ]]; then
+	echo ""
+	echo "    HINWEIS: VAKT_TAG ist in der .env auf '${PINNED_TAG}' festgelegt."
+	echo "    Dieses Update bleibt auf '${PINNED_TAG}'. Fuer eine neuere Version den Wert"
+	echo "    in der .env anheben (oder die Zeile entfernen = latest) und erneut starten."
+fi
 
 # Show current running version as rollback reference.
-CURRENT_TAG=$($COMPOSE_CMD -f "$COMPOSE_FILE" images --format json "$SERVICE_API" 2>/dev/null |
+CURRENT_TAG=$($COMPOSE_CMD images --format json "$SERVICE_API" 2>/dev/null |
 	python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0].get('Tag','unknown'))" 2>/dev/null ||
 	echo "unknown")
 echo "    Current tag:  ${CURRENT_TAG} (rollback reference)"
@@ -261,7 +311,21 @@ fi
 # ── Step 3: Pull new images ───────────────────────────────────────────────────
 echo ""
 echo "==> Step 3/${TOTAL_STEPS}: Pulling new images (VAKT_TAG=${VAKT_TAG})..."
-$COMPOSE_CMD -f "$COMPOSE_FILE" pull "$SERVICE_API" "$SERVICE_WORKER" "$SERVICE_FRONTEND" "$SERVICE_SCANNERS"
+# R1-KW-20: Ein gescheiterter Pull darf nie bis `up -d` durchlaufen. Dann
+# startet Compose die ALTEN lokalen Images, migrate kennt die Datenbank-Version
+# nicht ("no migration found for version …"), und die API kommt nicht hoch.
+# `set -e` haette hier zwar auch abgebrochen, aber wortlos — der Betreiber
+# braucht den Satz, was er jetzt tun soll und was er nicht tun darf.
+if ! $COMPOSE_CMD pull "$SERVICE_API" "$SERVICE_WORKER" "$SERVICE_FRONTEND" "$SERVICE_SCANNERS"; then
+	echo "" >&2
+	echo "ABBRUCH: 'docker compose pull' ist fehlgeschlagen (Netz, Registry, Tag '${VAKT_TAG}' unbekannt?)." >&2
+	echo "         Es wurde NICHT migriert und NICHTS neu gestartet — die laufenden Container" >&2
+	echo "         sind unveraendert." >&2
+	echo "         Jetzt NICHT 'docker compose up -d' ausfuehren: das startet die alten lokalen" >&2
+	echo "         Images mit der neuen Compose-Datei." >&2
+	echo "         Pull wiederholen: ./scripts/update.sh erneut starten." >&2
+	exit 1
+fi
 echo "    Images pulled."
 # Bewusst nur die vier Vakt-Images: Fremd-Images (postgres, redis, caddy,
 # pgbouncer, ollama) zieht `up -d` in Schritt 5 selbst nach, falls die neue
@@ -271,7 +335,7 @@ echo "    Images pulled."
 # ── Step 4: Run migrations ────────────────────────────────────────────────────
 echo ""
 echo "==> Step 4/${TOTAL_STEPS}: Running database migrations..."
-$COMPOSE_CMD -f "$COMPOSE_FILE" run --rm migrate
+$COMPOSE_CMD run --rm migrate
 echo "    Migrations complete."
 
 # ── Step 5: Restart services ──────────────────────────────────────────────────
@@ -285,7 +349,7 @@ echo "    Migrations complete."
 # derselbe Befehl, den docs/setup.md und docs/UPGRADE.md ohnehin nennen.
 echo ""
 echo "==> Step 5/${TOTAL_STEPS}: Restarting services (recreates every service whose config changed)..."
-$COMPOSE_CMD -f "$COMPOSE_FILE" up -d
+$COMPOSE_CMD up -d
 RUNTIME_TOUCHED=true
 echo "    Services restarting..."
 

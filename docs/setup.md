@@ -222,6 +222,10 @@ docker compose up -d
 
 ## 7. Updates (manuell / automatisch)
 
+> **Kanonische Update-Anleitung: [`docs/UPGRADE.md`](UPGRADE.md)** — dort auch, was ein
+> `VAKT_TAG`-Pin in der `.env` bewirkt und was nach einem abgebrochenen `docker compose pull`
+> zu tun ist (nicht `up -d`, sondern den Pull wiederholen).
+
 Hier ist beschrieben, was zu tun ist, wenn ein neues Feature oder eine neue Version ausgerollt werden soll.
 
 ---

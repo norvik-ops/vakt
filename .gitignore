@@ -1,0 +1,31 @@
+# .gitignore fuer Self-Hosting-Installationen von Vakt.
+#
+# Wer Vakt per `git clone` installiert, legt seine Zugangsdaten in diesem
+# Verzeichnis ab (.env) und oft auch seine Backups. Diese Datei sorgt dafuer,
+# dass ein `git add -A` sie nicht in einen Commit nimmt — und dass `git status`
+# vor einem Update nur zeigt, was wirklich zur Auslieferung gehoert.
+#
+# Ein Update (`./scripts/update.sh`, `git pull --ff-only`) veraendert keine
+# dieser Dateien.
+
+# Zugangsdaten und Schluessel — niemals committen
+.env
+.env.*
+!.env.example
+*.env
+secrets/
+
+# Eigene Compose-Anpassungen (koennen Zugangsdaten enthalten)
+docker-compose.override.yml
+
+# Backups (Standardablagen aus docs/UPGRADE.md, scripts/update.sh,
+# docker-compose.backup.yml und scripts/backup.sh ohne Zielangabe)
+backups/
+data/backups/
+vakt-backup-*.tar.gz
+vakt-backup-*.tar.gz.sig
+
+# Build aus dem Quellcode
+node_modules/
+frontend/dist/
+backend/tmp/

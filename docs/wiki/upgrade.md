@@ -7,28 +7,21 @@ Patch releases (0.5.2 → 0.5.3) follow the same procedure but rarely require mi
 
 ## General Upgrade Procedure
 
+The canonical, step-by-step guide (German) is
+[`docs/UPGRADE.md`](https://github.com/norvik-ops/vakt/blob/main/docs/UPGRADE.md).
+This page only adds the version notes below. Short form:
+
 ```bash
-# 1. Update the deployment files (docker-compose.yml, Caddyfile, scripts/).
-#    They belong to the installation, not to the images — see docs/UPGRADE.md.
-#    ./scripts/update.sh does this step and everything below in one go.
-git pull --ff-only
-
-# 2. Pull the new image
-docker compose pull
-
-# 3. Stop the stack (a few seconds of downtime)
-docker compose down
-
-# 4. Run database migrations
-docker compose run --rm migrate
-
-# 5. Start the new stack
-docker compose up -d
-
-# 6. Verify health
-curl -s http://localhost/health
-# → {"status":"ok"}
+grep '^VAKT_TAG' .env       # 1. pinned version? raise it in .env (or delete the line) first
+./scripts/update.sh         # 2. backup, deployment files, images, migration, restart, health check
+curl -skL http://localhost/health | jq -r .version   # 3. must show the new version
 ```
+
+- **`VAKT_TAG` in `.env`:** a pinned version keeps every update on exactly that version,
+  silently. Raise or remove it before updating.
+- **If `docker compose pull` fails, do not run `docker compose up -d`** — retry the pull.
+  Otherwise the old local images start, the `migrate` container fails and the API does not
+  come up.
 
 For zero-downtime upgrades in Kubernetes see the Helm section below.
 

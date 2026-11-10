@@ -114,6 +114,10 @@ ist. Die `.tar.gz.sig` muss neben dem Archiv liegen.
 
 ## 2. Upgrade-Prozess
 
+> **Kanonische Update-Anleitung: [`docs/UPGRADE.md`](UPGRADE.md)** — dort auch, was ein
+> `VAKT_TAG`-Pin in der `.env` bewirkt und was nach einem abgebrochenen `docker compose pull`
+> zu tun ist (nicht `up -d`, sondern den Pull wiederholen).
+
 ### Normales Upgrade (rolling)
 
 ```bash

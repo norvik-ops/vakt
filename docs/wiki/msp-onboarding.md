@@ -177,6 +177,10 @@ Format: PNG oder SVG, empfohlen 200×60 px, transparent.
 
 ## 6. Updates
 
+> **Kanonische Update-Anleitung: [`docs/UPGRADE.md`](https://github.com/norvik-ops/vakt/blob/main/docs/UPGRADE.md)**
+> — dort auch, was ein `VAKT_TAG`-Pin in der `.env` bewirkt und was nach einem abgebrochenen
+> `docker compose pull` zu tun ist (nicht `up -d`, sondern den Pull wiederholen).
+
 ### Docker Compose
 
 ```bash

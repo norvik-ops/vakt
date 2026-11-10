@@ -47,6 +47,14 @@ if [[ ! -f "$SCRIPT" ]]; then
 	exit 0
 fi
 
+# Fall 10 legt eigene Git-Repos an. Ein vom Hook geerbtes GIT_DIR wuerde jeden
+# dieser Aufrufe auf das ECHTE Repo umlenken (gemessen 2026-11-10: core.bare=true
+# und bewegter HEAD). Deshalb vorher alle ortsbestimmenden Git-Variablen weg.
+# shellcheck disable=SC2046 # eine Variable je Zeile
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX \
+	GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
+	$(git rev-parse --local-env-vars 2>/dev/null)
+
 TMP="$(mktemp -d -t vakt-mirror-guard-XXXXXX)"
 cleanup() { rm -rf "$TMP"; }
 trap cleanup EXIT
@@ -155,6 +163,46 @@ if [[ $LAST_RC -ne 2 ]] && grep -q "Cleaning" <<<"$LAST_OUT" && markers_intact; 
 	ok "9 \$ROOT/public-mirror (Standard) — weiterhin erlaubt"
 else
 	bad "9 \$ROOT/public-mirror — der Standardaufruf wurde mit abgeschossen"
+fi
+
+# ── 10. Unter exportiertem GIT_DIR bleibt das aufrufende Repo unberuehrt ──────
+# Gemessen 2026-11-10: Der .gitignore-Check in Schritt 1 lief als
+# `git -C <tmp> init`. Im pre-push-Hook exportiert Git GIT_DIR — dann
+# reinitialisierte der Check das ECHTE Repo und setzte core.bare=true (der
+# Haupt-Checkout war danach unbenutzbar). Eigene Attrappe, die bis hinter den
+# Check kommt; danach scheitert sie gewollt an der ersten fehlenden Datei.
+GR="$TMP/gitcase/repo"
+mkdir -p "$GR/scripts" "$GR/.github/public-repo"
+cp "$SCRIPT" "$GR/scripts/build-public-mirror.sh"
+for f in docker-compose.yml docker-compose.dev.yml docker-compose.backup.yml Caddyfile \
+	README.md CHANGELOG.md LICENSE NOTICE Makefile .env.example; do
+	echo "attrappe" >"$GR/$f"
+done
+printf '.env\n.env.*\n!.env.example\nbackups/\nvakt-backup-*.tar.gz\n' >"$GR/.github/public-repo/gitignore"
+# Der Schaden entsteht im WORKTREE-Fall (so arbeiten die Agenten): GIT_DIR zeigt
+# auf .git/worktrees/<name>, und `git init` schreibt core.bare=true in die
+# GEMEINSAME .git/config. Mit GIT_DIR=<repo>/.git eines normalen Checkouts blieb
+# es in der Messung bei false — deshalb faehrt dieser Fall den Worktree.
+GH="$TMP/gitcase/haupt"
+mkdir -p "$GH"
+git -c init.defaultBranch=main init -q "$GH"
+git -C "$GH" -c user.email=t@vakt.test -c user.name=Test commit -q --allow-empty -m basis
+git -C "$GH" worktree add -q "$TMP/gitcase/wt" 2>/dev/null
+WTGD="$(git -C "$TMP/gitcase/wt" rev-parse --absolute-git-dir)"
+cp -a "$GR/." "$TMP/gitcase/wt/"
+GR="$TMP/gitcase/wt"
+# GIT_DIR wird hier ABSICHTLICH gesetzt — nur fuer diesen einen Aufruf und nur
+# auf den Wegwerf-Worktree: genau so ruft der pre-push-Hook den Build auf.
+LAST_OUT="$(cd "$GR" && GIT_DIR="$WTGD" VAKT_MIRROR_SKIP_GO_BUILD=1 \
+	VAKT_MIRROR_OUT="$TMP/gitcase/out" bash "$GR/scripts/build-public-mirror.sh" 2>&1)"
+LAST_RC=$?
+BARE_AFTER="$(git -C "$GH" config --get core.bare)"
+if [[ "$BARE_AFTER" != "false" ]]; then
+	bad "10 GIT_DIR exportiert — core.bare des aufrufenden Repos ist jetzt '$BARE_AFTER'"
+elif grep -q "schuetzt .env/Backups nicht" <<<"$LAST_OUT" || [[ ! -f "$TMP/gitcase/out/.gitignore" ]]; then
+	bad "10 GIT_DIR exportiert — der .gitignore-Check lief nicht gegen die Attrappe durch"
+else
+	ok "10 GIT_DIR exportiert (wie im pre-push-Hook) — aufrufendes Repo bleibt core.bare=false"
 fi
 
 echo

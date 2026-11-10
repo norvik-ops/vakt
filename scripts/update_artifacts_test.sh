@@ -15,9 +15,30 @@ set -uo pipefail
 # Upstream-Repo, eigener Container-Stellvertreter) und braucht deshalb WEDER
 # Docker-Daemon NOCH Netz NOCH Datenbank.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" || exit 1
 UPDATE_SH="${SCRIPT_DIR}/update.sh"
 ARTIFACTS_SH="${SCRIPT_DIR}/update-artifacts.sh"
+
+# ── Das aufrufende Repo abschotten (2026-11-10) ──────────────────────────────
+# Git exportiert GIT_DIR (und je nach Lage GIT_WORK_TREE, GIT_INDEX_FILE …) an
+# seine Hooks. Startet ein Hook diesen Test, zeigten ALLE Git-Aufrufe unten —
+# `git init`, `git clone --bare`, `git commit`, und in update-artifacts.sh
+# `git -C <dir> fetch/merge` — auf das ECHTE Repo statt auf die Wegwerf-
+# Installation: `-C` aendert das Verzeichnis, nicht ein gesetztes GIT_DIR.
+# Gemessen in einer Wegwerf-Kopie mit Worktree: GIT_DIR=<worktree-gitdir> ->
+# danach core.bare=true in der gemeinsamen .git/config (Haupt-Checkout: "must
+# be run in a work tree") und der Worktree-HEAD auf einem Test-Commit
+# "alter Stand". Deshalb: erst merken, welches Repo der Aufrufer meinte, dann
+# jede ortsbestimmende Git-Variable loeschen, und am Ende nachweisen, dass
+# dieses Repo unveraendert ist.
+CALLER_GITDIR="$(git rev-parse --absolute-git-dir 2>/dev/null || true)"
+CALLER_COMMONDIR="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+CALLER_BARE="$( [ -n "$CALLER_COMMONDIR" ] && git config --file "$CALLER_COMMONDIR/config" --get core.bare 2>/dev/null || true)"
+CALLER_HEAD="$( [ -n "$CALLER_GITDIR" ] && git --git-dir="$CALLER_GITDIR" rev-parse -q --verify HEAD 2>/dev/null || true)"
+# shellcheck disable=SC2046 # bewusst word-splitting: eine Variable je Zeile
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX \
+	GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
+	$(git rev-parse --local-env-vars 2>/dev/null)
 
 passed=0
 failed=0
@@ -32,8 +53,12 @@ pass() {
 	passed=$((passed + 1))
 }
 
-WORK="$(mktemp -d)"
+WORK="$(mktemp -d)" || exit 1
 trap 'rm -rf "$WORK"' EXIT
+# Fall 4 entfernt .git aus einer Installation; die Suche nach einem Repo darf
+# dann nicht ueber $WORK hinaus nach oben laufen (TMPDIR koennte in einem Repo
+# liegen).
+export GIT_CEILING_DIRECTORIES="$WORK"
 
 # ── Container-Stellvertreter ─────────────────────────────────────────────────
 # Beantwortet genau die Aufrufe, die update.sh macht, und protokolliert sie.
@@ -60,6 +85,11 @@ if [ "${1:-}" = "compose" ]; then
 	if [ -n "${DOCKER_FAIL_ON:-}" ] && [ "${args[0]:-}" = "$DOCKER_FAIL_ON" ]; then
 		echo "compose ${args[*]}: FEHLER (Stellvertreter, DOCKER_FAIL_ON)" >&2
 		exit 1
+	fi
+	# R1-KW-19: welche Version zieht der Pull wirklich? Compose liest VAKT_TAG
+	# aus der Umgebung — genau die protokolliert der Stellvertreter.
+	if [ "${args[0]:-}" = "pull" ]; then
+		echo "pull VAKT_TAG=${VAKT_TAG:-}" >>"${DOCKER_LOG}.tag"
 	fi
 	case "${args[0]:-}" in
 	version) echo "Docker Compose version v2.99.0" ;;
@@ -164,8 +194,8 @@ fi
 # `up -d --no-deps api worker frontend vakt-scanners` liess caddy, postgres,
 # redis und pgbouncer unberuehrt — genau die Dienste, deren Haertung in den
 # 112 Compose-Zeilen steckte.
-if grep -qE '^docker compose .* up -d' "$WORK/t1/install/docker.log" &&
-	! grep -qE '^docker compose .* up -d.*--no-deps' "$WORK/t1/install/docker.log"; then
+if grep -qE '^docker compose (.* )?up -d' "$WORK/t1/install/docker.log" &&
+	! grep -qE '^docker compose (.* )?up -d.*--no-deps' "$WORK/t1/install/docker.log"; then
 	pass "2: Dienste werden ohne --no-deps neu erzeugt (Compose-Aenderungen greifen)"
 else
 	fail "2: der Neustart laesst Dienste mit geaenderter Konfiguration stehen" "$WORK/t1/install/docker.log"
@@ -181,7 +211,7 @@ elif ! grep -q "lokale Anpassung des Kunden" "$WORK/t3/install/Caddyfile"; then
 	fail "3: die lokale Aenderung wurde ueberschrieben" "$OUT"
 elif ! grep -q "Caddyfile" "$OUT"; then
 	fail "3: Abbruchmeldung nennt die betroffene Datei nicht" "$OUT"
-elif grep -qE '^docker compose .* pull' "$WORK/t3/install/docker.log" 2>/dev/null; then
+elif grep -qE '^docker compose (.* )?pull' "$WORK/t3/install/docker.log" 2>/dev/null; then
 	fail "3: es wurde schon gezogen, bevor der Abbruch kam" "$WORK/t3/install/docker.log"
 else
 	pass "3: lokale Aenderung stoppt das Update, bevor irgendetwas passiert"
@@ -261,8 +291,8 @@ else
 fi
 
 make_install t6c '
-mkdir -p "$1"; out="$(cd "$1" && pwd)"
-mkdir -p /tmp/vakt-t6c && cd /tmp/vakt-t6c
+mkdir -p "$1"; out="$(cd "$1" && pwd)" || exit 1
+mkdir -p /tmp/vakt-t6c && cd /tmp/vakt-t6c || exit 1
 head -c 4096 /dev/urandom > db.pgdump.gpg
 printf "{\"uploads\":\"included\"}" > manifest.json
 head -c 64 /dev/urandom > secret.key.enc
@@ -317,6 +347,99 @@ else
 	pass "8b: Abbruch NACH der Umstellung benennt den gemischten Stand und den Rueckweg"
 fi
 
+# ── 8c: R1-KW-20 — gescheiterter Pull: kein migrate, kein up -d, klare Ansage
+# Gemessen am 2026-10-31 (v0.45.1 -> v0.46.0 von Hand): nach einem
+# abgebrochenen `docker compose pull` startete `up -d` die alten lokalen Images,
+# migrate scheiterte ("no migration found for version 269"), die API kam nicht
+# hoch. Das Skript muss vorher stehen bleiben UND sagen, dass `up -d` jetzt
+# falsch ist und der Pull wiederholt wird.
+make_install t8c
+DOCKER_FAIL_ON=pull run_update "$WORK/t8c/install" --no-backup
+if [ "$RC" -eq 0 ]; then
+	fail "8c: gescheiterter Pull, trotzdem rc=0" "$OUT"
+elif grep -qE '^docker compose (.* )?(run --rm migrate|up -d)' "$WORK/t8c/install/docker.log"; then
+	fail "8c: nach dem gescheiterten Pull wurde migriert oder gestartet" "$WORK/t8c/install/docker.log"
+elif ! grep -q "Pull wiederholen" "$OUT" || ! grep -q "NICHT 'docker compose up -d'" "$OUT"; then
+	fail "8c: Abbruch ohne Ansage 'Pull wiederholen, nicht up -d'" "$OUT"
+else
+	pass "8c: gescheiterter Pull stoppt vor migrate/up -d und sagt, was jetzt zu tun ist"
+fi
+
+# ── 9: R1-KW-19 — VAKT_TAG aus der .env wird respektiert, nicht ueberschrieben
+# Bis 2026-10-31 setzte update.sh fest TAG="latest" und exportierte das ueber
+# einen Pin aus der .env hinweg.
+make_install t9a
+G -C "$WORK/t9a/new" tag v9.9.9 && G -C "$WORK/t9a/new" push -q origin v9.9.9
+printf 'VAKT_TAG=v9.9.9\n' >>"$WORK/t9a/install/.env"
+run_update "$WORK/t9a/install" --no-backup
+if [ "$RC" -ne 0 ]; then
+	fail "9a: Update mit Pin in der .env endete mit rc=$RC" "$OUT"
+elif ! grep -qx "pull VAKT_TAG=v9.9.9" "$WORK/t9a/install/docker.log.tag" 2>/dev/null; then
+	fail "9a: der Pull zog nicht die in der .env gepinnte Version" "$WORK/t9a/install/docker.log.tag"
+elif ! grep -q "festgelegt" "$OUT"; then
+	fail "9a: der Pin wird nicht angesagt — das Update bleibt still auf der alten Version" "$OUT"
+else
+	pass "9a: VAKT_TAG aus der .env bestimmt den Pull und wird angesagt"
+fi
+
+# 9b: Pin in der .env und abweichendes --tag -> Abbruch vor jeder Aenderung.
+# Sonst startet das naechste `docker compose up -d` wieder den alten Pin.
+make_install t9b
+G -C "$WORK/t9b/new" tag v9.9.8 && G -C "$WORK/t9b/new" tag v9.9.9 &&
+	G -C "$WORK/t9b/new" push -q origin v9.9.8 v9.9.9
+printf 'VAKT_TAG=v9.9.8\n' >>"$WORK/t9b/install/.env"
+run_update "$WORK/t9b/install" --no-backup --tag v9.9.9
+if [ "$RC" -eq 0 ]; then
+	fail "9b: --tag weicht vom Pin in der .env ab, trotzdem rc=0" "$OUT"
+elif grep -q "MARKER: NEU" "$WORK/t9b/install/docker-compose.yml"; then
+	fail "9b: Artefakte wurden trotz Widerspruch umgestellt" "$OUT"
+elif [ -s "$WORK/t9b/install/docker.log" ] && grep -qE 'pull|up -d|migrate' "$WORK/t9b/install/docker.log"; then
+	fail "9b: Container-Laufzeit wurde trotz Widerspruch angefasst" "$WORK/t9b/install/docker.log"
+elif ! grep -q "VAKT_TAG=v9.9.9" "$OUT"; then
+	fail "9b: Abbruchmeldung nennt die noetige .env-Zeile nicht" "$OUT"
+else
+	pass "9b: --tag gegen abweichenden Pin stoppt vor der ersten Aenderung und nennt die .env-Zeile"
+fi
+
+# 9c: --tag, das dem Pin in der .env entspricht, laeuft durch.
+make_install t9c
+G -C "$WORK/t9c/new" tag v9.9.9 && G -C "$WORK/t9c/new" push -q origin v9.9.9
+printf 'VAKT_TAG=v9.9.9\n' >>"$WORK/t9c/install/.env"
+run_update "$WORK/t9c/install" --no-backup --tag v9.9.9
+if [ "$RC" -ne 0 ]; then
+	fail "9c: --tag gleich Pin endete mit rc=$RC" "$OUT"
+elif grep -qx "pull VAKT_TAG=v9.9.9" "$WORK/t9c/install/docker.log.tag" 2>/dev/null; then
+	pass "9c: --tag gleich Pin zieht genau diese Version"
+else
+	fail "9c: --tag kam beim Pull nicht an" "$WORK/t9c/install/docker.log.tag"
+fi
+
+# 9d: --tag OHNE Pin -> Abbruch. Das naechste `docker compose up -d` liefe
+# sonst mit dem lokalen (alten) latest-Image gegen die migrierte Datenbank.
+make_install t9d
+G -C "$WORK/t9d/new" tag v9.9.9 && G -C "$WORK/t9d/new" push -q origin v9.9.9
+run_update "$WORK/t9d/install" --no-backup --tag v9.9.9
+if [ "$RC" -eq 0 ]; then
+	fail "9d: --tag ohne Pin in der .env lief durch (rc=0)" "$OUT"
+elif [ -s "$WORK/t9d/install/docker.log" ] && grep -qE 'pull|up -d|migrate' "$WORK/t9d/install/docker.log"; then
+	fail "9d: Container-Laufzeit wurde trotzdem angefasst" "$WORK/t9d/install/docker.log"
+elif ! grep -q "VAKT_TAG=v9.9.9" "$OUT"; then
+	fail "9d: Abbruchmeldung nennt die noetige .env-Zeile nicht" "$OUT"
+else
+	pass "9d: --tag ohne passenden Pin stoppt vor der ersten Aenderung"
+fi
+
+# ── 10: R1-UPD-B1 — kein -f, damit docker-compose.override.yml mitgeladen wird
+# Ein ausdrueckliches `-f docker-compose.yml` schaltet die Override-Datei ab
+# (gemessen am 2026-10-31 mit `docker compose config`). Ob Compose sie dann
+# wirklich laedt, ist Compose-Verhalten und hier nicht pruefbar — geprueft wird,
+# dass update.sh es nicht mehr verhindert.
+if grep -E '^docker compose ' "$WORK/t1/install/docker.log" | grep -qE ' -f '; then
+	fail "10: update.sh ruft compose mit -f auf — docker-compose.override.yml faellt weg" "$WORK/t1/install/docker.log"
+else
+	pass "10: update.sh ruft compose ohne -f auf (Override-Datei und COMPOSE_FILE greifen)"
+fi
+
 # ── 7: neue Pflichtvariable in .env.example wird gemeldet ────────────────────
 # Die .env des Kunden wird von keinem Update angefasst (sie ist git-ignoriert).
 # Eine neue Pflichtvariable erreicht ihn deshalb nur, wenn das Update sie nennt.
@@ -331,6 +454,24 @@ else
 		pass "7: neue Variable aus .env.example wird namentlich gemeldet"
 	else
 		fail "7: neue Pflichtvariable in .env.example bleibt unerwaehnt" "$OUT1"
+	fi
+fi
+
+# ── 11: das aufrufende Repo ist unveraendert ─────────────────────────────────
+# Siehe Kopf: unter einem exportierten GIT_DIR schrieb dieser Test frueher in
+# das echte Repo (core.bare=true, HEAD auf Test-Commit).
+if [ -z "$CALLER_GITDIR" ]; then
+	echo "SKIP: 11: Test laeuft nicht in einem Git-Repo — nichts zu schuetzen"
+	skipped=$((skipped + 1))
+else
+	now_bare="$(git config --file "$CALLER_COMMONDIR/config" --get core.bare 2>/dev/null || true)"
+	now_head="$(git --git-dir="$CALLER_GITDIR" rev-parse -q --verify HEAD 2>/dev/null || true)"
+	if [ "$now_bare" != "$CALLER_BARE" ]; then
+		fail "11: core.bare des aufrufenden Repos geaendert ('$CALLER_BARE' -> '$now_bare', $CALLER_COMMONDIR/config)"
+	elif [ "$now_head" != "$CALLER_HEAD" ]; then
+		fail "11: HEAD des aufrufenden Repos bewegt (${CALLER_HEAD:0:8} -> ${now_head:0:8}, $CALLER_GITDIR)"
+	else
+		pass "11: aufrufendes Repo unveraendert (core.bare, HEAD)"
 	fi
 fi
 

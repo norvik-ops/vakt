@@ -43,7 +43,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Restrisiko: **Kritisch 15–25 · Hoch 10–14 · Mittel 5–9 · Niedrig 1–4**. Die Risikoliste hat dafür
   vier Gruppen statt drei. Die Kennzahl „Offene hohe Risiken“ (Score ≥ 15) heißt jetzt „Offene
   kritische Risiken“.
+- **Das öffentliche Repository bringt jetzt eine `.gitignore` mit.** Bisher fehlte sie ganz, obwohl
+  die Update-Anleitung zusagte, die `.env` sei git-ignoriert. Ein `git add -A` im
+  Installationsverzeichnis hätte die Zugangsdaten committet. Ignoriert werden jetzt `.env` und
+  `.env.*` (außer `.env.example`), `secrets/`, `docker-compose.override.yml` und die
+  Backup-Ablagen (`backups/`, `data/backups/`, `vakt-backup-*.tar.gz`). Wer schon einmal
+  `git add -A` in seiner Installation ausgeführt hat, prüft mit `git log --stat -- .env`, ob die
+  `.env` in einem Commit steckt.
+- **`scripts/update.sh` respektiert `VAKT_TAG` aus der `.env`.** Das Skript setzte bisher fest
+  `latest` und überschrieb einen Pin still. Jetzt bestimmt die `.env` die Version (ohne Zeile:
+  `latest`), und ein Pin wird zu Beginn angesagt. **Geändert:** `--tag` wird nur noch angenommen,
+  wenn es mit der `.env` übereinstimmt; sonst bricht das Skript vor jeder Änderung ab. Grund: das
+  nächste `docker compose up -d` liest die `.env` und würde wieder die alte Version gegen die
+  migrierte Datenbank starten. Eine bestimmte Version also in die `.env` schreiben, dann updaten.
+- **Ein gescheiterter `docker compose pull` stoppt das Update mit einer klaren Ansage.** Es wird
+  dann weder migriert noch neu gestartet, und das Skript sagt, dass jetzt nicht
+  `docker compose up -d`, sondern ein neuer Pull dran ist.
+- **`scripts/update.sh` lädt wieder `docker-compose.override.yml`.** Das Skript rief Compose mit
+  `-f docker-compose.yml` auf; damit fielen die eigenen Anpassungen aus der Override-Datei und
+  eine `COMPOSE_FILE`-Liste beim Update weg.
+- **Eine kanonische Update-Anleitung: `docs/UPGRADE.md`.** Sie nennt jetzt den `VAKT_TAG`-Pin,
+  das Verhalten bei abgebrochenem Pull und die Versionsprüfung über `/health`. Die falsche
+  Aussage, Migrationen liefen beim Start der API, ist korrigiert (sie laufen im `migrate`-Container).
+  Wiki, Setup und Betriebshandbuch verweisen darauf.
 
+---
 ## [0.46.0] — 2026-10-29
 
 ### Behoben

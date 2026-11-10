@@ -110,6 +110,10 @@ Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglic
 
 ### Wie update ich Vakt?
 
+> **Kanonische Update-Anleitung: [`docs/UPGRADE.md`](https://github.com/norvik-ops/vakt/blob/main/docs/UPGRADE.md)**
+> — dort auch, was ein `VAKT_TAG`-Pin in der `.env` bewirkt und was nach einem abgebrochenen
+> `docker compose pull` zu tun ist (nicht `up -d`, sondern den Pull wiederholen).
+
 ```bash
 git pull
 docker compose pull

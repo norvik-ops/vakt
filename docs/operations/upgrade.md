@@ -2,7 +2,9 @@
 
 Vakt verwendet semantische Versionierung (SemVer). Datenbankmigrationen laufen automatisch beim Start des `migrate`-Containers.
 
-Vollständige versionsspezifische Hinweise: [`docs/UPGRADE.md`](../UPGRADE.md)
+> **Kanonische Update-Anleitung: [`docs/UPGRADE.md`](../UPGRADE.md)** — dort auch, was ein
+> `VAKT_TAG`-Pin in der `.env` bewirkt und was nach einem abgebrochenen `docker compose pull`
+> zu tun ist (nicht `up -d`, sondern den Pull wiederholen).
 
 ---
 

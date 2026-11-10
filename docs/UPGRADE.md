@@ -2,7 +2,33 @@
 
 ## Upgrade-Strategie
 
-Vakt verwendet semantische Versionierung (SemVer). Datenbankmigrationen laufen automatisch beim Start des API-Containers.
+> **Diese Datei ist die kanonische Update-Anleitung** für Docker-Compose-Installationen.
+> Alle anderen Stellen (Wiki, Setup, Betriebshandbuch) verweisen hierher.
+
+Vakt verwendet semantische Versionierung (SemVer). Datenbankmigrationen laufen **nicht**
+beim Start des API-Containers (`AUTO_MIGRATE=false` ist der Default), sondern im eigenen
+`migrate`-Container. `update.sh` startet ihn in Schritt 4 ausdrücklich; ein
+`docker compose up -d` startet ihn ebenfalls, bevor `api` und `worker` hochkommen.
+
+## Vor dem Update: welche Version? (`VAKT_TAG`)
+
+Die Images kommen in der Version, die `VAKT_TAG` nennt. Steht in deiner `.env` keine
+`VAKT_TAG`-Zeile, ist das `latest`. Steht dort eine feste Version (ein „Pin“, z. B.
+`VAKT_TAG=v0.45.1`), **bleibt jedes Update auf genau dieser Version** — auch
+`docker compose pull` holt dann nichts Neues.
+
+```bash
+grep '^VAKT_TAG' .env        # keine Ausgabe = latest
+```
+
+* **Pin anheben:** in der `.env` `VAKT_TAG=<neue Version>` eintragen, dann
+  `./scripts/update.sh`. Das Skript zieht genau diese Version und sagt das am Anfang an.
+* **Pin entfernen:** die Zeile löschen — ab dann gilt `latest`.
+* `./scripts/update.sh --tag <version>` geht nur, wenn die `.env` **genau diesen** Wert
+  trägt (ohne Zeile: nur `--tag latest`). Sonst bricht das Skript vor jeder Änderung ab:
+  jedes spätere `docker compose up -d` liest die `.env` und würde die alte Version wieder
+  starten — gegen eine Datenbank, die schon auf die neue migriert ist. Der Weg zu einer
+  bestimmten Version ist deshalb immer: Version in die `.env`, dann `./scripts/update.sh`.
 
 ## Standard-Upgrade (Docker Compose)
 
@@ -45,7 +71,8 @@ nicht hat. Wer die Schritte einzeln fahren will, findet sie hier:
    > der `Caddyfile`. Wer nur neue Images zieht, betreibt neue Binaries in der
    > alten Umgebung: die Passwörter stehen dann weiter im Klartext in
    > `docker inspect`, und der Frontdoor läuft ohne abgelegte Capabilities.
-   > Deine `.env` wird dabei **nie** verändert (sie ist git-ignoriert) — neue
+   > Deine `.env` wird dabei **nie** verändert (sie steht in der mitgelieferten
+   > `.gitignore`, ebenso `backups/` und `docker-compose.override.yml`) — neue
    > Pflichtvariablen aus `.env.example` meldet `update.sh` namentlich.
    > Bricht das Upgrade nach diesem Schritt ab, sagt `update.sh` ausdrücklich,
    > dass der Stand jetzt gemischt ist, und nennt den Rückweg.
@@ -54,6 +81,12 @@ nicht hat. Wer die Schritte einzeln fahren will, findet sie hier:
    ```bash
    docker compose pull api worker frontend vakt-scanners
    ```
+   > **Bricht `docker compose pull` ab** (Netz, Registry, unbekannter Tag): **nicht**
+   > `docker compose up -d` ausführen, sondern den Pull wiederholen. `up -d` startet
+   > sonst die alten lokalen Images mit der neuen Compose-Datei; der `migrate`-Container
+   > scheitert dann an der unbekannten Datenbank-Version („no migration found for
+   > version …“), und die API startet nicht. `update.sh` bricht an dieser Stelle selbst
+   > ab und hat dann weder migriert noch etwas neu gestartet.
 
 4. **Migrationen ausführen:**
    ```bash
@@ -69,11 +102,13 @@ nicht hat. Wer die Schritte einzeln fahren will, findet sie hier:
    `api worker frontend` würde die Änderungen an `caddy`, `postgres`, `redis`
    und `pgbouncer` genau dort liegen lassen, wo die Härtung steht.
 
-6. **Verify:**
+6. **Prüfen, dass die neue Version wirklich läuft:**
    ```bash
    docker compose ps
-   curl http://localhost/health
+   curl -skL http://localhost/health | jq -r .version    # muss die Zielversion sein
    ```
+   Steht dort noch die alte Version, ist fast immer ein Pin in der `.env` der Grund
+   (siehe „Vor dem Update“ oben).
 
 ### Installation ohne git-Checkout
 

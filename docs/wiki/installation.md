@@ -208,11 +208,22 @@ CASDOOR_CLIENT_SECRET=geheimes-secret
 
 ## Updates
 
+Die vollständige, kanonische Anleitung steht in
+[`docs/UPGRADE.md`](https://github.com/norvik-ops/vakt/blob/main/docs/UPGRADE.md).
+Kurzfassung:
+
 ```bash
-git pull
-docker compose pull
-docker compose up -d
+grep '^VAKT_TAG' .env       # 1. Pin? Dann erst in der .env anheben oder die Zeile löschen
+./scripts/update.sh         # 2. Backup, Dateien, Images, Migration, Neustart, Health-Check
+curl -skL http://localhost/health | jq -r .version   # 3. muss die neue Version zeigen
 ```
+
+- **`VAKT_TAG` in der `.env`:** Steht dort eine feste Version, bleibt jedes Update auf genau
+  dieser Version — still, ohne Fehlermeldung. Erst anheben (oder die Zeile löschen = `latest`),
+  dann updaten.
+- **Bricht `docker compose pull` ab, nicht `docker compose up -d` ausführen**, sondern den Pull
+  wiederholen. Sonst starten die alten lokalen Images, der `migrate`-Container scheitert, und
+  die API startet nicht.
 
 ### Update-Benachrichtigungen (opt-in)
 
@@ -222,14 +233,7 @@ Vakt prüft nicht automatisch auf neue Versionen. Wenn du informiert werden möc
 
 **Option 2 — Watchtower:** Für automatische Container-Updates siehe die [Deployment-Dokumentation](../setup.md). **Watchtower aktualisiert ausschließlich Images** — `docker-compose.yml`, `Caddyfile` und `scripts/` bleiben auf dem Stand deiner Installation und müssen zusätzlich nachgezogen werden (`./scripts/update.sh` oder `git pull --ff-only`).
 
-Datenbankmigrationen laufen über den `migrate`-Container, der in `docker-compose.yml` als Abhängigkeit vor `api` und `worker` eingetragen ist. Der Container startet, migriert und beendet sich — `docker compose up -d` reicht:
-
-```bash
-git pull
-docker compose pull
-docker compose up -d
-# migrate-Container läuft zuerst, dann starten api/worker
-```
+Datenbankmigrationen laufen über den `migrate`-Container, der in `docker-compose.yml` als Abhängigkeit vor `api` und `worker` eingetragen ist. Der Container startet, migriert und beendet sich, bevor `api` und `worker` hochkommen.
 
 > **`AUTO_MIGRATE=false` (Default):** Die API migriert nicht selbst — nur der dedizierte `migrate`-Container tut das. Setze `AUTO_MIGRATE=true` nur in lokalen Entwicklungsumgebungen ohne laufenden `migrate`-Container.
 
