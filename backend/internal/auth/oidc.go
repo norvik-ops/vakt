@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/matharnica/vakt/internal/config"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 	"github.com/rs/zerolog/log"
 )
 
@@ -422,10 +423,14 @@ func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, d
 	// Accounts provisioned before 2026-11-09 carry the raw NameID with provider
 	// "saml". Upgrade the one that belongs to THIS organisation in place, so its
 	// user keeps the account. A row of another organisation is never touched.
-	// If an account of this organisation already carries the qualified subject,
-	// nothing is upgraded: a second row with the same subject would leave it to
-	// row order which account the next login lands in. The existing holder wins.
-	// orgid-lint: global — bound to orgID via the org_members subquery.
+	// If ANY account already carries the qualified subject, nothing is upgraded:
+	// a second row with the same subject would leave it to row order which
+	// account the next login lands in. The existing holder wins. The check is
+	// deliberately not bound to org membership: the subject already names the
+	// org, and a holder that left the org still holds it. Migration 271 enforces
+	// the same rule with a partial UNIQUE index.
+	// orgid-lint: global — the legacy row is bound to orgID via org_members; the
+	// holder check is global on purpose (the subject embeds orgID).
 	// Zero rows is the normal case (no legacy row), so the CommandTag is not checked.
 	//idempotent: legacy-subject upgrade, 0 or 1 row by design
 	if _, err := s.db.Exec(ctx, `
@@ -437,13 +442,18 @@ func (s *Service) provisionSAMLUser(ctx context.Context, orgID, nameID, email, d
 			              WHERE om.user_id = u.id AND om.org_id::text = $4)
 			  AND NOT EXISTS (
 			        SELECT 1 FROM users h
-			        JOIN org_members hm ON hm.user_id = h.id AND hm.org_id::text = $4
 			        WHERE h.oidc_subject = $1 AND h.oidc_provider = $2)
 			ORDER BY u.created_at ASC
 			LIMIT 1)`,
 		subject, providerSAMLDirect, nameID, orgID,
 	); err != nil {
-		return nil, fmt.Errorf("upgrade legacy SAML subject: %w", err)
+		// A concurrent login can win the race between NOT EXISTS and the write;
+		// the unique index (migration 271) then refuses the second holder. That
+		// is the "existing holder wins" case, not a failed login.
+		if !apperr.IsConflict(err) {
+			return nil, fmt.Errorf("upgrade legacy SAML subject: %w", err)
+		}
+		log.Warn().Str("org_id", orgID).Msg("saml_acs: legacy subject not upgraded, another account already holds it")
 	}
 
 	userID, resolvedOrgID, roles, err := s.provisionOIDCUser(ctx, subject, providerSAMLDirect, email, displayName, "", orgID, true, jitEnabled)
@@ -531,7 +541,14 @@ func (s *Service) provisionOIDCUser(ctx context.Context, oidcSubject, provider, 
 				`UPDATE users SET oidc_subject = $1, oidc_provider = $2, avatar_url = COALESCE(NULLIF($3,''), avatar_url), last_login_at = NOW() WHERE id = $4::uuid`,
 				oidcSubject, provider, avatarURL, userID,
 			); updateErr != nil {
-				log.Warn().Err(updateErr).Str("user_id", userID).Msg("failed to link OIDC subject to existing user")
+				if apperr.IsConflict(updateErr) {
+					// Another account holds this direct-SAML subject (unique index,
+					// migration 271). The login stays in the e-mail-matched account;
+					// the subject is not moved.
+					log.Warn().Str("user_id", userID).Str("provider", provider).Msg("OIDC subject already held by another account, not linked")
+				} else {
+					log.Warn().Err(updateErr).Str("user_id", userID).Msg("failed to link OIDC subject to existing user")
+				}
 			}
 		} else {
 			if !createIfNotFound {

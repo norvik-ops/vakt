@@ -139,7 +139,7 @@ func AdoptActivatedKey(ctx context.Context, db *pgxpool.Pool, inst *Instance) {
 	}
 	lic, parseErr := parse(keyValue)
 	if parseErr != nil {
-		log.Warn().Err(parseErr).Msg("license: activated key in DB is invalid — staying on the startup licence")
+		log.Warn().Str("reason", rejectReason(parseErr)).Msg("license: activated key in DB is invalid — staying on the startup licence")
 		return
 	}
 	inst.Set(lic)

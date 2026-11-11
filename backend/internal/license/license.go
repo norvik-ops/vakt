@@ -205,8 +205,11 @@ func Load(licenseKey string, isDemo bool) *License {
 }
 
 // rejectReason turns a parse error into a fixed, loggable reason. Only this
-// package's own error strings pass through; base64, JSON and x509 errors can
-// quote bytes of the key or payload, so they are reduced to a generic reason.
+// package's own error strings pass through. A JSON error can quote bytes of the
+// signed payload (which may hold the renewal token); a base64 error names only
+// an offset but is still no reason worth showing. Both are reduced to a generic
+// reason. Problems with the public key embedded in this build never reach here
+// as raw errors: loadPublicKey maps them to errInvalidKey.
 func rejectReason(err error) string {
 	var le licenseError
 	if errors.As(err, &le) {
@@ -413,7 +416,9 @@ func loadPublicKey() (*ecdsa.PublicKey, error) {
 	}
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil, err
+		// A broken build key is not a bad customer key; say so instead of
+		// "could not be decoded".
+		return nil, errInvalidKey
 	}
 	ecPub, ok := pub.(*ecdsa.PublicKey)
 	if !ok {
@@ -436,7 +441,7 @@ func verifySignature(pub *ecdsa.PublicKey, hash, sig []byte) bool {
 var (
 	errInvalidFormat    = licenseError("invalid license key format")
 	errInvalidSignature = licenseError("license signature verification failed")
-	errInvalidKey       = licenseError("invalid public key")
+	errInvalidKey       = licenseError("license public key of this build is invalid")
 )
 
 type licenseError string

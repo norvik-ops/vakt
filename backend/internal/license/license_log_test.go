@@ -5,13 +5,19 @@ package license
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -139,4 +145,79 @@ func TestLoad_ValidOrEmptyKeyLogsNoWarning(t *testing.T) {
 			t.Fatalf("%s: unerwartete Warnung: %s", name, buf.String())
 		}
 	}
+}
+
+// assertReasonOnly prüft, dass die Warnzeile den festen Grund trägt und weder
+// den rohen Fehler (Feld "error") noch Teile des Schlüssels.
+func assertReasonOnly(t *testing.T, out, wantReason, key string) {
+	t.Helper()
+	if !strings.Contains(out, `"reason":"`+wantReason+`"`) {
+		t.Fatalf("Grund %q fehlt im Log: %s", wantReason, out)
+	}
+	if strings.Contains(out, `"error":`) {
+		t.Fatalf("roher parse()-Fehler steht im Log: %s", out)
+	}
+	for _, part := range strings.SplitN(key, ".", 2) {
+		if len(part) >= 8 && strings.Contains(out, part) {
+			t.Fatalf("Teil des Schlüssels steht im Log: %s", out)
+		}
+	}
+}
+
+// Aktivierung und Auto-Refresh loggen einen abgelehnten Schlüssel wie Load():
+// nur mit festem Grund, nie mit dem rohen Fehler aus parse().
+func TestActivate_RejectionLogsReasonOnly(t *testing.T) {
+	priv, restore := setupTestKeys(t)
+	defer restore()
+	key := signRaw(t, priv, []byte("not-json-renewal-secret-do-not-log"))
+
+	buf := captureLog(t)
+	e := echo.New()
+	body, err := json.Marshal(map[string]string{"key": key})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/license/activate", bytes.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	if err := NewHandler(communityLicense()).Activate(e.NewContext(req, rec)); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("Status %d, erwartet 422", rec.Code)
+	}
+	assertReasonOnly(t, buf.String(), "license key could not be decoded", key)
+}
+
+func TestAutoRefresh_InvalidKeyLogsReasonOnly(t *testing.T) {
+	priv, restore := setupTestKeys(t)
+	defer restore()
+	bad := signRaw(t, priv, []byte("not-json-renewal-secret-do-not-log"))
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{"key": bad})
+	}))
+	defer srv.Close()
+
+	r, h := refresherFor(t, keyExpiringIn(t, priv, 10*24*time.Hour, "tok"), srv.URL)
+	buf := captureLog(t)
+	r.check(context.Background())
+	if !h.RenewalFailing() {
+		t.Fatal("ungültiger Schlüssel vom Server muss als fehlgeschlagene Erneuerung gelten")
+	}
+	assertReasonOnly(t, buf.String(), "license key could not be decoded", bad)
+}
+
+// Ein kaputter Public Key im Build ist kein kaputter Kundenschlüssel: Der Grund
+// muss das sagen, statt "could not be decoded".
+func TestLoad_BrokenBuildKeyHasOwnReason(t *testing.T) {
+	old := publicKeyPEM
+	publicKeyPEM = "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----\n"
+	defer func() { publicKeyPEM = old }()
+
+	buf := captureLog(t)
+	key := "eyJ0aWVyIjoicHJvIn0.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	if lic := Load(key, false); lic.Tier != "community" {
+		t.Fatalf("Tier %q, erwartet community", lic.Tier)
+	}
+	assertReasonOnly(t, buf.String(), "license public key of this build is invalid", key)
 }

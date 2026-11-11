@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/matharnica/vakt/internal/config"
+	"github.com/matharnica/vakt/internal/shared/apperr"
 )
 
 // R1-SEC-01 — Kontoübernahme über die Org-Grenze per Direct-SAML.
@@ -391,4 +392,189 @@ func TestDirectSAML_LegacyUpgradeDoesNotDuplicateSubject(t *testing.T) {
 	).Scan(&subj, &prov))
 	require.Equal(t, nameID, subj, "Altkonto wurde trotz bestehendem Subject hochgestuft")
 	require.Equal(t, "saml", prov)
+}
+
+// Doppel-Subject über ein Nicht-Mitglied: Trägt ein Konto das org-qualifizierte
+// Subject, ist aber kein Mitglied der Org (ausgetreten, entfernt), darf das
+// Hochstufen eines Altkontos dasselbe Subject kein zweites Mal vergeben. Die
+// Prüfung war an die Mitgliedschaft gebunden und übersah diesen Träger. Seit
+// Migration 271 lehnt zusätzlich die Datenbank ab, und der Login darf daran
+// nicht scheitern.
+func TestDirectSAML_LegacyUpgradeSkipsSubjectHeldByNonMember(t *testing.T) {
+	pool := samlTakeoverDB(t)
+	ctx := context.Background()
+	tag := samlTakeoverTag()
+	orgB := seedSAMLOrg(t, pool, "b-"+tag)
+	orgX := seedSAMLOrg(t, pool, "x-"+tag)
+	nameID := "nonmember-nameid-" + tag
+	subject := directSAMLSubject(orgB, nameID)
+	// Der Träger ist Mitglied einer anderen Org, nicht von B.
+	holder := seedSSOUser(t, pool, orgX, "gone-"+tag+"@x.example", subject, providerSAMLDirect)
+	legacyEmail := "legacy-nm-" + tag + "@b.example"
+	legacy := seedSSOUser(t, pool, orgB, legacyEmail, nameID, "saml")
+
+	code, loc, got := runSAMLLogin(t, pool, orgB, samlAssertion(nameID, legacyEmail))
+	require.Equal(t, http.StatusOK, code, "Redirect %s", loc)
+	require.NotEqual(t, holder, got, "Login darf nicht im Konto eines Nicht-Mitglieds landen")
+	require.Equal(t, legacy, got, "das Altkonto der Org meldet sich weiter an")
+
+	var n int
+	// orgid-lint: global — Testabfrage, auf das org-qualifizierte Subject eingegrenzt.
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT count(*) FROM users WHERE oidc_subject = $1 AND oidc_provider = $2`,
+		subject, providerSAMLDirect).Scan(&n))
+	require.Equal(t, 1, n, "zwei Konten tragen dasselbe Direct-SAML-Subject")
+
+	var subj, prov string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT oidc_subject, oidc_provider FROM users WHERE id = $1::uuid`, holder,
+	).Scan(&subj, &prov))
+	require.Equal(t, subject, subj, "der bisherige Träger muss sein Subject behalten")
+	require.Equal(t, providerSAMLDirect, prov)
+}
+
+// Migration 271 muss auf einem Bestand mit Dubletten durchlaufen: Unter zwei
+// aktiven Mitgliedern behält das älteste Konto das Subject, das jüngere wird
+// entkoppelt (Subject und Provider
+// NULL), gelöscht wird nichts. Danach lehnt der Index eine neue Dublette ab.
+func TestMigration271_CleansDuplicatesAndEnforcesUniqueness(t *testing.T) {
+	pool := samlTakeoverDB(t)
+	ctx := context.Background()
+	up := readMigration(t, "271_saml_direct_subject_unique.up.sql")
+	down := readMigration(t, "271_saml_direct_subject_unique.down.sql")
+
+	err := dropIndex271(t, pool, up, down)
+	require.NoError(t, err)
+
+	tag := samlTakeoverTag()
+	orgB := seedSAMLOrg(t, pool, "b-"+tag)
+	subject := directSAMLSubject(orgB, "dup271-"+tag)
+	oldest := seedSSOUser(t, pool, orgB, "old271-"+tag+"@b.example", subject, providerSAMLDirect)
+	younger := seedSSOUser(t, pool, orgB, "young271-"+tag+"@b.example", subject, providerSAMLDirect)
+	// created_at staffeln: Sonst entschiede bei gleichem Zeitstempel nur die id.
+	_, err = pool.Exec(ctx, `UPDATE users SET created_at = created_at - interval '1 day' WHERE id = $1::uuid`, oldest)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, up)
+	require.NoError(t, err, "Migration 271 scheitert an vorhandenen Dubletten")
+
+	var subj string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT oidc_subject FROM users WHERE id = $1::uuid`, oldest).Scan(&subj))
+	require.Equal(t, subject, subj, "das älteste Konto muss das Subject behalten")
+
+	var unlinked bool
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT oidc_subject IS NULL AND oidc_provider IS NULL FROM users WHERE id = $1::uuid`, younger,
+	).Scan(&unlinked))
+	require.True(t, unlinked, "das jüngere Konto muss entkoppelt sein, nicht gelöscht")
+
+	// Der Index greift: eine neue Dublette wird abgelehnt.
+	_, err = pool.Exec(ctx, `UPDATE users SET oidc_subject = $1, oidc_provider = $2 WHERE id = $3::uuid`,
+		subject, providerSAMLDirect, younger)
+	require.True(t, apperr.IsConflict(err), "der UNIQUE-Index lässt eine zweite Zeile mit dem Subject zu: %v", err)
+
+	// Erneut anwendbar (IF NOT EXISTS).
+	_, err = pool.Exec(ctx, up)
+	require.NoError(t, err)
+}
+
+// dropIndex271 entfernt den Index aus Migration 271, damit sich Dubletten
+// seeden lassen. Die Test-DB ist schon migriert. Am Ende legt der Cleanup ihn
+// wieder an; er läuft nach dem Löschen der Testkonten (LIFO) und meldet einen
+// Fehler, statt ihn zu verwerfen: Ohne Index liefen die übrigen Tests gegen
+// ein schwächeres Schema.
+func dropIndex271(t *testing.T, pool *pgxpool.Pool, up, down string) error {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(), down); err != nil {
+		return err
+	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), up); err != nil {
+			t.Errorf("Migration 271 im Cleanup nicht wieder angewandt: %v", err)
+		}
+	})
+	return nil
+}
+
+// Bei Dubletten behält nicht blind das älteste Konto das Subject: Ist es kein
+// Mitglied der Org aus dem Subject mehr (oder deaktiviert), würde sonst das
+// aktive Mitglied entkoppelt. Dessen nächster Login liefe bei abweichender
+// IdP-E-Mail per JIT gegen den Index und wäre ausgesperrt. Die Mitgliedschaft
+// wiegt dabei schwerer als is_active: Nur ein Mitglied findet der Direct-SAML-
+// Login über das Subject überhaupt.
+func TestMigration271_PrefersActiveMemberOverOlderHolder(t *testing.T) {
+	pool := samlTakeoverDB(t)
+	ctx := context.Background()
+	up := readMigration(t, "271_saml_direct_subject_unique.up.sql")
+	down := readMigration(t, "271_saml_direct_subject_unique.down.sql")
+
+	// Der Verlierer ist immer das ältere Konto, damit created_at allein falsch
+	// entschiede.
+	for _, tc := range []struct {
+		name                     string
+		loserMember, loserActive bool
+		winnerActive             bool
+	}{
+		{"älterer Träger ist kein Mitglied", false, true, true},
+		{"älterer Träger ist deaktiviert", true, false, true},
+		{"deaktiviertes Mitglied gegen aktives Nicht-Mitglied", false, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Je Subtest eigener Index-Abbau und -Restore per t.Cleanup: Scheitert
+			// ein require früh, reißt das den nächsten Subtest nicht mit.
+			require.NoError(t, dropIndex271(t, pool, up, down))
+
+			tag := samlTakeoverTag()
+			orgB := seedSAMLOrg(t, pool, "b-"+tag)
+			subject := directSAMLSubject(orgB, "pref271-"+tag)
+			loserOrg := orgB
+			if !tc.loserMember {
+				loserOrg = seedSAMLOrg(t, pool, "x-"+tag)
+			}
+			loser := seedSSOUser(t, pool, loserOrg, "loser271-"+tag+"@b.example", subject, providerSAMLDirect)
+			winner := seedSSOUser(t, pool, orgB, "winner271-"+tag+"@b.example", subject, providerSAMLDirect)
+			_, err := pool.Exec(ctx, `UPDATE users SET created_at = created_at - interval '1 day',
+				is_active = $2 WHERE id = $1::uuid`, loser, tc.loserActive)
+			require.NoError(t, err)
+			_, err = pool.Exec(ctx, `UPDATE users SET is_active = $2 WHERE id = $1::uuid`, winner, tc.winnerActive)
+			require.NoError(t, err)
+
+			_, err = pool.Exec(ctx, up)
+			require.NoError(t, err)
+
+			var winnerSubj *string
+			require.NoError(t, pool.QueryRow(ctx,
+				`SELECT oidc_subject FROM users WHERE id = $1::uuid`, winner).Scan(&winnerSubj))
+			require.NotNil(t, winnerSubj, "das Mitglied der Org wurde entkoppelt")
+			require.Equal(t, subject, *winnerSubj)
+
+			var unlinked bool
+			require.NoError(t, pool.QueryRow(ctx,
+				`SELECT oidc_subject IS NULL AND oidc_provider IS NULL FROM users WHERE id = $1::uuid`, loser,
+			).Scan(&unlinked))
+			require.True(t, unlinked, "das andere Konto muss entkoppelt sein")
+		})
+	}
+}
+
+// JIT gegen einen Nicht-Mitglied-Träger: Kein Konto der Org passt, das neue
+// Konto bekäme das Subject eines fremden Kontos. Der Index lehnt das ab. Der
+// Login muss generisch scheitern (Redirect, kein 500, kein DB-Detail) und darf
+// nicht im Konto des Trägers landen.
+func TestDirectSAML_JITCollisionWithHolderFailsGenerically(t *testing.T) {
+	pool := samlTakeoverDB(t)
+	tag := samlTakeoverTag()
+	orgB := seedSAMLOrg(t, pool, "b-"+tag)
+	orgX := seedSAMLOrg(t, pool, "x-"+tag)
+	nameID := "jit-collide-" + tag
+	holder := seedSSOUser(t, pool, orgX, "jit-holder-"+tag+"@x.example",
+		directSAMLSubject(orgB, nameID), providerSAMLDirect)
+	freshEmail := "jit-fresh-" + tag + "@b.example"
+	dropUserByEmail(t, pool, freshEmail)
+
+	code, loc, got := runSAMLLogin(t, pool, orgB, samlAssertion(nameID, freshEmail))
+	require.NotEqual(t, holder, got)
+	require.Equal(t, http.StatusFound, code)
+	require.Equal(t, "/login?error=saml_provision_failed", loc)
 }

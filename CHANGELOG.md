@@ -27,6 +27,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ein Konto das Subject `saml:<Organisation>:<NameID>`, stuft der Login kein Altkonto mit derselben
   NameID mehr darauf hoch. Bisher konnten danach zwei Konten dasselbe Subject tragen, und es hing
   an der Reihenfolge in der Datenbank, in welchem der Nutzer landete.
+- **Direct-SAML: ein Subject gehört genau einem Konto, auch in der Datenbank.** Das Hochstufen
+  eines Altkontos prüfte bisher nur Konten, die Mitglied der Organisation sind. Trug ein
+  ausgetretenes Konto das Subject, bekam ein zweites Konto dasselbe. Die Prüfung gilt jetzt für
+  alle Konten, und Migration 271 legt einen eindeutigen Index auf das Direct-SAML-Subject. Vorher
+  bereinigt sie vorhandene Dubletten: Das Subject behält bevorzugt ein Mitglied der Organisation
+  aus dem Subject, danach ein aktives, danach das älteste Konto. Die übrigen werden vom Subject
+  entkoppelt, nicht gelöscht. Entkoppelte Konten melden sich nur noch per Passwort an, sofern eines
+  gesetzt ist und das Konto aktiv ist. Ein Direct-SAML-Login mit derselben NameID landet im
+  behaltenden Konto. Welche Konten entkoppelt wurden, wird nicht protokolliert. Die Tabelle `users`
+  ist dabei kurz für Schreibzugriffe gesperrt. Wartet die Migration länger als 5 s auf die Sperre,
+  bricht sie ab: Das Schema bleibt auf Stand 270, `schema_migrations` steht aber auf `dirty`, und
+  die API startet nicht. Rückweg: per `psql`
+  `UPDATE schema_migrations SET version = 270, dirty = false;`, danach die API neu starten.
+  Stößt ein Login auf den Index, landet er im bestehenden Konto oder scheitert mit
+  `saml_provision_failed`, nie mit einem Serverfehler.
 - **SAML-Login nimmt die E-Mail nur noch aus dem E-Mail-Attribut, nie mehr aus der NameID**
   (GO-2026-6909). Die SAML-Bibliothek prüft den Namespace der NameID nicht; eine NameID, die wie
   die Adresse eines anderen Kontos aussieht, konnte sonst dieses Konto treffen. **Handlung nötig,
@@ -45,6 +60,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ungültig signiert, unlesbar, für einen nicht verkauften Tarif oder abgelaufen, schreibt die API
   beim Start eine Warnung mit dem Grund (bei Tarif bzw. Ablauf auch Tarifname bzw. Ablaufdatum).
   Bisher lief die Instanz still als Community weiter. Der Schlüssel selbst wird nie geloggt.
+- **Lizenz-Aktivierung und automatische Erneuerung loggen einen abgelehnten Schlüssel wie der
+  Start:** nur mit festem Grund, nicht mehr mit dem rohen Fehler des Parsers. Gilt auch für einen
+  ungültigen aktivierten Schlüssel aus der Datenbank. Ist der im Build eingebettete Public Key
+  kaputt, lautet der Grund jetzt „license public key of this build is invalid“ statt „license key
+  could not be decoded“.
 - **Risikostufen sind in allen Ansichten gleich.** Bisher schnitt jede Ansicht den Risiko-Score
   (Wahrscheinlichkeit × Auswirkung) anders: Die Matrix-Legende nannte Score 10 „Hoch“, die Liste
   sortierte ihn unter „Mittleres Risiko“; Badges, Restrisiko, Dashboard, SecVitals, die große

@@ -238,7 +238,7 @@ func DBMiddleware(db *pgxpool.Pool, inst *Instance, rdb ...*redis.Client) echo.M
 					}
 					return next(c)
 				}
-				log.Warn().Err(parseErr).Str("org_id", orgID).
+				log.Warn().Str("reason", rejectReason(parseErr)).Str("org_id", orgID).
 					Msg("license: DB key is invalid — falling back to static license")
 			}
 

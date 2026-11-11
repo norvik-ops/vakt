@@ -148,7 +148,7 @@ func (h *Handler) Activate(c echo.Context) error {
 
 	lic, err := parse(req.Key)
 	if err != nil {
-		log.Warn().Err(err).Msg("license: activation rejected — invalid key")
+		log.Warn().Str("reason", rejectReason(err)).Msg("license: activation rejected — invalid key")
 		errMsg := err.Error()
 		switch {
 		case strings.Contains(errMsg, "invalid license key format"):

@@ -188,7 +188,7 @@ func (r *AutoRefresher) tryRefresh(ctx context.Context) {
 
 	lic, err := parse(key)
 	if err != nil {
-		log.Warn().Err(err).Msg("license: auto-refresh key invalid — keeping current license")
+		log.Warn().Str("reason", rejectReason(err)).Msg("license: auto-refresh key invalid — keeping current license")
 		r.handler.setRenewalFailing(true)
 		return
 	}
