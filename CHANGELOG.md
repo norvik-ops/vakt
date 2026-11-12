@@ -6,11 +6,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+---
+## [0.46.1] — 2026-11-11
+
+### Upgrade-Hinweis
+- **Vor dem Update ein Backup ziehen, dann nach `docs/UPGRADE.md` aktualisieren.** Das Update
+  bringt die Migrationen 270 und 271; sie laufen wie immer im `migrate`-Container. Migration 271
+  sperrt die Tabelle `users` kurz für Schreibzugriffe — am besten außerhalb der Arbeitszeit
+  updaten. Bricht sie nach 5 s Wartezeit ab, steht `schema_migrations` auf `dirty`;
+  der Rückweg steht unten unter „Sicherheit“ beim Eintrag zu Migration 271.
+- **Direct-SAML mit einem IdP, der nur die NameID sendet:** vor dem Update das Attribut `email`
+  im Attribute Mapping ergänzen, sonst schlägt der Login mit `saml_missing_email` fehl.
+
 ### Sicherheit
 - **Bibliothek `golang.org/x/net` auf v0.62.0 aktualisiert** (CVE-2026-78661, hoch: Denial of
   Service in `x/net/html` durch präpariertes HTML). Dabei steigen `x/crypto`, `x/sync`, `x/sys`,
   `x/term` (v0.46.0 → v0.47.0) und `x/text` auf ihre jeweils nächste Version, weil v0.62.0 sie
   voraussetzt.
+- **Bibliothek `github.com/xuri/excelize/v2` auf v2.11.1 aktualisiert** (CVE-2026-107223, hoch:
+  ein unbegrenztes `<col max>`-Attribut beim Einlesen einer XLSX-Datei). Vakt war nicht
+  angreifbar: Der Produktivcode erzeugt XLSX nur (`backend/internal/shared/xlsxexport/xlsxexport.go:65`,
+  `excelize.NewFile`) und liest nie eine fremde Datei ein; hochgeladene XLSX-Nachweise werden
+  unverändert gespeichert. Dabei steigen `richardlehane/mscfb` (v1.0.8 → v1.0.9) und `xuri/efp`
+  mit, weil v2.11.1 sie voraussetzt.
 - **Direct-SAML: keine Kontoübernahme über die Organisationsgrenze mehr** (R1-SEC-01, hoch). Ein
   IdP, den eine Organisation für Direct-SAML eingerichtet hat, konnte sich als Konto einer anderen
   Organisation anmelden: mit einer NameID, die dem SSO-Subject dieses Kontos entsprach, oder mit
