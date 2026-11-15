@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Behoben
+- **Kein Fehlerbildschirm mehr nach einem Update in einem schon offenen Tab.** Wer Vakt beim
+  Update offen hatte und danach eine noch nicht geladene Seite öffnete (etwa „Einstellungen“),
+  bekam „Unexpected Application Error! Importing a module script failed.“ — die alten
+  Seiten-Dateien gibt es nach dem Update nicht mehr. Jetzt lädt die Seite in diesem Fall einmal
+  automatisch neu und zeigt die neue Version. Scheitert das Laden danach erneut (zum Beispiel
+  ohne Netz), erscheint ein deutscher Hinweis mit „Neu laden“-Knopf statt einer Endlosschleife.
+  Auch sonstige Fehler einer Seite zeigen jetzt die Vakt-Fehlerseite statt des englischen
+  react-router-Standardbildschirms.
+
 ---
 ## [0.46.1] — 2026-11-11
 

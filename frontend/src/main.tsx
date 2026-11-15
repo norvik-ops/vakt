@@ -10,8 +10,12 @@ import { MFAChallengeProvider } from './shared/components/MFAChallengeProvider'
 import { FeatureLockedError, MFARequiredError, MFAStepUpError } from './api/client'
 import { toast } from './shared/hooks/useToast'
 import { describeMissingRole } from './shared/utils/errorMessages'
+import { installChunkReloadListener } from './shared/chunkReload'
 import './i18n'
 import './index.css'
+
+// Nach einem Deploy einmal neu laden, wenn ein Chunk fehlt (shared/chunkReload.ts).
+installChunkReloadListener()
 
 // Apply saved theme before first render
 useThemeStore.getState().apply()

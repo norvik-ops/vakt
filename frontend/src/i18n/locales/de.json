@@ -2363,6 +2363,12 @@
       "reload": "Seite neu laden",
       "home": "Zurück zur Startseite"
     },
+    "chunk": {
+      "reloading": "Neue Version wird geladen …",
+      "title": "Seite konnte nicht geladen werden",
+      "text": "Ein Teil der Anwendung ließ sich nicht laden. Meist wurde Vakt gerade aktualisiert oder die Verbindung ist unterbrochen. Bitte prüfen Sie die Verbindung und laden Sie die Seite neu.",
+      "reload": "Neu laden"
+    },
     "pro": {
       "title": "Vakt Pro",
       "description": "Dieses Feature ist in der Community Edition nicht enthalten. Vakt Pro enthält BSI IT-Grundschutz, EU AI Act, CRA, DSGVO-TOM, CIS, NIS2-Meldepflicht-Assistent, Audit-PDF-Export, SSO, API-Keys, granulare Modul-Berechtigungen und mehr.",

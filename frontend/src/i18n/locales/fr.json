@@ -2363,6 +2363,12 @@
       "reload": "Recharger la page",
       "home": "Retour à l'accueil"
     },
+    "chunk": {
+      "reloading": "Chargement de la nouvelle version …",
+      "title": "Impossible de charger la page",
+      "text": "Une partie de l'application n'a pas pu être chargée. En général, Vakt vient d'être mis à jour ou la connexion a été interrompue. Veuillez vérifier votre connexion et recharger la page.",
+      "reload": "Recharger"
+    },
     "pro": {
       "title": "Vakt Pro",
       "description": "Cette fonctionnalité n'est pas disponible dans l'édition Community. Vakt Pro inclut BSI IT-Grundschutz, EU AI Act, CRA, RGPD TOM, CIS, assistant de notification NIS2, export PDF d'audit, SSO, clés API, permissions de modules granulaires et plus encore.",

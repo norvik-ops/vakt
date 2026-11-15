@@ -2363,6 +2363,12 @@
       "reload": "Pagina herladen",
       "home": "Terug naar home"
     },
+    "chunk": {
+      "reloading": "Nieuwe versie wordt geladen …",
+      "title": "Pagina kon niet worden geladen",
+      "text": "Een deel van de applicatie kon niet worden geladen. Meestal is Vakt net bijgewerkt of is de verbinding onderbroken. Controleer uw verbinding en laad de pagina opnieuw.",
+      "reload": "Opnieuw laden"
+    },
     "pro": {
       "title": "Vakt Pro",
       "description": "Deze functie is niet beschikbaar in de Community-editie. Vakt Pro bevat BSI IT-Grundschutz, EU AI Act, CRA, AVG TOM, CIS, NIS2-meldingsassistent, Audit PDF-export, SSO, API-sleutels, granulaire modulerechten en meer.",

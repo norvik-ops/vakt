@@ -1,6 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { isChunkLoadError } from '../chunkReload'
+import { ChunkLoadFallback } from './ChunkLoadFallback'
 
 interface Props {
   children: ReactNode
@@ -11,7 +13,7 @@ interface State {
   error: Error | null
 }
 
-function ErrorFallback({ error }: { error: Error | null }) {
+export function ErrorFallback({ error }: { error: Error | null }) {
   const { t } = useTranslation()
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-8">
@@ -52,6 +54,9 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    // Chunk-Ladefehler nach einem Deploy sind kein Code-Fehler — ChunkLoadFallback
+    // lädt neu bzw. zeigt den Hinweis; kein Bericht ans Backend.
+    if (isChunkLoadError(error)) return
     console.error('[ErrorBoundary]', error, info.componentStack)
     // Forward to backend tracing endpoint when available (picks up X-Trace-ID correlation).
     const traceId = document.cookie.match(/trace_id=([^;]+)/)?.[1] ?? 'unknown'
@@ -71,6 +76,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      if (isChunkLoadError(this.state.error)) return <ChunkLoadFallback />
       return <ErrorFallback error={this.state.error} />
     }
     return this.props.children

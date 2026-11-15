@@ -1,10 +1,11 @@
-import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { createBrowserRouter, Navigate, Outlet, useLocation, type RouteObject } from 'react-router-dom'
 import { LegacyAssetRedirect } from './modules/vaktcomply/assets/LegacyAssetRedirect'
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { apiFetch } from './api/client'
 import { useAuthStore } from './shared/stores/auth'
 import Layout from './shared/components/Layout'
 import { ErrorBoundary } from './shared/components/ErrorBoundary'
+import { RouteErrorPage } from './shared/components/RouteErrorPage'
 import { Spinner } from './components/Spinner'
 import { isPathVisible, useEnabledModules } from './shared/moduleVisibility'
 
@@ -128,7 +129,7 @@ function ModuleShell({ children, moduleKey }: { children: React.ReactNode; modul
   )
 }
 
-export const router = createBrowserRouter([
+const routes: RouteObject[] = [
   {
     path: '/setup',
     element: <SetupPageGuard />,
@@ -233,4 +234,9 @@ export const router = createBrowserRouter([
       },
     ],
   },
-])
+]
+
+// Pfadlose Wurzel-Route nur für das errorElement: ersetzt den englischen
+// react-router-Standardbildschirm und fängt Chunk-Ladefehler nach einem Deploy ab
+// (shared/chunkReload.ts).
+export const router = createBrowserRouter([{ errorElement: <RouteErrorPage />, children: routes }])
