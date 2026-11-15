@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+---
+## [0.46.2] — 2026-11-15
+
+### Upgrade-Hinweis
+- **Tabs, die beim Update auf 0.46.2 offen sind, sehen noch einmal den alten Fehler.** Sie laufen
+  noch mit dem Code von 0.46.1, der den Fix nicht kennt. Einmal die Seite neu laden, dann ist alles
+  wieder normal. Ab dem nächsten Update greift der Fix auch in offenen Tabs.
+
 ### Behoben
 - **Kein Fehlerbildschirm mehr nach einem Update in einem schon offenen Tab.** Wer Vakt beim
   Update offen hatte und danach eine noch nicht geladene Seite öffnete (etwa „Einstellungen“),
