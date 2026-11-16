@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+---
+## [0.46.3] — 2026-11-16
+
+### Upgrade-Hinweis
+- **Neue Fristen im EU-AI-Act-Bereich.** Nach dem Update rechnet das AI-Act-Dashboard mit den
+  Fristen der Verordnung (EU) 2026/1744 (Digital Omnibus): Hochrisiko-Systeme nach Anhang III ab
+  2. Dezember 2027, nach Anhang I ab 2. August 2028. Wer intern mit dem alten Stichtag
+  2. August 2026 geplant hat, sollte Maßnahmenpläne und Termine im ISMS auf die neuen Fristen
+  prüfen. Es gibt keine Migration; gespeicherte Daten bleiben unverändert.
+
 ### Behoben
 - **Technisches Dossier nennt die Risikoklasse:** Das Dossier-PDF eines KI-Systems (EU AI Act Art. 11)
   zeigt im Kopf jetzt die Risikoklasse mit derselben Bezeichnung wie der Compliance-Report, bei einem
