@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Behoben
+- **EU-AI-Act-Fristen nach dem Digital Omnibus:** Das AI-Act-Dashboard zeigte seit dem 2. August 2026
+  „0 Tage“ in Rot. Die Verordnung (EU) 2026/1744 hat die Hochrisiko-Fristen verschoben: Anhang III
+  gilt ab 2. Dezember 2027, Anhang I (Art. 6 Abs. 1) ab 2. August 2028. Das Dashboard rechnet jetzt
+  mit der Anhang-III-Frist und zeigt eine verstrichene Frist als „gilt seit …“. Framework-Beschreibung
+  und Kontrolle AIACT-13.1 (Art. 50 Abs. 2, Übergang für Altsysteme bis 2. Dezember 2026) nennen den
+  neuen Stand.
+
 ### Dokumentation
 - **Update von Hand klappt jetzt auch mit fester Version:** `docs/UPGRADE.md` nennt statt
   `git pull --ff-only`, das auf einer Installation mit Versions-Pin fehlschlägt, den Weg über

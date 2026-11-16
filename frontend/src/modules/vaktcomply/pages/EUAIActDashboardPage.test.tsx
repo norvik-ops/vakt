@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import EUAIActDashboardPage from './EUAIActDashboardPage'
 
@@ -9,18 +9,15 @@ vi.mock('../../../shared/stores/auth', () => ({
     selector({ token: 'test-token' }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: vi.fn().mockReturnValue({
+const { QUERY_RESULT } = vi.hoisted(() => ({
+  QUERY_RESULT: {
       data: {
         total_systems: 5,
         systems_by_risk_class: { high: 2, limited: 1, minimal: 2, unacceptable: 0 },
         systems_by_status: { under_review: 3, approved: 2 },
         systems_without_documentation: 1,
-        high_risk_deadline: '2026-08-02T00:00:00Z',
-        high_risk_deadline_days_left: 445,
+        high_risk_deadline: '2027-12-02T00:00:00Z',
+        high_risk_deadline_days_left: 381,
         iso27001_mappings: [
           {
             eu_ai_act_article: 'Art. 9',
@@ -32,7 +29,14 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       },
       isLoading: false,
       isError: false,
-    }),
+  },
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: vi.fn().mockReturnValue(QUERY_RESULT),
   }
 })
 
@@ -66,9 +70,46 @@ describe('EUAIActDashboardPage', () => {
   })
 
   it('renders deadline KPI card', () => {
-    render(<EUAIActDashboardPage />, { wrapper })
-    expect(screen.getByTestId('kpi-deadline')).toBeTruthy()
-    expect(screen.getByText('445 Tage')).toBeTruthy()
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-16T12:00:00Z'))
+    try {
+      render(<EUAIActDashboardPage />, { wrapper })
+      expect(screen.getByTestId('kpi-deadline')).toBeTruthy()
+      expect(screen.getByText('381 Tage')).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('shows "gilt seit" instead of a 0-day countdown once the deadline has passed', () => {
+    const mocked = vi.mocked(useQuery)
+    mocked.mockReturnValue({
+      ...QUERY_RESULT,
+      data: { ...QUERY_RESULT.data, high_risk_deadline_days_left: 0 },
+    } as unknown as ReturnType<typeof useQuery>)
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2028-01-15T12:00:00Z'))
+    try {
+      render(<EUAIActDashboardPage />, { wrapper })
+      const card = screen.getByTestId('kpi-deadline')
+      expect(within(card).getByText(/gilt seit/)).toBeTruthy()
+      expect(within(card).queryByText(/Tage/)).toBeNull()
+    } finally {
+      vi.useRealTimers()
+      mocked.mockReturnValue(QUERY_RESULT as unknown as ReturnType<typeof useQuery>)
+    }
+  })
+
+  it('treats the deadline day as a local date: "gilt seit" from local midnight on', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    // 00:30 Ortszeit am Fristtag — in DE noch vor UTC-Mitternacht.
+    vi.setSystemTime(new Date(2027, 11, 2, 0, 30))
+    try {
+      render(<EUAIActDashboardPage />, { wrapper })
+      expect(within(screen.getByTestId('kpi-deadline')).getByText(/gilt seit/)).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('renders risk class breakdown', () => {

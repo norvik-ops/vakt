@@ -1096,7 +1096,7 @@ func euAiActControls(frameworkID, orgID string) []Control {
 			"Betreiberpflichten", "manual", 2),
 		// Art. 50 — Transparenzpflichten für General-Purpose AI Interaktion
 		c("AIACT-13.1", "Kennzeichnung KI-generierter Inhalte (Art. 50 Abs. 2)",
-			"Kennzeichne alle durch KI erzeugten Text-, Bild-, Audio- und Videoinhalte als KI-generiert (maschinenlesbar oder sichtbar), sofern die Inhalte nicht offensichtlich künstlich sind. Gilt ab August 2026. Nachweis: Implementierungsnachweis, Wasserzeichen-/Metadaten-Dokumentation, Prozessbeschreibung.",
+			"Kennzeichne alle durch KI erzeugten Text-, Bild-, Audio- und Videoinhalte als KI-generiert (maschinenlesbar oder sichtbar), sofern die Inhalte nicht offensichtlich künstlich sind. Gilt seit 2. August 2026; für Systeme, die vor diesem Datum in Verkehr gebracht wurden, Übergangsfrist bis 2. Dezember 2026 (Art. 111 Abs. 4 i. d. F. der VO (EU) 2026/1744). Nachweis: Implementierungsnachweis, Wasserzeichen-/Metadaten-Dokumentation, Prozessbeschreibung.",
 			"KI-Transparenz", "automated", 2),
 		c("AIACT-13.2", "Offenlegung KI-Interaktion (Art. 50 Abs. 1)",
 			"Informiere Nutzer klar und erkennbar, wenn sie mit einem KI-System (Chatbot, virtuellem Assistenten) interagieren, sofern dies nicht offensichtlich ist. Ausnahme: strafrechtliche Verfolgung. Nachweis: UX-Dokumentation, Datenschutzhinweis, technischer Nachweis der Offenlegung.",

@@ -1427,7 +1427,10 @@
       "coverage": "Coverage:"
     },
     "euAiActDashboard": {
-      "colArticle": "Artikel"
+      "colArticle": "Artikel",
+      "deadlineHighRisk": "Frist Hochrisiko (Anhang III)",
+      "inForceSince": "gilt seit {{date}}",
+      "daysLeft": "{{days}} Tage"
     },
     "riskTreatmentPanel": {
       "linkControlTitle": "Control verknüpfen",

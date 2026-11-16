@@ -1427,7 +1427,10 @@
       "coverage": "Dekking:"
     },
     "euAiActDashboard": {
-      "colArticle": "Artikel"
+      "colArticle": "Artikel",
+      "deadlineHighRisk": "Termijn hoog risico (bijlage III)",
+      "inForceSince": "geldt sinds {{date}}",
+      "daysLeft": "{{days}} dagen"
     },
     "riskTreatmentPanel": {
       "linkControlTitle": "Beheersmaatregel koppelen",

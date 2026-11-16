@@ -7,7 +7,7 @@ const EU_AI_DASHBOARD = {
   systems_by_risk_class: {},
   systems_by_status: {},
   systems_without_documentation: 0,
-  high_risk_deadline: '2026-08-02T00:00:00Z',
+  high_risk_deadline: '2027-12-02T00:00:00Z',
   high_risk_deadline_days_left: 70,
   iso27001_mappings: [],
 }

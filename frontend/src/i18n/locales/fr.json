@@ -1427,7 +1427,10 @@
       "coverage": "Couverture :"
     },
     "euAiActDashboard": {
-      "colArticle": "Article"
+      "colArticle": "Article",
+      "deadlineHighRisk": "Échéance haut risque (annexe III)",
+      "inForceSince": "applicable depuis le {{date}}",
+      "daysLeft": "{{days}} jours"
     },
     "riskTreatmentPanel": {
       "linkControlTitle": "Associer un contrôle",

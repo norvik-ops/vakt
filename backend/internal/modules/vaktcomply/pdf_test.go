@@ -426,7 +426,7 @@ func TestGenerateEUAIActReportPDF_Basic(t *testing.T) {
 	dashboard := &EUAIActDashboard{
 		TotalSystems:       3,
 		SystemsWithoutDocs: 1,
-		HighRiskDeadline:   "2026-08-02",
+		HighRiskDeadline:   "2027-12-02",
 		SystemsByRiskClass: map[string]int{
 			"high":    1,
 			"limited": 1,

@@ -2051,12 +2051,34 @@ func TestEUAIActISOMappings_AllFieldsPresent(t *testing.T) {
 }
 
 func TestEUAIActDashboard_HighRiskDeadline(t *testing.T) {
-	// High-risk deadline is 2026-08-02 (from EU AI Act).
+	// Anhang-III-Frist nach Art. 113 lit. b Ziff. i i. d. F. der VO (EU) 2026/1744.
 	deadline, err := time.Parse("2006-01-02", euAIActHighRiskDeadline)
 	require.NoError(t, err)
-	assert.Equal(t, 2026, deadline.Year())
-	assert.Equal(t, time.August, deadline.Month())
+	assert.Equal(t, 2027, deadline.Year())
+	assert.Equal(t, time.December, deadline.Month())
 	assert.Equal(t, 2, deadline.Day())
+	assert.Equal(t, euAIActHighRiskAnnexIIIDeadline, euAIActHighRiskDeadline)
+}
+
+func TestEUAIActDaysUntil_FixedClock(t *testing.T) {
+	cases := []struct {
+		name string
+		now  time.Time
+		want int
+	}{
+		// Der Tag des Befunds: die alte Frist 2026-08-02 war verstrichen.
+		{"nach alter Frist", time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC), 381},
+		{"ein Tag vorher", time.Date(2027, 12, 1, 0, 0, 0, 0, time.UTC), 1},
+		{"ein Tag vorher mittags", time.Date(2027, 12, 1, 12, 0, 0, 0, time.UTC), 1},
+		{"am Stichtag", time.Date(2027, 12, 2, 0, 0, 0, 0, time.UTC), 0},
+		{"danach geklemmt", time.Date(2028, 3, 1, 0, 0, 0, 0, time.UTC), 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, euAIActDaysUntil(euAIActHighRiskDeadline, tc.now))
+		})
+	}
+	assert.Equal(t, 0, euAIActDaysUntil("kein-datum", time.Now()))
 }
 
 func TestGenerateEUAIActReportPDF_NotEmpty(t *testing.T) {
@@ -2069,7 +2091,7 @@ func TestGenerateEUAIActReportPDF_NotEmpty(t *testing.T) {
 		SystemsByRiskClass:       map[string]int{"high": 1, "minimal": 1},
 		SystemsByStatus:          map[string]int{"approved": 1, "under_review": 1},
 		SystemsWithoutDocs:       1,
-		HighRiskDeadline:         "2026-08-02",
+		HighRiskDeadline:         "2027-12-02",
 		HighRiskDeadlineDaysLeft: 365,
 		ISO27001Mappings:         euAIActISOMappings,
 	}
@@ -2085,7 +2107,7 @@ func TestGenerateEUAIActReportPDF_EmptySystems(t *testing.T) {
 		SystemsByRiskClass:       map[string]int{},
 		SystemsByStatus:          map[string]int{},
 		SystemsWithoutDocs:       0,
-		HighRiskDeadline:         "2026-08-02",
+		HighRiskDeadline:         "2027-12-02",
 		HighRiskDeadlineDaysLeft: 100,
 		ISO27001Mappings:         euAIActISOMappings,
 	}

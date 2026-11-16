@@ -1076,7 +1076,40 @@ func (s *Service) ExportAIDocumentationPDF(ctx context.Context, orgID, systemID 
 	return pdfBytes, filename, nil
 }
 
-const euAIActHighRiskDeadline = "2026-08-02"
+// EU-AI-Act-Fristen nach Art. 113 der Verordnung (EU) 2024/1689 in der Fassung
+// der Verordnung (EU) 2026/1744 („Digital Omnibus on AI", ABl. L vom 24.7.2026,
+// in Kraft seit 27.7.2026). Quelle: https://eur-lex.europa.eu/eli/reg/2026/1744/oj
+//
+//   - Art. 113 lit. b Ziff. i:  Hochrisiko nach Art. 6 Abs. 2 + Anhang III → 2027-12-02
+//   - Art. 113 lit. b Ziff. ii: Hochrisiko nach Art. 6 Abs. 1 + Anhang I   → 2028-08-02
+//
+// Vakt unterscheidet bei der Risikoklasse „high" bisher nicht zwischen Anhang I
+// und Anhang III (der Assistent fragt nur Anhang-III-Bereiche ab). Deshalb gilt
+// hier die frühere Anhang-III-Frist; die Anhang-I-Frist steht im Backlog.
+// Bereits verstrichen und unverändert: Verbote (Art. 5) seit 2025-02-02,
+// GPAI-Pflichten (Kapitel V) seit 2025-08-02.
+const (
+	euAIActHighRiskAnnexIIIDeadline = "2027-12-02"
+	euAIActHighRiskDeadline         = euAIActHighRiskAnnexIIIDeadline
+)
+
+// euAIActDaysUntil returns the calendar days from today (UTC) until the deadline
+// (YYYY-MM-DD), clamped at 0 once the deadline has passed. now is cut to the start
+// of its UTC day first: otherwise the truncating division would report "0 days"
+// for the whole day before the deadline.
+func euAIActDaysUntil(deadline string, now time.Time) int {
+	d, err := time.Parse("2006-01-02", deadline)
+	if err != nil {
+		return 0
+	}
+	u := now.UTC()
+	today := time.Date(u.Year(), u.Month(), u.Day(), 0, 0, 0, 0, time.UTC)
+	days := int(d.Sub(today).Hours() / 24)
+	if days < 0 {
+		return 0
+	}
+	return days
+}
 
 // GetEUAIActDashboard builds the EU AI Act compliance dashboard for an organisation.
 func (s *Service) GetEUAIActDashboard(ctx context.Context, orgID string) (*EUAIActDashboard, error) {
@@ -1084,11 +1117,7 @@ func (s *Service) GetEUAIActDashboard(ctx context.Context, orgID string) (*EUAIA
 	if err != nil {
 		return nil, fmt.Errorf("get eu ai act dashboard: %w", err)
 	}
-	deadline, _ := time.Parse("2006-01-02", euAIActHighRiskDeadline)
-	daysLeft := int(time.Until(deadline).Hours() / 24)
-	if daysLeft < 0 {
-		daysLeft = 0
-	}
+	daysLeft := euAIActDaysUntil(euAIActHighRiskDeadline, time.Now())
 	return &EUAIActDashboard{
 		TotalSystems:             total,
 		SystemsByRiskClass:       byRisk,

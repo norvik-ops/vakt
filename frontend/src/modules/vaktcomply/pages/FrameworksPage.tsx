@@ -81,7 +81,7 @@ const FRAMEWORK_CATALOGUE: Array<{
     key: 'EUAIACT',
     name: 'EU AI Act',
     fullName: 'EU AI Act — Verordnung (EU) 2024/1689',
-    description: 'Neue EU-Verordnung für KI-Systeme. Hochrisiko-KI-Anforderungen ab August 2026. Betrifft jeden, der KI-Systeme in der EU entwickelt, betreibt oder einsetzt.',
+    description: 'Neue EU-Verordnung für KI-Systeme. Hochrisiko-KI-Anforderungen ab 2. Dezember 2027 (Anhang III) bzw. 2. August 2028 (Anhang I), geändert durch den Digital Omnibus (VO (EU) 2026/1744). Betrifft jeden, der KI-Systeme in der EU entwickelt, betreibt oder einsetzt.',
     category: 'EU-Recht / KI',
     controls: '17 Controls (Annex III/IV)',
     color: 'text-purple-500',

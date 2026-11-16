@@ -12,6 +12,12 @@ import { ProGate } from '../../../shared/components/ProGate'
 import { RISK_CLASS_CSS, RISK_CLASS_LABELS } from '../components/aiRiskClassConfig'
 import { formatLocale } from '../../../shared/utils/locale'
 
+// localDate reads the YYYY-MM-DD part of a deadline as a local calendar date.
+function localDate(value: string): Date {
+  const [y, m, d] = value.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
 interface EUAIActISOMappingEntry {
   eu_ai_act_article: string
   eu_ai_act_topic: string
@@ -71,7 +77,12 @@ export default function EUAIActDashboardPage() {
   }
 
   const daysLeft = dashboard?.high_risk_deadline_days_left ?? 0
-  const deadlineColor = daysLeft < 90 ? 'text-red-400' : daysLeft < 180 ? 'text-orange-400' : 'text-green-400'
+  // Der Fristtag gilt als lokales Kalenderdatum (nicht UTC-Mitternacht), sonst
+  // kippt die Anzeige in DE erst um 01/02 Uhr. Eine verstrichene Frist ist kein
+  // „0 Tage"-Countdown, sondern geltendes Recht.
+  const deadlineDate = dashboard ? localDate(dashboard.high_risk_deadline) : null
+  const deadlinePassed = deadlineDate ? deadlineDate.getTime() <= Date.now() : false
+  const deadlineColor = deadlinePassed ? '' : daysLeft < 90 ? 'text-red-400' : daysLeft < 180 ? 'text-orange-400' : 'text-green-400'
 
   return (
     <div className="flex flex-col h-full">
@@ -131,11 +142,13 @@ export default function EUAIActDashboardPage() {
 
               <Card data-testid="kpi-deadline">
                 <CardContent className="pt-5">
-                  <p className="text-xs text-muted-foreground mb-1">Frist Hochrisiko</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('vaktcomply.euAiActDashboard.deadlineHighRisk')}</p>
                   <p className={`text-xl font-bold ${deadlineColor}`}>
-                    {new Date(dashboard.high_risk_deadline).toLocaleDateString(formatLocale())}
+                    {deadlinePassed
+                      ? t('vaktcomply.euAiActDashboard.inForceSince', { date: deadlineDate?.toLocaleDateString(formatLocale()) })
+                      : deadlineDate?.toLocaleDateString(formatLocale())}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{daysLeft} Tage</p>
+                  {!deadlinePassed && <p className="text-xs text-muted-foreground mt-0.5">{t('vaktcomply.euAiActDashboard.daysLeft', { days: daysLeft })}</p>}
                 </CardContent>
               </Card>
             </div>
