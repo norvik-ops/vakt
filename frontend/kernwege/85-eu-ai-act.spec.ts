@@ -173,10 +173,10 @@ test.describe('KW10 EU AI Act', () => {
     await expect(page.getByRole('button', { name: /^1 Version$/ })).toBeVisible()
   })
 
-  // Das Dossier (Art. 11 / Annex IV) nennt im Kopf Name, Version und Datum, aber nicht
-  // die Risikoklasse (GenerateAIDocumentationPDF, backend/…/vaktcomply/pdf.go). Wer das
-  // PDF an eine Behörde oder einen Auditor gibt, sieht nicht, warum das Dossier überhaupt
-  // nötig ist — und kann nicht abgleichen, ob es zur Klasse im Inventar passt.
+  // Das Dossier (Art. 11 / Annex IV) muss im Kopf die Risikoklasse nennen
+  // (GenerateAIDocumentationPDF, backend/…/vaktcomply/pdf.go; R1-KW-23). Wer das PDF an
+  // eine Behörde oder einen Auditor gibt, sieht sonst nicht, warum das Dossier nötig ist —
+  // und kann nicht abgleichen, ob es zur Klasse im Inventar passt.
   test('KW10 R1-KW-23 Dossier-PDF enthält das System mit seiner Risikoklasse', async ({ browser }) => {
     const page = await openAs(browser, 'admin')
     await inventory(page)
@@ -195,9 +195,6 @@ test.describe('KW10 EU AI Act', () => {
     expect(flow, `Vorbedingung: das Dossier trägt die gespeicherte Technikdoku (gelesen: ${JSON.stringify(lines.slice(0, 30))})`).toContain(DOC_DESCRIPTION)
     expect(flow).toContain(DOC_OVERSIGHT)
 
-    // Ab hier der bekannte Befund. test.fail() steht bewusst NACH den Vorbedingungen:
-    // fehlt schon das System oder die Doku im PDF, ist der Lauf ROT, nicht „erwartet-rot".
-    test.fail(true, 'R1-KW-23: Dossier-PDF nennt die Risikoklasse des Systems nicht')
     const classLine = lines.find((l) => /risikoklasse|risiko(stufe)?:/i.test(l) || klasse(l) === 'high')
     expect(classLine, `Dossier nennt eine Risikoklasse (gelesen: ${JSON.stringify(lines.slice(0, 12))} …)`).toBeTruthy()
     expect(klasse(classLine!)).toBe('high')

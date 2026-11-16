@@ -1495,6 +1495,25 @@ func GenerateAssessmentReportPDFBytes(asm *AssessmentWithQuestionnaire, supplier
 	return buf.Bytes(), nil
 }
 
+// aiRiskClassLabels are the German labels of the EU AI Act risk classes used in
+// every PDF (dossier and report), so both documents name a class the same way.
+var aiRiskClassLabels = map[string]string{
+	"unacceptable": "Inakzeptables Risiko (Verboten)",
+	"high":         "Hohes Risiko (Annex III)",
+	"limited":      "Begrenztes Risiko (Transparenzpflicht)",
+	"minimal":      "Minimales Risiko",
+	"unclassified": "Noch nicht klassifiziert",
+}
+
+// aiRiskClassLabel returns the German label for a risk class key. An empty or
+// unknown key counts as not classified — the PDF must never invent a class.
+func aiRiskClassLabel(rc string) string {
+	if l, ok := aiRiskClassLabels[rc]; ok {
+		return l
+	}
+	return aiRiskClassLabels["unclassified"]
+}
+
 // GenerateAIDocumentationPDF produces the technical dossier PDF for an AI system (Art. 11, Annex IV EU AI Act).
 func GenerateAIDocumentationPDF(system *AISystem, doc *AIDocumentation) ([]byte, error) {
 	pdf := pdfutil.New("P")
@@ -1514,6 +1533,10 @@ func GenerateAIDocumentationPDF(system *AISystem, doc *AIDocumentation) ([]byte,
 	pdf.SetFont("Helvetica", "", 9)
 	pdf.SetXY(15, 17)
 	pdf.CellFormat(180, 6, fmt.Sprintf("KI-System: %s | Version: %d | Erstellt: %s", system.Name, doc.Version, now.Format("02.01.2006")), "", 1, "L", false, 0, "")
+	// Die Risikoklasse begründet, warum das Dossier nötig ist, und erlaubt den
+	// Abgleich mit dem Inventar.
+	pdf.SetXY(15, 22)
+	pdf.CellFormat(180, 5, "Risikoklasse: "+aiRiskClassLabel(system.RiskClass), "", 1, "L", false, 0, "")
 
 	pdf.SetTextColor(30, 30, 40)
 	pdf.SetY(35)
@@ -1602,16 +1625,9 @@ func GenerateEUAIActReportPDF(dashboard *EUAIActDashboard, systems []AISystem) (
 	pdf.CellFormat(0, 8, "Systeme nach Risikoklasse", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
 	riskOrder := []string{"unacceptable", "high", "limited", "minimal", "unclassified"}
-	riskLabels := map[string]string{
-		"unacceptable": "Inakzeptables Risiko (Verboten)",
-		"high":         "Hohes Risiko (Annex III)",
-		"limited":      "Begrenztes Risiko (Transparenzpflicht)",
-		"minimal":      "Minimales Risiko",
-		"unclassified": "Noch nicht klassifiziert",
-	}
 	for _, rc := range riskOrder {
 		if count, ok := dashboard.SystemsByRiskClass[rc]; ok && count > 0 {
-			pdf.CellFormat(0, 6, fmt.Sprintf("  %s: %d", riskLabels[rc], count), "", 1, "L", false, 0, "")
+			pdf.CellFormat(0, 6, fmt.Sprintf("  %s: %d", aiRiskClassLabel(rc), count), "", 1, "L", false, 0, "")
 		}
 	}
 	pdf.SetY(pdf.GetY() + 4)

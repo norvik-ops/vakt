@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Behoben
+- **Technisches Dossier nennt die Risikoklasse:** Das Dossier-PDF eines KI-Systems (EU AI Act Art. 11)
+  zeigt im Kopf jetzt die Risikoklasse mit derselben Bezeichnung wie der Compliance-Report, bei einem
+  noch nicht eingestuften System „Noch nicht klassifiziert“.
 - **EU-AI-Act-Fristen nach dem Digital Omnibus:** Das AI-Act-Dashboard zeigte seit dem 2. August 2026
   „0 Tage“ in Rot. Die Verordnung (EU) 2026/1744 hat die Hochrisiko-Fristen verschoben: Anhang III
   gilt ab 2. Dezember 2027, Anhang I (Art. 6 Abs. 1) ab 2. August 2028. Das Dashboard rechnet jetzt
