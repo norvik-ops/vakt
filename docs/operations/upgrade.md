@@ -27,8 +27,8 @@ cd /opt/vakt
 # 2. Auslieferungs-Dateien holen (docker-compose.yml, Caddyfile, scripts/).
 #    Sie gehören zur Installation, nicht zu den Images, und `docker compose pull`
 #    fasst sie nicht an. Zwischen zwei Versionen stecken hier regelmäßig
-#    Härtungsänderungen. Details + Weg ohne git-Checkout: docs/UPGRADE.md.
-git pull --ff-only
+#    Härtungsänderungen. Handweg (auch mit Versions-Pin) + Weg ohne
+#    git-Checkout: docs/UPGRADE.md, Schritt 2 — nicht `git pull`.
 
 # 3. Neue Images ziehen
 docker compose pull

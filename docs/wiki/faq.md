@@ -115,9 +115,7 @@ Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglic
 > `docker compose pull` zu tun ist (nicht `up -d`, sondern den Pull wiederholen).
 
 ```bash
-git pull
-docker compose pull
-docker compose up -d
+./scripts/update.sh    # Backup, Auslieferungs-Dateien, Images, Migration, Neustart
 ```
 
 Datenbankmigrationen führt im Produktions-Setup der dedizierte `migrate`-Container aus (`docker compose run --rm migrate up`) — `AUTO_MIGRATE` bleibt dort auf dem Default `false`. `AUTO_MIGRATE=true` (API migriert selbst beim Start) ist nur für lokale Entwicklungsumgebungen ohne `migrate`-Container gedacht. Details: [Installation → Migrationen](installation.md). Bei kritischen Produktionssystemen vorher ein Backup erstellen.

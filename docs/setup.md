@@ -200,8 +200,8 @@ watchtower:
 > `Caddyfile` und `scripts/` bleiben dabei auf dem Stand deiner Erstinstallation
 > — Härtungs- und Konfigurationsänderungen aus neuen Versionen greifen also
 > nicht. Wer Watchtower nutzt, braucht zusätzlich einen Weg für diese Dateien:
-> `./scripts/update.sh` bzw. `git pull --ff-only` (siehe
-> [`docs/UPGRADE.md`](UPGRADE.md)).
+> `./scripts/update.sh` bzw. der Handweg aus [`docs/UPGRADE.md`](UPGRADE.md),
+> Schritt 2.
 
 ### Manuelle Updates
 
@@ -212,8 +212,8 @@ watchtower:
 Von Hand — Schritt 1 ist der, den ein reines `docker compose pull` auslässt:
 
 ```bash
-git pull --ff-only     # docker-compose.yml, Caddyfile, scripts/ gehören zur
-                       # Installation, nicht zu den Images
+# docker-compose.yml, Caddyfile, scripts/ gehören zur Installation, nicht zu
+# den Images. Handweg (auch mit Versions-Pin): docs/UPGRADE.md, Schritt 2
 docker compose pull
 docker compose up -d
 ```
@@ -240,7 +240,7 @@ Watchtower holt nächtlich neue Images von GHCR, startet betroffene Container ne
 > Docker-Secrets, `cap_drop` und `no-new-privileges`. Härtungen, die dort stecken,
 > erreichen eine Watchtower-Installation nie. Es ist also **nicht** nichts zu tun:
 > hole die Auslieferungs-Dateien zusätzlich nach, entweder mit `./scripts/update.sh`
-> (das macht beides) oder von Hand mit `git pull --ff-only`.
+> (das macht beides) oder von Hand wie in [`docs/UPGRADE.md`](UPGRADE.md), Schritt 2.
 
 Danach die Logs prüfen:
 

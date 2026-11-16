@@ -188,7 +188,8 @@ Format: PNG oder SVG, empfohlen 200×60 px, transparent.
 # Schritt 1 holt docker-compose.yml, Caddyfile und scripts/ — sie gehören zur
 # Instanz, nicht zu den Images (siehe docs/UPGRADE.md). ./scripts/update.sh
 # macht alle drei Schritte in einem.
-git pull --ff-only
+# Auslieferungs-Dateien holen: Handweg aus docs/UPGRADE.md, Schritt 2
+# (nicht `git pull` — schlägt auf einer Installation mit Versions-Pin fehl)
 docker compose pull
 docker compose up -d
 
@@ -304,7 +305,7 @@ services:
 > `Caddyfile` und `scripts/` der Kundeninstanz bleiben dabei auf dem Stand der
 > Erstinstallation — Härtungsänderungen aus neuen Versionen greifen dort nicht.
 > Plane für diese Dateien einen eigenen Weg ein (`./scripts/update.sh` bzw.
-> `git pull --ff-only` je Instanz, siehe [`docs/UPGRADE.md`](../UPGRADE.md)).
+> je Instanz der Handweg aus [`docs/UPGRADE.md`](../UPGRADE.md), Schritt 2).
 
 Watchtower prüft täglich auf neue Images und aktualisiert automatisch. Nur empfehlenswert
 für Patch-Updates (gleiche Minor-Version). Vor Major-Version-Updates immer manuell prüfen

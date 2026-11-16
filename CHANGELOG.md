@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Dokumentation
+- **Update von Hand klappt jetzt auch mit fester Version:** `docs/UPGRADE.md` nennt statt
+  `git pull --ff-only`, das auf einer Installation mit Versions-Pin fehlschlägt, den Weg über
+  `git fetch --tags` und `git merge --ff-only` auf die Zielversion; die übrigen Anleitungen
+  verweisen darauf.
+
 ---
 ## [0.46.2] — 2026-11-15
 

@@ -130,8 +130,8 @@ Von Hand sind es diese Schritte:
 ```bash
 # 1. Auslieferungs-Dateien holen (docker-compose.yml, Caddyfile, scripts/).
 #    Ein `docker compose pull` fasst sie NICHT an — Härtungen und Konfigurations-
-#    änderungen stecken aber genau dort. Details: docs/UPGRADE.md.
-git pull --ff-only
+#    änderungen stecken aber genau dort. Handweg (auch mit Versions-Pin):
+#    docs/UPGRADE.md, Schritt 2 — nicht `git pull`.
 
 # 2. Neue Images ziehen
 docker compose pull

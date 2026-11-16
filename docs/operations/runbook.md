@@ -56,7 +56,7 @@ Vor dem ersten Produktiv-Start oder nach einem Bare-Metal-Neuaufbau:
   `Caddyfile` und `scripts/` bleiben dabei auf dem Stand der Erstinstallation —
   Härtungsänderungen, die dort stecken, kommen nie an. Wer Watchtower nutzt,
   braucht zusätzlich einen Weg für die Auslieferungs-Dateien (`./scripts/update.sh`
-  bzw. `git pull --ff-only`, siehe [`docs/UPGRADE.md`](../UPGRADE.md)).
+  bzw. der Handweg aus [`docs/UPGRADE.md`](../UPGRADE.md), Schritt 2).
 
 - [ ] **Firewall** — Port 80/443 offen, Port 5432/6379 nicht von außen erreichbar
 - [ ] **Redis-Passwort gesetzt** — `VAKT_REDIS_URL` enthält Passwort; `requirepass` in `docker-compose.yml` aktiv
@@ -447,7 +447,7 @@ Von Hand sind es diese Schritte; Schritt 1 ist der, den ein reines
 `docker compose pull` auslässt:
 
 ```bash
-git pull --ff-only                       # docker-compose.yml, Caddyfile, scripts/
+# docker-compose.yml, Caddyfile, scripts/: Handweg aus docs/UPGRADE.md, Schritt 2
 VAKT_BACKUP_PASSPHRASE_FILE=/etc/vakt/backup.key ./scripts/backup.sh /backups/vakt
 docker compose pull
 docker compose run --rm migrate up

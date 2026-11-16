@@ -61,9 +61,20 @@ nicht hat. Wer die Schritte einzeln fahren will, findet sie hier:
 2. **Auslieferungs-Dateien aktualisieren.** `docker-compose.yml`, `Caddyfile`,
    `scripts/` und `Makefile` sind Teil der Installation, nicht der Images. Ein
    `docker compose pull` fasst sie nicht an.
+   `update.sh` erledigt das über `./scripts/update-artifacts.sh`. Von Hand geht
+   es genauso:
    ```bash
-   git pull --ff-only          # bzw. ./scripts/update-artifacts.sh
+   git fetch --tags origin
+   ZIEL=$(sed -n 's/^VAKT_TAG=//p' .env | tr -d "\"'")   # leer = latest
+   case "$ZIEL" in ""|latest) ZIEL=origin/main ;; esac
+   git merge --ff-only "$ZIEL"
    ```
+   > **Nicht `git pull --ff-only`.** Wer eine feste Version installiert hat (Pin,
+   > siehe „Vor dem Update“), steht auf einem Tag ohne Branch („detached HEAD“).
+   > Dort schlägt `git pull` fehl, weil kein Branch einen Remote-Branch verfolgt.
+   > `fetch` plus `merge --ff-only` auf das Ziel geht auf einem Tag-Checkout
+   > genauso wie auf `main`: mit Pin auf genau diese Version, ohne Pin auf den
+   > neuesten Stand von `main`.
    > **Warum das kein Nebenschritt ist:** zwischen zwei Versionen liegen in
    > diesen Dateien regelmäßig sicherheitsrelevante Änderungen — zwischen
    > v0.42.48 und v0.42.49 zum Beispiel 112 Zeilen in `docker-compose.yml`
@@ -145,9 +156,15 @@ noch nicht mit — dieses eine Mal von Hand:
 ```bash
 cd /opt/vakt
 git status                # lokale Änderungen? -> erst committen oder sichern
-git pull --ff-only
+git fetch --tags origin
+ZIEL=$(sed -n 's/^VAKT_TAG=//p' .env | tr -d "\"'")   # leer = latest
+case "$ZIEL" in ""|latest) ZIEL=origin/main ;; esac
+git merge --ff-only "$ZIEL"
 ./scripts/update.sh       # ab hier trägt das Skript den Schritt selbst
 ```
+
+Das ist derselbe Handweg wie in Schritt 2 oben. `git pull --ff-only` schlägt auf
+einer Installation mit Versions-Pin (Tag-Checkout) fehl.
 
 ## Wichtige Verhaltensänderungen
 
@@ -197,12 +214,6 @@ Ab v0.42.35 gilt für Konten **mit** aktiviertem TOTP ein **zweistufiger Login**
 - Bei `require_mfa=true` reicht Enrollment allein nicht mehr: die Session muss den
   Faktor bewiesen haben. Eine alte (Passwort-only-)Session wird auf geschützten
   Routen mit `MFA_REQUIRED` abgelehnt und muss sich neu anmelden.
-
-4. **Verify:**
-   ```bash
-   docker compose ps
-   curl http://localhost/health
-   ```
 
 ## Kubernetes / Helm-Upgrade
 

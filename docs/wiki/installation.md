@@ -231,7 +231,7 @@ Vakt prüft nicht automatisch auf neue Versionen. Wenn du informiert werden möc
 
 **Option 1 — In-App-Banner:** Setze `VAKT_UPDATE_CHECK=true` in deiner `.env`. Vakt prüft dann einmal täglich die [GitHub Releases API](https://github.com/norvik-ops/vakt/releases) und zeigt Administratoren einen Hinweis-Banner in der Oberfläche. Es werden dabei keine Daten gesendet.
 
-**Option 2 — Watchtower:** Für automatische Container-Updates siehe die [Deployment-Dokumentation](../setup.md). **Watchtower aktualisiert ausschließlich Images** — `docker-compose.yml`, `Caddyfile` und `scripts/` bleiben auf dem Stand deiner Installation und müssen zusätzlich nachgezogen werden (`./scripts/update.sh` oder `git pull --ff-only`).
+**Option 2 — Watchtower:** Für automatische Container-Updates siehe die [Deployment-Dokumentation](../setup.md). **Watchtower aktualisiert ausschließlich Images** — `docker-compose.yml`, `Caddyfile` und `scripts/` bleiben auf dem Stand deiner Installation und müssen zusätzlich nachgezogen werden (`./scripts/update.sh` oder der Handweg aus [`docs/UPGRADE.md`](../UPGRADE.md), Schritt 2).
 
 Datenbankmigrationen laufen über den `migrate`-Container, der in `docker-compose.yml` als Abhängigkeit vor `api` und `worker` eingetragen ist. Der Container startet, migriert und beendet sich, bevor `api` und `worker` hochkommen.
 
