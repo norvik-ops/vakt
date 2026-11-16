@@ -103,7 +103,7 @@ test:
 # Braucht Docker (Compose >= 2.24), Go, Node (frontend/node_modules) und Chromium
 # (`cd frontend && npx playwright install chromium`). Laufzeit ~15 min.
 # Optionen (Umgebung): KW_KEEP=1 KW_SKIP_BUILD=1 KW_UPDATE=0 — siehe scripts/kernwege/kernwege.sh.
-kernwege: ## Kernwege 1-9 Ende-zu-Ende gegen frische Instanz (CI-Job "Kernwege")
+kernwege: ## Kernwege 1-10 Ende-zu-Ende gegen frische Instanz (CI-Job "Kernwege")
 	@bash scripts/kernwege/kernwege.sh
 
 test-restore: ## S89-1: restore.sh hardening shell test (key-leak + tamper checks)
