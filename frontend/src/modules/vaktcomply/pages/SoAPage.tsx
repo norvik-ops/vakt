@@ -55,10 +55,10 @@ interface SoADedicatedSummary {
 // CHECK + `validate:"oneof=not_started planned partial implemented"`. The former
 // `in_progress`/`not_applicable` options were rejected with 422.
 const IMPL_STATUS_COLORS: Record<string, string> = {
-  implemented: 'bg-green-100 text-green-800',
-  planned: 'bg-blue-100 text-blue-800',
-  not_started: 'bg-gray-100 text-gray-700',
-  partial: 'bg-yellow-100 text-yellow-800',
+  implemented: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  planned: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  not_started: 'bg-gray-100 text-gray-700 dark:bg-surface2 dark:text-secondary',
+  partial: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
 }
 
 function useSoADedicated() {
@@ -226,12 +226,12 @@ export default function SoAPage() {
       <div className="p-8 space-y-6">
         <div>
           <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation="Statement of Applicability — ISO 27001:2022 Klausel 6.1.3: dokumentierte Aussage über die Anwendbarkeit aller 93 Maßnahmen aus Anhang A, inkl. Begründung für Ausschlüsse.">Statement of Applicability</TermTooltip></h1>
-          <p className="text-gray-500 text-sm mt-1">ISO 27001:2022 {t('vaktcomply.soaPage.subtitle')}</p>
+          <p className="text-secondary text-sm mt-1">ISO 27001:2022 {t('vaktcomply.soaPage.subtitle')}</p>
         </div>
-        <div className="flex flex-col items-center justify-center bg-gray-50 border rounded-xl p-12 gap-4">
-          <ShieldCheck className="h-12 w-12 text-gray-300" />
-          <h2 className="text-lg font-semibold text-gray-700">{t('vaktcomply.soaPage.notInitTitle')}</h2>
-          <p className="text-sm text-gray-500 text-center max-w-sm">
+        <div className="flex flex-col items-center justify-center bg-surface border border-border rounded-xl p-12 gap-4">
+          <ShieldCheck className="h-12 w-12 text-muted" />
+          <h2 className="text-lg font-semibold text-primary">{t('vaktcomply.soaPage.notInitTitle')}</h2>
+          <p className="text-sm text-secondary text-center max-w-sm">
             {t('vaktcomply.soaPage.notInitDesc')}
           </p>
           <Button onClick={() => { initMut.mutate(); }} disabled={initMut.isPending}>
@@ -248,7 +248,7 @@ export default function SoAPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation="Statement of Applicability — ISO 27001:2022 Klausel 6.1.3: dokumentierte Aussage über die Anwendbarkeit aller 93 Maßnahmen aus Anhang A, inkl. Begründung für Ausschlüsse.">Statement of Applicability</TermTooltip></h1>
-          <p className="text-gray-500 text-sm mt-1">ISO 27001:2022 {t('vaktcomply.soaPage.subtitleShort')}</p>
+          <p className="text-secondary text-sm mt-1">ISO 27001:2022 {t('vaktcomply.soaPage.subtitleShort')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => { handleExport('csv'); }}>
@@ -290,8 +290,8 @@ export default function SoAPage() {
       {summary && (
         <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-sm ${
           summary.status === 'approved'
-            ? 'bg-green-50 border-green-200 text-green-800'
-            : 'bg-amber-50 border-amber-200 text-amber-800'
+            ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300'
+            : 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300'
         }`}>
           {summary.status === 'approved'
             ? <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -302,7 +302,7 @@ export default function SoAPage() {
               : t('vaktcomply.soaPage.versionDraft', { version: summary.version })}
           </span>
           {withoutExclusionReason > 0 && (
-            <span className="ml-auto flex items-center gap-1 text-amber-700">
+            <span className="ml-auto flex items-center gap-1 text-amber-700 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4" />
               {t('vaktcomply.soaPage.exclusionsWithoutReason', { count: withoutExclusionReason })}
             </span>
@@ -312,26 +312,26 @@ export default function SoAPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white border rounded-lg p-4">
-          <div className="text-2xl font-bold">{totalEntries ?? 93}</div>
-          <div className="text-xs text-gray-500 mt-0.5">{t('vaktcomply.soaPage.statTotal')}</div>
+        <div className="bg-surface border border-border rounded-lg p-4" data-testid="soa-stat-total">
+          <div className="text-2xl font-bold text-primary">{totalEntries ?? 93}</div>
+          <div className="text-xs text-secondary mt-0.5">{t('vaktcomply.soaPage.statTotal')}</div>
         </div>
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="text-2xl font-bold text-green-700">{summary?.applicable_count ?? 0}</div>
-          <div className="text-xs text-green-600 mt-0.5">{t('vaktcomply.soaPage.statApplicable')}</div>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 dark:bg-green-950/30 dark:border-green-800">
+          <div className="text-2xl font-bold text-green-700 dark:text-green-400">{summary?.applicable_count ?? 0}</div>
+          <div className="text-xs text-green-600 dark:text-green-400 mt-0.5">{t('vaktcomply.soaPage.statApplicable')}</div>
         </div>
-        <div className="bg-gray-50 border rounded-lg p-4">
-          <div className="text-2xl font-bold text-gray-500">{summary?.excluded_count ?? 0}</div>
-          <div className="text-xs text-gray-500 mt-0.5">{t('vaktcomply.soaPage.statExcluded')}</div>
+        <div className="bg-surface2 border border-border rounded-lg p-4">
+          <div className="text-2xl font-bold text-secondary">{summary?.excluded_count ?? 0}</div>
+          <div className="text-xs text-secondary mt-0.5">{t('vaktcomply.soaPage.statExcluded')}</div>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="text-2xl font-bold text-amber-700">{withoutExclusionReason}</div>
-          <div className="text-xs text-amber-600 mt-0.5">{t('vaktcomply.soaPage.statWithoutReason')}</div>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 dark:bg-amber-950/30 dark:border-amber-800">
+          <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">{withoutExclusionReason}</div>
+          <div className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">{t('vaktcomply.soaPage.statWithoutReason')}</div>
         </div>
       </div>
 
       {/* Group tabs */}
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 border-b border-border">
         {Object.entries(GROUP_LABELS).map(([g, label]) => (
           <button
             key={g}
@@ -339,7 +339,7 @@ export default function SoAPage() {
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeGroup === g
                 ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-secondary hover:text-primary'
             }`}
           >
             {label}
@@ -348,7 +348,7 @@ export default function SoAPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border overflow-x-auto">
+      <div className="bg-surface rounded-lg border border-border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -362,24 +362,24 @@ export default function SoAPage() {
           <TableBody>
             {grouped.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-400 py-8">{t('vaktcomply.soaPage.noEntries')}</TableCell>
+                <TableCell colSpan={5} className="text-center text-muted py-8">{t('vaktcomply.soaPage.noEntries')}</TableCell>
               </TableRow>
             )}
             {grouped.map(e => (
-              <TableRow key={e.control_ref} className="hover:bg-gray-50">
-                <TableCell className="font-mono text-xs text-gray-500">{e.control_ref}</TableCell>
+              <TableRow key={e.control_ref} className="hover:bg-surface2">
+                <TableCell className="font-mono text-xs text-secondary">{e.control_ref}</TableCell>
                 <TableCell>
-                  <div className="text-sm font-medium">{e.control_name}</div>
+                  <div className="text-sm font-medium text-primary" data-testid="soa-control-name">{e.control_name}</div>
                   {e.applicable && e.justification && (
-                    <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{e.justification}</div>
+                    <div className="text-xs text-muted mt-0.5 line-clamp-1">{e.justification}</div>
                   )}
                   {!e.applicable && e.exclusion_reason && (
-                    <div className="text-xs text-gray-400 mt-0.5 line-clamp-1 italic">{e.exclusion_reason}</div>
+                    <div className="text-xs text-muted mt-0.5 line-clamp-1 italic">{e.exclusion_reason}</div>
                   )}
                 </TableCell>
                 <TableCell>
                   {e.applicable && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${IMPL_STATUS_COLORS[e.implementation_status] ?? 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${IMPL_STATUS_COLORS[e.implementation_status] ?? IMPL_STATUS_COLORS.not_started}`}>
                       {IMPL_STATUS_LABELS[e.implementation_status] ?? e.implementation_status}
                     </span>
                   )}
@@ -387,7 +387,7 @@ export default function SoAPage() {
                 <TableCell className="text-center">
                   {e.applicable
                     ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
-                    : <XCircle className="h-5 w-5 text-gray-300 mx-auto" />}
+                    : <XCircle className="h-5 w-5 text-muted mx-auto" />}
                 </TableCell>
                 <TableCell>
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { openEdit(e); }}>

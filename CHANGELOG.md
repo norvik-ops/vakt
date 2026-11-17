@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Behoben
+- **SoA-Seite im Dunkelmodus lesbar:** Auf der Anwendbarkeitserklärung (SoA) standen die
+  Maßnahmen-Namen in der Tabelle und die Kennzahl „Kontrollen gesamt“ im Dunkelmodus weiß auf
+  weiß. Tabelle, Kennzahl-Karten, Versions-Banner und Status-Badges folgen jetzt dem Farbschema in
+  hell und dunkel; „Nicht begonnen“ bricht nicht mehr um. Auf dem Comply-Dashboard haben die
+  Karten „Compliance-Score Verlauf“ und „Score-Orientierung“ im Dunkelmodus keinen weißen
+  Hintergrund mehr.
+
 ---
 ## [0.46.5] — 2026-11-17
 

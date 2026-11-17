@@ -43,8 +43,8 @@ function ScoreTrendChart({ data }: { data: Array<{ date: string; score: number }
   }))
 
   return (
-    <div className="bg-white border border-border rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-700 mb-3">Compliance-Score Verlauf</h3>
+    <div className="bg-white dark:bg-surface border border-border rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Compliance-Score Verlauf</h3>
       <ResponsiveContainer width="100%" height={160}>
         <LineChart data={formatted}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -73,13 +73,13 @@ function ScoreBenchmark({ currentScore }: { currentScore: number }) {
   ]
 
   return (
-    <div className="bg-white border border-border rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-700 mb-1">Score-Orientierung</h3>
+    <div className="bg-white dark:bg-surface border border-border rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Score-Orientierung</h3>
       <p className="text-xs text-gray-500 mb-3">Ungefähre Richtwerte zur Einordnung Ihres Fortschritts</p>
       <div className="space-y-2">
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-500 w-44 flex-shrink-0">Ihr aktueller Score</span>
-          <div className="flex-1 bg-gray-100 rounded-full h-3">
+          <div className="flex-1 bg-gray-100 dark:bg-surface2 rounded-full h-3">
             <div
               className="h-3 rounded-full bg-blue-500 transition-all"
               style={{ width: `${currentScore}%` }}
@@ -92,9 +92,9 @@ function ScoreBenchmark({ currentScore }: { currentScore: number }) {
           return (
             <div key={b.label} className="flex items-center gap-3">
               <span className="text-xs text-gray-500 w-44 flex-shrink-0">{b.label}</span>
-              <div className="flex-1 bg-gray-100 rounded-full h-3">
+              <div className="flex-1 bg-gray-100 dark:bg-surface2 rounded-full h-3">
                 <div
-                  className="h-3 rounded-full bg-gray-300 transition-all"
+                  className="h-3 rounded-full bg-gray-300 dark:bg-gray-500 transition-all"
                   style={{ width: `${b.score}%` }}
                 />
               </div>
@@ -183,9 +183,9 @@ function DashboardOrderPopover({
 }) {
   const { t } = useTranslation()
   return (
-    <div className="absolute right-0 top-10 z-50 w-64 rounded-lg border border-border bg-white shadow-lg p-3">
+    <div className="absolute right-0 top-10 z-50 w-64 rounded-lg border border-border bg-white dark:bg-surface shadow-lg p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold text-gray-700">{t('vaktcomply.secVitals.customizeWidgets')}</span>
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{t('vaktcomply.secVitals.customizeWidgets')}</span>
         <button
           onClick={reset}
           className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-600"
@@ -197,7 +197,7 @@ function DashboardOrderPopover({
       </div>
       <ul className="space-y-1">
         {order.map((id, i) => (
-          <li key={id} className="flex items-center gap-2 rounded p-1 hover:bg-gray-50">
+          <li key={id} className="flex items-center gap-2 rounded p-1 hover:bg-gray-50 dark:hover:bg-surface2">
             <span className="flex-1 text-xs text-gray-600">{WIDGET_LABELS[id] ?? id}</span>
             <button
               disabled={i === 0}
@@ -219,7 +219,7 @@ function DashboardOrderPopover({
       <p className="text-[10px] text-gray-500 mt-2 text-center">{t('vaktcomply.secVitals.orderSaved')}</p>
       <button
         onClick={onClose}
-        className="mt-2 w-full text-xs text-center text-gray-500 hover:text-gray-700"
+        className="mt-2 w-full text-xs text-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
       >
         Schließen
       </button>
