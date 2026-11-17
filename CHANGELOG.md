@@ -7,6 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ---
+## [0.46.4] — 2026-11-17
+
+### Intern
+- **Billing-Verwaltung als Web-App auf dem iPhone:** Die interne Billing-Oberfläche liefert ein
+  Apple-Touch-Icon (Vakt-„V“) und den Namen „Vakt Billing“ aus. „Zum Home-Bildschirm“ zeigt damit
+  das richtige Icon statt eines Screenshots. Für selbst betriebene Vakt-Instanzen ändert sich nichts.
+
+---
 ## [0.46.3] — 2026-11-16
 
 ### Upgrade-Hinweis
