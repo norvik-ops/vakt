@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+---
+## [0.46.5] — 2026-11-17
+
+### Upgrade-Hinweis
+- **SoA- und Übersichts-PDFs neu erzeugen.** Wer mit v0.46.4 oder älter ein Statement of
+  Applicability oder ein PDF der Compliance-Übersicht exportiert hat, sollte es nach dem Update neu
+  erzeugen. Im SoA waren ab Seite 4 Kontrollen unsichtbar, und in der Übersicht zählte die
+  Abdeckungszahl pro Domäne teilweise umgesetzte Kontrollen voll. Gespeicherte Daten bleiben
+  unverändert; es gibt keine Migration.
+
 ### Behoben
 - **SoA-PDF nach Seitenumbruch lesbar:** Im Statement of Applicability (ISO 27001) stand der
   Tabellentext nach jedem Seitenumbruch weiß auf weiß — bei Annex A waren 33 von 93 Kontrollen
