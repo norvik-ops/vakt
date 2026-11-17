@@ -14,6 +14,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '../../../i18n'
 import ControlDetailPage from './ControlDetailPage'
+import { signInAs } from '../../../test-utils/signInAs'
 import type { Control } from '../types'
 
 const CONTROL: Control = {
@@ -79,6 +80,7 @@ vi.mock('../hooks/useControlTasks', () => ({
 }))
 
 function renderPage() {
+  signInAs('Admin')
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>

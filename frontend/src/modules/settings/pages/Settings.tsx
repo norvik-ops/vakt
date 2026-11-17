@@ -575,7 +575,7 @@ function OrgSection() {
     <SectionCard title={t('settingsPage.orgSectionTitle')} icon={Building2}>
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">{t('settingsPage.labelAdmin')}</Label>
+          <Label className="text-xs">{t('settingsPage.labelSignedInAs')}</Label>
           <Input value={user?.email ?? '—'} readOnly className="bg-surface2 h-8 text-sm" />
         </div>
         <div className="space-y-1.5">

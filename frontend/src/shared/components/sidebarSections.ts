@@ -64,7 +64,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { path: '/vaktcomply/policies',               label: 'nav.comply.policies',     icon: BookOpen },
       { path: '/vaktcomply/soa',                    label: 'nav.comply.soa',           icon: ScrollText },
-      { path: '/vaktcomply/evidence/auto',          label: 'nav.comply.evidence',      icon: Inbox },
+      { path: '/vaktcomply/evidence',               label: 'nav.comply.evidence',      icon: Inbox },
       { path: '/vaktcomply/crypto-keys',            label: 'nav.comply.cryptography',  icon: Key },
       { path: '/vaktcomply/certification-timeline', label: 'nav.comply.certTimeline',  icon: CalendarDays },
     ],

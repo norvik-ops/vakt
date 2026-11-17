@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useNavigate } from 'react-router-dom'
 import { BookOpen, Plus, LayoutTemplate, Sparkles, ChevronsUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -115,6 +117,7 @@ function emptyForm(): CreatePolicyInput {
 export default function PoliciesPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [templateOpen, setTemplateOpen] = useState(false)
@@ -267,23 +270,28 @@ export default function PoliciesPage() {
               <Printer className="w-4 h-4 mr-1" />
               Drucken
             </Button>
-            <Button variant="outline" onClick={() => { setTemplateOpen(true); }} aria-haspopup="dialog">
-              <LayoutTemplate className="w-4 h-4 mr-1" />
-              {t('vaktcomply.policiesPage.fromTemplate')}
-            </Button>
-            <Button variant="outline" onClick={openAiDialog} aria-haspopup="dialog">
-              <Sparkles className="w-4 h-4 mr-1" />
-              {t('vaktcomply.policiesPage.aiDraft')}
-            </Button>
-            <Button onClick={openDialog} aria-haspopup="dialog">
-              <Plus className="w-4 h-4 mr-1" />
-              {t('vaktcomply.policiesPage.createPolicy')}
-            </Button>
+            {canWrite && (
+              <>
+                <Button variant="outline" onClick={() => { setTemplateOpen(true); }} aria-haspopup="dialog">
+                  <LayoutTemplate className="w-4 h-4 mr-1" />
+                  {t('vaktcomply.policiesPage.fromTemplate')}
+                </Button>
+                <Button variant="outline" onClick={openAiDialog} aria-haspopup="dialog">
+                  <Sparkles className="w-4 h-4 mr-1" />
+                  {t('vaktcomply.policiesPage.aiDraft')}
+                </Button>
+                <Button onClick={openDialog} aria-haspopup="dialog">
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t('vaktcomply.policiesPage.createPolicy')}
+                </Button>
+              </>
+            )}
           </div>
         }
       />
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         {/* Sort toolbar */}
         {!isLoading && !isError && policies && policies.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 text-xs text-secondary mb-4">
@@ -322,7 +330,7 @@ export default function PoliciesPage() {
             icon={BookOpen}
             title={t('vaktcomply.policiesPage.noPolicies')}
             description={t('vaktcomply.policiesPage.noPoliciesDesc')}
-            action={<Button onClick={openDialog} aria-haspopup="dialog"><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.policiesPage.createPolicy')}</Button>}
+            action={canWrite ? <Button onClick={openDialog} aria-haspopup="dialog"><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.policiesPage.createPolicy')}</Button> : undefined}
           />
         )}
         {!isLoading && !isError && policies && policies.length > 0 && (

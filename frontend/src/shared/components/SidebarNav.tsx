@@ -100,7 +100,7 @@ export function SidebarNav({
   function renderChildLink(c: NavChild, inFlyout = false) {
     const childActive = matchesPath(pathname, c.path)
     const isOverduePath = c.path === '/vaktcomply/overdue-reviews'
-    const isAutoEvidencePath = c.path === '/vaktcomply/evidence/auto'
+    const isAutoEvidencePath = c.path === '/vaktcomply/evidence'
     const isApprovalsPath = c.path === '/vaktcomply/approvals'
     const CIcon = c.icon
     return (

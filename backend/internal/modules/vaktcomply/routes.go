@@ -224,6 +224,9 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	// Evidence expiry alert
 	g.GET("/evidence/expiring", h.GetExpiringEvidence)
 
+	// Org-wide evidence register (page „Nachweise"). Read-only, every module role.
+	g.GET("/evidence", h.ListOrgEvidence)
+
 	// Auditor link management
 	g.GET("/auditor-links", h.ListAuditorLinks)
 	g.DELETE("/auditor-links/:id", h.RevokeAuditorLink, rw)

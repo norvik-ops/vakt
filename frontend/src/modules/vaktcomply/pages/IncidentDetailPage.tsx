@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { WriteFieldset } from '../../../shared/components/WriteFieldset'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
@@ -60,6 +63,7 @@ function DeadlineRow({
   incidentId: string
 }) {
   const { t } = useTranslation()
+  const canWrite = useCanWrite()
   const mark = useMarkDeadlineReported(incidentId)
   const { formatDateTime } = useFormatDate()
   const isDone = info.status === 'done'
@@ -108,7 +112,7 @@ function DeadlineRow({
           {deadlineBadgeLabel(info.status)}
         </Badge>
       </div>
-      {!isDone && (
+      {canWrite && !isDone && (
         <Button
           size="sm"
           variant="outline"
@@ -128,6 +132,7 @@ export default function IncidentDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const { formatDate, formatDateTime } = useFormatDate()
   const { data: incident, isLoading, isError } = useIncident(id ?? '')
   const update = useUpdateIncident(id ?? '')
@@ -258,7 +263,7 @@ export default function IncidentDetailPage() {
                 {t('vaktcomply.incidentDetail.bafinReportPdf')}
               </Button>
             )}
-            {(incident?.incident_type === 'nis2' || incident?.incident_type === 'general') && (
+            {canWrite && (incident?.incident_type === 'nis2' || incident?.incident_type === 'general') && (
               <>
                 <Button
                   variant="outline"
@@ -278,10 +283,12 @@ export default function IncidentDetailPage() {
                 </Button>
               </>
             )}
-            <Button onClick={handleSave} disabled={!dirty || update.isPending}>
-              <Save className="w-4 h-4 mr-1" />
-              {update.isPending ? t('common.savePending') : t('common.save')}
-            </Button>
+            {canWrite && (
+              <Button onClick={handleSave} disabled={!dirty || update.isPending}>
+                <Save className="w-4 h-4 mr-1" />
+                {update.isPending ? t('common.savePending') : t('common.save')}
+              </Button>
+            )}
           </div>
         }
       />
@@ -289,6 +296,8 @@ export default function IncidentDetailPage() {
       {form && (
         <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
+            <ReadOnlyHint />
+            <WriteFieldset>
             <Card>
               <CardHeader><CardTitle className="text-sm">{t('vaktcomply.incidentDetail.cardIncidentDetails')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -313,6 +322,7 @@ export default function IncidentDetailPage() {
                 </div>
               </CardContent>
             </Card>
+            </WriteFieldset>
 
             {ds && (
               <Card className="border-primary/20">
@@ -352,7 +362,7 @@ export default function IncidentDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
+                  {canWrite && <div className="flex flex-wrap gap-2">
                     {(['24h', '72h', '30d'] as const).map((rt) => (
                       <Button
                         key={rt}
@@ -365,7 +375,7 @@ export default function IncidentDetailPage() {
                         {t('vaktcomply.incidentDetail.createReport', { type: rt })}
                       </Button>
                     ))}
-                  </div>
+                  </div>}
 
                   {incidentReports && incidentReports.length > 0 && (
                     <div data-testid="report-history">
@@ -400,6 +410,7 @@ export default function IncidentDetailPage() {
             )}
 
             {form.incident_type === 'dora' && (
+              <WriteFieldset>
               <Card className="border-blue-500/30" data-testid="dora-fields-card">
                 <CardHeader>
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -450,10 +461,12 @@ export default function IncidentDetailPage() {
                   </div>
                 </CardContent>
               </Card>
+              </WriteFieldset>
             )}
           </div>
 
           <div className="space-y-4">
+            <WriteFieldset>
             <Card>
               <CardHeader><CardTitle className="text-sm">{t('vaktcomply.incidentDetail.cardClassification')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -525,6 +538,7 @@ export default function IncidentDetailPage() {
                 </div>
               </CardContent>
             </Card>
+            </WriteFieldset>
 
             <Card>
               <CardContent className="pt-4 space-y-1 text-xs text-muted-foreground">

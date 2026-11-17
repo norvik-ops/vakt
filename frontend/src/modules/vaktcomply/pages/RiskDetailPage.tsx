@@ -21,6 +21,9 @@ import type { Risk, UpdateRiskInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { riskLevel, RISK_LEVEL_BADGE } from '../../../shared/utils/riskLevel'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { WriteFieldset } from '../../../shared/components/WriteFieldset'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 
 const SCORE_COLOR = (score: number) => RISK_LEVEL_BADGE[riskLevel(score)]
 
@@ -69,6 +72,7 @@ function residualScoreColor(score: number | undefined): string {
 export default function RiskDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const { formatDate } = useFormatDate()
   const { t } = useTranslation()
   const { data: risk, isLoading, isError } = useRisk(id ?? '')
@@ -163,16 +167,20 @@ export default function RiskDetailPage() {
               <ArrowLeft className="w-4 h-4 mr-1" />
               {t('vaktcomply.riskDetail.back')}
             </Button>
-            <Button onClick={handleSave} disabled={!dirty || update.isPending}>
-              <Save className="w-4 h-4 mr-1" />
-              {update.isPending ? t('vaktcomply.riskDetail.saving') : t('vaktcomply.riskDetail.save')}
-            </Button>
+            {canWrite && (
+              <Button onClick={handleSave} disabled={!dirty || update.isPending}>
+                <Save className="w-4 h-4 mr-1" />
+                {update.isPending ? t('vaktcomply.riskDetail.saving') : t('vaktcomply.riskDetail.save')}
+              </Button>
+            )}
           </div>
         }
       />
 
       {form && (
         <div className="flex-1 p-6 space-y-6">
+          <ReadOnlyHint />
+          <WriteFieldset>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: edit form */}
           <div className="lg:col-span-2 space-y-4">
@@ -392,6 +400,7 @@ export default function RiskDetailPage() {
               )}
             </CardContent>
           </Card>
+          </WriteFieldset>
         </div>
       )}
 

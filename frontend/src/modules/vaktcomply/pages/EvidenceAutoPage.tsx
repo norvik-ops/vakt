@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { EvidenceTabs } from '../components/EvidenceTabs'
+import { useIsAdmin } from '../../../shared/hooks/useCanWrite'
 import { useTranslation } from 'react-i18next'
 import { GitBranch, Shield, Bug, CheckCircle2, Inbox, Users } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -156,6 +158,8 @@ export default function EvidenceAutoPage() {
   const { t } = useTranslation()
   const { data: items = [], isLoading } = useAutoEvidence()
   const [assigning, setAssigning] = useState<AutoEvidence | null>(null)
+  // Assigning is Admin-only in the backend (evidence_auto/routes.go).
+  const isAdmin = useIsAdmin()
   const { formatDate: fmtDate } = useFormatDate()
   function formatDate(iso?: string): string {
     if (!iso) return '—'
@@ -168,6 +172,7 @@ export default function EvidenceAutoPage() {
         title={t('vaktcomply.evidenceAuto.title')}
         description={t('vaktcomply.evidenceAuto.description')}
       />
+      <EvidenceTabs />
 
       {isLoading && (
         <p className="text-sm text-muted-foreground">{t('vaktcomply.evidenceAuto.loading')}</p>
@@ -218,15 +223,17 @@ export default function EvidenceAutoPage() {
                     </p>
                   </div>
 
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0 h-7 text-xs gap-1"
-                    onClick={() => { setAssigning(ev); }}
-                  >
-                    <Inbox className="w-3 h-3" />
-                    {t('vaktcomply.evidenceAuto.assignControl')}
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 h-7 text-xs gap-1"
+                      onClick={() => { setAssigning(ev); }}
+                    >
+                      <Inbox className="w-3 h-3" />
+                      {t('vaktcomply.evidenceAuto.assignControl')}
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

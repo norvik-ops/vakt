@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { CalendarClock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, Save } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -50,6 +51,7 @@ export function ControlReviewPanel({
     return fmtDate(iso, { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
   const [showForm, setShowForm] = useState(false)
+  const canWrite = useCanWrite()
   const [showHistory, setShowHistory] = useState(false)
   const [reviewedBy, setReviewedBy] = useState('')
   const [reviewNote, setReviewNote] = useState('')
@@ -180,7 +182,7 @@ export function ControlReviewPanel({
               </Button>
             </div>
           </form>
-        ) : (
+        ) : !canWrite ? null : (
           <Button
             variant={isOverdue ? 'default' : 'outline'}
             size="sm"

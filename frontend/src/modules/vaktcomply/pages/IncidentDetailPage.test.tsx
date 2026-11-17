@@ -67,8 +67,8 @@ vi.mock('../../vaktprivacy/hooks/useBreaches', () => ({
 }))
 
 vi.mock('../../../shared/stores/auth', () => ({
-  useAuthStore: (selector: (s: { token: string | null }) => unknown) =>
-    selector({ token: 'test-token' }),
+  useAuthStore: (selector: (s: { token: string | null; user: { roles: string[] } }) => unknown) =>
+    selector({ token: 'test-token', user: { roles: ['SecurityAnalyst'] } }),
 }))
 
 function renderIncidentDetailPage(id = 'inc-1') {

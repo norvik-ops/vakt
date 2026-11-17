@@ -652,3 +652,36 @@ func (r *Repository) ListStaleControls(ctx context.Context, orgID string) ([]Con
 	}
 	return out, rows.Err()
 }
+
+// ListEvidenceForOrg returns every evidence record of an organisation with its
+// control, framework and attachment count, newest first.
+func (r *Repository) ListEvidenceForOrg(ctx context.Context, orgID string) ([]EvidenceListItem, error) {
+	rows, err := r.q.ListCKEvidenceForOrg(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("list evidence for org: %w", err)
+	}
+	out := make([]EvidenceListItem, 0, len(rows))
+	for _, row := range rows {
+		controlID := ""
+		if row.ControlID.Valid {
+			controlID = row.ControlID.String()
+		}
+		out = append(out, EvidenceListItem{
+			ID:            row.ID,
+			Title:         row.Title,
+			Source:        row.Source,
+			Status:        row.Status,
+			Version:       int(row.Version),
+			ExpiresAt:     ckTsToTimePtr(row.ExpiresAt),
+			CreatedAt:     ckTsToTime(row.CreatedAt),
+			ControlID:     controlID,
+			ControlRef:    row.ControlRef,
+			ControlTitle:  row.ControlTitle,
+			FrameworkID:   row.FrameworkID,
+			FrameworkName: row.FrameworkName,
+			FileCount:     int(row.FileCount),
+			HasFile:       row.FileCount > 0 || (row.FilePath.Valid && row.FilePath.String != ""),
+		})
+	}
+	return out, nil
+}

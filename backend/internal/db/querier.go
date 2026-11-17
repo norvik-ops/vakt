@@ -261,6 +261,10 @@ type Querier interface {
 	// Audit-Export: jede Control mit allen Evidence (LEFT JOIN — Controls ohne
 	// Evidence erscheinen mit leeren Evidence-Feldern).
 	ListCKEvidenceForFramework(ctx context.Context, arg ListCKEvidenceForFrameworkParams) ([]ListCKEvidenceForFrameworkRow, error)
+	// Org-weite Nachweisliste (Seite „Nachweise"): jeder Nachweis mit Kontrolle,
+	// Framework und Zahl der Anhänge. Nur lesend; die Zählregel der Übersicht
+	// (ck_controls.evidence_status) bleibt unberührt.
+	ListCKEvidenceForOrg(ctx context.Context, orgID string) ([]ListCKEvidenceForOrgRow, error)
 	ListCKEvidenceHistory(ctx context.Context, arg ListCKEvidenceHistoryParams) ([]ListCKEvidenceHistoryRow, error)
 	ListCKFrameworks(ctx context.Context, orgID string) ([]CkFrameworks, error)
 	// iCal feed: open/in-progress CAPAs with due dates.

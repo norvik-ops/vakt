@@ -15,6 +15,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   jedes Bereichs-Icon per Klick oder Mauszeiger eine Liste aller Einträge. Die Comply-Übersicht
   steht als eigener Eintrag „Übersicht“ direkt unter dem Dashboard. Damit der Name eindeutig
   bleibt, heißt der bisherige Eintrag „Übersicht“ im Bereich Frameworks jetzt „Alle Frameworks“.
+- **Seite „Nachweise“ listet alle Nachweise:** Der Navigationseintrag „Nachweise“ zeigte nur
+  automatisch gesammelte Belege. Jetzt öffnet er eine Liste aller Nachweise der Organisation mit
+  Kontrolle (verlinkt), Framework, Typ, Status, Ablaufdatum und der Angabe, ob eine Datei
+  anhängt. Filter: Suche, Framework, Status, „Ohne Datei“ und „Abgelaufen oder läuft in 30 Tagen
+  ab“. Die automatisch gesammelten Belege stehen im zweiten Reiter. Neuer Lese-Endpunkt
+  `GET /api/v1/vaktcomply/evidence` (nur die eigene Organisation, alle Rollen). Keine Migration.
+- **Datei direkt beim Nachweis:** Der Dialog „Nachweis hinzufügen“ hat jetzt auch beim Typ
+  „Manuell“ ein Dateifeld (optional). Die Datei geht über den bestehenden Upload-Weg mit
+  denselben Prüfungen (Größe, Dateityp) und hängt danach als Anhang an diesem Nachweis — sie
+  erscheint unter „Anhänge“ und im Audit-Paket.
+- **Schreibknöpfe nach Rolle:** Viewer und Auditoren sehen auf den Seiten Risiken, Kontrollen,
+  Richtlinien, Assets, Vorfälle, SoA und Frameworks keine Knöpfe zum Anlegen, Ändern oder
+  Löschen mehr; Formularfelder sind gesperrt. Ein Hinweis oben auf der Seite sagt, dass Änderungen
+  den Rollen Editor und Admin vorbehalten sind. Die eigentliche Sperre bleibt im Server.
+- **Einstellungen → Organisation:** Das Feld mit der eigenen E-Mail-Adresse heißt jetzt
+  „Angemeldet als“ statt „Administrator“ — es zeigt das eigene Konto, nicht den Administrator.
 
 ### Behoben
 - **SoA-Seite im Dunkelmodus lesbar:** Auf der Anwendbarkeitserklärung (SoA) standen die

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AssetsPage from './AssetsPage'
+import { signInAs } from '../../../test-utils/signInAs'
 import { mockApiServer, type ApiServerHandle } from '../../../test-utils/apiServer'
 
 /**
@@ -53,7 +54,7 @@ async function uploadThroughDialog() {
   fireEvent.click(upload)
 }
 
-beforeEach(() => { vi.clearAllMocks() })
+beforeEach(() => { vi.clearAllMocks(); signInAs('Admin') })
 afterEach(() => { server.restore(); vi.unstubAllGlobals() })
 
 describe('AssetsPage — CSV import reachability (R23-02)', () => {

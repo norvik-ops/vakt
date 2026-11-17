@@ -96,7 +96,8 @@ function row(ref: string): HTMLElement {
 
 beforeEach(() => {
   mockApiFetch.mockReset()
-  useAuthStore.setState({ user: null })
+  // Admin: the edit dialog is only offered to roles that may write (useCanWrite).
+  useAuthStore.setState({ user: { id: 'u-0', email: 'a@x.test', display_name: 'A', roles: ['Admin'] } })
 })
 
 describe('SoAPage — Status der Kontrolle', () => {
@@ -161,7 +162,7 @@ describe('SoAPage — Status der Kontrolle', () => {
   })
 
   it('sperrt die Auswahl, wenn eine Freigabe nötig ist (kein Admin)', async () => {
-    useAuthStore.setState({ user: { id: 'u-1', email: 'e@x.test', roles: ['Editor'] } as never })
+    useAuthStore.setState({ user: { id: 'u-1', email: 'e@x.test', roles: ['SecurityAnalyst'] } as never })
     stubApi({ approvalRequired: true })
     renderPage()
     await screen.findByText('A.5.2')

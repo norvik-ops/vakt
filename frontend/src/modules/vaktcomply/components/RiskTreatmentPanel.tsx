@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useTranslation } from 'react-i18next'
 import { ShieldCheck, ShieldOff, ArrowRightLeft, CheckCircle2, Link2, Unlink, Plus, Save } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
@@ -207,6 +208,7 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [form, setForm] = useState<UpdateRiskTreatmentInput>(buildInitialForm(risk))
   const [dirty, setDirty] = useState(false)
+  const canWrite = useCanWrite()
 
   // Re-sync if risk prop changes (e.g. after successful save upstream)
   useEffect(() => {
@@ -373,10 +375,12 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm">Verknüpfte Controls</CardTitle>
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setLinkDialogOpen(true); }}>
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              {t('vaktcomply.riskTreatmentPanel.linkControlTitle')}
-            </Button>
+            {canWrite && (
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setLinkDialogOpen(true); }}>
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                {t('vaktcomply.riskTreatmentPanel.linkControlTitle')}
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-1">
@@ -389,7 +393,7 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
                 <span className="font-mono text-xs text-muted-foreground">{c.control_id}</span>
                 <p className="text-xs line-clamp-2">{c.title}</p>
               </div>
-              <Button
+              {canWrite && <Button
                 size="icon"
                 variant="ghost"
                 className="h-6 w-6 shrink-0 text-destructive opacity-0 group-hover:opacity-100"
@@ -397,19 +401,19 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
                 title="Verknüpfung aufheben"
               >
                 <Unlink className="w-3 h-3" />
-              </Button>
+              </Button>}
             </div>
           ))}
         </CardContent>
       </Card>
 
       {/* Save button */}
-      <div className="flex justify-end">
+      {canWrite && <div className="flex justify-end">
         <Button onClick={handleSave} disabled={!dirty || updateTreatment.isPending}>
           <Save className="w-4 h-4 mr-1" />
           {updateTreatment.isPending ? 'Speichern …' : 'Behandlung speichern'}
         </Button>
-      </div>
+      </div>}
 
       <LinkControlDialog
         riskId={riskId}

@@ -394,7 +394,9 @@
       "fieldNotApplicableReason": "Begründung",
       "fieldManualStatus": "Manueller Status",
       "fieldMaturityScore": "Reifegrad",
-      "fieldReviewInterval": "Prüfungsintervall"
+      "fieldReviewInterval": "Prüfungsintervall",
+      "evidenceLabelFileOptional": "Datei (optional)",
+      "evidenceFileHint": "Die Datei wird als Anhang dieses Nachweises gespeichert und landet im Audit-Paket."
     },
     "policiesPage": {
       "title": "Richtlinienmanagement",
@@ -1544,6 +1546,35 @@
         "high": "Hoch",
         "critical": "Kritisch"
       }
+    },
+    "evidenceRegister": {
+      "title": "Nachweise",
+      "description": "Alle Nachweise der Organisation über alle Kontrollen und Frameworks.",
+      "tabsLabel": "Ansicht der Nachweise",
+      "tabAll": "Alle Nachweise",
+      "tabAuto": "Automatisch gesammelt",
+      "loading": "Nachweise werden geladen …",
+      "loadError": "Die Nachweise konnten nicht geladen werden.",
+      "emptyTitle": "Noch keine Nachweise",
+      "emptyDescription": "Nachweise werden an der jeweiligen Kontrolle über „Nachweis hinzufügen“ erfasst.",
+      "noMatch": "Kein Nachweis passt zu den Filtern.",
+      "count": "{{shown}} von {{total}} Nachweisen",
+      "colTitle": "Titel",
+      "colControl": "Kontrolle",
+      "colFramework": "Framework",
+      "colType": "Typ",
+      "colStatus": "Status",
+      "colExpiry": "Ablauf",
+      "colFile": "Datei",
+      "fileYes": "Ja",
+      "fileNo": "Keine Datei",
+      "filterSearch": "Titel oder Kontrolle suchen",
+      "filterFramework": "Framework",
+      "filterAllFrameworks": "Alle Frameworks",
+      "filterStatus": "Status",
+      "filterAllStatuses": "Alle Status",
+      "filterNoFile": "Ohne Datei ({{count}})",
+      "filterExpiring": "Abgelaufen oder läuft in {{days}} Tagen ab"
     }
   },
   "settingsPage": {
@@ -1556,7 +1587,7 @@
     "sectionSystem": "System",
     "sectionStaging": "Staging",
     "orgSectionTitle": "Organisation",
-    "labelAdmin": "Administrator",
+    "labelSignedInAs": "Angemeldet als",
     "labelDisplayName": "Anzeigename",
     "mfaTitle": "2-Faktor-Authentifizierung vorschreiben",
     "mfaDesc": "Alle Mitglieder müssen 2FA aktiviert haben um sich einzuloggen.",
@@ -1998,7 +2029,8 @@
     "word": "Word",
     "exportControls": "Controls exportieren",
     "statusUpdated": "Status aktualisiert",
-    "bulkUpdateFailed": "Bulk-Update fehlgeschlagen"
+    "bulkUpdateFailed": "Bulk-Update fehlgeschlagen",
+    "readOnlyHint": "Nur Lesezugriff: Änderungen sind den Rollen Editor und Admin vorbehalten."
   },
   "actions": {
     "save": "Speichern",

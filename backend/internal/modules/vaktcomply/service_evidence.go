@@ -2,6 +2,7 @@ package vaktcomply
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -38,6 +39,20 @@ func (s *Service) AddEvidence(ctx context.Context, orgID, controlID, userID stri
 func (s *Service) ListEvidence(ctx context.Context, orgID, controlID string) ([]Evidence, error) {
 	return s.repo.ListEvidence(ctx, orgID, controlID)
 }
+
+// ListEvidenceForOrg returns the org-wide evidence register (all controls,
+// all frameworks). Read-only; the query itself filters by orgID. An empty
+// orgID would match nothing, so it is rejected instead of answering an
+// empty list that looks like "no evidence".
+func (s *Service) ListEvidenceForOrg(ctx context.Context, orgID string) ([]EvidenceListItem, error) {
+	if orgID == "" {
+		return nil, errMissingOrg
+	}
+	return s.repo.ListEvidenceForOrg(ctx, orgID)
+}
+
+// errMissingOrg marks a request without an organisation in its session.
+var errMissingOrg = errors.New("evidence register: missing organisation")
 
 // ReviewEvidence updates the review status of an evidence item.
 // status must be one of: "approved", "rejected".

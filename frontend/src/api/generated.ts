@@ -22941,6 +22941,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vaktcomply/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all evidence of the organisation (evidence register)
+         * @description Every evidence record of the caller's organisation across all controls and frameworks, newest first. Read-only; every role with access to the module may call it. Filtering happens in the client.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Evidence register */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EvidenceListItem"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vaktcomply/evidence/auto": {
         parameters: {
             query?: never;
@@ -29867,6 +29913,33 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description One row of the org-wide evidence register (page „Nachweise"). Scoped to the caller's organisation; carries the control and framework the evidence belongs to and whether a file is attached. */
+        EvidenceListItem: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** @description manual, github, aws, azure, ad, policy_acceptance, … */
+            source: string;
+            /** @description pending, approved, rejected or expired */
+            status: string;
+            version: number;
+            /** Format: date-time */
+            expires_at?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            control_id: string;
+            /** @description Control code, e.g. A.5.2 */
+            control_ref: string;
+            control_title: string;
+            /** Format: uuid */
+            framework_id: string;
+            framework_name: string;
+            /** @description Number of attachments (ck_evidence_files) of this evidence record. */
+            file_count: number;
+            /** @description True when an attachment exists or the record carries a file from the older upload path. */
+            has_file: boolean;
+        };
         /** @description 403 body of auth.RequireRole and usermgmt.requireAdmin. It names the roles that would have been accepted: `required_roles` machine-readable and the same list in prose in `error`. The role names are a compile-time property of the route, identical for every caller and every organisation, and carry no request or database data. */
         InsufficientRoleError: {
             /** @example forbidden: requires role InternalAuditor */

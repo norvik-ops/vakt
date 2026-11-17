@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useNavigate } from 'react-router-dom'
 import { Siren, Plus, AlertTriangle, ChevronsUpDown, ChevronUp, ChevronDown, Printer } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -143,6 +145,7 @@ function emptyForm(): CreateIncidentInput {
 export default function IncidentsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState<CreateIncidentInput>(emptyForm())
   const [rawSystems, setRawSystems] = useState('')
@@ -246,15 +249,18 @@ export default function IncidentsPage() {
               <Printer className="w-4 h-4 mr-1" />
               Drucken
             </Button>
-            <Button onClick={openDialog} variant="destructive" aria-haspopup="dialog">
-              <Plus className="w-4 h-4 mr-1" />
-              {t('vaktcomply.incidentsPage.reportIncident')}
-            </Button>
+            {canWrite && (
+              <Button onClick={openDialog} variant="destructive" aria-haspopup="dialog">
+                <Plus className="w-4 h-4 mr-1" />
+                {t('vaktcomply.incidentsPage.reportIncident')}
+              </Button>
+            )}
           </div>
         }
       />
 
       <div className="flex-1 p-6 space-y-6">
+        <ReadOnlyHint />
         {/* Sort toolbar */}
         {!isLoading && !isError && incidents && incidents.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 text-xs text-secondary">
@@ -294,7 +300,7 @@ export default function IncidentsPage() {
             icon={Siren}
             title="Kein offener Vorfall"
             description="Das ist gut! Wenn etwas passiert, dokumentierst du Vorfälle hier — NIS2-konform"
-            action={<Button onClick={openDialog} variant="destructive" aria-haspopup="dialog"><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.incidentsPage.createIncident')}</Button>}
+            action={canWrite ? <Button onClick={openDialog} variant="destructive" aria-haspopup="dialog"><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.incidentsPage.createIncident')}</Button> : undefined}
           />
         )}
         {!isLoading && !isError && incidents && incidents.length > 0 && (

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
 import type { Control, Evidence, UpdateControlInput, ComplianceScore } from '../types'
+import { EVIDENCE_REGISTER_KEY } from './useEvidenceRegister'
 
 export interface BulkUpdateControlsInput {
   ids: string[]
@@ -53,6 +54,7 @@ export function useAddEvidence(controlId: string) {
       void queryClient.invalidateQueries({
         queryKey: ['vaktcomply', 'controls', controlId, 'evidence'],
       })
+      void queryClient.invalidateQueries({ queryKey: EVIDENCE_REGISTER_KEY })
     },
   })
 }
@@ -69,6 +71,12 @@ export function useUploadEvidence(controlId: string) {
       void queryClient.invalidateQueries({
         queryKey: ['vaktcomply', 'controls', controlId, 'evidence'],
       })
+      // The file is an attachment of the new evidence record: the Anhänge list
+      // and the org-wide register both show it.
+      void queryClient.invalidateQueries({
+        queryKey: ['vaktcomply', 'controls', controlId, 'evidence-files'],
+      })
+      void queryClient.invalidateQueries({ queryKey: EVIDENCE_REGISTER_KEY })
     },
   })
 }

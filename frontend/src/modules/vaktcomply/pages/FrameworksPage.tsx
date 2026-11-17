@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useNavigate } from 'react-router-dom'
 import { ShieldCheck, Plus, BookOpen, Trash2, Download } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -245,6 +247,7 @@ function EnabledFrameworkCard({ framework, onDelete, onSwitchVariant }: {
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const enabledDate = new Date(framework.created_at).toLocaleDateString(formatLocale(), {
     year: 'numeric', month: 'short', day: 'numeric',
   })
@@ -282,7 +285,7 @@ function EnabledFrameworkCard({ framework, onDelete, onSwitchVariant }: {
               label={t('common.exportControls')}
               format="xlsx"
             />
-            {isDORA && onSwitchVariant && (
+            {canWrite && isDORA && onSwitchVariant && (
               <button
                 onClick={() => { onSwitchVariant(framework); }}
                 className="p-1.5 rounded text-secondary hover:text-brand hover:bg-brand/10 transition-colors text-xs"
@@ -291,13 +294,15 @@ function EnabledFrameworkCard({ framework, onDelete, onSwitchVariant }: {
                 ⇄
               </button>
             )}
-            <button
-              onClick={() => { onDelete(framework); }}
-              className="p-1.5 rounded text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors"
-              title={t('vaktcomply.frameworksPage.disableFramework')}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {canWrite && (
+              <button
+                onClick={() => { onDelete(framework); }}
+                className="p-1.5 rounded text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                title={t('vaktcomply.frameworksPage.disableFramework')}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </CardContent>
@@ -313,6 +318,7 @@ function wizardSeenKey(frameworkId: string) {
 export default function FrameworksPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const [deleteTarget, setDeleteTarget] = useState<Framework | null>(null)
   const [switchVariantTarget, setSwitchVariantTarget] = useState<Framework | null>(null)
   // showDORAVariantModal: DORA just activated, ask user which variant they want
@@ -407,6 +413,7 @@ export default function FrameworksPage() {
       />
 
       <div className="flex-1 p-6 space-y-8">
+        <ReadOnlyHint />
         {/* Enabled Frameworks */}
         <section>
           <h2 className="text-sm font-semibold text-secondary uppercase tracking-wider mb-3">
@@ -428,14 +435,14 @@ export default function FrameworksPage() {
               icon={ShieldCheck}
               title="Noch kein Compliance-Framework aktiv"
               description="Starte mit ISO 27001 — dem Standard für KMU in der DACH-Region"
-              action={
+              action={canWrite ? (
                 <Button onClick={() => {
                   document.getElementById('framework-catalogue')?.scrollIntoView({ behavior: 'smooth' })
                 }}>
                   <Plus className="w-4 h-4 mr-1" />
                   Framework hinzufügen
                 </Button>
-              }
+              ) : undefined}
             />
           )}
           {!isLoading && !isError && frameworks && frameworks.length > 0 && (
@@ -521,7 +528,7 @@ export default function FrameworksPage() {
                           </Button>
                         )}
                       </div>
-                    ) : fw.draft || fw.notOffered ? (
+                    ) : !canWrite ? null : fw.draft || fw.notOffered ? (
                       <Button
                         size="sm"
                         disabled

@@ -16,6 +16,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import FrameworksPage from './FrameworksPage'
+import { signInAs } from '../../../test-utils/signInAs'
 
 vi.mock('../hooks/useFrameworks', () => ({
   useFrameworks: () => ({ data: [], isLoading: false, isError: false }),
@@ -52,6 +53,7 @@ function gates(): Map<string, string> {
 }
 
 function renderPage() {
+  signInAs('Admin')
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>

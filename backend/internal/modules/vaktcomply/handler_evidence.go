@@ -119,6 +119,23 @@ func (h *Handler) ListEvidence(c echo.Context) error {
 	return c.JSON(http.StatusOK, items)
 }
 
+// ListOrgEvidence handles GET /api/v1/vaktcomply/evidence — the org-wide
+// evidence register behind the navigation entry „Nachweise". Every role that
+// may open the module may read it; the org comes from the session, never from
+// the request.
+func (h *Handler) ListOrgEvidence(c echo.Context) error {
+	org := orgID(c)
+	if org == "" {
+		return errResp(c, http.StatusUnauthorized, "unauthorized", "CK_UNAUTHORIZED")
+	}
+	items, err := h.service.ListEvidenceForOrg(c.Request().Context(), org)
+	if err != nil {
+		log.Error().Err(err).Msg("list org evidence")
+		return errResp(c, http.StatusInternalServerError, "failed to list evidence", "CK_LIST_EVIDENCE_FAILED")
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
 // ReviewEvidence handles POST /api/v1/vaktcomply/evidence/:id/review.
 func (h *Handler) ReviewEvidence(c echo.Context) error {
 	evidenceID := c.Param("id")

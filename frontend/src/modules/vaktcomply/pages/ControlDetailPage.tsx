@@ -54,6 +54,9 @@ import type { ControlException, CreateControlExceptionInput } from '../hooks/use
 import { useEvidenceHistory } from '../hooks/useEvidenceHistory'
 import type { EvidenceHistoryEntry } from '../hooks/useEvidenceHistory'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { WriteFieldset } from '../../../shared/components/WriteFieldset'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 
 // ── Status config ────────────────────────────────────────────────────────────
 
@@ -406,6 +409,7 @@ export default function ControlDetailPage() {
 
   const { user } = useAuthStore()
   const isAdmin = user?.roles?.includes('Admin') ?? false
+  const canWrite = useCanWrite()
 
   const { data: control, isLoading: controlLoading, isError: controlError, refetch: refetchControl } = useControl(controlId)
   const { data: framework } = useFramework(frameworkId)
@@ -645,7 +649,10 @@ export default function ControlDetailPage() {
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     const expiresAtISO = expiresAt ? new Date(expiresAt).toISOString() : null
-    if (type === 'document' && file) {
+    // A file can come with any manual entry (UX-30): it goes through the upload
+    // route, which checks it first and stores it as an attachment of the new
+    // evidence record — the same path and checks as before.
+    if (type !== 'automated' && file) {
       const fd = new FormData()
       fd.append('file', file)
       fd.append('title', title)
@@ -709,10 +716,12 @@ export default function ControlDetailPage() {
               <Download className="w-4 h-4 mr-1" />
               {t('vaktcomply.controlDetailPage.export')}
             </Button>
-            <Button size="sm" onClick={() => { setAddOpen(true); }}>
-              <Plus className="w-4 h-4 mr-1" />
-              {t('vaktcomply.controlDetailPage.addEvidence')}
-            </Button>
+            {canWrite && (
+              <Button size="sm" onClick={() => { setAddOpen(true); }}>
+                <Plus className="w-4 h-4 mr-1" />
+                {t('vaktcomply.controlDetailPage.addEvidence')}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => { navigate(backTo); }}>
               <ArrowLeft className="w-4 h-4 mr-1" />
               {t('vaktcomply.controlDetailPage.back')}
@@ -722,6 +731,7 @@ export default function ControlDetailPage() {
       />
 
       <div className="flex-1 p-6 space-y-6">
+        <ReadOnlyHint />
         {controlError && (
           <ErrorState
             message={t('vaktcomply.controlDetailPage.loadError')}
@@ -733,6 +743,7 @@ export default function ControlDetailPage() {
         {controlLoading ? (
           <SkeletonDetailPage />
         ) : control ? (
+          <WriteFieldset>
           <div className="p-5 bg-surface border border-border rounded-lg space-y-4">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3 flex-wrap">
@@ -856,14 +867,16 @@ export default function ControlDetailPage() {
                   <span className={cn('text-primary', !control.owner && 'text-secondary italic')}>
                     {control.owner || '-'}
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleOwnerEditStart}
-                    className="text-secondary hover:text-primary transition-colors"
-                    title={t('vaktcomply.controlDetailPage.ownerLabel')}
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
+                  {canWrite && (
+                    <button
+                      type="button"
+                      onClick={handleOwnerEditStart}
+                      className="text-secondary hover:text-primary transition-colors"
+                      title={t('vaktcomply.controlDetailPage.ownerLabel')}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -898,6 +911,7 @@ export default function ControlDetailPage() {
 
             <ControlMappingsBadge controlId={control.id} />
           </div>
+          </WriteFieldset>
         ) : null}
 
         {/* Sub-controls */}
@@ -960,6 +974,7 @@ export default function ControlDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <WriteFieldset>
             {/* Task list */}
             {tasks && tasks.length > 0 && (
               <ul className="space-y-2">
@@ -981,19 +996,23 @@ export default function ControlDetailPage() {
                     <span className={cn('text-sm flex-1', task.completed && 'line-through text-muted-foreground')}>
                       {task.text}
                     </span>
-                    <button
-                      type="button"
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                      onClick={() => { deleteTask.mutate(task.id); }}
-                      title={t('vaktcomply.controlDetailPage.deleteStep')}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {canWrite && (
+                      <button
+                        type="button"
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                        onClick={() => { deleteTask.mutate(task.id); }}
+                        title={t('vaktcomply.controlDetailPage.deleteStep')}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
+            </WriteFieldset>
             {/* Add task form */}
+            {canWrite && (
             <form onSubmit={handleAddTask} className="flex gap-2">
               <Input
                 placeholder={t('vaktcomply.controlDetailPage.addStep')}
@@ -1005,6 +1024,7 @@ export default function ControlDetailPage() {
                 <Plus className="w-3.5 h-3.5" />
               </Button>
             </form>
+            )}
             {(!tasks || tasks.length === 0) && !newTaskText && (
               <p className="text-xs text-muted-foreground">
                 {t('vaktcomply.controlDetailPage.stepsEmpty')}
@@ -1036,10 +1056,12 @@ export default function ControlDetailPage() {
                 <ShieldAlert className="w-4 h-4" />
                 {t('vaktcomply.controlDetailPage.exceptionsTitle')}
               </CardTitle>
-              <Button size="sm" variant="outline" onClick={() => { setExceptionOpen(true); }}>
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                {t('vaktcomply.controlDetailPage.exceptionsAddBtn')}
-              </Button>
+              {canWrite && (
+                <Button size="sm" variant="outline" onClick={() => { setExceptionOpen(true); }}>
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  {t('vaktcomply.controlDetailPage.exceptionsAddBtn')}
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -1101,7 +1123,7 @@ export default function ControlDetailPage() {
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm">{t('vaktcomply.controlDetailPage.evidence')}</CardTitle>
-              {control?.control_id.startsWith('A.7.') && (
+              {canWrite && control?.control_id.startsWith('A.7.') && (
                 <Button
                   type="button"
                   size="sm"
@@ -1158,7 +1180,7 @@ export default function ControlDetailPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {ev.status === 'pending' && (
+                          {canWrite && ev.status === 'pending' && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -1308,7 +1330,7 @@ export default function ControlDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{t('vaktcomply.controlDetailPage.evidenceLabelType')}</Label>
-                <Select value={type} onValueChange={(v) => { setType(v as EvidenceKind); setFile(null) }}>
+                <Select value={type} onValueChange={(v) => { setType(v as EvidenceKind); if (v === 'automated') setFile(null) }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -1320,9 +1342,13 @@ export default function ControlDetailPage() {
                 </Select>
               </div>
 
-              {type === 'document' && (
+              {type !== 'automated' && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="ev-file">{t('vaktcomply.controlDetailPage.evidenceLabelFile')}</Label>
+                  <Label htmlFor="ev-file">
+                    {type === 'document'
+                      ? t('vaktcomply.controlDetailPage.evidenceLabelFile')
+                      : t('vaktcomply.controlDetailPage.evidenceLabelFileOptional')}
+                  </Label>
                   <input
                     id="ev-file"
                     type="file"
@@ -1330,6 +1356,7 @@ export default function ControlDetailPage() {
                     onChange={(e) => { setFile(e.target.files?.[0] ?? null); }}
                   />
                   {file && <p className="text-xs text-secondary">{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
+                  <p className="text-xs text-secondary">{t('vaktcomply.controlDetailPage.evidenceFileHint')}</p>
                 </div>
               )}
 

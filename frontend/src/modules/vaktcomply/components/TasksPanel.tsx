@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, CheckCircle2, Clock, Circle, AlertCircle } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -158,6 +159,7 @@ function TaskRow({
   entityType: string
   entityId: string
 }) {
+  const canWrite = useCanWrite()
   const updateTask = useUpdateTask()
   const deleteTask = useDeleteTask(entityType, entityId)
   const { formatDate } = useFormatDate()
@@ -186,7 +188,7 @@ function TaskRow({
       <button
         type="button"
         onClick={handleStatusToggle}
-        disabled={updateTask.isPending}
+        disabled={!canWrite || updateTask.isPending}
         title={`Status: ${statusCfg.label} → ${STATUS_CONFIG[nextStatus(task.status)].label}`}
         className={cn('mt-0.5 shrink-0 transition-colors', statusCfg.className)}
       >
@@ -220,7 +222,7 @@ function TaskRow({
       </div>
 
       {/* Delete */}
-      <button
+      {canWrite && <button
         type="button"
         onClick={() => { deleteTask.mutate(task.id); }}
         disabled={deleteTask.isPending}
@@ -228,7 +230,7 @@ function TaskRow({
         title="Aufgabe löschen"
       >
         <Trash2 className="w-3.5 h-3.5" />
-      </button>
+      </button>}
     </li>
   )
 }
@@ -244,6 +246,7 @@ export function TasksPanel({
 }) {
   const { data: tasks, isLoading } = useTasks(entityType, entityId)
   const [addOpen, setAddOpen] = useState(false)
+  const canWrite = useCanWrite()
 
   const openCount = tasks?.filter((t) => t.status !== 'done').length ?? 0
 
@@ -259,7 +262,7 @@ export function TasksPanel({
               </Badge>
             )}
           </CardTitle>
-          {!addOpen && (
+          {canWrite && !addOpen && (
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setAddOpen(true); }}>
               <Plus className="w-3.5 h-3.5 mr-1" />
               Aufgabe hinzufügen

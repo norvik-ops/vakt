@@ -27,6 +27,8 @@ import { apiFetch } from '../../../api/client'
 import RiskHeatmap from '../components/RiskHeatmap'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { UserPicker } from '../../../shared/components/UserPicker'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import type { Risk, CreateRiskInput } from '../types'
 import { riskLevel, RISK_LEVELS, RISK_LEVEL_BADGE, RISK_LEVEL_FILL, RISK_LEVEL_LABEL_KEY, type RiskLevel } from '../../../shared/utils/riskLevel'
 
@@ -127,6 +129,7 @@ function InlineRiskStatus({
   const { t } = useTranslation()
   const [editing, setEditing] = useState(false)
   const [displayStatus, setDisplayStatus] = useState<Risk['status']>(risk.status)
+  const canWrite = useCanWrite()
 
   const STATUS_LABELS: Record<Risk['status'], string> = {
     open: t('vaktcomply.risksPage.statusOpen'),
@@ -140,6 +143,10 @@ function InlineRiskStatus({
     setDisplayStatus(newStatus)
     setEditing(false)
     onStatusChange(risk, newStatus)
+  }
+
+  if (!canWrite) {
+    return <Badge variant="secondary">{STATUS_LABELS[displayStatus]}</Badge>
   }
 
   if (editing) {
@@ -191,6 +198,7 @@ function RiskCard({
   onDelete: (risk: Risk) => void
 }) {
   const { t } = useTranslation()
+  const canWrite = useCanWrite()
 
   const TREATMENT_LABELS: Record<Risk['treatment'], string> = {
     avoid: t('vaktcomply.risksPage.treatmentAvoid'),
@@ -207,14 +215,16 @@ function RiskCard({
       <CardContent className="pt-5 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={() => { onToggleSelect(risk.id); }}
-              onClick={(e) => { e.stopPropagation(); }}
-              className="mt-0.5 rounded shrink-0"
-              aria-label={`Risiko "${risk.title}" auswählen`}
-            />
+            {canWrite && (
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={() => { onToggleSelect(risk.id); }}
+                onClick={(e) => { e.stopPropagation(); }}
+                className="mt-0.5 rounded shrink-0"
+                aria-label={`Risiko "${risk.title}" auswählen`}
+              />
+            )}
             <div>
               <p className="font-medium text-sm">{risk.title}</p>
               {risk.category && <p className="text-xs text-muted-foreground mt-0.5">{risk.category}</p>}
@@ -222,14 +232,16 @@ function RiskCard({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Badge className={SCORE_COLOR(risk.risk_score)}>Score {risk.risk_score}</Badge>
-            <button
-              className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              onClick={(e) => { e.stopPropagation(); onDelete(risk) }}
-              title="Risiko löschen"
-              aria-label={`Risiko "${risk.title}" löschen`}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {canWrite && (
+              <button
+                className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                onClick={(e) => { e.stopPropagation(); onDelete(risk) }}
+                title="Risiko löschen"
+                aria-label={`Risiko "${risk.title}" löschen`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
         {risk.description && (
@@ -264,6 +276,7 @@ function emptyForm(): CreateRiskInput {
 export default function RisksPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [catalogOpen, setCatalogOpen] = useState(false)
@@ -417,14 +430,18 @@ export default function RisksPage() {
               <HelpCircle className="w-4 h-4 mr-1" />
               {t('vaktcomply.risksPage.methodologyBtn')}
             </Button>
-            <Button variant="outline" onClick={() => { setCatalogOpen(true); }}>
-              <Library className="w-4 h-4 mr-1" />
-              {t('threatCatalog.fromCatalog')}
-            </Button>
-            <Button onClick={openDialog}>
-              <Plus className="w-4 h-4 mr-1" />
-              {t('vaktcomply.risksPage.addRisk')}
-            </Button>
+            {canWrite && (
+              <>
+                <Button variant="outline" onClick={() => { setCatalogOpen(true); }}>
+                  <Library className="w-4 h-4 mr-1" />
+                  {t('threatCatalog.fromCatalog')}
+                </Button>
+                <Button onClick={openDialog}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t('vaktcomply.risksPage.addRisk')}
+                </Button>
+              </>
+            )}
           </div>
         }
       />
@@ -470,6 +487,7 @@ export default function RisksPage() {
       </Dialog>
 
       <div className="flex-1 p-6 space-y-6">
+        <ReadOnlyHint />
         {/* Sort toolbar — list view only */}
         {!isLoading && !isError && view === 'list' && risks && risks.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 text-xs text-secondary">
@@ -515,7 +533,7 @@ export default function RisksPage() {
             icon={ShieldAlert}
             title="Noch keine Risiken erfasst"
             description="Erfasse dein erstes Risiko und verknüpfe es mit Controls — das ist der Kern deines ISMS"
-            action={<Button onClick={openDialog}><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.risksPage.addRisk')}</Button>}
+            action={canWrite ? <Button onClick={openDialog}><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.risksPage.addRisk')}</Button> : undefined}
           />
         )}
         {!isLoading && !isError && risks && risks.length > 0 && view === 'heatmap' && (

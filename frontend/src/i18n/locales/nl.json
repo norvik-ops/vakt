@@ -394,7 +394,9 @@
       "fieldNotApplicableReason": "Reden",
       "fieldManualStatus": "Handmatige status",
       "fieldMaturityScore": "Volwassenheidsscore",
-      "fieldReviewInterval": "Herzieningsinterval"
+      "fieldReviewInterval": "Herzieningsinterval",
+      "evidenceLabelFileOptional": "Bestand (optioneel)",
+      "evidenceFileHint": "Het bestand wordt als bijlage bij dit bewijs opgeslagen en komt in het auditpakket."
     },
     "policiesPage": {
       "title": "Beleidsbeheer",
@@ -1544,6 +1546,35 @@
         "high": "Hoog",
         "critical": "Kritiek"
       }
+    },
+    "evidenceRegister": {
+      "title": "Bewijzen",
+      "description": "Alle bewijzen van de organisatie over alle maatregelen en frameworks.",
+      "tabsLabel": "Weergave bewijzen",
+      "tabAll": "Alle bewijzen",
+      "tabAuto": "Automatisch verzameld",
+      "loading": "Bewijzen laden …",
+      "loadError": "De bewijzen konden niet worden geladen.",
+      "emptyTitle": "Nog geen bewijzen",
+      "emptyDescription": "Bewijzen worden per maatregel toegevoegd via „Bewijs toevoegen”.",
+      "noMatch": "Geen bewijs voldoet aan de filters.",
+      "count": "{{shown}} van {{total}} bewijzen",
+      "colTitle": "Titel",
+      "colControl": "Maatregel",
+      "colFramework": "Framework",
+      "colType": "Type",
+      "colStatus": "Status",
+      "colExpiry": "Vervaldatum",
+      "colFile": "Bestand",
+      "fileYes": "Ja",
+      "fileNo": "Geen bestand",
+      "filterSearch": "Titel of maatregel zoeken",
+      "filterFramework": "Framework",
+      "filterAllFrameworks": "Alle frameworks",
+      "filterStatus": "Status",
+      "filterAllStatuses": "Alle statussen",
+      "filterNoFile": "Zonder bestand ({{count}})",
+      "filterExpiring": "Verlopen of verloopt binnen {{days}} dagen"
     }
   },
   "settingsPage": {
@@ -1556,7 +1587,7 @@
     "sectionSystem": "Systeem",
     "sectionStaging": "Staging",
     "orgSectionTitle": "Organisatie",
-    "labelAdmin": "Beheerder",
+    "labelSignedInAs": "Aangemeld als",
     "labelDisplayName": "Weergavenaam",
     "mfaTitle": "Tweefactorauthenticatie verplichten",
     "mfaDesc": "Alle leden moeten 2FA hebben ingeschakeld om in te loggen.",
@@ -1998,7 +2029,8 @@
     "word": "Word",
     "exportControls": "Controls exporteren",
     "statusUpdated": "Status bijgewerkt",
-    "bulkUpdateFailed": "Bulkupdate mislukt"
+    "bulkUpdateFailed": "Bulkupdate mislukt",
+    "readOnlyHint": "Alleen-lezen: wijzigingen vereisen de rol Editor of Admin."
   },
   "actions": {
     "save": "Opslaan",

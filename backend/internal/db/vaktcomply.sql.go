@@ -5756,6 +5756,75 @@ func (q *Queries) ListCKEvidenceForFramework(ctx context.Context, arg ListCKEvid
 	return items, nil
 }
 
+const listCKEvidenceForOrg = `-- name: ListCKEvidenceForOrg :many
+SELECT e.id, e.control_id, e.title, e.source, e.status, e.version,
+       e.file_path, e.expires_at, e.created_at,
+       c.control_id AS control_ref, c.title AS control_title,
+       c.framework_id, fw.name AS framework_name,
+       (SELECT COUNT(*) FROM ck_evidence_files ef
+         WHERE ef.evidence_id = e.id AND ef.org_id = e.org_id)::int AS file_count
+FROM ck_evidence e
+JOIN ck_controls c ON c.id = e.control_id AND c.org_id = e.org_id
+JOIN ck_frameworks fw ON fw.id = c.framework_id
+WHERE e.org_id = $1
+ORDER BY e.created_at DESC
+`
+
+type ListCKEvidenceForOrgRow struct {
+	ID            string             `json:"id"`
+	ControlID     pgtype.UUID        `json:"control_id"`
+	Title         string             `json:"title"`
+	Source        string             `json:"source"`
+	Status        string             `json:"status"`
+	Version       int32              `json:"version"`
+	FilePath      pgtype.Text        `json:"file_path"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	ControlRef    string             `json:"control_ref"`
+	ControlTitle  string             `json:"control_title"`
+	FrameworkID   string             `json:"framework_id"`
+	FrameworkName string             `json:"framework_name"`
+	FileCount     int32              `json:"file_count"`
+}
+
+// Org-weite Nachweisliste (Seite „Nachweise"): jeder Nachweis mit Kontrolle,
+// Framework und Zahl der Anhänge. Nur lesend; die Zählregel der Übersicht
+// (ck_controls.evidence_status) bleibt unberührt.
+func (q *Queries) ListCKEvidenceForOrg(ctx context.Context, orgID string) ([]ListCKEvidenceForOrgRow, error) {
+	rows, err := q.db.Query(ctx, listCKEvidenceForOrg, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCKEvidenceForOrgRow{}
+	for rows.Next() {
+		var i ListCKEvidenceForOrgRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ControlID,
+			&i.Title,
+			&i.Source,
+			&i.Status,
+			&i.Version,
+			&i.FilePath,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.ControlRef,
+			&i.ControlTitle,
+			&i.FrameworkID,
+			&i.FrameworkName,
+			&i.FileCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCKEvidenceHistory = `-- name: ListCKEvidenceHistory :many
 SELECT id, evidence_id, changed_by, changed_at,
        title, status, change_note

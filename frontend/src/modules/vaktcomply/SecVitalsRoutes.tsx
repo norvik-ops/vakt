@@ -43,6 +43,7 @@ const PolicyAcceptancePage = lazy(() => import('./pages/PolicyAcceptancePage'))
 const CAPAsPage = lazy(() => import('./pages/CAPAsPage'))
 const OverdueReviewsPage = lazy(() => import('./pages/OverdueReviewsPage'))
 const EvidenceAutoPage = lazy(() => import('./pages/EvidenceAutoPage'))
+const EvidenceRegisterPage = lazy(() => import('./pages/EvidenceRegisterPage'))
 const ApprovalsPage = lazy(() => import('./pages/ApprovalsPage'))
 const CertificationTimelinePage = lazy(() => import('./pages/CertificationTimelinePage'))
 const CISControlsPage = lazy(() => import('./pages/CISControlsPage'))
@@ -85,6 +86,7 @@ export default function SecVitalsRoutes() {
         <Route path="mapping-coverage" element={<MappingCoveragePage />} />
         {/* CRITICAL: overdue-reviews must be before controls/:id to avoid catch-all match */}
         <Route path="overdue-reviews" element={<OverdueReviewsPage />} />
+        <Route path="evidence" element={<EvidenceRegisterPage />} />
         <Route path="evidence/auto" element={<EvidenceAutoPage />} />
         <Route path="controls/:id" element={<ControlDetailPage />} />
         <Route path="risks" element={<RisksPage />} />

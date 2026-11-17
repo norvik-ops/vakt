@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Server, ScanSearch, Upload } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -137,6 +139,7 @@ export default function AssetsPage() {
   const { t } = useTranslation()
   const { formatDate } = useFormatDate()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const [page, setPage] = useState(1)
   const { data: rawAssets, isLoading, isError, error, pagination, refetch } = useAssets(page)
   useFirstAction('asset:first-created', (rawAssets?.length ?? 0) > 0)
@@ -201,7 +204,7 @@ export default function AssetsPage() {
         title={t('vaktcomply.assets.page.title')}
         description={t('vaktcomply.assets.page.description')}
         actions={
-          <div className="flex gap-2">
+          canWrite ? <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setCsvImportOpen(true); }}>
               <Upload className="w-4 h-4 mr-1" />
               {t('vaktcomply.assets.page.csvImport')}
@@ -210,7 +213,7 @@ export default function AssetsPage() {
               <Plus className="w-4 h-4 mr-1" />
               {t('vaktcomply.assets.page.newAsset')}
             </Button>
-          </div>
+          </div> : undefined
         }
       />
 
@@ -220,6 +223,7 @@ export default function AssetsPage() {
       </InfoBanner>
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         {isLoading && (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -240,12 +244,12 @@ export default function AssetsPage() {
             icon={Server}
             title={t('vaktcomply.assets.page.emptyTitle')}
             description={t('vaktcomply.assets.page.emptyDesc')}
-            action={
+            action={canWrite ? (
               <Button onClick={handleOpen}>
                 <Plus className="w-4 h-4 mr-1" />
                 {t('vaktcomply.assets.page.addAsset')}
               </Button>
-            }
+            ) : undefined}
           />
         )}
 

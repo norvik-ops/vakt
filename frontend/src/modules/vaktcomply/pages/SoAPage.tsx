@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Download, CheckCircle2, XCircle, RefreshCw, ShieldCheck, AlertTriangle, Pencil } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
@@ -191,6 +193,7 @@ export default function SoAPage() {
   const updateControl = useUpdateControl(editEntry?.linked_framework_id ?? '')
   const { user } = useAuthStore()
   const isAdmin = user?.roles.includes('Admin') ?? false
+  const canWrite = useCanWrite()
   const { data: approvalSetting } = useApprovalSetting()
   // Same rule as the control page: with approval_required, non-admins request a
   // status change there instead of setting it.
@@ -304,9 +307,13 @@ export default function SoAPage() {
           <p className="text-sm text-secondary text-center max-w-sm">
             {t('vaktcomply.soaPage.notInitDesc')}
           </p>
-          <Button onClick={() => { initMut.mutate(); }} disabled={initMut.isPending}>
-            {initMut.isPending ? t('vaktcomply.soaPage.initializingBtn') : t('vaktcomply.soaPage.initializeBtn')}
-          </Button>
+          {canWrite ? (
+            <Button onClick={() => { initMut.mutate(); }} disabled={initMut.isPending}>
+              {initMut.isPending ? t('vaktcomply.soaPage.initializingBtn') : t('vaktcomply.soaPage.initializeBtn')}
+            </Button>
+          ) : (
+            <ReadOnlyHint />
+          )}
         </div>
       </div>
     )
@@ -341,7 +348,7 @@ export default function SoAPage() {
             label={t('common.word')}
             format="docx"
           />
-          {summary?.status === 'draft' && (
+          {canWrite && summary?.status === 'draft' && (
             <Button
               size="sm"
               onClick={() => { approveMut.mutate(); }}
@@ -355,6 +362,8 @@ export default function SoAPage() {
           )}
         </div>
       </div>
+
+      <ReadOnlyHint />
 
       {/* Version banner */}
       {summary && (
@@ -469,9 +478,11 @@ export default function SoAPage() {
                     : <XCircle className="h-5 w-5 text-muted mx-auto" />}
                 </TableCell>
                 <TableCell>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { openEdit(e); }}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
+                  {canWrite && (
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { openEdit(e); }}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

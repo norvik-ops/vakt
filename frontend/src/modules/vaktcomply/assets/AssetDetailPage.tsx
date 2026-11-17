@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Trash2, Link2 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -33,6 +34,7 @@ const assetTypeLabels: Record<Asset['type'], string> = {
 export default function AssetDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const { t } = useTranslation()
   const { formatDate } = useFormatDate()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -88,14 +90,16 @@ export default function AssetDetailPage() {
               <ArrowLeft className="w-4 h-4 mr-1" />
               {t('common.back')}
             </Button>
-            <Button
-              variant="outline"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => { setDeleteOpen(true); }}
-            >
-              <Trash2 className="w-4 h-4 mr-1" />
-              {t('common.delete')}
-            </Button>
+            {canWrite && (
+              <Button
+                variant="outline"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => { setDeleteOpen(true); }}
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                {t('common.delete')}
+              </Button>
+            )}
           </div>
         }
       />

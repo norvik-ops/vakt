@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Spinner } from '../../../components/Spinner'
 import {
@@ -156,6 +158,7 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
   const { data: links, isLoading } = useAuditorLinks()
   const revokeLink = useRevokeAuditorLink()
   const createLink = useCreateAuditorLink(frameworkId)
+  const canWrite = useCanWrite()
 
   const frameworkLinks = links ?? []
 
@@ -179,12 +182,14 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={() => { setCreateOpen(true); setCreatedUrl(null) }}>
-          <Plus className="w-4 h-4 mr-1" />
-          Auditor-Link erstellen
-        </Button>
-      </div>
+      {canWrite && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => { setCreateOpen(true); setCreatedUrl(null) }}>
+            <Plus className="w-4 h-4 mr-1" />
+            Auditor-Link erstellen
+          </Button>
+        </div>
+      )}
 
       {isLoading && (
         <div className="flex items-center justify-center h-24">
@@ -197,12 +202,12 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
           icon={ShieldAlert}
           title="Keine Auditor-Links"
           description="Erstelle einen Link, um einem Auditor schreibgeschützten Zugriff auf dieses Framework zu geben."
-          action={
+          action={canWrite ? (
             <Button size="sm" onClick={() => { setCreateOpen(true); setCreatedUrl(null) }}>
               <Plus className="w-4 h-4 mr-1" />
               Auditor-Link erstellen
             </Button>
-          }
+          ) : undefined}
         />
       )}
 
@@ -236,7 +241,7 @@ function AuditorLinksTab({ frameworkId }: { frameworkId: string }) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {!link.revoked_at && (
+                    {canWrite && !link.revoked_at && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -430,6 +435,7 @@ const ControlRow = React.memo(function ControlRow({
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const status = effectiveStatus(ctrl)
 
   function handleChange(v: string) {
@@ -451,12 +457,14 @@ const ControlRow = React.memo(function ControlRow({
   return (
     <TableRow className={cn(ctrl.not_applicable && 'opacity-50', selected && 'bg-brand/5')}>
       <TableCell className="w-10" onClick={(e) => { e.stopPropagation(); }}>
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={() => { onToggleSelect(ctrl.id); }}
-          className="rounded"
-        />
+        {canWrite && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => { onToggleSelect(ctrl.id); }}
+            className="rounded"
+          />
+        )}
       </TableCell>
       <TableCell
         className="font-mono text-xs cursor-pointer"
@@ -473,7 +481,7 @@ const ControlRow = React.memo(function ControlRow({
         {ctrl.title}
       </TableCell>
       <TableCell onClick={(e) => { e.stopPropagation(); }}>
-        <Select value={status} onValueChange={handleChange} disabled={updateControl.isPending}>
+        <Select value={status} onValueChange={handleChange} disabled={!canWrite || updateControl.isPending}>
           <SelectTrigger className="h-7 text-xs w-44 gap-1">
             <StatusIndicator status={status} />
           </SelectTrigger>
@@ -520,6 +528,7 @@ function DomainSection({
 }) {
   const [open, setOpen] = useState(true)
   const { t } = useTranslation()
+  const canWrite = useCanWrite()
 
   const rootControls = domainControls.filter((c) => !hasParent(c, domainControls))
   const allIds = domainControls.map((c) => c.id)
@@ -551,7 +560,7 @@ function DomainSection({
           <TableHeader>
             <TableRow>
               <TableHead className="w-10">
-                <input
+                {canWrite && <input
                   type="checkbox"
                   checked={allSelected}
                   ref={(el) => {
@@ -560,7 +569,7 @@ function DomainSection({
                   onChange={(e) => { onToggleDomain(allIds, e.target.checked); }}
                   className="rounded"
                   onClick={(e) => { e.stopPropagation(); }}
-                />
+                />}
               </TableHead>
               <TableHead className="w-32">{t('frameworkDetail.colId')}</TableHead>
               <TableHead>{t('frameworkDetail.colMeasure')}</TableHead>
@@ -922,6 +931,7 @@ export default function FrameworkDetailPage() {
       />
 
       <div className="flex-1 p-6 space-y-6">
+        <ReadOnlyHint />
         {frameworkError && (
           <ErrorState
             message="Framework konnte nicht geladen werden."

@@ -1216,3 +1216,27 @@ func isBadParam(err error) bool {
 	}
 	return apperr.IsBadParam(err)
 }
+
+// EvidenceListItem is one row of the org-wide evidence register
+// (GET /vaktcomply/evidence, page „Nachweise"). It carries the control and
+// framework a piece of evidence belongs to and whether a file is attached, so
+// checking what is documented before an audit does not mean opening every control.
+type EvidenceListItem struct {
+	ID            string     `json:"id"`
+	Title         string     `json:"title"`
+	Source        string     `json:"source"`
+	Status        string     `json:"status"`
+	Version       int        `json:"version"`
+	ExpiresAt     *time.Time `json:"expires_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	ControlID     string     `json:"control_id"`
+	ControlRef    string     `json:"control_ref"`
+	ControlTitle  string     `json:"control_title"`
+	FrameworkID   string     `json:"framework_id"`
+	FrameworkName string     `json:"framework_name"`
+	// FileCount counts attachments (ck_evidence_files) of this evidence record.
+	FileCount int `json:"file_count"`
+	// HasFile is true when an attachment exists or the record still carries a
+	// file from the pre-attachment upload path (ck_evidence.file_path).
+	HasFile bool `json:"has_file"`
+}

@@ -394,7 +394,9 @@
       "fieldNotApplicableReason": "Raison",
       "fieldManualStatus": "Statut manuel",
       "fieldMaturityScore": "Score de maturité",
-      "fieldReviewInterval": "Intervalle de révision"
+      "fieldReviewInterval": "Intervalle de révision",
+      "evidenceLabelFileOptional": "Fichier (facultatif)",
+      "evidenceFileHint": "Le fichier est enregistré en pièce jointe de cette preuve et inclus dans le dossier d’audit."
     },
     "policiesPage": {
       "title": "Gestion des politiques",
@@ -1544,6 +1546,35 @@
         "high": "Élevée",
         "critical": "Critique"
       }
+    },
+    "evidenceRegister": {
+      "title": "Preuves",
+      "description": "Toutes les preuves de l’organisation, pour tous les contrôles et référentiels.",
+      "tabsLabel": "Vue des preuves",
+      "tabAll": "Toutes les preuves",
+      "tabAuto": "Collectées automatiquement",
+      "loading": "Chargement des preuves …",
+      "loadError": "Impossible de charger les preuves.",
+      "emptyTitle": "Aucune preuve pour l’instant",
+      "emptyDescription": "Les preuves s’ajoutent sur chaque contrôle via « Ajouter une preuve ».",
+      "noMatch": "Aucune preuve ne correspond aux filtres.",
+      "count": "{{shown}} preuves sur {{total}}",
+      "colTitle": "Titre",
+      "colControl": "Contrôle",
+      "colFramework": "Référentiel",
+      "colType": "Type",
+      "colStatus": "Statut",
+      "colExpiry": "Expiration",
+      "colFile": "Fichier",
+      "fileYes": "Oui",
+      "fileNo": "Aucun fichier",
+      "filterSearch": "Rechercher un titre ou un contrôle",
+      "filterFramework": "Référentiel",
+      "filterAllFrameworks": "Tous les référentiels",
+      "filterStatus": "Statut",
+      "filterAllStatuses": "Tous les statuts",
+      "filterNoFile": "Sans fichier ({{count}})",
+      "filterExpiring": "Expirée ou expire sous {{days}} jours"
     }
   },
   "settingsPage": {
@@ -1556,7 +1587,7 @@
     "sectionSystem": "Système",
     "sectionStaging": "Staging",
     "orgSectionTitle": "Organisation",
-    "labelAdmin": "Administrateur",
+    "labelSignedInAs": "Connecté en tant que",
     "labelDisplayName": "Nom d'affichage",
     "mfaTitle": "Exiger l'authentification à deux facteurs",
     "mfaDesc": "Tous les membres doivent avoir la 2FA activée pour se connecter.",
@@ -1998,7 +2029,8 @@
     "word": "Word",
     "exportControls": "Exporter les contrôles",
     "statusUpdated": "Statut mis à jour",
-    "bulkUpdateFailed": "Échec de la mise à jour groupée"
+    "bulkUpdateFailed": "Échec de la mise à jour groupée",
+    "readOnlyHint": "Accès en lecture seule : les modifications nécessitent le rôle Éditeur ou Admin."
   },
   "actions": {
     "save": "Enregistrer",

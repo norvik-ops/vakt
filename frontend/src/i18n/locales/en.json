@@ -394,7 +394,9 @@
       "fieldNotApplicableReason": "Reason",
       "fieldManualStatus": "Manual status",
       "fieldMaturityScore": "Maturity score",
-      "fieldReviewInterval": "Review interval"
+      "fieldReviewInterval": "Review interval",
+      "evidenceLabelFileOptional": "File (optional)",
+      "evidenceFileHint": "The file is stored as an attachment of this evidence and included in the audit package."
     },
     "policiesPage": {
       "title": "Policy Management",
@@ -1544,6 +1546,35 @@
         "high": "High",
         "critical": "Critical"
       }
+    },
+    "evidenceRegister": {
+      "title": "Evidence",
+      "description": "All evidence of the organisation across all controls and frameworks.",
+      "tabsLabel": "Evidence view",
+      "tabAll": "All evidence",
+      "tabAuto": "Collected automatically",
+      "loading": "Loading evidence …",
+      "loadError": "The evidence could not be loaded.",
+      "emptyTitle": "No evidence yet",
+      "emptyDescription": "Evidence is added on each control via “Add evidence”.",
+      "noMatch": "No evidence matches the filters.",
+      "count": "{{shown}} of {{total}} evidence items",
+      "colTitle": "Title",
+      "colControl": "Control",
+      "colFramework": "Framework",
+      "colType": "Type",
+      "colStatus": "Status",
+      "colExpiry": "Expiry",
+      "colFile": "File",
+      "fileYes": "Yes",
+      "fileNo": "No file",
+      "filterSearch": "Search title or control",
+      "filterFramework": "Framework",
+      "filterAllFrameworks": "All frameworks",
+      "filterStatus": "Status",
+      "filterAllStatuses": "All statuses",
+      "filterNoFile": "Without file ({{count}})",
+      "filterExpiring": "Expired or expiring within {{days}} days"
     }
   },
   "settingsPage": {
@@ -1556,7 +1587,7 @@
     "sectionSystem": "System",
     "sectionStaging": "Staging",
     "orgSectionTitle": "Organisation",
-    "labelAdmin": "Administrator",
+    "labelSignedInAs": "Signed in as",
     "labelDisplayName": "Display Name",
     "mfaTitle": "Require Two-Factor Authentication",
     "mfaDesc": "All members must have 2FA enabled to log in.",
@@ -1998,7 +2029,8 @@
     "word": "Word",
     "exportControls": "Export controls",
     "statusUpdated": "Status updated",
-    "bulkUpdateFailed": "Bulk update failed"
+    "bulkUpdateFailed": "Bulk update failed",
+    "readOnlyHint": "Read-only access: changes require the Editor or Admin role."
   },
   "actions": {
     "save": "Save",

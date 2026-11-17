@@ -48,6 +48,52 @@ components:
         maximum: 100
 
   schemas:
+    EvidenceListItem:
+      type: object
+      description: >-
+        One row of the org-wide evidence register (page „Nachweise"). Scoped to
+        the caller's organisation; carries the control and framework the
+        evidence belongs to and whether a file is attached.
+      required: [id, title, source, status, version, created_at, control_id, control_ref, control_title, framework_id, framework_name, file_count, has_file]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        source:
+          type: string
+          description: manual, github, aws, azure, ad, policy_acceptance, …
+        status:
+          type: string
+          description: pending, approved, rejected or expired
+        version:
+          type: integer
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        control_id:
+          type: string
+          format: uuid
+        control_ref:
+          type: string
+          description: Control code, e.g. A.5.2
+        control_title:
+          type: string
+        framework_id:
+          type: string
+          format: uuid
+        framework_name:
+          type: string
+        file_count:
+          type: integer
+          description: Number of attachments (ck_evidence_files) of this evidence record.
+        has_file:
+          type: boolean
+          description: True when an attachment exists or the record carries a file from the older upload path.
     InsufficientRoleError:
       type: object
       description: >-
@@ -20568,6 +20614,27 @@ paths:
           description: File not found
         '503':
           description: Evidence file service unavailable
+
+  /vaktcomply/evidence:
+    get:
+      summary: List all evidence of the organisation (evidence register)
+      description: >-
+        Every evidence record of the caller's organisation across all controls
+        and frameworks, newest first. Read-only; every role with access to the
+        module may call it. Filtering happens in the client.
+      tags:
+      - vaktcomply
+      responses:
+        '200':
+          description: Evidence register
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EvidenceListItem'
+        '401':
+          description: Unauthorized
 
   /vaktcomply/evidence/auto:
     get:

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { useCanWrite } from '../hooks/useCanWrite'
 import { Trash2, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -149,6 +150,8 @@ export function Comments({ entityType, entityId }: CommentsProps) {
   const createComment = useCreateComment(entityType, entityId)
   const deleteComment = useDeleteComment(entityType, entityId)
   const { data: teamMembers = [] } = useTeamMembers()
+  // POST /comments is a write route (rw): read-only roles see the thread, not the form.
+  const canWrite = useCanWrite()
 
   const [content, setContent] = useState('')
   const [expanded, setExpanded] = useState(true)
@@ -311,6 +314,7 @@ export function Comments({ entityType, entityId }: CommentsProps) {
         ) : null}
 
         {/* New comment form */}
+        {canWrite && (
         <form onSubmit={handleSubmit} className="space-y-2 border-t border-border pt-4">
           <div className="relative">
             <textarea
@@ -353,6 +357,7 @@ export function Comments({ entityType, entityId }: CommentsProps) {
             </Button>
           </div>
         </form>
+        )}
       </CardContent>
     </Card>
   )

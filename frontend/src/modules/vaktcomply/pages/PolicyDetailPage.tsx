@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { WriteFieldset } from '../../../shared/components/WriteFieldset'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +27,7 @@ export default function PolicyDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const canWrite = useCanWrite()
   const { formatDate } = useFormatDate()
   const { data: policy, isLoading, isError } = usePolicy(id ?? '')
   const update = useUpdatePolicy(id ?? '')
@@ -104,10 +108,12 @@ export default function PolicyDetailPage() {
               <Users className="w-4 h-4 mr-1" />
               {t('vaktcomply.policyDetail.acceptanceLink')}
             </Button>
-            <Button onClick={handleSave} disabled={!dirty || update.isPending}>
-              <Save className="w-4 h-4 mr-1" />
-              {update.isPending ? t('common.savePending') : t('common.save')}
-            </Button>
+            {canWrite && (
+              <Button onClick={handleSave} disabled={!dirty || update.isPending}>
+                <Save className="w-4 h-4 mr-1" />
+                {update.isPending ? t('common.savePending') : t('common.save')}
+              </Button>
+            )}
           </div>
         }
       />
@@ -115,6 +121,8 @@ export default function PolicyDetailPage() {
       {form && (
         <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
+            <ReadOnlyHint />
+            <WriteFieldset>
             <Card>
               <CardHeader><CardTitle className="text-sm">{t('vaktcomply.policyDetail.cardContent')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -173,11 +181,13 @@ export default function PolicyDetailPage() {
               </CardContent>
             </Card>
 
+            </WriteFieldset>
             {/* Version history — always visible */}
             <PolicyVersionHistory policyId={policy.id} currentVersion={policy.version_num} />
           </div>
 
           <div className="space-y-4">
+            <WriteFieldset>
             <Card>
               <CardHeader><CardTitle className="text-sm">{t('vaktcomply.policyDetail.cardMetadata')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -210,6 +220,7 @@ export default function PolicyDetailPage() {
                 </div>
               </CardContent>
             </Card>
+            </WriteFieldset>
 
             <Card>
               <CardContent className="pt-4 space-y-1 text-xs text-muted-foreground">

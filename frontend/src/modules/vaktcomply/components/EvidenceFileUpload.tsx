@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { Paperclip, Eye, Trash2, Upload } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { Button } from '../../../components/ui/button'
@@ -31,6 +32,7 @@ export function EvidenceFileUpload({ controlId }: EvidenceFileUploadProps) {
   const [dragOver, setDragOver] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null)
+  const canWrite = useCanWrite()
 
   const PREVIEWABLE = ['application/pdf', 'image/png', 'image/jpg', 'image/jpeg', 'image/gif', 'image/webp']
 
@@ -81,7 +83,8 @@ export function EvidenceFileUpload({ controlId }: EvidenceFileUploadProps) {
   return (
     <div className="space-y-3">
       <FilePreviewDialog file={previewFile} onClose={() => { setPreviewFile(null); }} />
-      {/* Drop zone */}
+      {/* Drop zone — only for roles that may upload; the list below stays readable. */}
+      {canWrite && (
       <div
         className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 transition-colors cursor-pointer ${
           dragOver ? 'border-brand bg-brand/5' : 'border-border hover:border-brand/50 hover:bg-surface'
@@ -109,6 +112,7 @@ export function EvidenceFileUpload({ controlId }: EvidenceFileUploadProps) {
           onChange={onInputChange}
         />
       </div>
+      )}
 
       {/* Upload state */}
       {upload.isPending && (
@@ -156,7 +160,7 @@ export function EvidenceFileUpload({ controlId }: EvidenceFileUploadProps) {
               >
                 <Eye className="w-4 h-4" />
               </Button>
-              <Button
+              {canWrite && <Button
                 variant="ghost"
                 size="sm"
                 className="shrink-0 h-6 w-6 p-0 text-secondary hover:text-red-600"
@@ -165,7 +169,7 @@ export function EvidenceFileUpload({ controlId }: EvidenceFileUploadProps) {
                 disabled={deleteFile.isPending}
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              </Button>}
             </li>
           ))}
         </ul>

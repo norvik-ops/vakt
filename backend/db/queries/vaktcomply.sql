@@ -175,6 +175,22 @@ FROM ck_evidence
 WHERE control_id = ANY($1::uuid[]) AND org_id = $2
 ORDER BY control_id, created_at DESC;
 
+-- name: ListCKEvidenceForOrg :many
+-- Org-weite Nachweisliste (Seite „Nachweise"): jeder Nachweis mit Kontrolle,
+-- Framework und Zahl der Anhänge. Nur lesend; die Zählregel der Übersicht
+-- (ck_controls.evidence_status) bleibt unberührt.
+SELECT e.id, e.control_id, e.title, e.source, e.status, e.version,
+       e.file_path, e.expires_at, e.created_at,
+       c.control_id AS control_ref, c.title AS control_title,
+       c.framework_id, fw.name AS framework_name,
+       (SELECT COUNT(*) FROM ck_evidence_files ef
+         WHERE ef.evidence_id = e.id AND ef.org_id = e.org_id)::int AS file_count
+FROM ck_evidence e
+JOIN ck_controls c ON c.id = e.control_id AND c.org_id = e.org_id
+JOIN ck_frameworks fw ON fw.id = c.framework_id
+WHERE e.org_id = $1
+ORDER BY e.created_at DESC;
+
 -- name: GetCKExpiringEvidence :many
 -- Within a single framework; only approved evidence.
 SELECT e.id, e.control_id, e.org_id, e.title, e.description, e.source,

@@ -27,6 +27,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AssetsPage from './AssetsPage'
+import { signInAs } from '../../../test-utils/signInAs'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'de' } }),
@@ -110,7 +111,7 @@ function renderPage() {
   )
 }
 
-beforeEach(() => { mockApiFetch.mockReset() })
+beforeEach(() => { mockApiFetch.mockReset(); signInAs('SecurityAnalyst') })
 
 describe('AssetsPage — target address (K5-16)', () => {
   it('renders the address the backend actually sent', async () => {

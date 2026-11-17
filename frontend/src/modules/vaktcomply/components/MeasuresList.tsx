@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useTranslation } from 'react-i18next'
 import { Lock, Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -44,6 +45,7 @@ function MeasureRow({
 }) {
   const [expanded, setExpanded] = useState(false)
   const deleteMeasure = useDeleteMeasure(controlId)
+  const canWrite = useCanWrite()
 
   return (
     <li className="border border-border rounded-lg overflow-hidden">
@@ -61,7 +63,7 @@ function MeasureRow({
         <DifficultyBadge difficulty={measure.difficulty} />
         {measure.is_builtin ? (
           <Lock className="w-3.5 h-3.5 text-secondary shrink-0" aria-label="Integrierte Maßnahme" />
-        ) : (
+        ) : !canWrite ? null : (
           <button
             type="button"
             onClick={(e) => {
@@ -181,6 +183,7 @@ function AddMeasureForm({
 export function MeasuresList({ controlId }: { controlId: string }) {
   const { data: measures, isLoading } = useMeasures(controlId)
   const [addOpen, setAddOpen] = useState(false)
+  const canWrite = useCanWrite()
 
   const builtinCount = measures?.filter((m) => m.is_builtin).length ?? 0
   const customCount = (measures?.length ?? 0) - builtinCount
@@ -199,7 +202,7 @@ export function MeasuresList({ controlId }: { controlId: string }) {
               </span>
             )}
           </CardTitle>
-          {!addOpen && (
+          {canWrite && !addOpen && (
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setAddOpen(true); }}>
               <Plus className="w-3.5 h-3.5 mr-1" />
               Maßnahme hinzufügen

@@ -25,6 +25,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SoAPage from './SoAPage'
+import { signInAs } from '../../../test-utils/signInAs'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
@@ -115,7 +116,7 @@ function openEditFor(ref: string) {
   fireEvent.click(within(row as HTMLElement).getByRole('button'))
 }
 
-beforeEach(() => { mockApiFetch.mockReset() })
+beforeEach(() => { mockApiFetch.mockReset(); signInAs('Admin') })
 
 describe('SoAPage — table grouping (K5-01)', () => {
   it('lists the A.5 entries on the default A5 tab', async () => {
