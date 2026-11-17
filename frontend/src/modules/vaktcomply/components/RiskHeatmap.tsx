@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 import { useFocusTrap } from '../../../shared/hooks/useFocusTrap'
+import { scaleLabels } from './riskHeatmapLabels'
 import { riskLevel, RISK_LEVELS, RISK_LEVEL_LABEL_KEY, type RiskLevel } from '../../../shared/utils/riskLevel'
 
 export interface HeatmapRisk {
@@ -53,8 +54,8 @@ function CellPanel({ likelihood, impact, risks, onClose }: CellPanelProps) {
   const { t } = useTranslation()
   const trapRef = useFocusTrap<HTMLDivElement>(true, onClose)
 
-  const likelihoodLabels: string[] = t('vaktcomply.riskHeatmap.likelihoodLabels', { returnObjects: true }) as string[]
-  const impactLabels: string[] = t('vaktcomply.riskHeatmap.impactLabels', { returnObjects: true }) as string[]
+  const likelihoodLabels = scaleLabels(t('vaktcomply.riskHeatmap.likelihoodLabels', { returnObjects: true }))
+  const impactLabels = scaleLabels(t('vaktcomply.riskHeatmap.impactLabels', { returnObjects: true }))
 
   const statusLabels: Record<string, string> = {
     open: t('vaktcomply.riskHeatmap.statusOpen'),
@@ -138,8 +139,8 @@ const RiskHeatmap: React.FC<Props> = ({ risks }) => {
   const { t } = useTranslation()
   const [selectedCell, setSelectedCell] = useState<{ likelihood: number; impact: number } | null>(null)
 
-  const likelihoodLabels: string[] = t('vaktcomply.riskHeatmap.likelihoodLabels', { returnObjects: true }) as string[]
-  const impactLabels: string[] = t('vaktcomply.riskHeatmap.impactLabels', { returnObjects: true }) as string[]
+  const likelihoodLabels = scaleLabels(t('vaktcomply.riskHeatmap.likelihoodLabels', { returnObjects: true }))
+  const impactLabels = scaleLabels(t('vaktcomply.riskHeatmap.impactLabels', { returnObjects: true }))
 
   // Build a map: key = `${likelihood}-${impact}` → risks in that cell
   const cellMap = new Map<string, HeatmapRisk[]>()

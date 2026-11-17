@@ -1313,7 +1313,21 @@
       "statusMitigated": "Beperkt",
       "ariaLabel": "Risico's: Waarschijnlijkheid {{likelihood}} / Impact {{impact}}",
       "cellAriaLabel": "Waarschijnlijkheid {{likelihood}}, Impact {{impact}}, Score {{score}}, {{count}} risico's",
-      "cellTitle": "W:{{likelihood}} I:{{impact}} — Score {{score}} · {{count}} risico's"
+      "cellTitle": "W:{{likelihood}} I:{{impact}} — Score {{score}} · {{count}} risico's",
+      "likelihoodLabels": [
+        "Zeer onwaarschijnlijk",
+        "Onwaarschijnlijk",
+        "Mogelijk",
+        "Waarschijnlijk",
+        "Zeer waarschijnlijk"
+      ],
+      "impactLabels": [
+        "Verwaarloosbaar",
+        "Gering",
+        "Matig",
+        "Aanzienlijk",
+        "Kritiek"
+      ]
     },
     "riskTreatment": {
       "linkControl": "Controle koppelen",
@@ -1813,9 +1827,6 @@
     "brandingTitle": "Huisstijl",
     "brandingDesc": "Logo, kleuren en organisatie-identiteit aanpassen voor PDF-rapporten en Trust Center.",
     "brandingLink": "Huisstijl bewerken",
-    "scoreConfigTitle": "Scoreconfiguratie",
-    "scoreConfigDesc": "De weging van compliance- en risicoScores voor uw organisatie aanpassen.",
-    "scoreConfigLink": "Scoreconfiguratie openen",
     "teamLinkTitle": "Team",
     "teamLinkDesc": "Gebruikers uitnodigen, rollen toewijzen, MFA-status controleren.",
     "teamLinkLabel": "Team beheren",
@@ -2471,16 +2482,18 @@
       "openTasks": "Openstaande taken"
     },
     "policiesActive": "{{approved}} / {{total}} beleidsdocumenten actief",
-    "scoreConfig": "Scoreconfiguratie",
-    "scoreConfigDesc": "Scoreformule en wegingen aanpassen",
     "alerting": "Waarschuwingen",
     "alertingDesc": "Meldingskanalen beheren",
     "recentlyVisited": "Recentelijk bezocht",
     "settings_title": "Instellingen",
-    "settings_scoreConfig": "Score-configuratie",
-    "settings_scoreConfigDesc": "Scoreformule en gewichten aanpassen",
     "settings_alerting": "Meldingen",
-    "settings_alertingDesc": "Meldingskanalen beheren"
+    "settings_alertingDesc": "Meldingskanalen beheren",
+    "implementationLevel": "Implementatiegraad",
+    "implementationLevelCaption": "Aandeel geïmplementeerde maatregelen",
+    "implementationLevelNoData": "Nog geen gegevens",
+    "implementationLevelHint": "Aandeel van de toepasselijke maatregelen over alle frameworks dat is geïmplementeerd. Gedeeltelijk geïmplementeerde tellen voor de helft, niet-toepasselijke helemaal niet. Hetzelfde getal als „Compliance-voortgang” en in het managementrapport.",
+    "implementationLevelAria": "Implementatiegraad: {{value}} procent. Klik opent de frameworks.",
+    "implementationLevelAriaNoData": "Implementatiegraad: nog geen gegevens. Klik opent de frameworks."
   },
   "theme": {
     "lightMode": "Lichte modus",
@@ -2959,23 +2972,6 @@
     "digestHint": "De digest bevat openstaande risico's en CAPA's, plus openstaande bevindingen als Vakt Scan actief is en DSR-deadlines als Vakt Privacy actief is. Alle tijden in UTC.",
     "permanent": "0 = dauerhaft",
     "digestEnable": "Wöchentlichen Status-Digest aktivieren"
-  },
-  "scoreConfig": {
-    "title": "Beveiligingsscore configuratie",
-    "description": "Pas de gewichten van de beveiligingsscore aan uw organisatiebeleid aan.",
-    "reset": "Herstellen",
-    "save": "Opslaan",
-    "saving": "Opslaan…",
-    "fields": {
-      "base_score": "Basis-Score",
-      "fw_bonus_cap": "Framework-Bonus Cap",
-      "fw_bonus": "Framework-Bonus (pro Framework)"
-    },
-    "weightsTitle": "Gewichtungen",
-    "saved": "Score-Konfiguration gespeichert",
-    "formulaTitle": "Score-Formel",
-    "formulaHint": "Ergebnis wird auf 0–100 begrenzt.",
-    "fieldError": "Wert muss zwischen 1 und 100 liegen"
   },
   "orgBranding": {
     "title": "Organisatie-huisstijl",

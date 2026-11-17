@@ -14,57 +14,30 @@ export function useBackupStatus() {
   })
 }
 
-export interface ScoreConfig {
-  base_score: number
-  crit_penalty: number
-  crit_penalty_cap: number
-  high_penalty: number
-  high_penalty_cap: number
-  breach_penalty: number
-  breach_penalty_cap: number
-  fw_bonus: number
-  fw_bonus_cap: number
-}
-
-export function useScoreConfig() {
-  return useQuery<ScoreConfig>({
-    queryKey: ['dashboard', 'score-config'],
-    queryFn: () => apiFetch<ScoreConfig>('/dashboard/score/config'),
-  })
-}
-
-export function useUpdateScoreConfig() {
-  const qc = useQueryClient()
-  return useMutation<ScoreConfig, Error, ScoreConfig>({
-    mutationFn: (data) => apiFetch<ScoreConfig>('/dashboard/score/config', { method: 'PUT', body: JSON.stringify(data) }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['dashboard', 'score-config'] })
-      void qc.invalidateQueries({ queryKey: ['dashboard', 'score'] })
-    },
-  })
-}
-
 /**
- * Composite security health score returned by the cross-module dashboard endpoint.
- * The `score` is a 0–100 integer derived from the weighted component counts below.
+ * Dashboard score: the org-wide implementation level (readiness, ADR-0086) —
+ * the same number as `overall_readiness` in the aggregate, the framework
+ * detail and the executive summary PDF. It replaced the old "Security Score"
+ * (base 70 + 10 per framework), which showed 70/100 on an empty instance.
  */
 export interface DashboardScore {
-  /** Aggregated security health score (0 = critical risk, 100 = fully compliant). */
+  /** Readiness rounded to a whole percent, 0–100. */
   score: number
+  /** False while no applicable control exists — show "no data yet", not 0 %. */
+  has_data: boolean
+  /** The pooled tally behind `score`. */
+  readiness: OverallReadiness
+  /** Kept for older clients; finding/breach counters are always 0 (archived modules). */
   components: {
-    /** Number of open findings at critical severity across all SecPulse scans. */
     critical_findings: number
-    /** Number of open findings at high severity across all SecPulse scans. */
     high_findings: number
-    /** Unresolved data-breach events in the SecVitals incident register. */
     open_breaches: number
-    /** Compliance frameworks currently tracked in SecVitals. */
     active_frameworks: number
   }
 }
 
 /**
- * Fetches the current cross-module security health score.
+ * Fetches the current dashboard score (implementation level).
  * Data is considered fresh for 60 seconds; background refetches keep the header
  * score indicator up-to-date without hammering the API on every render.
  */

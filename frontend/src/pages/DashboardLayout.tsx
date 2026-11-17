@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   CheckCircle,
   TrendingUp, TrendingDown, Minus, Settings2, GripVertical,
@@ -9,8 +10,9 @@ import { Label } from '../components/ui/label'
 import { scoreStrokeColor } from './DashboardComponents'
 import { WIDGET_LABELS } from './WidgetConfigPanel'
 import type { WidgetKey } from './WidgetConfigPanel'
+import type { DashboardScore } from '../hooks/useDashboard'
 
-// SVG horseshoe-style progress ring for the Security Score.
+// SVG horseshoe-style progress ring for the implementation level (Umsetzungsgrad).
 // 270° arc (25% gap at bottom), starts at 7:30 o'clock.
 const RING = 120
 const STROKE_W = 9
@@ -18,7 +20,15 @@ const RADIUS = (RING / 2) - (STROKE_W / 2)
 const CIRC = 2 * Math.PI * RADIUS
 const ARC = CIRC * 0.75   // 270° of full circle
 
-function ScoreRing({ score, scoreTrend }: { score: number | undefined; scoreTrend: number | null }) {
+/**
+ * UX-37: shows the org-wide readiness (ADR-0086) from GET /dashboard/score —
+ * the same number as the "Compliance-Fortschritt" card. It used to show the
+ * old "Security Score" (base 70 + 10 per framework): 70/100 on an empty
+ * instance, 100/100 with 1 of 214 controls implemented.
+ * `score` is undefined while there is no applicable control yet ("noch keine Daten").
+ */
+export function ScoreRing({ score, scoreTrend }: { score: number | undefined; scoreTrend: number | null }) {
+  const { t } = useTranslation()
   const val = score ?? 0
   const filled = ARC * (val / 100)
   const strokeColor = scoreStrokeColor(score)
@@ -27,10 +37,12 @@ function ScoreRing({ score, scoreTrend }: { score: number | undefined; scoreTren
 
   return (
     <Link
-      to="/settings/score-config"
+      to="/vaktcomply"
       className="block w-[120px] hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand rounded-full"
-      aria-label={`Security Score: ${String(score ?? '—')} von 100. Klick öffnet die Score-Konfiguration.`}
-      title="Aggregierte Sicherheitsbewertung: 0–49 schwach, 50–69 ausbaufähig, 70–89 gut, 90+ exzellent."
+      aria-label={score == null
+        ? t('dashboard.implementationLevelAriaNoData')
+        : t('dashboard.implementationLevelAria', { value: score })}
+      title={t('dashboard.implementationLevelHint')}
     >
       <svg viewBox={`0 0 ${RING} ${RING}`} width={RING} height={RING} aria-hidden="true">
         {/* track */}
@@ -57,7 +69,7 @@ function ScoreRing({ score, scoreTrend }: { score: number | undefined; scoreTren
         />
         {/* score value */}
         <text
-          x="60" y="56"
+          x="60" y="62"
           textAnchor="middle"
           dominantBaseline="middle"
           fontSize="26"
@@ -65,19 +77,7 @@ function ScoreRing({ score, scoreTrend }: { score: number | undefined; scoreTren
           fill={strokeColor}
           style={{ transition: 'fill 0.4s ease', fontFamily: 'inherit' }}
         >
-          {score ?? '—'}
-        </text>
-        {/* /100 */}
-        <text
-          x="60" y="76"
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize="11"
-          fill="currentColor"
-          className="text-secondary"
-          style={{ fontFamily: 'inherit' }}
-        >
-          / 100
+          {score == null ? '—' : `${String(score)} %`}
         </text>
       </svg>
       {scoreTrend !== null && (
@@ -97,7 +97,9 @@ function ScoreRing({ score, scoreTrend }: { score: number | undefined; scoreTren
           {scoreTrend > 0 ? '+' : ''}{scoreTrend.toFixed(1)}%
         </div>
       )}
-      <p className="text-[10px] text-secondary text-center mt-0.5">Gesamtbewertung</p>
+      <p className="text-[10px] text-secondary text-center mt-0.5">
+        {score == null ? t('dashboard.implementationLevelNoData') : t('dashboard.implementationLevelCaption')}
+      </p>
     </Link>
   )
 }
@@ -113,7 +115,7 @@ interface StatItem {
 
 interface DashboardLayoutProps {
   scoreLoading: boolean
-  scoreData: { score: number } | undefined
+  scoreData: Pick<DashboardScore, 'score' | 'has_data'> | undefined
   scoreTrend: number | null
   fwCount: number | null
   fwLoading: boolean
@@ -132,6 +134,7 @@ export function DashboardLayout({
   editMode, setEditMode, widgets, toggleWidget,
   widgetMenuOpen, setWidgetMenuOpen, widgetMenuRef,
 }: DashboardLayoutProps) {
+  const { t } = useTranslation()
   const { fmt } = { fmt: (n: number | null) => (n == null ? '—' : n.toString()) }
 
   const STATS: StatItem[] = [
@@ -185,14 +188,14 @@ export function DashboardLayout({
         </div>
 
         <p className="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-2 opacity-60">
-          Security Score
+          {t('dashboard.implementationLevel')}
         </p>
         {scoreLoading ? (
           <div className="flex items-center justify-center w-[120px] h-[120px]">
             <Skeleton className="w-[120px] h-[120px] rounded-full" />
           </div>
         ) : (
-          <ScoreRing score={scoreData?.score} scoreTrend={scoreTrend} />
+          <ScoreRing score={scoreData?.has_data ? scoreData.score : undefined} scoreTrend={scoreTrend} />
         )}
 
         <div className="h-px bg-border my-4" />

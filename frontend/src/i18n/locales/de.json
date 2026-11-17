@@ -1313,7 +1313,21 @@
       "statusMitigated": "Gemindert",
       "ariaLabel": "Risiken: Wahrscheinlichkeit {{likelihood}} / Auswirkung {{impact}}",
       "cellAriaLabel": "Wahrscheinlichkeit {{likelihood}}, Auswirkung {{impact}}, Score {{score}}, {{count}} Risiken",
-      "cellTitle": "W:{{likelihood}} A:{{impact}} — Score {{score}} · {{count}} Risiken"
+      "cellTitle": "W:{{likelihood}} A:{{impact}} — Score {{score}} · {{count}} Risiken",
+      "likelihoodLabels": [
+        "Sehr unwahrscheinlich",
+        "Unwahrscheinlich",
+        "Möglich",
+        "Wahrscheinlich",
+        "Sehr wahrscheinlich"
+      ],
+      "impactLabels": [
+        "Vernachlässigbar",
+        "Gering",
+        "Spürbar",
+        "Erheblich",
+        "Kritisch"
+      ]
     },
     "riskTreatment": {
       "linkControl": "Control verknüpfen",
@@ -1813,9 +1827,6 @@
     "brandingTitle": "Branding",
     "brandingDesc": "Logo, Farben und Org-Identität für PDF-Berichte und Trust-Center anpassen.",
     "brandingLink": "Branding bearbeiten",
-    "scoreConfigTitle": "Score-Konfiguration",
-    "scoreConfigDesc": "Gewichtung der Compliance- und Risk-Scores für Ihre Organisation justieren.",
-    "scoreConfigLink": "Score-Konfiguration öffnen",
     "teamLinkTitle": "Team",
     "teamLinkDesc": "Nutzer einladen, Rollen vergeben, MFA-Status überprüfen.",
     "teamLinkLabel": "Team verwalten",
@@ -2471,16 +2482,18 @@
       "openTasks": "Offene Aufgaben"
     },
     "policiesActive": "{{approved}} / {{total}} Richtlinien aktiv",
-    "scoreConfig": "Score-Konfiguration",
-    "scoreConfigDesc": "Score-Formel und Gewichtungen anpassen",
     "alerting": "Alerting",
     "alertingDesc": "Benachrichtigungskanäle verwalten",
     "recentlyVisited": "Zuletzt besucht",
     "settings_title": "Einstellungen",
-    "settings_scoreConfig": "Score-Konfiguration",
-    "settings_scoreConfigDesc": "Score-Formel und Gewichtungen anpassen",
     "settings_alerting": "Alerting",
-    "settings_alertingDesc": "Benachrichtigungskanäle verwalten"
+    "settings_alertingDesc": "Benachrichtigungskanäle verwalten",
+    "implementationLevel": "Umsetzungsgrad",
+    "implementationLevelCaption": "Anteil umgesetzter Kontrollen",
+    "implementationLevelNoData": "Noch keine Daten",
+    "implementationLevelHint": "Anteil der anwendbaren Kontrollen über alle Frameworks, die umgesetzt sind. Teilweise umgesetzte zählen halb, nicht anwendbare gar nicht. Dieselbe Zahl wie „Compliance-Fortschritt“ und im Management-Bericht.",
+    "implementationLevelAria": "Umsetzungsgrad: {{value}} Prozent. Klick öffnet die Frameworks.",
+    "implementationLevelAriaNoData": "Umsetzungsgrad: noch keine Daten. Klick öffnet die Frameworks."
   },
   "theme": {
     "lightMode": "Light Mode",
@@ -2958,23 +2971,6 @@
       "friday": "Freitag",
       "saturday": "Samstag",
       "sunday": "Sonntag"
-    }
-  },
-  "scoreConfig": {
-    "title": "Security Score Konfiguration",
-    "description": "Passen Sie die Gewichtung der Score-Formel an Ihre Risikopriorität an.",
-    "formulaTitle": "Score-Formel",
-    "formulaHint": "Ergebnis wird auf 0–100 begrenzt.",
-    "weightsTitle": "Gewichtungen",
-    "fieldError": "Wert muss zwischen 1 und 100 liegen",
-    "save": "Speichern",
-    "saving": "Wird gespeichert…",
-    "reset": "Zurücksetzen",
-    "saved": "Score-Konfiguration gespeichert",
-    "fields": {
-      "base_score": "Basis-Score",
-      "fw_bonus": "Framework-Bonus (pro Framework)",
-      "fw_bonus_cap": "Framework-Bonus Cap"
     }
   },
   "orgBranding": {

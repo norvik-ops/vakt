@@ -32,7 +32,6 @@ import NotFoundPage from './pages/NotFoundPage'
 // Bundle um die Settings-/Admin-/Audit-Sektionen, die nach Login selten
 // auf den ersten Klick gebraucht werden.
 const Settings                   = lazy(() => import('./modules/settings/pages/Settings'))
-const ScoreConfigPage            = lazy(() => import('./pages/ScoreConfigPage'))
 const AlertingSettingsPage       = lazy(() => import('./modules/settings/pages/AlertingSettingsPage'))
 const AccountSettingsPage        = lazy(() => import('./modules/settings/pages/AccountSettingsPage'))
 const RetentionConfigPage        = lazy(() => import('./pages/RetentionConfigPage'))
@@ -204,7 +203,8 @@ const routes: RouteObject[] = [
           { path: '/', element: <Dashboard /> },
           { path: '/account', element: <AccountSettingsPage /> },
           { path: '/settings', element: <Settings /> },
-          { path: '/settings/score-config', element: <ScoreConfigPage /> },
+          // UX-37: the old score weighting no longer drives any number; old bookmarks land on the dashboard.
+          { path: '/settings/score-config', element: <Navigate to="/" replace /> },
           { path: '/settings/alerting', element: <AlertingSettingsPage /> },
           { path: '/settings/retention', element: <RetentionConfigPage /> },
           { path: '/account/sessions', element: <SessionsPage /> },

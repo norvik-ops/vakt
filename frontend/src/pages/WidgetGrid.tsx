@@ -296,7 +296,6 @@ export function WidgetGrid({
         <h2 className="text-[16px] font-semibold text-primary mb-4">{t('dashboard.settingsSection')}</h2>
         <div className="space-y-px">
           {[
-            { to: '/settings/score-config', label: t('dashboard.scoreConfig'), desc: t('dashboard.scoreConfigDesc') },
             { to: '/settings/alerting', label: t('dashboard.alerting'), desc: t('dashboard.alertingDesc') },
           ].map(({ to, label, desc }) => (
             <Link

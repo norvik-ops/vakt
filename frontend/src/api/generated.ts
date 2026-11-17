@@ -6099,7 +6099,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get overall compliance and risk score */
+        /**
+         * Get the org-wide implementation level (readiness)
+         * @description `score` is the org-wide readiness over all frameworks (ADR-0086: implemented/covered count fully, partial/in_progress half, not_applicable outside the denominator), rounded to a whole percent — the same number as `overall_readiness` in /dashboard/aggregate. It replaced the old security score (base 70 + 10 per framework). `has_data` is false while no applicable control exists.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -6116,13 +6119,32 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            overall_score?: number;
-                            nis2_score?: number;
-                            iso27001_score?: number;
-                            open_findings?: number;
-                            critical_findings?: number;
+                            /** @description Rounded readiness 0–100 (0 on an empty instance). */
+                            score: number;
+                            /** @description True once at least one applicable control exists. */
+                            has_data: boolean;
+                            readiness: {
+                                covered: number;
+                                partial: number;
+                                applicable: number;
+                                score_pct: number;
+                            };
+                            /** @description Kept for older clients. active_frameworks is counted; the counters of the archived Scan/Privacy modules are always 0. */
+                            components: {
+                                critical_findings?: number;
+                                high_findings?: number;
+                                open_breaches?: number;
+                                active_frameworks?: number;
+                            };
                         };
                     };
+                };
+                /** @description Readiness could not be computed */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -15278,7 +15300,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get the organisation's security-score weighting configuration */
+        /**
+         * Get the organisation's security-score weighting configuration
+         * @deprecated
+         * @description Weights of the old security-score formula. GET /dashboard/score no longer uses them (it returns the readiness, ADR-0086); kept readable for older clients.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -15316,7 +15342,11 @@ export interface paths {
                 };
             };
         };
-        /** Update the organisation's security-score weighting configuration (Admin only) */
+        /**
+         * Update the organisation's security-score weighting configuration (Admin only)
+         * @deprecated
+         * @description Stores the weights of the old security-score formula. They no longer affect any displayed number; kept for older clients.
+         */
         put: {
             parameters: {
                 query?: never;

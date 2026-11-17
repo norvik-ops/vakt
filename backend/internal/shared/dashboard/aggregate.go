@@ -67,7 +67,7 @@ type AggregateResponse struct {
 // aggregateCacheTTL is the Redis TTL for the dashboard aggregate payload.
 const aggregateCacheTTL = 60 * time.Second
 
-// scoreCacheTTL is the Redis TTL for the security score payload.
+// scoreCacheTTL is the Redis TTL for the dashboard score payload.
 const scoreCacheTTL = 30 * time.Second
 
 // aggregateCacheKey returns the Redis key for an org's dashboard aggregate.
@@ -81,26 +81,32 @@ func aggregateCacheKey(orgID string) string {
 	return fmt.Sprintf("dashboard:aggregate:v2:%s", orgID)
 }
 
-// scoreCacheKey returns the Redis key for an org's security score.
+// scoreCacheKey returns the Redis key for an org's dashboard score.
+//
+// v2: the score is the canonical readiness (ADR-0086) instead of the old
+// "70 + 10 per framework" formula, and the payload gained has_data and
+// readiness. Without the new segment Redis would serve the old number for up
+// to scoreCacheTTL after a deploy.
 func scoreCacheKey(orgID string) string {
-	return fmt.Sprintf("dashboard:score:%s", orgID)
+	return fmt.Sprintf("dashboard:score:v2:%s", orgID)
 }
 
-// InvalidateDashboardCache deletes the cached aggregate payload for the given
-// org from Redis, forcing the next request to re-query the database.
+// InvalidateDashboardCache deletes the cached aggregate and score payloads for
+// the given org from Redis, forcing the next request to re-query the database.
 // It is a no-op when rdb is nil (Redis not configured). Service layers should
 // call this after any write that affects the dashboard aggregate (risks,
-// controls, findings, policies).
+// controls, findings, policies). The score is the readiness value, so every
+// write that changes the aggregate changes the score too — both keys go together.
 func InvalidateDashboardCache(ctx context.Context, rdb *redis.Client, orgID string) error {
 	if rdb == nil {
 		return nil
 	}
-	return rdb.Del(ctx, aggregateCacheKey(orgID)).Err()
+	return rdb.Del(ctx, aggregateCacheKey(orgID), scoreCacheKey(orgID)).Err()
 }
 
 // InvalidateScoreCache deletes the cached score payload for the given org from
-// Redis. It is a no-op when rdb is nil. Call after any write that changes the
-// security score (findings, breaches, framework changes).
+// Redis. It is a no-op when rdb is nil. InvalidateDashboardCache already clears
+// it together with the aggregate.
 func InvalidateScoreCache(ctx context.Context, rdb *redis.Client, orgID string) error {
 	if rdb == nil {
 		return nil

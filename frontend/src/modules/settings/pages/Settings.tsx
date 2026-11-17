@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import {
   Building2, Layers, Bell, Trash2, Plus, Check, X,
   Webhook, Globe, Mail, Server, MapPin, Download, ShieldCheck, Shield, FileText, ExternalLink, Sparkles, Rocket, Key, Clock, ArrowUpCircle, RefreshCw, Zap, FileBarChart2, Radio,
-  Siren, UserCheck, Users, Palette, Sliders, Network, HardDrive,
+  Siren, UserCheck, Users, Palette, Network, HardDrive,
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -2600,13 +2600,6 @@ export default function Settings() {
                   to="/settings/branding"
                   description={t('settingsPage.brandingDesc')}
                   linkLabel={t('settingsPage.brandingLink')}
-                />
-                <LinkCard
-                  title={t('settingsPage.scoreConfigTitle')}
-                  icon={Sliders}
-                  to="/settings/score-config"
-                  description={t('settingsPage.scoreConfigDesc')}
-                  linkLabel={t('settingsPage.scoreConfigLink')}
                 />
               </div>
             </TabsContent>

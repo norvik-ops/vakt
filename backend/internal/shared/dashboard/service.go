@@ -6,6 +6,8 @@ package dashboard
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -55,16 +57,75 @@ func NewService(db *pgxpool.Pool, readiness ReadinessSource) *Service {
 	return &Service{db: db, readiness: readiness}
 }
 
-// ScoreInputs holds the raw counts used to compute the security health score.
-type ScoreInputs struct {
-	Cfg         ScoreConfig
-	CritCount   int64
-	HighCount   int64
-	BreachCount int64
-	FwCount     int64
+// ScoreResponse is the payload of GET /api/v1/dashboard/score.
+//
+// Score is the org-wide readiness (ADR-0086), rounded to a whole percent — the
+// same number the "Compliance-Fortschritt" card (aggregate overall_readiness),
+// the executive summary PDF and the daily score snapshot show. It replaced the
+// old "Security Score" (base 70 + 10 per framework, penalties only from
+// archived modules), which showed 70/100 on an empty instance and 100/100 with
+// three frameworks and 1 of 214 controls implemented (UX-37).
+//
+// HasData is false while no applicable control exists; the UI then says
+// "noch keine Daten" instead of 0 %. Components stays for older clients:
+// active_frameworks is still counted, the finding/breach counters of the
+// archived modules are always 0.
+type ScoreResponse struct {
+	Score      int              `json:"score"`
+	HasData    bool             `json:"has_data"`
+	Readiness  OverallReadiness `json:"readiness"`
+	Components map[string]int64 `json:"components"`
+}
+
+// ScoreFromReadiness builds the score payload from the pooled readiness tally.
+// It does not compute readiness itself: the tally comes from the injected
+// ReadinessSource (policy.ReadinessScore, covered full, partial half).
+func ScoreFromReadiness(overall FrameworkReadiness, activeFrameworks int64) ScoreResponse {
+	return ScoreResponse{
+		Score:   int(math.Round(overall.Score)),
+		HasData: overall.Applicable > 0,
+		Readiness: OverallReadiness{
+			Covered:    overall.Covered,
+			Partial:    overall.Partial,
+			Applicable: overall.Applicable,
+			ScorePct:   overall.Score,
+		},
+		Components: map[string]int64{
+			"critical_findings": 0,
+			"high_findings":     0,
+			"open_breaches":     0,
+			"active_frameworks": activeFrameworks,
+		},
+	}
+}
+
+// LoadScore returns the dashboard score: the canonical org-wide readiness from
+// the ReadinessSource plus the number of active frameworks.
+func (s *Service) LoadScore(ctx context.Context, orgID string) (ScoreResponse, error) {
+	if s.readiness == nil {
+		return ScoreResponse{}, errors.New("dashboard score: no readiness source wired")
+	}
+	summary, err := s.readiness.ReadinessSummary(ctx, orgID)
+	if err != nil {
+		return ScoreResponse{}, fmt.Errorf("dashboard score: readiness: %w", err)
+	}
+	var fwCount int64
+	if err := s.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM ck_frameworks WHERE org_id=$1::uuid`,
+		orgID).Scan(&fwCount); err != nil {
+		// Only the legacy component counter depends on this; the score itself
+		// is already known, so log and carry on.
+		log.Error().Err(err).Msg("dashboard score: count frameworks")
+	}
+	return ScoreFromReadiness(summary.Overall, fwCount), nil
 }
 
 // LoadScoreConfig loads the org's score weights from the DB, returning defaults on no-row.
+//
+// Deprecated: the weights belonged to the old "Security Score" formula, which
+// the dashboard no longer uses (it shows the readiness, ADR-0086). The
+// endpoints stay readable and writable for older clients; the values have no
+// effect on any displayed number.
 func (s *Service) LoadScoreConfig(ctx context.Context, orgID string) (ScoreConfig, error) {
 	var cfg ScoreConfig
 	err := s.db.QueryRow(ctx,
@@ -115,56 +176,6 @@ func (s *Service) UpsertScoreConfig(ctx context.Context, orgID string, cfg Score
 		cfg.FwBonus, cfg.FwBonusCap,
 	)
 	return err
-}
-
-// LoadScoreInputs fetches the raw counts used in the score formula.
-func (s *Service) LoadScoreInputs(ctx context.Context, orgID string, cfg ScoreConfig) ScoreInputs {
-	inp := ScoreInputs{Cfg: cfg}
-	// Findings (Vakt Scan) and breaches (Vakt Privacy) are archived: a user can
-	// neither see nor close them, so they do not pull the score down. Their
-	// counts stay 0; the penalty settings remain for older configurations.
-	if err := s.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM ck_frameworks WHERE org_id=$1::uuid`,
-		orgID).Scan(&inp.FwCount); err != nil {
-		log.Error().Err(err).Msg("dashboard: count frameworks")
-	}
-	return inp
-}
-
-// ComputeScore applies the penalty/bonus formula to the raw inputs and clamps to [0, 100].
-func ComputeScore(inp ScoreInputs) (score int, components map[string]int64) {
-	cfg := inp.Cfg
-
-	critPenalty := int(inp.CritCount) * cfg.CritPenalty
-	if critPenalty > cfg.CritPenaltyCap {
-		critPenalty = cfg.CritPenaltyCap
-	}
-	highPenalty := int(inp.HighCount) * cfg.HighPenalty
-	if highPenalty > cfg.HighPenaltyCap {
-		highPenalty = cfg.HighPenaltyCap
-	}
-	breachPenalty := int(inp.BreachCount) * cfg.BreachPenalty
-	if breachPenalty > cfg.BreachPenaltyCap {
-		breachPenalty = cfg.BreachPenaltyCap
-	}
-	fwBonus := int(inp.FwCount) * cfg.FwBonus
-	if fwBonus > cfg.FwBonusCap {
-		fwBonus = cfg.FwBonusCap
-	}
-
-	s := cfg.BaseScore - critPenalty - highPenalty - breachPenalty + fwBonus
-	if s < 0 {
-		s = 0
-	}
-	if s > 100 {
-		s = 100
-	}
-	return s, map[string]int64{
-		"critical_findings": inp.CritCount,
-		"high_findings":     inp.HighCount,
-		"open_breaches":     inp.BreachCount,
-		"active_frameworks": inp.FwCount,
-	}
 }
 
 // LastBackupAt returns the most recent backup timestamp for the org (nil if none).

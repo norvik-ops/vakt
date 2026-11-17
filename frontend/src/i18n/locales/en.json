@@ -1313,7 +1313,21 @@
       "statusMitigated": "Mitigated",
       "ariaLabel": "Risks: Likelihood {{likelihood}} / Impact {{impact}}",
       "cellAriaLabel": "Likelihood {{likelihood}}, Impact {{impact}}, Score {{score}}, {{count}} risks",
-      "cellTitle": "L:{{likelihood}} I:{{impact}} — Score {{score}} · {{count}} risks"
+      "cellTitle": "L:{{likelihood}} I:{{impact}} — Score {{score}} · {{count}} risks",
+      "likelihoodLabels": [
+        "Very unlikely",
+        "Unlikely",
+        "Possible",
+        "Likely",
+        "Very likely"
+      ],
+      "impactLabels": [
+        "Negligible",
+        "Minor",
+        "Moderate",
+        "Significant",
+        "Critical"
+      ]
     },
     "riskTreatment": {
       "linkControl": "Link control",
@@ -1813,9 +1827,6 @@
     "brandingTitle": "Branding",
     "brandingDesc": "Customise logo, colours and org identity for PDF reports and Trust Center.",
     "brandingLink": "Edit branding",
-    "scoreConfigTitle": "Score Configuration",
-    "scoreConfigDesc": "Adjust the weighting of compliance and risk scores for your organisation.",
-    "scoreConfigLink": "Open score configuration",
     "teamLinkTitle": "Team",
     "teamLinkDesc": "Invite users, assign roles, check MFA status.",
     "teamLinkLabel": "Manage team",
@@ -2471,16 +2482,18 @@
       "openTasks": "Open Tasks"
     },
     "policiesActive": "{{approved}} / {{total}} policies active",
-    "scoreConfig": "Score Configuration",
-    "scoreConfigDesc": "Customize score formula and weightings",
     "alerting": "Alerting",
     "alertingDesc": "Manage notification channels",
     "recentlyVisited": "Recently visited",
     "settings_title": "Settings",
-    "settings_scoreConfig": "Score configuration",
-    "settings_scoreConfigDesc": "Adjust scoring formula and weights",
     "settings_alerting": "Alerting",
-    "settings_alertingDesc": "Manage notification channels"
+    "settings_alertingDesc": "Manage notification channels",
+    "implementationLevel": "Implementation level",
+    "implementationLevelCaption": "Share of implemented controls",
+    "implementationLevelNoData": "No data yet",
+    "implementationLevelHint": "Share of applicable controls across all frameworks that are implemented. Partially implemented ones count half, not applicable ones not at all. Same number as “Compliance progress” and in the executive report.",
+    "implementationLevelAria": "Implementation level: {{value}} percent. Click opens the frameworks.",
+    "implementationLevelAriaNoData": "Implementation level: no data yet. Click opens the frameworks."
   },
   "theme": {
     "lightMode": "Light Mode",
@@ -2958,23 +2971,6 @@
       "friday": "Friday",
       "saturday": "Saturday",
       "sunday": "Sunday"
-    }
-  },
-  "scoreConfig": {
-    "title": "Security Score Configuration",
-    "description": "Adjust the weighting of the score formula to your risk priorities.",
-    "formulaTitle": "Score formula",
-    "formulaHint": "Result is clamped to 0–100.",
-    "weightsTitle": "Weights",
-    "fieldError": "Value must be between 1 and 100",
-    "save": "Save",
-    "saving": "Saving…",
-    "reset": "Reset",
-    "saved": "Score configuration saved",
-    "fields": {
-      "base_score": "Base score",
-      "fw_bonus": "Framework bonus (per framework)",
-      "fw_bonus_cap": "Framework bonus cap"
     }
   },
   "orgBranding": {

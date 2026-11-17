@@ -23,6 +23,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hell und dunkel; „Nicht begonnen“ bricht nicht mehr um. Auf dem Comply-Dashboard haben die
   Karten „Compliance-Score Verlauf“ und „Score-Orientierung“ im Dunkelmodus keinen weißen
   Hintergrund mehr.
+- **Dashboard zeigt den echten Umsetzungsgrad statt „Security Score“:** Die Karte oben links
+  zeigte bisher einen Grundwert von 70 plus 10 je Framework — 70/100 auf einer leeren Instanz
+  und 100/100 bei einer einzigen umgesetzten Kontrolle von 214. Sie heißt jetzt „Umsetzungsgrad“
+  und zeigt den Anteil der anwendbaren Kontrollen, die umgesetzt sind (teilweise umgesetzte zählen
+  halb, nicht anwendbare gar nicht), über alle Frameworks zusammengezählt. Das ist dieselbe Zahl
+  wie in der Karte „Compliance-Fortschritt“ und im Management-Bericht (PDF); bei nur einem
+  Framework auch dieselbe wie in dessen Detailseite und Compliance-Übersicht (PDF). Ohne
+  anwendbare Kontrollen steht dort „Noch keine Daten“. Die Einstellungsseite
+  „Score-Konfiguration“ entfällt, weil ihre Gewichte keine angezeigte Zahl mehr beeinflussen; alte
+  Lesezeichen führen zum Dashboard. Die API `GET /dashboard/score` liefert zusätzlich `has_data`
+  und `readiness`; `/dashboard/score/config` bleibt für ältere Clients lesbar (als veraltet markiert).
+- **Risiko-Heatmap mit lesbaren Achsen:** Die Achsen zeigten einzelne Buchstaben („v a k t c“)
+  statt der Stufen. Sie heißen jetzt „Sehr unwahrscheinlich … Sehr wahrscheinlich“ und
+  „Vernachlässigbar … Kritisch“ (in allen vier Sprachen); fehlt eine Übersetzung, stehen dort die
+  Zahlen 1 bis 5.
 
 ---
 ## [0.46.5] — 2026-11-17

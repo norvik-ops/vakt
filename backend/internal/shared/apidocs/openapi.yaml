@@ -5877,7 +5877,14 @@ paths:
 
   /dashboard/score:
     get:
-      summary: Get overall compliance and risk score
+      summary: Get the org-wide implementation level (readiness)
+      description: >-
+        `score` is the org-wide readiness over all frameworks (ADR-0086:
+        implemented/covered count fully, partial/in_progress half,
+        not_applicable outside the denominator), rounded to a whole percent —
+        the same number as `overall_readiness` in /dashboard/aggregate. It
+        replaced the old security score (base 70 + 10 per framework).
+        `has_data` is false while no applicable control exists.
       tags: [dashboard]
       responses:
         '200':
@@ -5886,12 +5893,36 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [score, has_data, readiness, components]
                 properties:
-                  overall_score: { type: number }
-                  nis2_score: { type: number }
-                  iso27001_score: { type: number }
-                  open_findings: { type: integer }
-                  critical_findings: { type: integer }
+                  score:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                    description: Rounded readiness 0–100 (0 on an empty instance).
+                  has_data:
+                    type: boolean
+                    description: True once at least one applicable control exists.
+                  readiness:
+                    type: object
+                    required: [covered, partial, applicable, score_pct]
+                    properties:
+                      covered: { type: integer }
+                      partial: { type: integer }
+                      applicable: { type: integer }
+                      score_pct: { type: number }
+                  components:
+                    type: object
+                    description: >-
+                      Kept for older clients. active_frameworks is counted; the
+                      counters of the archived Scan/Privacy modules are always 0.
+                    properties:
+                      critical_findings: { type: integer }
+                      high_findings: { type: integer }
+                      open_breaches: { type: integer }
+                      active_frameworks: { type: integer }
+        '500':
+          description: Readiness could not be computed
 
   /dashboard/aggregate:
     get:
@@ -14552,6 +14583,11 @@ paths:
   /dashboard/score/config:
     get:
       summary: Get the organisation's security-score weighting configuration
+      deprecated: true
+      description: >-
+        Weights of the old security-score formula. GET /dashboard/score no
+        longer uses them (it returns the readiness, ADR-0086); kept readable
+        for older clients.
       tags:
       - dashboard
       responses:
@@ -14584,6 +14620,10 @@ paths:
           description: Unauthorized
     put:
       summary: Update the organisation's security-score weighting configuration (Admin only)
+      deprecated: true
+      description: >-
+        Stores the weights of the old security-score formula. They no longer
+        affect any displayed number; kept for older clients.
       tags:
       - dashboard
       requestBody:

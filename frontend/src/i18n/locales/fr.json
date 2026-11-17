@@ -1313,7 +1313,21 @@
       "statusMitigated": "Atténué",
       "ariaLabel": "Risques : Probabilité {{likelihood}} / Impact {{impact}}",
       "cellAriaLabel": "Probabilité {{likelihood}}, Impact {{impact}}, Score {{score}}, {{count}} risques",
-      "cellTitle": "P:{{likelihood}} I:{{impact}} — Score {{score}} · {{count}} risques"
+      "cellTitle": "P:{{likelihood}} I:{{impact}} — Score {{score}} · {{count}} risques",
+      "likelihoodLabels": [
+        "Très improbable",
+        "Improbable",
+        "Possible",
+        "Probable",
+        "Très probable"
+      ],
+      "impactLabels": [
+        "Négligeable",
+        "Mineur",
+        "Modéré",
+        "Significatif",
+        "Critique"
+      ]
     },
     "riskTreatment": {
       "linkControl": "Lier un contrôle",
@@ -1813,9 +1827,6 @@
     "brandingTitle": "Identité visuelle",
     "brandingDesc": "Personnaliser le logo, les couleurs et l'identité de l'organisation pour les rapports PDF et le Trust Center.",
     "brandingLink": "Modifier l'identité visuelle",
-    "scoreConfigTitle": "Configuration des scores",
-    "scoreConfigDesc": "Ajuster la pondération des scores de conformité et de risque pour votre organisation.",
-    "scoreConfigLink": "Ouvrir la configuration des scores",
     "teamLinkTitle": "Équipe",
     "teamLinkDesc": "Inviter des utilisateurs, attribuer des rôles, vérifier le statut MFA.",
     "teamLinkLabel": "Gérer l'équipe",
@@ -2471,16 +2482,18 @@
       "openTasks": "Tâches ouvertes"
     },
     "policiesActive": "{{approved}} / {{total}} politiques actives",
-    "scoreConfig": "Configuration du score",
-    "scoreConfigDesc": "Personnaliser la formule de score et les pondérations",
     "alerting": "Alertes",
     "alertingDesc": "Gérer les canaux de notification",
     "recentlyVisited": "Récemment visité",
     "settings_title": "Paramètres",
-    "settings_scoreConfig": "Configuration du score",
-    "settings_scoreConfigDesc": "Ajuster la formule de score et les pondérations",
     "settings_alerting": "Alertes",
-    "settings_alertingDesc": "Gérer les canaux de notification"
+    "settings_alertingDesc": "Gérer les canaux de notification",
+    "implementationLevel": "Niveau de mise en œuvre",
+    "implementationLevelCaption": "Part des contrôles mis en œuvre",
+    "implementationLevelNoData": "Pas encore de données",
+    "implementationLevelHint": "Part des contrôles applicables, tous référentiels confondus, qui sont mis en œuvre. Les contrôles partiellement mis en œuvre comptent pour moitié, les non applicables pas du tout. Même chiffre que « Progression de la conformité » et dans le rapport de direction.",
+    "implementationLevelAria": "Niveau de mise en œuvre : {{value}} pour cent. Un clic ouvre les référentiels.",
+    "implementationLevelAriaNoData": "Niveau de mise en œuvre : pas encore de données. Un clic ouvre les référentiels."
   },
   "theme": {
     "lightMode": "Mode clair",
@@ -2958,23 +2971,6 @@
       "friday": "Vendredi",
       "saturday": "Samedi",
       "sunday": "Dimanche"
-    }
-  },
-  "scoreConfig": {
-    "title": "Configuration du score de sécurité",
-    "description": "Ajustez la pondération de la formule de score selon vos priorités de risque.",
-    "formulaTitle": "Formule du score",
-    "formulaHint": "Le résultat est limité à 0–100.",
-    "weightsTitle": "Pondérations",
-    "fieldError": "La valeur doit être comprise entre 1 et 100",
-    "save": "Enregistrer",
-    "saving": "Enregistrement…",
-    "reset": "Réinitialiser",
-    "saved": "Configuration du score enregistrée",
-    "fields": {
-      "base_score": "Score de base",
-      "fw_bonus": "Bonus cadre (par cadre)",
-      "fw_bonus_cap": "Plafond bonus cadre"
     }
   },
   "orgBranding": {

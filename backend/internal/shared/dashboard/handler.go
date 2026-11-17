@@ -1,11 +1,10 @@
 // Copyright (c) 2026 NorvikOps. All rights reserved.
 // SPDX-License-Identifier: Elastic-2.0
 
-// Package dashboard aggregates cross-module metrics into a single security
-// score and manages in-app notifications stored in the user_notifications
-// table. It queries SecPulse findings, SecPrivacy breaches, and SecVitals
-// frameworks directly via raw SQL so it remains decoupled from each module's
-// service layer.
+// Package dashboard aggregates compliance metrics for the start page — the
+// score is the canonical readiness (ADR-0086) from an injected
+// ReadinessSource — and manages in-app notifications stored in the
+// user_notifications table.
 package dashboard
 
 import (
@@ -31,7 +30,9 @@ func NewHandler(svc *Service, rdb *redis.Client) *Handler {
 	return &Handler{svc: svc, rdb: rdb}
 }
 
-// ScoreConfig holds the configurable weights and caps for the security score formula.
+// ScoreConfig holds the weights and caps of the old security score formula.
+// Kept only so GET/PUT /dashboard/score/config stay backward compatible; no
+// displayed number depends on it any more (UX-37, see ScoreResponse).
 type ScoreConfig struct {
 	BaseScore        int `json:"base_score"`
 	CritPenalty      int `json:"crit_penalty"`
@@ -59,8 +60,8 @@ func defaultScoreConfig() ScoreConfig {
 	}
 }
 
-// GetScore returns the organisation's composite security health score along
-// with the raw component counts used to derive it.
+// GetScore returns the organisation's dashboard score: the canonical org-wide
+// readiness (ADR-0086), see ScoreResponse.
 // Results are cached in Redis for 30 seconds to avoid repeated DB aggregations.
 func (h *Handler) GetScore(c echo.Context) error {
 	orgID, ok := c.Get("org_id").(string)
@@ -77,17 +78,10 @@ func (h *Handler) GetScore(c echo.Context) error {
 		}
 	}
 
-	cfg, err := h.svc.LoadScoreConfig(ctx, orgID)
+	resp, err := h.svc.LoadScore(ctx, orgID)
 	if err != nil {
-		log.Error().Err(err).Msg("dashboard: load score config")
-	}
-
-	inp := h.svc.LoadScoreInputs(ctx, orgID, cfg)
-	score, components := ComputeScore(inp)
-
-	resp := map[string]any{
-		"score":      score,
-		"components": components,
+		log.Error().Err(err).Msg("dashboard: load score")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to load score"})
 	}
 
 	if h.rdb != nil {
