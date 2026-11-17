@@ -1669,6 +1669,68 @@ components:
         source: { type: string }
         created_at: { type: string, format: date-time }
 
+    # policy.Evidence — GET /vaktcomply/controls/{id}/evidence. There is no `type`
+    # field: the kind of evidence is `source` ("manual" for user uploads,
+    # collector names such as "github" or "ci_webhook" otherwise).
+    CKEvidence:
+      type: object
+      required: [id, control_id, org_id, title, source, status, version, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        control_id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        source: { type: string, example: manual }
+        file_size: { type: integer, format: int64 }
+        status: { type: string, enum: [pending, approved, rejected, expired] }
+        version: { type: integer }
+        expires_at: { type: string, format: date-time }
+        expiry_notified_at: { type: string, format: date-time }
+        uploaded_by: { type: string }
+        reviewed_by: { type: string }
+        reviewed_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    # policy.SoADedicatedEntry — GET /vaktcomply/soa/entries(/{control_ref}).
+    SoADedicatedEntry:
+      type: object
+      required: [id, org_id, version, control_ref, control_name, control_group, applicable, implementation_status, status_source, manually_set, is_approved, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        version: { type: integer }
+        control_ref: { type: string, example: "A.5.2" }
+        control_name: { type: string, description: "Draft: title of the linked control; approved version: title frozen at approval." }
+        control_group: { type: string, enum: ["5", "6", "7", "8"] }
+        applicable: { type: boolean }
+        justification: { type: string }
+        exclusion_reason: { type: string }
+        implementation_status:
+          type: string
+          enum: [not_started, planned, partial, implemented]
+          description: >-
+            Draft: the status of the linked control (implemented → implemented,
+            in progress → partial, open → not_started). Approved version: the
+            snapshot frozen at approval. `planned` only occurs in snapshots
+            approved before the status came from the control.
+        status_source:
+          type: string
+          enum: [control, snapshot, soa]
+          description: "control = live from the linked control; snapshot = frozen at approval; soa = no control linked, stored value."
+        linked_control_id: { type: string, format: uuid }
+        linked_framework_id: { type: string, format: uuid }
+        manually_set: { type: boolean, deprecated: true }
+        ck_control_id: { type: string, format: uuid }
+        evidence_reference: { type: string }
+        is_approved: { type: boolean }
+        approved_by: { type: string }
+        approved_at: { type: string, format: date-time }
+        notes: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
     CloudSyncStatus:
       type: object
       required: [provider, enabled, evidence_count]
@@ -5122,10 +5184,20 @@ paths:
   /vaktcomply/soa/entries:
     get:
       summary: List all dedicated SoA entries
+      description: >-
+        Entries of the current version. While the version is a draft, the
+        implementation status and title come from the linked control (one
+        source with the control page); an approved version returns its frozen
+        snapshot.
       tags: [vaktcomply]
       responses:
         '200':
           description: All 93 SoA entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SoADedicatedEntry' }
 
   /vaktcomply/soa/entries/{control_ref}:
     parameters:
@@ -5139,8 +5211,16 @@ paths:
       responses:
         '200':
           description: SoA entry
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SoADedicatedEntry' }
     put:
-      summary: Update SoA entry (applicable, justification, implementation status, owner)
+      summary: Update SoA entry (applicability, justification, exclusion reason, evidence reference)
+      description: >-
+        Updates the SoA-owned fields. The implementation status is not stored
+        here: it is the status of the linked control (PATCH
+        /vaktcomply/controls/{id}). `implementation_status` and `manually_set`
+        are still accepted for compatibility and ignored.
       tags: [vaktcomply]
       requestBody:
         required: true
@@ -5148,13 +5228,12 @@ paths:
           application/json:
             schema:
               type: object
-              required: [implementation_status]
               properties:
                 applicable: { type: boolean }
                 justification: { type: string }
                 exclusion_reason: { type: string }
-                implementation_status: { type: string }
-                manually_set: { type: boolean }
+                implementation_status: { type: string, enum: [not_started, planned, partial, implemented], deprecated: true, description: "Ignored." }
+                manually_set: { type: boolean, deprecated: true, description: "Ignored." }
                 ck_control_id: { type: string }
                 evidence_reference: { type: string }
                 notes: { type: string }
@@ -5698,6 +5777,11 @@ paths:
       responses:
         '200':
           description: List of evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CKEvidence' }
     post:
       summary: Add evidence to a control (URL or text)
       tags: [vaktcomply]
@@ -5711,7 +5795,7 @@ paths:
               properties:
                 title: { type: string }
                 description: { type: string }
-                source: { type: string }
+                source: { type: string, enum: [manual, github, aws, azure, ad] }
                 file_path: { type: string }
                 file_size: { type: integer }
                 expires_at: { type: string, format: date-time }

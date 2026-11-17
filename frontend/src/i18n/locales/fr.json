@@ -324,6 +324,8 @@
       "evidenceTypeManualLabel": "Manuel",
       "evidenceTypeAutomatedLabel": "Automatisé",
       "evidenceTypeDocumentLabel": "Document",
+      "evidenceTypeUnknownLabel": "Inconnu",
+      "evidenceStatusUnknown": "Inconnu ({{status}})",
       "toastSaved": "Enregistré",
       "toastEvidenceUploaded": "Preuves téléversées",
       "toastEvidenceAdded": "Preuves ajoutées",
@@ -897,7 +899,13 @@
       "editPlaceholderEvidenceNote": "Référence à la documentation, politique, etc.",
       "editLabelJustificationExcluded": "Justification de l'exclusion *",
       "editPlaceholderJustificationExcluded": "Pourquoi cette mesure n'est-elle pas applicable ? (obligatoire pour approbation)",
-      "savingBtn": "Enregistrement…"
+      "savingBtn": "Enregistrement…",
+      "statusFromControlHint": "Le statut appartient au contrôle et y est enregistré. Il est identique partout.",
+      "statusNoControl": "Aucun contrôle lié. Le statut pourra être géré dès que ISO 27001 sera actif comme référentiel.",
+      "statusApprovalRequired": "Les changements de statut nécessitent une approbation. Veuillez la demander sur la page du contrôle.",
+      "statusControlNotApplicable": "Le contrôle est marqué comme non applicable. Gérez son statut sur la page du contrôle.",
+      "openControl": "Ouvrir le contrôle",
+      "statusSnapshotHint": "Version approuvée : le statut reflète l'état lors de l'approbation. Une modification crée un nouveau brouillon qui affiche à nouveau le statut actuel des contrôles."
     },
     "policyDetail": {
       "acceptanceLink": "Confirmation par les employés",

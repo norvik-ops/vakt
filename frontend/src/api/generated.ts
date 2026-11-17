@@ -4564,7 +4564,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all dedicated SoA entries */
+        /**
+         * List all dedicated SoA entries
+         * @description Entries of the current version. While the version is a draft, the implementation status and title come from the linked control (one source with the control page); an approved version returns its frozen snapshot.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -4579,7 +4582,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SoADedicatedEntry"][];
+                    };
                 };
             };
         };
@@ -4617,11 +4622,16 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SoADedicatedEntry"];
+                    };
                 };
             };
         };
-        /** Update SoA entry (applicable, justification, implementation status, owner) */
+        /**
+         * Update SoA entry (applicability, justification, exclusion reason, evidence reference)
+         * @description Updates the SoA-owned fields. The implementation status is not stored here: it is the status of the linked control (PATCH /vaktcomply/controls/{id}). `implementation_status` and `manually_set` are still accepted for compatibility and ignored.
+         */
         put: {
             parameters: {
                 query?: never;
@@ -4637,7 +4647,16 @@ export interface paths {
                         applicable?: boolean;
                         justification?: string;
                         exclusion_reason?: string;
-                        implementation_status: string;
+                        /**
+                         * @deprecated
+                         * @description Ignored.
+                         * @enum {string}
+                         */
+                        implementation_status?: "not_started" | "planned" | "partial" | "implemented";
+                        /**
+                         * @deprecated
+                         * @description Ignored.
+                         */
                         manually_set?: boolean;
                         ck_control_id?: string;
                         evidence_reference?: string;
@@ -5745,7 +5764,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["CKEvidence"][];
+                    };
                 };
             };
         };
@@ -5765,7 +5786,8 @@ export interface paths {
                     "application/json": {
                         title: string;
                         description?: string;
-                        source: string;
+                        /** @enum {string} */
+                        source: "manual" | "github" | "aws" | "azure" | "ad";
                         file_path?: string;
                         file_size?: number;
                         /** Format: date-time */
@@ -30883,6 +30905,79 @@ export interface components {
             source: string;
             /** Format: date-time */
             created_at: string;
+        };
+        CKEvidence: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            control_id: string;
+            /** Format: uuid */
+            org_id: string;
+            title: string;
+            description?: string;
+            /** @example manual */
+            source: string;
+            /** Format: int64 */
+            file_size?: number;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected" | "expired";
+            version: number;
+            /** Format: date-time */
+            expires_at?: string;
+            /** Format: date-time */
+            expiry_notified_at?: string;
+            uploaded_by?: string;
+            reviewed_by?: string;
+            /** Format: date-time */
+            reviewed_at?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        SoADedicatedEntry: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            org_id: string;
+            version: number;
+            /** @example A.5.2 */
+            control_ref: string;
+            /** @description Draft: title of the linked control; approved version: title frozen at approval. */
+            control_name: string;
+            /** @enum {string} */
+            control_group: "5" | "6" | "7" | "8";
+            applicable: boolean;
+            justification?: string;
+            exclusion_reason?: string;
+            /**
+             * @description Draft: the status of the linked control (implemented → implemented, in progress → partial, open → not_started). Approved version: the snapshot frozen at approval. `planned` only occurs in snapshots approved before the status came from the control.
+             * @enum {string}
+             */
+            implementation_status: "not_started" | "planned" | "partial" | "implemented";
+            /**
+             * @description control = live from the linked control; snapshot = frozen at approval; soa = no control linked, stored value.
+             * @enum {string}
+             */
+            status_source: "control" | "snapshot" | "soa";
+            /** Format: uuid */
+            linked_control_id?: string;
+            /** Format: uuid */
+            linked_framework_id?: string;
+            /** @deprecated */
+            manually_set: boolean;
+            /** Format: uuid */
+            ck_control_id?: string;
+            evidence_reference?: string;
+            is_approved: boolean;
+            approved_by?: string;
+            /** Format: date-time */
+            approved_at?: string;
+            notes?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
         };
         CloudSyncStatus: {
             provider: string;

@@ -98,17 +98,31 @@ export interface TISAXGapAnalysis {
   gaps: TISAXControlGap[]
 }
 
+// The wire values of ck_evidence.status (006_complykit_schema: DEFAULT 'pending',
+// review sets approved/rejected, the expiry job expired).
+export type EvidenceStatus = 'pending' | 'approved' | 'rejected' | 'expired'
+
+// policy.Evidence (backend/internal/modules/vaktcomply/policy/models.go) — the
+// json tags of GET /vaktcomply/controls/:id/evidence. There is no `type` and no
+// `notes` field: the kind of evidence is `source` ("manual" for user uploads,
+// "github", "ci_webhook", … for collectors), the free text is `description`.
+// The table derives its "Typ" column from `source` + `file_size`.
 export interface Evidence {
   id: string
   control_id: string
   title: string
-  type: 'manual' | 'automated' | 'document'
-  notes?: string
-  status: 'pending_review' | 'approved' | 'rejected' | 'expired'
+  description?: string
+  source: string
+  file_size?: number
+  status: EvidenceStatus
   expires_at?: string | null
   expiry_notified_at?: string | null
   created_at: string
 }
+
+// The kinds the add-evidence dialog offers. Only "manual" and "document" create
+// a record; "automated" opens the collector panel.
+export type EvidenceKind = 'manual' | 'automated' | 'document'
 
 export interface AuditorLink {
   id: string

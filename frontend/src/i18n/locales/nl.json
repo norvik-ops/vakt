@@ -324,6 +324,8 @@
       "evidenceTypeManualLabel": "Handmatig",
       "evidenceTypeAutomatedLabel": "Geautomatiseerd",
       "evidenceTypeDocumentLabel": "Document",
+      "evidenceTypeUnknownLabel": "Onbekend",
+      "evidenceStatusUnknown": "Onbekend ({{status}})",
       "toastSaved": "Opgeslagen",
       "toastEvidenceUploaded": "Bewijsmateriaal geüpload",
       "toastEvidenceAdded": "Bewijsmateriaal toegevoegd",
@@ -897,7 +899,13 @@
       "editPlaceholderEvidenceNote": "Verwijzing naar documentatie, beleid, enz.",
       "editLabelJustificationExcluded": "Motivering voor uitsluiting *",
       "editPlaceholderJustificationExcluded": "Waarom is deze maatregel niet van toepassing? (verplicht voor goedkeuring)",
-      "savingBtn": "Opslaan…"
+      "savingBtn": "Opslaan…",
+      "statusFromControlHint": "De status hoort bij de maatregel en wordt daar opgeslagen. Hij is overal gelijk.",
+      "statusNoControl": "Geen gekoppelde maatregel. De status kan worden bijgehouden zodra ISO 27001 als framework actief is.",
+      "statusApprovalRequired": "Statuswijzigingen vereisen goedkeuring. Vraag deze aan op de maatregelpagina.",
+      "statusControlNotApplicable": "De maatregel is gemarkeerd als niet van toepassing. Beheer de status op de maatregelpagina.",
+      "openControl": "Maatregel openen",
+      "statusSnapshotHint": "Goedgekeurde versie: de status toont de stand bij goedkeuring. Een wijziging maakt een nieuw concept aan dat weer de actuele status van de maatregelen toont."
     },
     "policyDetail": {
       "acceptanceLink": "Bevestiging door medewerkers",

@@ -324,6 +324,8 @@
       "evidenceTypeManualLabel": "Manual",
       "evidenceTypeAutomatedLabel": "Automated",
       "evidenceTypeDocumentLabel": "Document",
+      "evidenceTypeUnknownLabel": "Unknown",
+      "evidenceStatusUnknown": "Unknown ({{status}})",
       "toastSaved": "Saved",
       "toastEvidenceUploaded": "Evidence uploaded",
       "toastEvidenceAdded": "Evidence added",
@@ -897,7 +899,13 @@
       "editPlaceholderEvidenceNote": "Reference to documentation, policy, etc.",
       "editLabelJustificationExcluded": "Justification for exclusion *",
       "editPlaceholderJustificationExcluded": "Why is this control not applicable? (required for approval)",
-      "savingBtn": "Saving…"
+      "savingBtn": "Saving…",
+      "statusFromControlHint": "The status belongs to the control and is saved there. It is the same everywhere.",
+      "statusNoControl": "No linked control. The status can be maintained once ISO 27001 is active as a framework.",
+      "statusApprovalRequired": "Status changes require approval. Please request it on the control page.",
+      "statusControlNotApplicable": "The control is marked as not applicable. Maintain its status on the control page.",
+      "openControl": "Open control",
+      "statusSnapshotHint": "Approved version: the status shows the state at approval. A change creates a new draft that again shows the current status of the controls."
     },
     "policyDetail": {
       "acceptanceLink": "Employee acknowledgement",

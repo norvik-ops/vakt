@@ -14,6 +14,13 @@ import { apiFetch } from '../../../api/client'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { ExportButton } from '../../../shared/components/ExportButton'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
+import { Link } from 'react-router-dom'
+import { useControl, useUpdateControl } from '../hooks/useControls'
+import { useApprovalSetting } from '../hooks/useApprovals'
+import { useAuthStore } from '../../../shared/stores/auth'
+import { toast } from '../../../shared/hooks/useToast'
+import { handleApiError } from '../../../shared/utils/errorMessages'
+import type { Control } from '../types'
 
 // K5-01/02/03: these two interfaces are the wire contract, not a wish list. Every
 // field name below IS the `json:` tag of the Go struct that serialises it —
@@ -32,7 +39,13 @@ interface SoADedicatedEntry {
   applicable: boolean
   justification?: string
   exclusion_reason?: string
+  // Draft: the status of the linked control (status_source "control"); approved
+  // version: the snapshot frozen at approval ("snapshot"); no control: the stored
+  // value ("soa"). See policy/soa_status.go.
   implementation_status: string
+  status_source?: 'control' | 'snapshot' | 'soa'
+  linked_control_id?: string | null
+  linked_framework_id?: string | null
   manually_set?: boolean
   ck_control_id?: string | null
   evidence_reference?: string
@@ -51,9 +64,9 @@ interface SoADedicatedSummary {
   implementation_pct: number
 }
 
-// Only the four values the backend accepts: ck_soa_entries.implementation_status
-// CHECK + `validate:"oneof=not_started planned partial implemented"`. The former
-// `in_progress`/`not_applicable` options were rejected with 422.
+// The four values of ck_soa_entries.implementation_status. The backend maps the
+// control status onto them (implemented → implemented, in_progress → partial,
+// missing → not_started); `planned` only survives in old approved snapshots.
 const IMPL_STATUS_COLORS: Record<string, string> = {
   implemented: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
   planned: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
@@ -123,16 +136,32 @@ function useApproveSoA() {
 // writes every one of these columns unconditionally (repository_soa_dedicated.go:
 // UpdateSoAEntry), so a field the dialog does not carry through is a field the
 // save DELETES. `notes` and `ck_control_id` are therefore round-tripped even
-// though the dialog does not edit them.
+// though the dialog does not edit them. The implementation status is NOT part
+// of it any more: it belongs to the control and is saved there (see
+// ControlStatusChoice below).
 interface UpdateSoAEntryInput {
   applicable: boolean
   justification: string
   exclusion_reason: string
-  implementation_status: string
-  manually_set: boolean
   ck_control_id: string | null
   evidence_reference: string
   notes: string
+}
+
+// The status choices of the control page (ControlDetailPage StatusChoice minus
+// not_applicable, which is the SoA's own applicability question here).
+type ControlStatusChoice = 'missing' | 'in_progress' | 'implemented'
+
+function toControlStatusChoice(status: Control['status'] | undefined): ControlStatusChoice {
+  if (status === 'covered' || status === 'implemented') return 'implemented'
+  if (status === 'partial' || status === 'in_progress') return 'in_progress'
+  return 'missing'
+}
+
+function controlPagePath(e: SoADedicatedEntry): string | null {
+  if (!e.linked_control_id) return null
+  const fw = e.linked_framework_id ? `?frameworkId=${encodeURIComponent(e.linked_framework_id)}` : ''
+  return `/vaktcomply/controls/${encodeURIComponent(e.linked_control_id)}${fw}`
 }
 
 export default function SoAPage() {
@@ -149,19 +178,39 @@ export default function SoAPage() {
     applicable: true,
     justification: '',
     exclusion_reason: '',
-    implementation_status: 'not_started',
-    manually_set: true,
     ck_control_id: null,
     evidence_reference: '',
     notes: '',
   })
+  // The control status chosen in the dialog; null = untouched. It is saved on
+  // the control (PATCH /vaktcomply/controls/:id), never in the SoA entry.
+  const [statusChoice, setStatusChoice] = useState<ControlStatusChoice | null>(null)
 
+  const linkedControlId = editEntry?.linked_control_id ?? ''
+  const { data: linkedControl } = useControl(linkedControlId)
+  const updateControl = useUpdateControl(editEntry?.linked_framework_id ?? '')
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles.includes('Admin') ?? false
+  const { data: approvalSetting } = useApprovalSetting()
+  // Same rule as the control page: with approval_required, non-admins request a
+  // status change there instead of setting it.
+  const statusNeedsApproval = (approvalSetting?.approval_required ?? false) && !isAdmin
+
+  // Same labels as the control page (controlDetailPage.status*): the SoA status
+  // IS the control status. `planned` only occurs in old approved snapshots.
   const IMPL_STATUS_LABELS: Record<string, string> = {
-    not_started: t('vaktcomply.soaPage.implNotStarted'),
+    not_started: t('vaktcomply.controlDetailPage.statusMissing'),
     planned: t('vaktcomply.soaPage.implPlanned'),
-    partial: t('vaktcomply.soaPage.implPartial'),
-    implemented: t('vaktcomply.soaPage.implImplemented'),
+    partial: t('vaktcomply.controlDetailPage.statusInProgress'),
+    implemented: t('vaktcomply.controlDetailPage.statusImplemented'),
   }
+  const CONTROL_STATUS_LABELS: Record<ControlStatusChoice, string> = {
+    missing: t('vaktcomply.controlDetailPage.statusMissing'),
+    in_progress: t('vaktcomply.controlDetailPage.statusInProgress'),
+    implemented: t('vaktcomply.controlDetailPage.statusImplemented'),
+  }
+  const currentControlStatus = linkedControl ? toControlStatusChoice(linkedControl.status) : null
+  const statusEditable = !!linkedControl && !linkedControl.not_applicable && !statusNeedsApproval
 
   const GROUP_LABELS: Record<string, string> = {
     '5': t('vaktcomply.soaPage.groupA5'),
@@ -174,25 +223,46 @@ export default function SoAPage() {
 
   function openEdit(e: SoADedicatedEntry) {
     setEditEntry(e)
+    setStatusChoice(null)
     setEditForm({
       applicable: e.applicable,
       justification: e.justification ?? '',
       exclusion_reason: e.exclusion_reason ?? '',
-      implementation_status: e.implementation_status || 'not_started',
-      // A save through this dialog IS a manual decision — without this the nightly
-      // evidence sync (SyncSoAImplementationStatus) overwrites the user's status.
-      manually_set: true,
       ck_control_id: e.ck_control_id ?? null,
       evidence_reference: e.evidence_reference ?? '',
       notes: e.notes ?? '',
     })
   }
 
+  function saveSoAEntry(entry: SoADedicatedEntry) {
+    updateMut.mutate(
+      { ref: entry.control_ref, input: editForm },
+      { onSuccess: () => { setEditEntry(null); } },
+    )
+  }
+
   function handleSaveEdit() {
     if (!editEntry) return
-    updateMut.mutate(
-      { ref: editEntry.control_ref, input: editForm },
-      { onSuccess: () => { setEditEntry(null); } },
+    const entry = editEntry
+    if (!linkedControl || !statusEditable || !editForm.applicable
+      || statusChoice === null || statusChoice === currentControlStatus) {
+      saveSoAEntry(entry)
+      return
+    }
+    // The status goes to the control — the same PATCH the control page sends,
+    // with its other fields carried through (the PATCH overwrites them).
+    updateControl.mutate(
+      {
+        controlId: linkedControl.id,
+        not_applicable: linkedControl.not_applicable,
+        reason: linkedControl.not_applicable_reason ?? '',
+        manual_status: statusChoice === 'missing' ? '' : statusChoice,
+        owner: linkedControl.owner,
+      },
+      {
+        onSuccess: () => { saveSoAEntry(entry) },
+        onError: (err) => toast(handleApiError(err), 'error'),
+      },
     )
   }
 
@@ -301,6 +371,9 @@ export default function SoAPage() {
               ? t('vaktcomply.soaPage.versionApproved', { version: summary.version })
               : t('vaktcomply.soaPage.versionDraft', { version: summary.version })}
           </span>
+          {summary.status === 'approved' && (
+            <span className="text-xs opacity-90" data-testid="soa-snapshot-hint">{t('vaktcomply.soaPage.statusSnapshotHint')}</span>
+          )}
           {withoutExclusionReason > 0 && (
             <span className="ml-auto flex items-center gap-1 text-amber-700 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4" />
@@ -378,11 +451,17 @@ export default function SoAPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  {e.applicable && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${IMPL_STATUS_COLORS[e.implementation_status] ?? IMPL_STATUS_COLORS.not_started}`}>
-                      {IMPL_STATUS_LABELS[e.implementation_status] ?? e.implementation_status}
-                    </span>
-                  )}
+                  {e.applicable && (() => {
+                    const badge = (
+                      <span data-testid="soa-status" className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${IMPL_STATUS_COLORS[e.implementation_status] ?? IMPL_STATUS_COLORS.not_started}`}>
+                        {IMPL_STATUS_LABELS[e.implementation_status] ?? e.implementation_status}
+                      </span>
+                    )
+                    const path = controlPagePath(e)
+                    return path
+                      ? <Link to={path} title={t('vaktcomply.soaPage.openControl')} className="hover:underline">{badge}</Link>
+                      : badge
+                  })()}
                 </TableCell>
                 <TableCell className="text-center">
                   {e.applicable
@@ -435,19 +514,40 @@ export default function SoAPage() {
                     onChange={(e) => { setEditForm(f => ({ ...f, justification: e.target.value })); }}
                   />
                 </div>
+                {/* The status is the control's (one source). This select saves
+                    on the control, like the control page does; the SoA entry
+                    keeps no status of its own while it is a draft. */}
                 <div className="space-y-1.5">
                   <Label>{t('vaktcomply.soaPage.editLabelImplStatus')}</Label>
                   <Select
-                    value={editForm.implementation_status}
-                    onValueChange={(v) => { setEditForm(f => ({ ...f, implementation_status: v })); }}
+                    value={statusChoice ?? currentControlStatus ?? undefined}
+                    onValueChange={(v) => { setStatusChoice(v as ControlStatusChoice); }}
+                    disabled={!statusEditable}
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger data-testid="soa-control-status"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {Object.entries(IMPL_STATUS_LABELS).map(([v, l]) => (
-                        <SelectItem key={v} value={v}>{l}</SelectItem>
+                      {(Object.keys(CONTROL_STATUS_LABELS) as ControlStatusChoice[]).map(v => (
+                        <SelectItem key={v} value={v}>{CONTROL_STATUS_LABELS[v]}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted" data-testid="soa-status-hint">
+                    {!editEntry?.linked_control_id
+                      ? t('vaktcomply.soaPage.statusNoControl')
+                      : linkedControl?.not_applicable
+                        ? t('vaktcomply.soaPage.statusControlNotApplicable')
+                        : statusNeedsApproval
+                          ? t('vaktcomply.soaPage.statusApprovalRequired')
+                          : t('vaktcomply.soaPage.statusFromControlHint')}
+                    {editEntry && controlPagePath(editEntry) && (
+                      <>
+                        {' '}
+                        <Link to={controlPagePath(editEntry) ?? ''} className="underline">
+                          {t('vaktcomply.soaPage.openControl')}
+                        </Link>
+                      </>
+                    )}
+                  </p>
                 </div>
                 {/* ck_soa_entries has no owner column and UpdateSoAEntryInput binds
                     no owner field — the input that used to sit here discarded
@@ -478,8 +578,8 @@ export default function SoAPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setEditEntry(null); }}>{t('common.cancel')}</Button>
-            <Button onClick={handleSaveEdit} disabled={updateMut.isPending}>
-              {updateMut.isPending ? t('vaktcomply.soaPage.savingBtn') : t('common.save')}
+            <Button onClick={handleSaveEdit} disabled={updateMut.isPending || updateControl.isPending}>
+              {updateMut.isPending || updateControl.isPending ? t('vaktcomply.soaPage.savingBtn') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

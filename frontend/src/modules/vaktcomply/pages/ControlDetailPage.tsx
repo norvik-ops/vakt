@@ -33,7 +33,7 @@ import { Comments } from '../../../shared/components/Comments'
 import { EvidenceFileUpload } from '../components/EvidenceFileUpload'
 import { ControlReviewPanel } from '../components/ControlReviewPanel'
 import { EvidenceExpiryBadge } from '../components/EvidenceExpiryBadge'
-import type { Evidence, Control, UpdateControlInput } from '../types'
+import type { Evidence, EvidenceKind, Control, UpdateControlInput } from '../types'
 import { maturityLabel, maturityColor } from '../utils/tisax'
 import { ControlMappingsBadge } from '../components/ControlMappingsBadge'
 import { useTranslation } from 'react-i18next'
@@ -68,11 +68,24 @@ function toStatusChoice(status: Control['status']): StatusChoice {
 
 // ── Evidence helpers ──────────────────────────────────────────────────────────
 
-const evidenceStatusVariant: Record<Evidence['status'], React.ComponentProps<typeof Badge>['variant']> = {
-  pending_review: 'secondary',
+// Keyed by the wire values of ck_evidence.status. Partial<Record<string,…>>,
+// because a value the backend adds later must fall back to a visible label
+// instead of an empty badge (UX-Durchgang: every status badge was empty, the
+// map read `pending_review`, the API sends `pending`).
+const evidenceStatusVariant: Partial<Record<string, React.ComponentProps<typeof Badge>['variant']>> = {
+  pending: 'secondary',
   approved: 'success',
   rejected: 'destructive',
   expired: 'secondary',
+}
+
+type EvidenceTypeKey = 'manual' | 'document' | 'automated' | 'unknown'
+
+/** The "Typ" column: derived from `source` (+ `file_size` for uploaded documents). */
+function evidenceTypeKey(ev: Pick<Evidence, 'source' | 'file_size'>): EvidenceTypeKey {
+  if (!ev.source) return 'unknown'
+  if (ev.source === 'manual') return (ev.file_size ?? 0) > 0 ? 'document' : 'manual'
+  return 'automated'
 }
 
 // ── Change log ───────────────────────────────────────────────────────────────
@@ -157,7 +170,7 @@ function ChangeLogTab({ controlId }: { controlId: string }) {
 function useStatusLabelMap() {
   const { t } = useTranslation()
   return {
-    pending_review: t('vaktcomply.controlDetailPage.evidenceStatusPending'),
+    pending: t('vaktcomply.controlDetailPage.evidenceStatusPending'),
     approved: t('vaktcomply.controlDetailPage.evidenceStatusApproved'),
     rejected: t('vaktcomply.controlDetailPage.evidenceStatusRejected'),
     expired: t('vaktcomply.controlDetailPage.evidenceStatusExpired'),
@@ -375,17 +388,20 @@ export default function ControlDetailPage() {
     not_applicable: { icon: <MinusCircle className="w-3.5 h-3.5" />,  label: t('vaktcomply.controlDetailPage.statusNotApplicable'), className: 'text-secondary' },
   }
 
-  const evidenceStatusLabel: Record<Evidence['status'], string> = {
-    pending_review: t('vaktcomply.controlDetailPage.evidenceStatusPending'),
+  const evidenceStatusLabels: Partial<Record<string, string>> = {
+    pending: t('vaktcomply.controlDetailPage.evidenceStatusPending'),
     approved: t('vaktcomply.controlDetailPage.evidenceStatusApproved'),
     rejected: t('vaktcomply.controlDetailPage.evidenceStatusRejected'),
     expired: t('vaktcomply.controlDetailPage.evidenceStatusExpired'),
   }
+  const evidenceStatusLabel = (status: string): string =>
+    evidenceStatusLabels[status] ?? t('vaktcomply.controlDetailPage.evidenceStatusUnknown', { status: status || '—' })
 
-  const evidenceTypeLabel: Record<Evidence['type'], string> = {
+  const evidenceTypeLabels: Record<EvidenceTypeKey, string> = {
     manual: t('vaktcomply.controlDetailPage.evidenceTypeManualLabel'),
     automated: t('vaktcomply.controlDetailPage.evidenceTypeAutomatedLabel'),
     document: t('vaktcomply.controlDetailPage.evidenceTypeDocumentLabel'),
+    unknown: t('vaktcomply.controlDetailPage.evidenceTypeUnknownLabel'),
   }
 
   const { user } = useAuthStore()
@@ -538,7 +554,7 @@ export default function ControlDetailPage() {
   // Evidence form
   const [addOpen, setAddOpen] = useState(false)
   const [title, setTitle] = useState('')
-  const [type, setType] = useState<Evidence['type']>('manual')
+  const [type, setType] = useState<EvidenceKind>('manual')
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [expiresAt, setExpiresAt] = useState('')
@@ -641,7 +657,7 @@ export default function ControlDetailPage() {
       })
     } else {
       addEvidence.mutate(
-        { title, type, notes: notes || undefined, expires_at: expiresAtISO },
+        { title, source: 'manual', description: notes || undefined, expires_at: expiresAtISO },
         {
           onSuccess: () => { resetAddForm(); toast(t('vaktcomply.controlDetailPage.toastEvidenceAdded'), 'success') },
           onError: (err) => toast(handleApiError(err), 'error'),
@@ -1128,10 +1144,10 @@ export default function ControlDetailPage() {
                   {evidence.map((ev) => (
                     <TableRow key={ev.id}>
                       <TableCell className="font-medium">{ev.title}</TableCell>
-                      <TableCell className="text-secondary">{evidenceTypeLabel[ev.type]}</TableCell>
+                      <TableCell className="text-secondary" title={ev.source}>{evidenceTypeLabels[evidenceTypeKey(ev)]}</TableCell>
                       <TableCell>
-                        <Badge variant={evidenceStatusVariant[ev.status]}>
-                          {evidenceStatusLabel[ev.status]}
+                        <Badge variant={evidenceStatusVariant[ev.status] ?? 'secondary'}>
+                          {evidenceStatusLabel(ev.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -1142,7 +1158,7 @@ export default function ControlDetailPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {ev.status === 'pending_review' && (
+                          {ev.status === 'pending' && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -1292,7 +1308,7 @@ export default function ControlDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{t('vaktcomply.controlDetailPage.evidenceLabelType')}</Label>
-                <Select value={type} onValueChange={(v) => { setType(v as Evidence['type']); setFile(null) }}>
+                <Select value={type} onValueChange={(v) => { setType(v as EvidenceKind); setFile(null) }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -1371,7 +1387,10 @@ export default function ControlDetailPage() {
                 disabled={
                   addEvidence.isPending ||
                   uploadEvidence.isPending ||
-                  (type === 'document' && !file)
+                  (type === 'document' && !file) ||
+                  // Automated evidence comes from the collector ("Jetzt sammeln"
+                  // above); the backend accepts no free "automated" source.
+                  type === 'automated'
                 }
               >
                 {addEvidence.isPending || uploadEvidence.isPending ? t('vaktcomply.controlDetailPage.adding') : t('vaktcomply.controlDetailPage.addEvidenceSubmit')}

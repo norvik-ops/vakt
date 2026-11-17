@@ -89,10 +89,9 @@ func TestFrameworkSoAExport_ServesCanonicalSource(t *testing.T) {
 	const marker = "EVIDENCE-CANON-7f3a"
 	require.NoError(t, svc.InitDedicatedSoA(ctx, orgID))
 	require.NoError(t, svc.UpdateDedicatedSoAEntry(ctx, orgID, "A.5.7", policy.UpdateSoAEntryInput{
-		Applicable:           true,
-		Justification:        "Bedrohungslage wird ausgewertet",
-		ImplementationStatus: "implemented",
-		EvidenceReference:    marker,
+		Applicable:        true,
+		Justification:     "Bedrohungslage wird ausgewertet",
+		EvidenceReference: marker,
 	}))
 
 	pull := func(t *testing.T, handler echo.HandlerFunc, withFramework bool) []string {

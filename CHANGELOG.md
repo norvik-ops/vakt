@@ -23,6 +23,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hell und dunkel; „Nicht begonnen“ bricht nicht mehr um. Auf dem Comply-Dashboard haben die
   Karten „Compliance-Score Verlauf“ und „Score-Orientierung“ im Dunkelmodus keinen weißen
   Hintergrund mehr.
+- **SoA zeigt den Status der Kontrolle:** Die Anwendbarkeitserklärung hatte einen eigenen,
+  von Hand gepflegten Umsetzungsstatus. Dieselbe Kontrolle stand deshalb auf der Kontrollseite
+  auf „In Bearbeitung“ und in der SoA auf „Nicht begonnen“. Ein Entwurf der SoA zeigt jetzt
+  Status und deutschen Titel der Kontrolle, mit denselben Begriffen wie die Kontrollseite
+  („Offen“, „In Bearbeitung“, „Umgesetzt“). Seite, PDF, CSV, XLSX und Word zählen gleich
+  (umgesetzt ganz, in Bearbeitung halb). Eine Statusänderung im SoA-Dialog wird an der Kontrolle
+  gespeichert; die Plakette verlinkt auf die Kontrollseite. Eine **freigegebene** SoA-Version
+  hält den Stand bei der Freigabe fest und ändert sich danach nicht mehr. Begründung,
+  Ausschlussgrund und Nachweisnotiz bleiben in der SoA editierbar. Keine Migration.
+- **Nachweis-Tabelle zeigt Typ und Status:** Auf der Kontrollseite waren die Spalten „Typ“ und
+  „Status“ bei jedem Nachweis leer, und der Knopf „Prüfen“ erschien nie. Die Tabelle liest jetzt
+  die Werte, die der Server liefert („Ausstehend“, „Genehmigt“, „Abgelehnt“, „Abgelaufen“;
+  Typ „Manuell“, „Dokument“ oder „Automatisiert“). Unbekannte Werte erscheinen als „Unbekannt“.
+  Außerdem schlug „Nachweis hinzufügen“ ohne Datei mit einer Fehlermeldung fehl; das Formular
+  sendet jetzt die Felder, die der Server erwartet.
 - **Dashboard zeigt den echten Umsetzungsgrad statt „Security Score“:** Die Karte oben links
   zeigte bisher einen Grundwert von 70 plus 10 je Framework — 70/100 auf einer leeren Instanz
   und 100/100 bei einer einzigen umgesetzten Kontrolle von 214. Sie heißt jetzt „Umsetzungsgrad“

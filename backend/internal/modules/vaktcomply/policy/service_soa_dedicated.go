@@ -119,7 +119,12 @@ func (s *Service) ApproveDedicatedSoA(ctx context.Context, orgID, approverID str
 		return fmt.Errorf("%w: %d excluded controls have no reason", ErrExclusionReasonRequired, missing)
 	}
 
-	return s.repo.ApproveSoAVersion(ctx, orgID, version, approverID)
+	// The draft shows the live control status; approval freezes exactly that.
+	entries, err := s.repo.ListSoAEntries(ctx, orgID, version)
+	if err != nil {
+		return err
+	}
+	return s.repo.ApproveSoAVersion(ctx, orgID, version, approverID, entries)
 }
 
 // GetDedicatedSoAVersions returns all versions for the org.
@@ -184,7 +189,7 @@ func (s *Service) ExportDedicatedSoACSV(ctx context.Context, orgID string) ([][]
 		rows = append(rows, []string{
 			e.ControlRef, e.ControlName, "A." + e.ControlGroup,
 			applicable, e.Justification, e.ExclusionReason,
-			e.ImplementationStatus, e.EvidenceReference,
+			statusLabel(e.ImplementationStatus), e.EvidenceReference,
 		})
 	}
 	return rows, nil
@@ -237,11 +242,15 @@ func buildSoAPDF(entries []SoADedicatedEntry, summary *SoASummary, version int) 
 	pdf.CellFormat(60, 6, fmt.Sprintf("Controls gesamt: %d", summary.ApplicableCount+summary.ExcludedCount), "", 1, "L", false, 0, "")
 	pdf.CellFormat(60, 6, fmt.Sprintf("Anwendbar: %d", summary.ApplicableCount), "", 1, "L", false, 0, "")
 	pdf.CellFormat(60, 6, fmt.Sprintf("Nicht anwendbar: %d", summary.ExcludedCount), "", 1, "L", false, 0, "")
-	pdf.CellFormat(60, 6, fmt.Sprintf("Implementiert: %d", summary.ImplementedCount), "", 1, "L", false, 0, "")
-	pdf.CellFormat(60, 6, fmt.Sprintf("Teilweise: %d", summary.PartialCount), "", 1, "L", false, 0, "")
-	pdf.CellFormat(60, 6, fmt.Sprintf("Geplant: %d", summary.PlannedCount), "", 1, "L", false, 0, "")
-	pdf.CellFormat(60, 6, fmt.Sprintf("Nicht begonnen: %d", summary.NotStartedCount), "", 1, "L", false, 0, "")
-	pdf.CellFormat(60, 6, fmt.Sprintf("Implementierungsgrad: %.0f%%", summary.ImplementationPct), "", 1, "L", false, 0, "")
+	pdf.CellFormat(60, 6, fmt.Sprintf("%s: %d", statusLabel("implemented"), summary.ImplementedCount), "", 1, "L", false, 0, "")
+	pdf.CellFormat(60, 6, fmt.Sprintf("%s: %d", statusLabel("partial"), summary.PartialCount), "", 1, "L", false, 0, "")
+	if summary.PlannedCount > 0 {
+		// Only snapshots approved before the status came from the control carry "planned".
+		pdf.CellFormat(60, 6, fmt.Sprintf("%s: %d", statusLabel("planned"), summary.PlannedCount), "", 1, "L", false, 0, "")
+	}
+	pdf.CellFormat(60, 6, fmt.Sprintf("%s: %d", statusLabel("not_started"), summary.NotStartedCount), "", 1, "L", false, 0, "")
+	// Same counting rule as the readiness score: umgesetzt = ganz, in Bearbeitung = halb.
+	pdf.CellFormat(60, 6, fmt.Sprintf("Umsetzungsgrad: %.0f%%", summary.ImplementationPct), "", 1, "L", false, 0, "")
 
 	// Controls table
 	pdf.AddPage()
@@ -327,16 +336,19 @@ func Truncate(s string, max int) string {
 	return s[:max-1] + "…"
 }
 
+// statusLabel uses the labels of the control page (controlDetailPage.status*
+// in de.json): the SoA status IS the control status, so it reads the same.
+// "planned" only occurs in snapshots approved before that rule.
 func statusLabel(s string) string {
 	switch s {
 	case "implemented":
-		return "Implementiert"
+		return "Umgesetzt"
 	case "partial":
-		return "Teilweise"
+		return "In Bearbeitung"
 	case "planned":
 		return "Geplant"
 	default:
-		return "Nicht begonnen"
+		return "Offen"
 	}
 }
 

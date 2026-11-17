@@ -33,11 +33,11 @@ func TestTruncate_EmptyString(t *testing.T) {
 // ── statusLabel ──────────────────────────────────────────────────────────────
 
 func TestStatusLabel_Implemented(t *testing.T) {
-	assert.Equal(t, "Implementiert", statusLabel("implemented"))
+	assert.Equal(t, "Umgesetzt", statusLabel("implemented"))
 }
 
 func TestStatusLabel_Partial(t *testing.T) {
-	assert.Equal(t, "Teilweise", statusLabel("partial"))
+	assert.Equal(t, "In Bearbeitung", statusLabel("partial"))
 }
 
 func TestStatusLabel_Planned(t *testing.T) {
@@ -45,9 +45,9 @@ func TestStatusLabel_Planned(t *testing.T) {
 }
 
 func TestStatusLabel_Unknown(t *testing.T) {
-	assert.Equal(t, "Nicht begonnen", statusLabel("not_started"))
-	assert.Equal(t, "Nicht begonnen", statusLabel(""))
-	assert.Equal(t, "Nicht begonnen", statusLabel("IMPLEMENTED"))
+	assert.Equal(t, "Offen", statusLabel("not_started"))
+	assert.Equal(t, "Offen", statusLabel(""))
+	assert.Equal(t, "Offen", statusLabel("IMPLEMENTED"))
 }
 
 // TestSoAStatusLabel_ExportedMirrorsInternal guards R1-20-07: the XLSX/DOCX SoA
@@ -60,5 +60,5 @@ func TestSoAStatusLabel_ExportedMirrorsInternal(t *testing.T) {
 	}
 	// The raw enum must never leak through untranslated.
 	assert.NotEqual(t, "not_started", SoAStatusLabel("not_started"))
-	assert.Equal(t, "Implementiert", SoAStatusLabel("implemented"))
+	assert.Equal(t, "Umgesetzt", SoAStatusLabel("implemented"))
 }

@@ -31,10 +31,13 @@ export function useControl(controlId: string) {
   })
 }
 
+// policy.AddEvidenceInput: `source` is required (validate:"required,oneof=manual
+// github aws azure ad"), the free text is `description`. The former `type`/`notes`
+// were dropped by the binder, so every add without a file failed with 422.
 interface AddEvidencePayload {
   title: string
-  type: 'manual' | 'automated' | 'document'
-  notes?: string
+  source: 'manual'
+  description?: string
   expires_at?: string | null
 }
 

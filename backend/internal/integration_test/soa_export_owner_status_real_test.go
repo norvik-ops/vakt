@@ -37,7 +37,7 @@ import (
 //
 // R1-20-07: the same export leaked the raw English implementation_status enum
 // ("implemented") into a German product; the PDF right next to it says
-// "Implementiert".
+// "Umgesetzt".
 //
 // The test drives the real write path (seed control with owner → InitDedicatedSoA
 // → link the entry to that control → approve, which sets approved_by to a real
@@ -45,7 +45,7 @@ import (
 //
 // Non-vacuity: revert owner to *e.ApprovedBy and the owner assertion flips to the
 // approver UUID; revert the status to e.ImplementationStatus and it reads
-// "implemented" instead of "Implementiert".
+// "implemented" instead of "Umgesetzt".
 func TestSoAXLSXExport_OwnerFromControlAndGermanStatus(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: -short mode")
@@ -88,8 +88,8 @@ func TestSoAXLSXExport_OwnerFromControlAndGermanStatus(t *testing.T) {
 	const controlOwner = "Frau Dr. Verantwortlich (IT-Leitung)"
 	var ctrlID string
 	require.NoError(t, pool.QueryRow(ctx, `
-		INSERT INTO ck_controls (org_id, framework_id, control_id, title, domain, owner)
-		VALUES ($1::uuid, $2::uuid, 'A.5.7', 'Threat intelligence', '5', $3)
+		INSERT INTO ck_controls (org_id, framework_id, control_id, title, domain, owner, manual_status)
+		VALUES ($1::uuid, $2::uuid, 'A.5.7', 'Threat intelligence', '5', $3, 'implemented')
 		RETURNING id::text`, orgID, fwID, controlOwner).Scan(&ctrlID))
 
 	// A real approver user — approved_by has a FK to users(id). Its UUID is what
@@ -104,12 +104,12 @@ func TestSoAXLSXExport_OwnerFromControlAndGermanStatus(t *testing.T) {
 	e := echo.New()
 
 	require.NoError(t, svc.InitDedicatedSoA(ctx, orgID))
-	// Link the A.5.7 SoA entry to the ck_control and mark it implemented.
+	// Link the A.5.7 SoA entry to the ck_control. The status "implemented" comes
+	// from the control (manual_status above), not from the SoA entry.
 	require.NoError(t, svc.UpdateDedicatedSoAEntry(ctx, orgID, "A.5.7", policy.UpdateSoAEntryInput{
-		Applicable:           true,
-		Justification:        "Bedrohungslage wird ausgewertet",
-		ImplementationStatus: "implemented",
-		CKControlID:          &ctrlID,
+		Applicable:    true,
+		Justification: "Bedrohungslage wird ausgewertet",
+		CKControlID:   &ctrlID,
 	}))
 	// Approve → sets approved_by = approverID on the entries (the wrong person).
 	require.NoError(t, svc.ApproveDedicatedSoA(ctx, orgID, approverID))
@@ -149,8 +149,9 @@ func TestSoAXLSXExport_OwnerFromControlAndGermanStatus(t *testing.T) {
 		assert.NotEqual(t, approverID, r[ownerCol], "owner must not be the approver UUID")
 		require.NotEmpty(t, approverID)
 
-		// R1-20-07: the status is German, not the raw English enum.
-		assert.Equal(t, "Implementiert", r[statusCol], "status must be the German label")
+		// R1-20-07: the status is German, not the raw English enum — and it is
+		// the label of the control page, because it is the control status.
+		assert.Equal(t, "Umgesetzt", r[statusCol], "status must be the German label")
 		assert.NotEqual(t, "implemented", r[statusCol])
 	}
 	require.True(t, found, "row A.5.7 must be present in the export")

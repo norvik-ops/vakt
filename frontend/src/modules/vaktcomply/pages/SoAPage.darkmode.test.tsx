@@ -21,7 +21,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 
-vi.mock('../../../api/client', () => ({ apiFetch: vi.fn() }))
+vi.mock('../../../api/client', () => ({ apiFetch: vi.fn(), registerUnauthorizedHandler: vi.fn() }))
 const { apiFetch } = await import('../../../api/client')
 const mockApiFetch = vi.mocked(apiFetch)
 
@@ -111,7 +111,7 @@ describe('SoAPage — Dunkelmodus lesbar', () => {
   it('Status-Badge bricht nicht um und hat eine Dunkelmodus-Variante', async () => {
     renderPage()
     await screen.findByTestId('soa-control-name')
-    const badge = screen.getByText('vaktcomply.soaPage.implNotStarted')
+    const badge = screen.getByText('vaktcomply.controlDetailPage.statusMissing')
     expect(badge.classList).toContain('whitespace-nowrap')
     expect(Array.from(badge.classList).some(c => c.startsWith('dark:bg-'))).toBe(true)
   })

@@ -5,6 +5,7 @@ package policy
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -13,25 +14,35 @@ import (
 
 // SoADedicatedEntry is a row in ck_soa_entries.
 type SoADedicatedEntry struct {
-	ID                   string     `json:"id"`
-	OrgID                string     `json:"org_id"`
-	Version              int        `json:"version"`
-	ControlRef           string     `json:"control_ref"`
-	ControlName          string     `json:"control_name"`
-	ControlGroup         string     `json:"control_group"`
-	Applicable           bool       `json:"applicable"`
-	Justification        string     `json:"justification,omitempty"`
-	ExclusionReason      string     `json:"exclusion_reason,omitempty"`
-	ImplementationStatus string     `json:"implementation_status"`
-	ManuallySet          bool       `json:"manually_set"`
-	CKControlID          *string    `json:"ck_control_id,omitempty"`
-	EvidenceReference    string     `json:"evidence_reference,omitempty"`
-	IsApproved           bool       `json:"is_approved"`
-	ApprovedBy           *string    `json:"approved_by,omitempty"`
-	ApprovedAt           *time.Time `json:"approved_at,omitempty"`
-	Notes                string     `json:"notes,omitempty"`
-	CreatedAt            time.Time  `json:"created_at"`
-	UpdatedAt            time.Time  `json:"updated_at"`
+	ID                   string `json:"id"`
+	OrgID                string `json:"org_id"`
+	Version              int    `json:"version"`
+	ControlRef           string `json:"control_ref"`
+	ControlName          string `json:"control_name"`
+	ControlGroup         string `json:"control_group"`
+	Applicable           bool   `json:"applicable"`
+	Justification        string `json:"justification,omitempty"`
+	ExclusionReason      string `json:"exclusion_reason,omitempty"`
+	ImplementationStatus string `json:"implementation_status"`
+	// StatusSource says where ImplementationStatus (and ControlName) came from:
+	// "control" (live from the linked ck_control, draft version), "snapshot"
+	// (frozen at approval, approved version) or "soa" (no control linked, the
+	// stored ck_soa_entries value). See resolveSoAEntry.
+	StatusSource string `json:"status_source"`
+	// LinkedControlID / LinkedFrameworkID name the ck_control the status is read
+	// from, so the SoA page can send the user to the control page, the one
+	// place the status is edited.
+	LinkedControlID   *string    `json:"linked_control_id,omitempty"`
+	LinkedFrameworkID *string    `json:"linked_framework_id,omitempty"`
+	ManuallySet       bool       `json:"manually_set"`
+	CKControlID       *string    `json:"ck_control_id,omitempty"`
+	EvidenceReference string     `json:"evidence_reference,omitempty"`
+	IsApproved        bool       `json:"is_approved"`
+	ApprovedBy        *string    `json:"approved_by,omitempty"`
+	ApprovedAt        *time.Time `json:"approved_at,omitempty"`
+	Notes             string     `json:"notes,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 // SoAVersion is a row in ck_soa_versions.
@@ -60,11 +71,15 @@ type SoASummary struct {
 }
 
 // UpdateSoAEntryInput holds validated input for updating a single SoA entry.
+//
+// ImplementationStatus and ManuallySet are still accepted for backward
+// compatibility but no longer written: the implementation status of a SoA entry
+// is the status of its control (one source). It is edited on the control.
 type UpdateSoAEntryInput struct {
 	Applicable           bool    `json:"applicable"`
 	Justification        string  `json:"justification,omitempty"`
 	ExclusionReason      string  `json:"exclusion_reason,omitempty"`
-	ImplementationStatus string  `json:"implementation_status" validate:"required,oneof=not_started planned partial implemented"`
+	ImplementationStatus string  `json:"implementation_status,omitempty" validate:"omitempty,oneof=not_started planned partial implemented"`
 	ManuallySet          bool    `json:"manually_set"`
 	CKControlID          *string `json:"ck_control_id,omitempty"`
 	EvidenceReference    string  `json:"evidence_reference,omitempty"`
@@ -120,16 +135,46 @@ func (r *Repository) InitSoAEntries(ctx context.Context, orgID string, version i
 	return nil
 }
 
-// ListSoAEntries returns all entries for the org at the given version.
+// soaEntrySelect reads the entries of one version together with the control
+// each entry takes its status from. That is the control named by ck_control_id,
+// otherwise the control with the same control_id (e.g. "A.5.2") in an ISO 27001
+// framework of the org (the name heuristic of isISO27001Framework). The evidence
+// count uses the filter of CountCKEvidenceByControl, so ResolveStatus sees the
+// same input as on the control page.
+const soaEntrySelect = `
+	SELECT e.id, e.org_id, e.version, e.control_ref, e.control_name, e.control_group,
+	       e.applicable, COALESCE(e.justification,''), COALESCE(e.exclusion_reason,''),
+	       e.implementation_status, e.manually_set, e.ck_control_id, COALESCE(e.evidence_reference,''),
+	       e.is_approved, e.approved_by, e.approved_at, COALESCE(e.notes,''), e.created_at, e.updated_at,
+	       lc.id::text, lc.framework_id::text, COALESCE(lc.title,''), COALESCE(lc.not_applicable,false),
+	       COALESCE(lc.manual_status,''),
+	       COALESCE((SELECT COUNT(*) FROM ck_evidence ev
+	                 WHERE ev.control_id = lc.id AND ev.org_id = e.org_id
+	                   AND ev.status IN ('approved','pending')), 0)::int
+	FROM ck_soa_entries e
+	LEFT JOIN LATERAL (
+		SELECT c.id, c.framework_id, c.title, c.not_applicable, c.manual_status
+		FROM ck_controls c
+		JOIN ck_frameworks f ON f.id = c.framework_id AND f.org_id = c.org_id
+		WHERE c.org_id = e.org_id
+		  AND (c.id = e.ck_control_id
+		       OR (c.control_id = e.control_ref
+		           AND (LOWER(f.name) LIKE '%iso 27001%' OR LOWER(f.name) LIKE '%iso27001%')))
+		ORDER BY (c.id = e.ck_control_id) DESC NULLS LAST, f.created_at, c.id
+		LIMIT 1
+	) lc ON true
+	WHERE e.org_id = $1 AND e.version = $2`
+
+// ListSoAEntries returns all entries for the org at the given version, with the
+// implementation status resolved by resolveSoAEntry: a draft shows the status of
+// the linked control, an approved version its frozen snapshot.
 func (r *Repository) ListSoAEntries(ctx context.Context, orgID string, version int) ([]SoADedicatedEntry, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id, org_id, version, control_ref, control_name, control_group,
-		       applicable, COALESCE(justification,''), COALESCE(exclusion_reason,''),
-		       implementation_status, manually_set, ck_control_id, COALESCE(evidence_reference,''),
-		       is_approved, approved_by, approved_at, COALESCE(notes,''), created_at, updated_at
-		FROM ck_soa_entries
-		WHERE org_id = $1 AND version = $2
-		ORDER BY control_group, control_ref`,
+	approved, err := r.isSoAVersionApproved(ctx, orgID, version)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.db.Query(ctx, soaEntrySelect+`
+		ORDER BY e.control_group, e.control_ref`,
 		orgID, version,
 	)
 	if err != nil {
@@ -143,11 +188,14 @@ func (r *Repository) ListSoAEntries(ctx context.Context, orgID string, version i
 		var ckCtrl pgtype.Text
 		var approvedBy pgtype.Text
 		var approvedAt pgtype.Timestamptz
+		var linkID, linkFW pgtype.Text
+		var link soaControlLink
 		if err := rows.Scan(
 			&e.ID, &e.OrgID, &e.Version, &e.ControlRef, &e.ControlName, &e.ControlGroup,
 			&e.Applicable, &e.Justification, &e.ExclusionReason,
 			&e.ImplementationStatus, &e.ManuallySet, &ckCtrl, &e.EvidenceReference,
 			&e.IsApproved, &approvedBy, &approvedAt, &e.Notes, &e.CreatedAt, &e.UpdatedAt,
+			&linkID, &linkFW, &link.Title, &link.NotApplicable, &link.ManualStatus, &link.EvidenceCount,
 		); err != nil {
 			return nil, err
 		}
@@ -161,75 +209,99 @@ func (r *Repository) ListSoAEntries(ctx context.Context, orgID string, version i
 			t := approvedAt.Time
 			e.ApprovedAt = &t
 		}
+		var linkPtr *soaControlLink
+		if linkID.Valid {
+			link.ID = linkID.String
+			link.FrameworkID = linkFW.String
+			linkPtr = &link
+		}
+		resolveSoAEntry(&e, approved, linkPtr)
 		entries = append(entries, e)
 	}
 	return entries, rows.Err()
 }
 
-// GetSoAEntry returns a single entry by control_ref.
+// isSoAVersionApproved reports whether the given SoA version is approved
+// (frozen). A missing version row counts as draft.
+func (r *Repository) isSoAVersionApproved(ctx context.Context, orgID string, version int) (bool, error) {
+	var status string
+	err := r.db.QueryRow(ctx,
+		`SELECT COALESCE(status,'draft') FROM ck_soa_versions WHERE org_id = $1 AND version = $2`,
+		orgID, version,
+	).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return status == "approved", nil
+}
+
+// GetSoAEntry returns a single entry by control_ref, resolved like ListSoAEntries.
 func (r *Repository) GetSoAEntry(ctx context.Context, orgID, controlRef string, version int) (*SoADedicatedEntry, error) {
-	var e SoADedicatedEntry
-	var ckCtrl, approvedBy pgtype.Text
-	var approvedAt pgtype.Timestamptz
-	err := r.db.QueryRow(ctx, `
-		SELECT id, org_id, version, control_ref, control_name, control_group,
-		       applicable, COALESCE(justification,''), COALESCE(exclusion_reason,''),
-		       implementation_status, manually_set, ck_control_id, COALESCE(evidence_reference,''),
-		       is_approved, approved_by, approved_at, COALESCE(notes,''), created_at, updated_at
-		FROM ck_soa_entries
-		WHERE org_id = $1 AND control_ref = $2 AND version = $3`,
-		orgID, controlRef, version,
-	).Scan(
-		&e.ID, &e.OrgID, &e.Version, &e.ControlRef, &e.ControlName, &e.ControlGroup,
-		&e.Applicable, &e.Justification, &e.ExclusionReason,
-		&e.ImplementationStatus, &e.ManuallySet, &ckCtrl, &e.EvidenceReference,
-		&e.IsApproved, &approvedBy, &approvedAt, &e.Notes, &e.CreatedAt, &e.UpdatedAt,
-	)
+	entries, err := r.ListSoAEntries(ctx, orgID, version)
 	if err != nil {
 		return nil, err
 	}
-	if ckCtrl.Valid {
-		e.CKControlID = &ckCtrl.String
+	for i := range entries {
+		if entries[i].ControlRef == controlRef {
+			return &entries[i], nil
+		}
 	}
-	if approvedBy.Valid {
-		e.ApprovedBy = &approvedBy.String
-	}
-	if approvedAt.Valid {
-		t := approvedAt.Time
-		e.ApprovedAt = &t
-	}
-	return &e, nil
+	return nil, pgx.ErrNoRows
 }
 
-// UpdateSoAEntry updates a single entry by control_ref.
+// UpdateSoAEntry updates the SoA-owned fields of a single entry by control_ref.
+// implementation_status and manually_set are deliberately not written: the
+// status comes from the control (resolveSoAEntry) and is frozen only on approval.
 func (r *Repository) UpdateSoAEntry(ctx context.Context, orgID, controlRef string, version int, in UpdateSoAEntryInput) error {
 	_, err := r.db.Exec(ctx, `
 		UPDATE ck_soa_entries SET
-			applicable            = $1,
-			justification         = NULLIF($2, ''),
-			exclusion_reason      = NULLIF($3, ''),
-			implementation_status = $4,
-			manually_set          = $5,
-			ck_control_id         = $6,
-			evidence_reference    = NULLIF($7, ''),
-			notes                 = NULLIF($8, ''),
-			updated_at            = NOW()
-		WHERE org_id = $9 AND control_ref = $10 AND version = $11`,
+			applicable         = $1,
+			justification      = NULLIF($2, ''),
+			exclusion_reason   = NULLIF($3, ''),
+			ck_control_id      = $4,
+			evidence_reference = NULLIF($5, ''),
+			notes              = NULLIF($6, ''),
+			updated_at         = NOW()
+		WHERE org_id = $7 AND control_ref = $8 AND version = $9`,
 		in.Applicable, in.Justification, in.ExclusionReason,
-		in.ImplementationStatus, in.ManuallySet, in.CKControlID, in.EvidenceReference,
+		in.CKControlID, in.EvidenceReference,
 		in.Notes, orgID, controlRef, version,
 	)
 	return err
 }
 
 // ApproveSoAVersion marks all entries for the version as approved and sets version status.
-func (r *Repository) ApproveSoAVersion(ctx context.Context, orgID string, version int, approverID string) error {
+//
+// freeze carries the entries as the draft showed them (resolved from their
+// controls). Their status and title are written into ck_soa_entries in the same
+// transaction, so the approved version is a snapshot: later changes on the
+// control no longer move it (an audit document must not change afterwards).
+func (r *Repository) ApproveSoAVersion(ctx context.Context, orgID string, version int, approverID string, freeze []SoADedicatedEntry) error {
 	now := time.Now().UTC()
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+
+	for _, e := range freeze {
+		if e.StatusSource != SoAStatusSourceControl {
+			continue
+		}
+		// The rows come from ListSoAEntries of this very version; writing the same
+		// snapshot twice yields the same state, so the CommandTag is not checked.
+		//idempotent: freeze of rows just read from this version, re-run yields the same snapshot
+		if _, err := tx.Exec(ctx, `
+			UPDATE ck_soa_entries SET implementation_status = $1, control_name = $2, updated_at = NOW()
+			WHERE org_id = $3 AND version = $4 AND control_ref = $5`,
+			e.ImplementationStatus, e.ControlName, orgID, version, e.ControlRef,
+		); err != nil {
+			return err
+		}
+	}
 
 	_, err = tx.Exec(ctx, `
 		UPDATE ck_soa_entries SET is_approved = true, approved_by = $1, approved_at = $2
@@ -300,29 +372,24 @@ func (r *Repository) ListSoAVersions(ctx context.Context, orgID string) ([]SoAVe
 	return versions, rows.Err()
 }
 
-// GetSoASummary computes aggregate statistics for the current version.
+// GetSoASummary computes aggregate statistics for the version from the resolved
+// entries (summarizeSoA), so the summary, the page and every export count the
+// same status.
 func (r *Repository) GetSoASummary(ctx context.Context, orgID string, version int) (*SoASummary, error) {
-	var s SoASummary
-	s.Version = version
-	err := r.db.QueryRow(ctx, `
-		SELECT
-			COUNT(*) FILTER (WHERE applicable = true)  AS applicable_count,
-			COUNT(*) FILTER (WHERE applicable = false) AS excluded_count,
-			COUNT(*) FILTER (WHERE applicable = true AND implementation_status = 'implemented') AS implemented_count,
-			COUNT(*) FILTER (WHERE applicable = true AND implementation_status = 'partial')     AS partial_count,
-			COUNT(*) FILTER (WHERE applicable = true AND implementation_status = 'planned')     AS planned_count,
-			COUNT(*) FILTER (WHERE applicable = true AND implementation_status = 'not_started') AS not_started_count
-		FROM ck_soa_entries WHERE org_id = $1 AND version = $2`,
-		orgID, version,
-	).Scan(&s.ApplicableCount, &s.ExcludedCount, &s.ImplementedCount, &s.PartialCount, &s.PlannedCount, &s.NotStartedCount)
+	entries, err := r.ListSoAEntries(ctx, orgID, version)
 	if err != nil {
 		return nil, err
 	}
-	if s.ApplicableCount > 0 {
-		s.ImplementationPct = float64(s.ImplementedCount) / float64(s.ApplicableCount) * 100
+	approved, err := r.isSoAVersionApproved(ctx, orgID, version)
+	if err != nil {
+		return nil, err
 	}
-	// Get version status
-	r.db.QueryRow(ctx, `SELECT COALESCE(status,'draft') FROM ck_soa_versions WHERE org_id = $1 AND version = $2`, orgID, version).Scan(&s.Status) //nolint:errcheck
+	s := summarizeSoA(entries)
+	s.Version = version
+	s.Status = "draft"
+	if approved {
+		s.Status = "approved"
+	}
 	return &s, nil
 }
 

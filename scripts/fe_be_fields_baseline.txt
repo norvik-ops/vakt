@@ -71,8 +71,6 @@ frontend/src/modules/vaktcomply/types.ts::CreateProtectionNeedInput.confidential
 frontend/src/modules/vaktcomply/types.ts::CreateProtectionNeedInput.integrity  # carried: KONV-K5 §4.6 candidate — Go input binds name/object_name/object_type
 frontend/src/hooks/useTeam.ts::CreateUserResult.email  # carried: admin.CreateUserResult emits user_id only
 frontend/src/hooks/useTeam.ts::CreateUserResult.role  # carried: admin.CreateUserResult emits user_id only
-frontend/src/modules/vaktcomply/types.ts::Evidence.notes  # carried: KONV-K5 §4.6 candidate — policy.Evidence emits description, not notes
-frontend/src/modules/vaktcomply/types.ts::Evidence.type  # carried: KONV-K5 §4.6 candidate — policy.Evidence emits source, not type
 frontend/src/modules/vaktcomply/components/ExpiringEvidenceWidget.tsx::EvidenceItem.control_id  # carried: Go EvidenceItem emits id/title/description/source/created_at
 frontend/src/modules/vaktcomply/components/ExpiringEvidenceWidget.tsx::EvidenceItem.expires_at  # carried: Go EvidenceItem emits no expires_at, although the widget is about expiry
 frontend/src/modules/vaktcomply/types.ts::ISMSScopeExclusion.item  # carried: orphan — nothing named `item` in any struct, spec key or column

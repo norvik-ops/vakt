@@ -30,7 +30,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 
-vi.mock('../../../api/client', () => ({ apiFetch: vi.fn() }))
+vi.mock('../../../api/client', () => ({ apiFetch: vi.fn(), registerUnauthorizedHandler: vi.fn() }))
 const { apiFetch } = await import('../../../api/client')
 const mockApiFetch = vi.mocked(apiFetch)
 
@@ -186,25 +186,24 @@ describe('SoAPage — edit round trip (K5-03)', () => {
     // blanked on every save:
     expect(b.notes).toBe('Review durch ISB im Q3')
     expect(b.ck_control_id).toBe('ck-42')
-    // A save through the dialog is a manual decision — without this the nightly
-    // evidence sync overwrites the status the user just chose.
-    expect(b.manually_set).toBe(true)
-    expect(b.implementation_status).toBe('partial')
+    // The status is the control's and is saved there — the SoA PUT carries no
+    // status of its own any more (one source).
+    expect(b).not.toHaveProperty('implementation_status')
+    expect(b).not.toHaveProperty('manually_set')
     // None of the invented names may reappear.
     for (const dead of ['justification_included', 'justification_excluded', 'evidence_note', 'owner']) {
       expect(b).not.toHaveProperty(dead)
     }
   })
 
-  it('offers only implementation_status values the backend accepts', async () => {
+  it('offers no SoA-own status values any more', async () => {
     stubApi()
     renderPage()
     await screen.findByText('A.5.1')
     openEditFor('A.5.1')
     await screen.findByText('common.save')
-    // `in_progress` and `not_applicable` are rejected by
-    // validate:"oneof=not_started planned partial implemented" with 422.
-    expect(screen.queryByText('vaktcomply.soaPage.implInProgress')).toBeNull()
-    expect(screen.queryByText('vaktcomply.soaPage.implNotApplicable')).toBeNull()
+    for (const dead of ['implInProgress', 'implNotApplicable', 'implNotStarted', 'implPartial']) {
+      expect(screen.queryByText(`vaktcomply.soaPage.${dead}`)).toBeNull()
+    }
   })
 })
