@@ -35,9 +35,14 @@ func ComputeReadinessReport(fw *Framework, controls []Control, evidenceCounts ma
 		TotalControls: len(controls),
 	}
 
-	// Per-domain tracking.
+	// Per-domain tracking. Domains count exactly like the report head and the
+	// dashboard score: "covered" means fully covered, partial controls are
+	// tracked separately and weigh half in the score (ReadinessScore). Counting
+	// partial as covered made the domain column of the compliance PDF sum to more
+	// than the "Abgedeckt" figure in its own head.
 	domainTotal := make(map[string]int)
 	domainCovered := make(map[string]int)
+	domainPartial := make(map[string]int)
 
 	for _, c := range controls {
 		// evidenceCounts ist die Quelle der Nachweis-Anzahl; c.EvidenceCount
@@ -54,7 +59,7 @@ func ComputeReadinessReport(fw *Framework, controls []Control, evidenceCounts ma
 			domainCovered[c.Domain]++
 		case "partial", "in_progress":
 			report.Partial++
-			domainCovered[c.Domain]++ // partial counts as half for domain score
+			domainPartial[c.Domain]++
 		default:
 			report.Missing++
 		}
@@ -72,7 +77,7 @@ func ComputeReadinessReport(fw *Framework, controls []Control, evidenceCounts ma
 			continue
 		}
 		covered := domainCovered[domain]
-		score := ReadinessScore(covered, 0, total)
+		score := ReadinessScore(covered, domainPartial[domain], total)
 		report.ByDomain = append(report.ByDomain, DomainScore{
 			Domain:  domain,
 			Score:   score,

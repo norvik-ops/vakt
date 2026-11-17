@@ -248,6 +248,9 @@ func buildSoAPDF(entries []SoADedicatedEntry, summary *SoASummary, version int) 
 	colWidths := []float64{18, 80, 12, 50, 40, 35, 42}
 	headers := []string{"Control", "Name", "Applic.", "Begründung / Ausschluss", "Status", "Evidence-Referenz", "Gruppe"}
 
+	// renderHeader draws the table head and restores the row style afterwards.
+	// It also runs after every page break; without the reset the following rows
+	// inherited the white header text and stood white on white.
 	renderHeader := func() {
 		pdf.SetFont("Helvetica", "B", 7)
 		pdf.SetFillColor(45, 55, 72)
@@ -256,11 +259,10 @@ func buildSoAPDF(entries []SoADedicatedEntry, summary *SoASummary, version int) 
 			pdf.CellFormat(colWidths[i], 6, h, "1", 0, "C", true, 0, "")
 		}
 		pdf.Ln(-1)
+		pdf.SetFont("Helvetica", "", 7)
+		pdf.SetTextColor(30, 30, 30)
 	}
 	renderHeader()
-
-	pdf.SetFont("Helvetica", "", 7)
-	pdf.SetTextColor(30, 30, 30)
 
 	groupLabels := map[string]string{"5": "5 — Organisatorisch", "6": "6 — Personal", "7": "7 — Physisch", "8": "8 — Technologisch"}
 	currentGroup := ""

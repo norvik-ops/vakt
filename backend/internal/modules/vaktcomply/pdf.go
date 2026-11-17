@@ -1909,6 +1909,9 @@ func GenerateSoAPDF(rows []SoARow, frameworkName, orgName string, generatedAt ti
 			x += w
 		}
 		pdf.Ln(6)
+		// Restore the row colour: the first row under each head drew its
+		// Control-ID and title in the inherited white otherwise.
+		pdf.SetTextColor(30, 30, 40)
 	}
 
 	for _, domain := range order {

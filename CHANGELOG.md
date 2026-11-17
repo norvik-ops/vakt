@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Behoben
+- **SoA-PDF nach Seitenumbruch lesbar:** Im Statement of Applicability (ISO 27001) stand der
+  Tabellentext nach jedem Seitenumbruch weiß auf weiß — bei Annex A waren 33 von 93 Kontrollen
+  unsichtbar und nicht druckbar. Alle Zeilen stehen jetzt in dunkler Schrift. Dasselbe gilt für die
+  Entwurfs-SoA, in der die erste Kontrolle unter jedem Domänenkopf unsichtbar war.
+- **Compliance-Übersicht zählt einheitlich:** Im PDF der Compliance-Übersicht zählte die
+  Domänen-Tabelle teilweise umgesetzte Kontrollen als „Abgedeckt“, der Kopf nicht — die Zahlen
+  widersprachen sich. Jetzt gilt überall dieselbe Regel wie im Dashboard: „Abgedeckt“ heißt voll
+  umgesetzt, eine teilweise umgesetzte Kontrolle zählt im Bereitschaftsgrad der Domäne halb.
+
 ---
 ## [0.46.4] — 2026-11-17
 
