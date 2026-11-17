@@ -312,12 +312,12 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
         />
       </div>
 
-      <div className="bg-white border rounded-xl p-6 space-y-4">
-        <div className="text-xs uppercase text-indigo-600 font-medium">
+      <div className="bg-surface border border-border rounded-xl p-6 space-y-4">
+        <div className="text-xs uppercase text-indigo-600 dark:text-indigo-400 font-medium">
           {q.area} · {q.nis2_ref}
         </div>
-        <h3 className="text-base font-semibold text-gray-900">{q.title}</h3>
-        {q.help && <p className="text-sm text-gray-600">{q.help}</p>}
+        <h3 className="text-base font-semibold text-primary">{q.title}</h3>
+        {q.help && <p className="text-sm text-secondary">{q.help}</p>}
 
         <div className="space-y-2">
           {VALUE_LABELS.map((label, value) => (
@@ -325,12 +325,12 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
               key={value}
               onClick={() => { void submitAnswer(value); }}
               disabled={submitting}
-              className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors flex items-center justify-between disabled:opacity-50"
+              className="w-full text-left px-4 py-3 rounded-lg border border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors flex items-center justify-between disabled:opacity-50"
             >
-              <span className="text-sm font-medium text-gray-900">
-                <span className="inline-block w-6 text-indigo-600 font-bold">{value}</span> {label}
+              <span className="text-sm font-medium text-primary">
+                <span className="inline-block w-6 text-indigo-600 dark:text-indigo-400 font-bold">{value}</span> {label}
               </span>
-              <ChevronRight className="w-4 h-4 text-gray-500" />
+              <ChevronRight className="w-4 h-4 text-secondary" />
             </button>
           ))}
         </div>
@@ -339,7 +339,7 @@ function ReassessmentWizard({ runId, onComplete, onCancel }: WizardProps) {
           placeholder={t('nis2Reassessment.commentPlaceholder')}
           value={comment}
           onChange={(e) => { setComment(e.target.value); }}
-          className="w-full mt-2 text-sm border border-gray-200 rounded-md px-3 py-2"
+          className="w-full mt-2 text-sm bg-surface text-primary border border-border rounded-md px-3 py-2"
           rows={2}
         />
       </div>

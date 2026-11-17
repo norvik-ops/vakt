@@ -14,6 +14,9 @@ import { useFrameworks, useEnableFramework, useDeleteFramework, useSwitchDORAVar
 import { FrameworkSetupWizard } from '../components/FrameworkSetupWizard'
 import type { Framework } from '../types'
 import { formatLocale } from '../../../shared/utils/locale'
+import { isUnsoldFeature } from '../../../shared/featureTiers'
+import { FeatureLockedError } from '../../../api/client'
+import { FeatureLock } from '../../../shared/components/ProGate'
 import { downloadBlob } from '../../../shared/utils/downloadBlob'
 
 // Pre-defined compliance frameworks users can enable with one click
@@ -37,6 +40,12 @@ const FRAMEWORK_CATALOGUE: Array<{
    * Karte hätte eine falsche Tatsache behauptet, um einen Knopf abzuschalten.
    */
   notOffered?: boolean
+  /**
+   * Lizenz-Merkmal, das die Aktivierung gatet (frameworkFeatureGate in
+   * backend/internal/modules/vaktcomply/handler.go). Liegt es in ProTier, trägt die
+   * Karte die Pro-Plakette. FrameworksPage.tiers.test.tsx hält beides zusammen.
+   */
+  feature?: string
 }> = [
   {
     key: 'NIS2',
@@ -58,6 +67,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   },
   {
     key: 'BSI',
+    feature: 'bsi_grundschutz',
     name: 'BSI IT-Grundschutz',
     fullName: 'BSI IT-Grundschutz-Kompendium 2023',
     description: 'Bewährter deutscher Standard des Bundesamts für Sicherheit in der Informationstechnik. Enthält detaillierte Bausteine und Umsetzungshinweise.',
@@ -67,6 +77,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   },
   {
     key: 'DORA',
+    feature: 'dora',
     name: 'DORA',
     fullName: 'Digital Operational Resilience Act (EU) 2022/2554',
     description: 'Verbindlich seit Januar 2025 für Banken, Versicherungen, Zahlungsdienstleister und deren kritische IKT-Drittanbieter. Regelt digitale operationale Resilienz und Vorfallmeldepflichten.',
@@ -79,6 +90,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   },
   {
     key: 'EUAIACT',
+    feature: 'eu_ai_act',
     name: 'EU AI Act',
     fullName: 'EU AI Act — Verordnung (EU) 2024/1689',
     description: 'Neue EU-Verordnung für KI-Systeme. Hochrisiko-KI-Anforderungen ab 2. Dezember 2027 (Anhang III) bzw. 2. August 2028 (Anhang I), geändert durch den Digital Omnibus (VO (EU) 2026/1744). Betrifft jeden, der KI-Systeme in der EU entwickelt, betreibt oder einsetzt.',
@@ -88,6 +100,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   },
   {
     key: 'TISAX',
+    feature: 'tisax',
     name: 'TISAX® / VDA ISA',
     fullName: 'TISAX® — Trusted Information Security Assessment Exchange (VDA ISA 6.0)',
     description: 'Verbindlicher Informationssicherheitsstandard der Automobilindustrie. Pflicht für Zulieferer mit Zugang zu sensitiven OEM-Daten (BMW, Mercedes, VW, Bosch, Continental).',
@@ -101,6 +114,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   },
   {
     key: 'ISO42001',
+    feature: 'iso_42001',
     name: 'ISO 42001',
     fullName: 'ISO/IEC 42001:2023',
     description: 'KI-Managementsystem-Standard für verantwortungsvolle Entwicklung und Nutzung von KI. Ergänzt den EU AI Act mit einem strukturierten Managementrahmen.',
@@ -119,6 +133,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   // für Community wird vom bestehenden Flow gehandhabt (wie CRA/EUAIACT/ISO42001).
   {
     key: 'ISO27017',
+    feature: 'multi_framework',
     name: 'ISO 27017',
     fullName: 'ISO/IEC 27017:2015',
     description: 'Code of Practice für Informationssicherheit in Cloud-Diensten (CSP & CSC). Ergänzt ISO 27001 um 7 Cloud-spezifische Controls.',
@@ -128,6 +143,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   },
   {
     key: 'ISO27018',
+    feature: 'multi_framework',
     name: 'ISO 27018',
     fullName: 'ISO/IEC 27018:2019',
     description: 'Schutz personenbezogener Daten (PII) in Public Clouds — für Auftragsverarbeiter nach Art. 28 DSGVO.',
@@ -140,6 +156,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   // im Katalog sichtbar wie CRA/EUAIACT — Community bekommt beim Aktivieren 402.
   {
     key: 'DSGVO-TOM',
+    feature: 'multi_framework',
     name: 'DSGVO Art. 32 TOM',
     fullName: 'DSGVO Art. 32 — Technische und organisatorische Maßnahmen',
     description: 'Technische und organisatorische Maßnahmen nach Art. 32 DSGVO, abgeleitet aus ISO 27001 — Nachweis angemessener Sicherheit der Verarbeitung.',
@@ -149,6 +166,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   },
   {
     key: 'CIS',
+    feature: 'multi_framework',
     name: 'CIS Controls v8',
     fullName: 'CIS Controls v8 — Center for Internet Security',
     description: '18 Kontrollgruppen des Center for Internet Security. IG1-Safeguards als Mindestanforderung für alle Organisationen.',
@@ -158,6 +176,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   },
   {
     key: 'KRITIS',
+    feature: 'multi_framework',
     name: 'KRITIS-DachG',
     fullName: 'KRITIS-Dachgesetz — Kritische Infrastrukturen',
     description: 'Resilienzanforderungen für Betreiber kritischer Anlagen in Deutschland (§§ 8, 12, 13, 16, 18, 20 KRITIS-DachG).',
@@ -167,6 +186,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   },
   {
     key: 'C5',
+    feature: 'multi_framework',
     name: 'BSI C5:2020',
     fullName: 'BSI C5:2020 — Cloud Computing Compliance Criteria Catalogue',
     description: 'Prüfgrundlage des BSI für die Sicherheit von Cloud-Diensten in Deutschland (Hetzner, IONOS, AWS-DE, Azure-DE).',
@@ -176,6 +196,7 @@ const FRAMEWORK_CATALOGUE: Array<{
   },
   {
     key: 'CRA',
+    feature: 'cra',
     name: 'EU CRA',
     fullName: 'EU Cyber Resilience Act (EU) 2024/2847',
     description: 'Sicherheitsanforderungen für Produkte mit digitalen Elementen. Gilt für Hersteller und Händler in der EU. SBOM, Patch-Management und Meldepflichten verpflichtend.',
@@ -439,6 +460,10 @@ export default function FrameworksPage() {
               {t('vaktcomply.frameworksPage.frameworkCatalogue')}
             </h2>
           </div>
+          {/* Aktivierung eines Pro-Frameworks ohne Lizenz (402): dieselbe Sperre wie überall. */}
+          {enableFramework.error instanceof FeatureLockedError && (
+            <FeatureLock kind={isUnsoldFeature(enableFramework.error.feature) ? 'unsold' : 'pro'} className="mb-4" />
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FRAMEWORK_CATALOGUE.map((fw) => {
               const alreadyEnabled = enabledKeys.has(fw.key.toUpperCase()) ||
@@ -446,6 +471,7 @@ export default function FrameworksPage() {
               return (
                 <div
                   key={fw.key}
+                  data-framework-key={fw.key}
                   className="flex flex-col gap-3 p-5 bg-surface border border-border rounded-xl"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -454,6 +480,9 @@ export default function FrameworksPage() {
                         <span className="text-sm font-semibold text-primary">{fw.name}</span>
                         <Badge variant="secondary" className="text-[10px]">{fw.category}</Badge>
                         {alreadyEnabled && <Badge variant="success" className="text-[10px]">{t('vaktcomply.frameworksPage.activated')}</Badge>}
+                        {fw.feature && !isUnsoldFeature(fw.feature) && (
+                          <Badge variant="outline" data-testid="tier-pro" className="text-[10px] text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700">Pro</Badge>
+                        )}
                         {fw.draft && <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/40">{t('vaktcomply.frameworksPage.frameworkStatusDraft')}</Badge>}
                         {fw.notOffered && <Badge variant="outline" className="text-[10px] text-secondary border-border">{t('vaktcomply.frameworksPage.frameworkStatusNotOffered')}</Badge>}
                       </div>

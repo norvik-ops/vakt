@@ -65,12 +65,13 @@ function renderPage() {
 // ── tests ──────────────────────────────────────────────────────────────────────
 
 describe('SecVitalsOverviewPage', () => {
-  it('renders DORA Dashboard link with correct href and text', () => {
+  // UX-01: DORA ist nicht käuflich (features.UnsoldFeatures). Die Kachel unter
+  // „Bereiche“ führte auch Pro-Kunden auf eine Sperrseite mit Kaufangebot.
+  it('bietet keine DORA-Kachel an', () => {
     mockFrameworks = []
     renderPage()
-    const link = screen.getByRole('link', { name: /DORA Dashboard/i })
-    expect(link).toBeTruthy()
-    expect(link.getAttribute('href')).toBe('/vaktcomply/dora/dashboard')
+    expect(screen.queryByRole('link', { name: /DORA Dashboard/i })).toBeNull()
+    expect(document.querySelector('a[href="/vaktcomply/dora/dashboard"]')).toBeNull()
   })
 
   it('shows TISAX tile when TISAX framework is in the list', () => {

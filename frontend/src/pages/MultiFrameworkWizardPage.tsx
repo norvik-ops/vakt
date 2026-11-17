@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Shield, ChevronRight, ChevronLeft, AlertTriangle, CheckCircle2, Lock } from 'lucide-react'
+import { Shield, ChevronRight, ChevronLeft, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { Spinner } from '../components/Spinner'
 import { apiFetch, FeatureLockedError } from '../api/client'
+import { FeatureLock } from '../shared/components/ProGate'
 
 // Sprint 28 / S28-4: Multi-Framework-Assessment-Wizard (NIS2 + ISO27001 + DSGVO-TOM).
 // Route: /nis2-check/multi
@@ -480,43 +481,29 @@ function ResultView({ result }: { result: MultiRun }) {
 
 // ── Pro-Gate-View ─────────────────────────────────────────────────────────────
 
+// Dieselbe Sperr-Komponente wie überall (FeatureLock); früher eine eigene Vollbild-
+// Variante mit dem rohen Feature-Schlüssel „nis2_reporting“ im Text.
 function ProGateView() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
+    <div className="min-h-screen bg-bg">
+      <header className="bg-surface border-b border-border">
         <div className="max-w-2xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Shield className="w-6 h-6 text-indigo-600" />
-          <h1 className="text-lg font-semibold text-gray-900">
+          <Shield className="w-6 h-6 text-brand" />
+          <h1 className="text-lg font-semibold text-primary">
             Multi-Framework-Assessment
           </h1>
         </div>
       </header>
       <main className="max-w-2xl mx-auto px-6 py-12">
-        <div className="bg-white border rounded-xl p-8 text-center space-y-4">
-          <div className="mx-auto w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
-            <Lock className="w-6 h-6 text-indigo-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900">Pro-Feature</h2>
-          <p className="text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
-            Das kombinierte NIS2 + ISO 27001 + DSGVO-TOM Assessment ist in der
-            Community Edition nicht verfügbar. Es erfordert eine Vakt-Pro-Lizenz mit
-            dem Feature <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">nis2_reporting</span>.
-          </p>
-          <div className="flex gap-3 justify-center pt-2">
-            <a
-              href="/settings"
-              className="inline-block bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700"
-            >
-              Lizenz aktivieren
-            </a>
-            <a
-              href="/nis2-check"
-              className="inline-block bg-white border text-gray-700 text-sm font-medium px-5 py-2 rounded-lg hover:bg-gray-50"
-            >
+        <FeatureLock
+          kind="pro"
+          className=""
+          extraAction={
+            <a href="/nis2-check" className="inline-flex items-center text-xs font-semibold text-secondary hover:text-primary transition-colors">
               NIS2-Only-Assessment (kostenlos)
             </a>
-          </div>
-        </div>
+          }
+        />
       </main>
     </div>
   )

@@ -1850,7 +1850,9 @@
     "retentionTitle": "Retention & Deletion",
     "retentionDesc": "Data management rules: when automated reports, audit entries and findings are deleted.",
     "retentionLink": "Configure retention",
-    "stagingError2": "Error: {{error}}"
+    "stagingError2": "Error: {{error}}",
+    "save": "Save",
+    "saving": "Saving …"
   },
   "teamSettingsPage": {
     "title": "Team",
@@ -2393,11 +2395,15 @@
       "reload": "Reload"
     },
     "pro": {
-      "title": "Vakt Pro",
+      "title": "Pro feature",
       "description": "This feature is not included in the Community Edition. Vakt Pro includes BSI IT-Grundschutz, EU AI Act, CRA, GDPR TOM, CIS, NIS2 notification assistant, audit PDF export, SSO, API keys, granular module permissions, and more.",
       "cta": "Upgrade now →",
       "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · NIS2 assistant · Audit PDF · SSO · API keys",
-      "demoHint": "Pro"
+      "demoHint": "Pro",
+      "activateLicense": "Activate license"
+    },
+    "notOffered": {
+      "description": "This feature is part of Vakt but is currently not offered in any plan. A license does not unlock it."
     }
   },
   "validation": {

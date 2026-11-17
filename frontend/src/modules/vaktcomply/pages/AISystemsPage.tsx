@@ -48,6 +48,8 @@ import {
   RISK_CLASS_LABELS as RISK_LABELS,
 } from '../components/aiRiskClassConfig'
 import type { AISystem, CreateAISystemInput, UpdateAISystemInput } from '../types'
+import { FeatureLockedError } from '../../../api/client'
+import { ProGate } from '../../../shared/components/ProGate'
 
 // AUTONOMY_I18N_KEY: map domain enums → i18n keys. Resolved with t() inside
 // the component body. Module-level so the strings remain a static lookup.
@@ -191,7 +193,9 @@ export default function AISystemsPage() {
     status: filterStatus || undefined,
   }
 
-  const { data: systems, isLoading, isError } = useAISystems(filters)
+  const { data: systems, isLoading, isError, error } = useAISystems(filters)
+  // Gesperrt (402): keine Schreibknöpfe neben der Sperre anbieten.
+  const locked = error instanceof FeatureLockedError
   const createSystem = useCreateAISystem()
   const updateSystem = useUpdateAISystem(editId ?? '')
   const deleteSystem = useDeleteAISystem()
@@ -244,10 +248,12 @@ export default function AISystemsPage() {
         title={t('vaktcomply.aiSystems.title')}
         description={t('vaktcomply.aiSystems.description')}
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            {t('vaktcomply.aiSystems.add')}
-          </Button>
+          locked ? undefined : (
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              {t('vaktcomply.aiSystems.add')}
+            </Button>
+          )
         }
       />
 
@@ -329,9 +335,11 @@ export default function AISystemsPage() {
           </div>
         )}
         {isError && (
-          <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">
-            Fehler beim Laden des KI-Inventars.
-          </div>
+          <ProGate error={locked ? error : null}>
+            <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">
+              Fehler beim Laden des KI-Inventars.
+            </div>
+          </ProGate>
         )}
         {!isLoading && !isError && systems?.length === 0 && (
           <EmptyState

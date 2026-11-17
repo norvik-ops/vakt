@@ -7,7 +7,7 @@ import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import { apiFetch } from '../../../api/client'
+import { apiFetch, FeatureLockedError } from '../../../api/client'
 import { ProGate } from '../../../shared/components/ProGate'
 import { RISK_CLASS_CSS, RISK_CLASS_LABELS } from '../components/aiRiskClassConfig'
 import { formatLocale } from '../../../shared/utils/locale'
@@ -52,6 +52,8 @@ export default function EUAIActDashboardPage() {
     staleTime: 5 * 60 * 1000,
   })
   const [downloadError, setDownloadError] = useState<string | null>(null)
+  // Gesperrt (402): den PDF-Knopf nicht neben der Sperre anbieten.
+  const locked = error instanceof FeatureLockedError
 
   async function handleDownloadPDF() {
     try {
@@ -90,10 +92,12 @@ export default function EUAIActDashboardPage() {
         title="EU AI Act Dashboard"
         description="Compliance-Status Ihrer KI-Systeme nach EU-Verordnung 2024/1689."
         actions={
-          <Button onClick={() => { setDownloadError(null); void handleDownloadPDF() }} data-testid="export-report-pdf-btn">
-            <Download className="w-4 h-4 mr-1" />
-            Compliance-Report PDF
-          </Button>
+          locked ? undefined : (
+            <Button onClick={() => { setDownloadError(null); void handleDownloadPDF() }} data-testid="export-report-pdf-btn">
+              <Download className="w-4 h-4 mr-1" />
+              Compliance-Report PDF
+            </Button>
+          )
         }
       />
 

@@ -1850,7 +1850,9 @@
     "retentionTitle": "Bewaring & Verwijdering",
     "retentionDesc": "Gegevensbeheerregels: wanneer automatische rapporten, auditinvoeren en bevindingen worden verwijderd.",
     "retentionLink": "Bewaring configureren",
-    "stagingError2": "Fout: {{error}}"
+    "stagingError2": "Fout: {{error}}",
+    "save": "Opslaan",
+    "saving": "Opslaan…"
   },
   "teamSettingsPage": {
     "title": "Team",
@@ -2393,11 +2395,15 @@
       "reload": "Opnieuw laden"
     },
     "pro": {
-      "title": "Vakt Pro",
+      "title": "Pro-functie",
       "description": "Deze functie is niet beschikbaar in de Community-editie. Vakt Pro bevat BSI IT-Grundschutz, EU AI Act, CRA, AVG TOM, CIS, NIS2-meldingsassistent, Audit PDF-export, SSO, API-sleutels, granulaire modulerechten en meer.",
       "cta": "Nu upgraden →",
       "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · NIS2-assistent · Audit PDF · SSO · API-sleutels",
-      "demoHint": "Pro"
+      "demoHint": "Pro",
+      "activateLicense": "Licentie activeren"
+    },
+    "notOffered": {
+      "description": "Deze functie maakt deel uit van Vakt, maar wordt momenteel in geen enkel abonnement aangeboden. Een licentie ontgrendelt haar niet."
     }
   },
   "validation": {

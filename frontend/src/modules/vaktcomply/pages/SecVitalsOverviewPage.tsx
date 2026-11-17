@@ -18,7 +18,6 @@ import { useRisks } from '../hooks/useRisks'
 import { useIncidents } from '../hooks/useIncidents'
 import { usePolicies } from '../hooks/usePolicies'
 import { useAuditRecords } from '../hooks/useAudits'
-import { useDORADashboard } from '../hooks/useDORADashboard'
 import { useAIStatus } from '../hooks/useAIAdvisor'
 import { useAuditReport } from '../hooks/useAuditReport'
 import { useScoreHistory } from '../hooks/useScoreHistory'
@@ -309,7 +308,6 @@ export default function SecVitalsOverviewPage() {
   const { data: incidents } = useIncidents()
   const { data: policies } = usePolicies()
   const { data: audits } = useAuditRecords()
-  const { data: doraResult } = useDORADashboard()
   const { data: scoreHistory } = useScoreHistory(30)
 
   const [isGeneratingExec, setIsGeneratingExec] = useState(false)
@@ -477,35 +475,8 @@ export default function SecVitalsOverviewPage() {
             </button>
           ))}
 
-          {/* DORA Dashboard Tile */}
-          <Link
-            to="/vaktcomply/dora/dashboard"
-            className="group flex items-start gap-4 p-4 bg-surface border border-border rounded-lg text-left hover:border-brand/50 transition-all duration-150"
-          >
-            <div className="p-2 rounded-lg bg-surface2 text-brand shrink-0">
-              <Shield className="w-4 h-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-primary group-hover:text-brand transition-colors">
-                DORA Dashboard
-              </div>
-              <div className="text-xs text-secondary mt-0.5 leading-relaxed">
-                DORA-Bereitschaft, Meldepflichten und Resilienztests im Überblick.
-              </div>
-              {doraResult && !doraResult.notEnabled && doraResult.data && (
-                <div className={cn(
-                  'text-xs font-medium mt-1',
-                  doraResult.data.readiness_pct >= 80 ? 'text-green-500' :
-                  doraResult.data.readiness_pct >= 50 ? 'text-yellow-500' : 'text-red-500',
-                )}>
-                  {doraResult.data.readiness_pct.toFixed(0)}% Bereitschaft
-                </div>
-              )}
-              {doraResult?.notEnabled && (
-                <div className="text-xs text-secondary mt-1 italic">DORA nicht aktiviert</div>
-              )}
-            </div>
-          </Link>
+          {/* Keine DORA-Kachel: DORA liegt in keinem Tarif (features.UnsoldFeatures), die
+              Kachel führte jeden — auch zahlende Pro-Kunden — auf eine Sperrseite (UX-01). */}
 
           {/* TISAX Tile — only shown when TISAX framework is enabled */}
           {tisaxFramework && (

@@ -209,7 +209,7 @@ export default function InterestedPartiesPage() {
           }
         />
       ) : (
-        <div className="bg-white rounded-lg border overflow-x-auto">
+        <div className="bg-surface rounded-lg border border-border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -222,11 +222,11 @@ export default function InterestedPartiesPage() {
             </TableHeader>
             <TableBody>
               {data.map((ip) => (
-                <TableRow key={ip.id} className="hover:bg-gray-50">
+                <TableRow key={ip.id} className="hover:bg-surface2">
                   <TableCell>
                     <div className="font-medium text-sm">{ip.name}</div>
                     {ip.is_system_default && (
-                      <div className="text-xs text-gray-400">{t('vaktcomply.interestedParties.badgeSystemDefault')}</div>
+                      <div className="text-xs text-muted">{t('vaktcomply.interestedParties.badgeSystemDefault')}</div>
                     )}
                   </TableCell>
                   <TableCell>
@@ -234,7 +234,7 @@ export default function InterestedPartiesPage() {
                       {categoryLabels[ip.category] ?? ip.category}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-gray-600 max-w-xs">
+                  <TableCell className="text-xs text-secondary max-w-xs">
                     <p className="line-clamp-2">{ip.requirements}</p>
                   </TableCell>
                   <TableCell className="text-xs text-gray-500">

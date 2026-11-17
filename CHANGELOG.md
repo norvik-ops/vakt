@@ -53,6 +53,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   statt der Stufen. Sie heißen jetzt „Sehr unwahrscheinlich … Sehr wahrscheinlich“ und
   „Vernachlässigbar … Kritisch“ (in allen vier Sprachen); fehlt eine Übersetzung, stehen dort die
   Zahlen 1 bis 5.
+- **Kein Kaufangebot für Funktionen, die nicht verkauft werden:** DORA, TISAX und ISO 42001
+  liegen in keinem Tarif. Ihre Seiten zeigten auch zahlenden Pro-Kunden „nicht in der Community
+  Edition … Jetzt upgraden“. Sie zeigen jetzt „Nicht im Angebot“ ohne Kauf-Link. Die Kachel
+  „DORA Dashboard“ in der Comply-Übersicht entfällt.
+- **Pro-Kennzeichnung im Framework-Katalog:** Die Pro-Frameworks (BSI IT-Grundschutz, EU AI Act,
+  CRA, ISO 27017/27018, DSGVO-TOM, CIS, KRITIS, C5) tragen eine Plakette „Pro“. Die Lizenz-Sperre
+  sieht überall gleich aus und nennt beide Wege: „Lizenz aktivieren“ und das Angebot. Die
+  Multi-Framework-Seite zeigt keinen internen Feature-Namen mehr. Das KI-Inventar zeigt statt
+  eines Ladefehlers die Sperre. Neben einer Sperre stehen keine Knöpfe mehr, die nur 402 liefern
+  („KI-System erfassen“, „Compliance-Report PDF“).
+- **Backup-Ziel:** Der Speichern-Knopf zeigt „Speichern“ statt `settingsPage.save`.
+- **Dunkelmodus:** NIS2-Neubewertung, Auditprogramm, Interessierte Parteien und der
+  Nacharbeits-Dialog der Prüfungsansicht folgen dem Farbschema. Der Knopf „Seite neu laden“ auf
+  der Fehlerseite ist wieder lesbar.
 
 ---
 ## [0.46.5] — 2026-11-17

@@ -1850,7 +1850,9 @@
     "retentionTitle": "Aufbewahrung & Löschung",
     "retentionDesc": "Datenpflege-Regeln: wann automatisierte Berichte, Audit-Einträge und Findings gelöscht werden.",
     "retentionLink": "Aufbewahrung konfigurieren",
-    "stagingError2": "Fehler: {{error}}"
+    "stagingError2": "Fehler: {{error}}",
+    "save": "Speichern",
+    "saving": "Speichern …"
   },
   "teamSettingsPage": {
     "title": "Team",
@@ -2393,11 +2395,15 @@
       "reload": "Neu laden"
     },
     "pro": {
-      "title": "Vakt Pro",
+      "title": "Pro-Feature",
       "description": "Dieses Feature ist in der Community Edition nicht enthalten. Vakt Pro enthält BSI IT-Grundschutz, EU AI Act, CRA, DSGVO-TOM, CIS, NIS2-Meldepflicht-Assistent, Audit-PDF-Export, SSO, API-Keys, granulare Modul-Berechtigungen und mehr.",
       "cta": "Jetzt upgraden →",
       "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · NIS2-Assistent · Audit-PDF · SSO · API-Keys",
-      "demoHint": "Pro"
+      "demoHint": "Pro",
+      "activateLicense": "Lizenz aktivieren"
+    },
+    "notOffered": {
+      "description": "Diese Funktion ist in Vakt enthalten, wird aber derzeit in keinem Tarif angeboten. Eine Lizenz schaltet sie nicht frei."
     }
   },
   "validation": {

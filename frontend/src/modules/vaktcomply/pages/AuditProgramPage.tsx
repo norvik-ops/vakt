@@ -259,13 +259,13 @@ export default function AuditProgramPage() {
         <div className="grid grid-cols-4 gap-3">
           {[
             { label: t('vaktcomply.auditProgram.summaryPlannedThisYear'), value: summary.audits_planned_this_year },
-            { label: t('vaktcomply.auditProgram.summaryCompleted'), value: summary.audits_completed, cls: 'text-green-700' },
-            { label: t('vaktcomply.auditProgram.summaryOpenFindings'), value: summary.open_findings, cls: summary.open_findings > 0 ? 'text-amber-700' : '' },
-            { label: t('vaktcomply.auditProgram.summaryOverdueCapas'), value: summary.overdue_capas_from_audits, cls: summary.overdue_capas_from_audits > 0 ? 'text-red-600' : '' },
+            { label: t('vaktcomply.auditProgram.summaryCompleted'), value: summary.audits_completed, cls: 'text-green-700 dark:text-green-400' },
+            { label: t('vaktcomply.auditProgram.summaryOpenFindings'), value: summary.open_findings, cls: summary.open_findings > 0 ? 'text-amber-700 dark:text-amber-400' : '' },
+            { label: t('vaktcomply.auditProgram.summaryOverdueCapas'), value: summary.overdue_capas_from_audits, cls: summary.overdue_capas_from_audits > 0 ? 'text-red-600 dark:text-red-400' : '' },
           ].map(({ label, value, cls = '' }) => (
-            <div key={label} className="bg-white border rounded-lg p-3 text-center">
-              <div className={`text-xl font-bold ${cls}`}>{value}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+            <div key={label} className="bg-surface border border-border rounded-lg p-3 text-center">
+              <div className={`text-xl font-bold text-primary ${cls}`}>{value}</div>
+              <div className="text-xs text-secondary mt-0.5">{label}</div>
             </div>
           ))}
         </div>

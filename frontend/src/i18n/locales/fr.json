@@ -1850,7 +1850,9 @@
     "retentionTitle": "Conservation & Suppression",
     "retentionDesc": "Règles de gestion des données : quand les rapports automatisés, les entrées d'audit et les findings sont supprimés.",
     "retentionLink": "Configurer la conservation",
-    "stagingError2": "Erreur : {{error}}"
+    "stagingError2": "Erreur : {{error}}",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…"
   },
   "teamSettingsPage": {
     "title": "Équipe",
@@ -2393,11 +2395,15 @@
       "reload": "Recharger"
     },
     "pro": {
-      "title": "Vakt Pro",
+      "title": "Fonctionnalité Pro",
       "description": "Cette fonctionnalité n'est pas disponible dans l'édition Community. Vakt Pro inclut BSI IT-Grundschutz, EU AI Act, CRA, RGPD TOM, CIS, assistant de notification NIS2, export PDF d'audit, SSO, clés API, permissions de modules granulaires et plus encore.",
       "cta": "Passer à Pro →",
       "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · Assistant NIS2 · PDF audit · SSO · Clés API",
-      "demoHint": "Pro"
+      "demoHint": "Pro",
+      "activateLicense": "Activer la licence"
+    },
+    "notOffered": {
+      "description": "Cette fonctionnalité fait partie de Vakt, mais n'est actuellement proposée dans aucune offre. Une licence ne la débloque pas."
     }
   },
   "validation": {
