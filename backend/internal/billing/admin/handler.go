@@ -33,6 +33,8 @@ func NewHandler(db *pgxpool.Pool, seats *lexware.Seats, billing *lexware.Handler
 }
 
 func Register(e *echo.Echo, h *Handler, cfg Config) {
+	e.GET("/apple-touch-icon.png", AppleTouchIcon)
+
 	g := e.Group("", RequireCloudflareAccess(cfg), setCSRF, requireCSRF)
 
 	g.GET("/", h.Dashboard)
