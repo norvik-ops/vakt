@@ -20,12 +20,13 @@
       "root": "Vakt Comply",
       "group": {
         "frameworks": "Frameworks",
-        "operations": "Operaties",
+        "operations": "Bedrijfsvoering",
         "documentation": "Documentatie",
         "thirdParty": "Derden",
         "bcm": "Noodbeheer (BCM)"
       },
       "overview": "Overzicht",
+      "allFrameworks": "Alle frameworks",
       "nis2": "NIS2",
       "iso27001": "ISO 27001",
       "bsi": "BSI",

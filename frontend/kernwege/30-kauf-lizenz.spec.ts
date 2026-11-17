@@ -62,8 +62,10 @@ test.describe('KW1 Kauf & Lizenz', () => {
     // Multi-Framework-Check ist aus der Navigation erreichbar, nicht nur per URL.
     await page.goto('/')
     const nav = page.getByRole('navigation', { name: 'Hauptnavigation' })
-    await nav.getByRole('link', { name: 'Vakt Comply' }).click()
-    // Die Gruppe „Frameworks" klappt ein Mensch auf, wenn sie zu ist.
+    // Seit der Seitenleiste ohne Modul-Ebene (feat/navigation-bereiche) gibt es den
+    // Zwischenschritt „Vakt Comply" nicht mehr: die Bereiche stehen direkt unter dem
+    // Dashboard. Der Nutzerweg beginnt deshalb auf dem Dashboard, ohne Zwischenklick.
+    // Den Bereich „Frameworks" klappt ein Mensch auf, wenn er zu ist.
     const group = nav.getByRole('button', { name: /^Frameworks/ })
     if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click()
     await expect(nav.getByRole('link', { name: /Multi-Framework/ })).toBeVisible()

@@ -26,6 +26,7 @@
         "bcm": "Emergency Management (BCM)"
       },
       "overview": "Overview",
+      "allFrameworks": "All frameworks",
       "nis2": "NIS2",
       "iso27001": "ISO 27001",
       "bsi": "BSI",

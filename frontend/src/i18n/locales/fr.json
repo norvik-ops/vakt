@@ -20,12 +20,13 @@
       "root": "Vakt Comply",
       "group": {
         "frameworks": "Référentiels",
-        "operations": "Opérations",
+        "operations": "Exploitation",
         "documentation": "Documentation",
         "thirdParty": "Tiers",
         "bcm": "Gestion des urgences (BCM)"
       },
       "overview": "Vue d'ensemble",
+      "allFrameworks": "Tous les référentiels",
       "nis2": "NIS2",
       "iso27001": "ISO 27001",
       "bsi": "BSI",

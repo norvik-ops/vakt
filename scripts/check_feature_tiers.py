@@ -22,7 +22,7 @@ Geprueft werden vier Flaechen, jede mit einem eigenen, mechanischen Extraktor:
 
   E1  Markdown-Tier-Tabellen   (README, Wiki, Marketing) — zeilengenau
   E2  sites/vakt Pricing.astro (COMMUNITY_FEATURES / PRO_FEATURES)
-  E3  frontend Layout.tsx      (Navigations-Badges `pro:` / `tier:`)
+  E3  frontend sidebarSections.ts (Navigations-Badges `pro:` / `tier:`)
   E4  OpenAPI-Spec             (x-license-tier / x-pro-feature) — die gespiegelte
                                  oeffentliche Fassung liegt im Mirror unter
                                  docs/api/openapi.yaml und wurde von KEINEM
@@ -398,7 +398,8 @@ def extract_pricing_astro(reg: list[dict]) -> int:
     return n
 
 
-LAYOUT_TSX = "frontend/src/shared/components/Layout.tsx"
+# Navigationseinträge der Seitenleiste (bis 2026-11-17 standen sie in Layout.tsx).
+LAYOUT_TSX = "frontend/src/shared/components/sidebarSections.ts"
 
 
 def extract_nav_badges(reg: list[dict]) -> int:

@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Geändert
+- **Navigation ohne Modul-Ebene:** Die Seitenleiste zeigt die Bereiche Frameworks, Betrieb,
+  Dokumentation, Drittparteien und Notfallmanagement (BCM) direkt unter dem Dashboard — der
+  Umweg über „Module → Vakt Comply“ entfällt. Jeder Bereich lässt sich auf- und zuklappen; der
+  Bereich der geöffneten Seite ist immer offen, weitere geöffnete Bereiche merkt sich der Browser.
+  Die Gruppe „Operations“ heißt auf Deutsch jetzt „Betrieb“. In der schmalen Icon-Leiste öffnet
+  jedes Bereichs-Icon per Klick oder Mauszeiger eine Liste aller Einträge. Die Comply-Übersicht
+  steht als eigener Eintrag „Übersicht“ direkt unter dem Dashboard. Damit der Name eindeutig
+  bleibt, heißt der bisherige Eintrag „Übersicht“ im Bereich Frameworks jetzt „Alle Frameworks“.
+
 ### Behoben
 - **SoA-Seite im Dunkelmodus lesbar:** Auf der Anwendbarkeitserklärung (SoA) standen die
   Maßnahmen-Namen in der Tabelle und die Kennzahl „Kontrollen gesamt“ im Dunkelmodus weiß auf

@@ -20,12 +20,13 @@
       "root": "Vakt Comply",
       "group": {
         "frameworks": "Frameworks",
-        "operations": "Operations",
+        "operations": "Betrieb",
         "documentation": "Dokumentation",
         "thirdParty": "Drittparteien",
         "bcm": "Notfallmanagement (BCM)"
       },
       "overview": "Übersicht",
+      "allFrameworks": "Alle Frameworks",
       "nis2": "NIS2",
       "iso27001": "ISO 27001",
       "bsi": "BSI",
