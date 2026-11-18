@@ -51,6 +51,8 @@ import {
 import type { AISystem, CreateAISystemInput, UpdateAISystemInput } from '../types'
 import { FeatureLockedError } from '../../../api/client'
 import { ProGate } from '../../../shared/components/ProGate'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 // AUTONOMY_I18N_KEY: map domain enums → i18n keys. Resolved with t() inside
 // the component body. Module-level so the strings remain a static lookup.
@@ -100,11 +102,14 @@ function AISystemCard({
   onEdit,
   onDelete,
   onClassify,
+  canWrite,
 }: {
   system: AISystem
   onEdit: () => void
   onDelete: () => void
   onClassify: () => void
+  /** Leser (Viewer, AuditorReadOnly): ohne Bearbeiten, Löschen und Einstufen — alle `rw`. */
+  canWrite: boolean
 }) {
   const { t } = useTranslation()
   const editLabel = t('vaktcomply.aiSystems.actions.edit')
@@ -116,6 +121,8 @@ function AISystemCard({
           <p className="font-medium text-sm">{system.name}</p>
           <div className="flex items-center gap-1 shrink-0">
             <AISystemStatusBadge status={system.status} />
+            {canWrite && (
+            <>
             <Button
               variant="ghost"
               size="icon"
@@ -137,6 +144,8 @@ function AISystemCard({
             >
               <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
+            </>
+            )}
           </div>
         </div>
         {system.provider && (
@@ -167,15 +176,17 @@ function AISystemCard({
           </p>
         )}
         <div className="flex flex-wrap gap-2 pt-1">
-          <Button
-            variant={system.risk_class ? 'outline' : 'default'}
-            size="sm"
-            data-testid="classify-ai-system-btn"
-            onClick={onClassify}
-          >
-            <FlaskConical className="w-3.5 h-3.5" aria-hidden="true" />
-            {t('vaktcomply.aiSystems.actions.classify')}
-          </Button>
+          {canWrite && (
+            <Button
+              variant={system.risk_class ? 'outline' : 'default'}
+              size="sm"
+              data-testid="classify-ai-system-btn"
+              onClick={onClassify}
+            >
+              <FlaskConical className="w-3.5 h-3.5" aria-hidden="true" />
+              {t('vaktcomply.aiSystems.actions.classify')}
+            </Button>
+          )}
           {/* R1-SA28-01: der Link stand als `ai-systems/${system.id}/documentation` hier.
               Diese Seite ist SELBST unter `ai-systems` gemountet (SecVitalsRoutes.tsx:106),
               ein relativer Link haengt also an den bereits vorhandenen Pfad an — Ergebnis
@@ -214,6 +225,8 @@ export default function AISystemsPage() {
   const { data: systems, isLoading, isError, error } = useAISystems(filters)
   // Gesperrt (402): keine Schreibknöpfe neben der Sperre anbieten.
   const locked = error instanceof FeatureLockedError
+  // POST/PATCH/DELETE /ai-systems und /classify sind `rw` — Leser nur lesen.
+  const canWrite = useCanWrite()
   const createSystem = useCreateAISystem()
   const updateSystem = useUpdateAISystem(editId ?? '')
   const deleteSystem = useDeleteAISystem()
@@ -267,7 +280,7 @@ export default function AISystemsPage() {
         title={t('vaktcomply.aiSystems.title')}
         description={t('vaktcomply.aiSystems.description')}
         actions={
-          locked ? undefined : (
+          locked || !canWrite ? undefined : (
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1" />
               {t('vaktcomply.aiSystems.add')}
@@ -348,6 +361,7 @@ export default function AISystemsPage() {
       </div>
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         {isLoading && (
           <div className="flex items-center justify-center h-48">
             <Spinner size="lg" color="primary" />
@@ -366,10 +380,12 @@ export default function AISystemsPage() {
             title={t('vaktcomply.aiSystems.emptyTitle')}
             description={t('vaktcomply.aiSystems.emptyDescription')}
             action={
-              <Button onClick={openCreate}>
-                <Plus className="w-4 h-4 mr-1" />
-                {t('vaktcomply.aiSystems.add')}
-              </Button>
+              canWrite ? (
+                <Button onClick={openCreate}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t('vaktcomply.aiSystems.add')}
+                </Button>
+              ) : undefined
             }
           />
         )}
@@ -388,6 +404,7 @@ export default function AISystemsPage() {
                 onClassify={() => {
                   setWizardSystem(a)
                 }}
+                canWrite={canWrite}
               />
             ))}
           </div>

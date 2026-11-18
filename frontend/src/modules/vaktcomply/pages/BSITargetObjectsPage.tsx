@@ -6,6 +6,8 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, ChevronRight, Server, AppWindow, Network, Building, Workflow, GitBranch, ArrowRightLeft, ShieldAlert, Pencil } from 'lucide-react'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import { ProGate } from '../../../shared/components/ProGate'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -237,6 +239,8 @@ function DepsDialog({ object, allObjects, onClose }: DepsDialogProps) {
   const { data: deps = [], isLoading } = useBSIObjectDependencies(object.id)
   const createDep = useCreateBSIObjectDependency(object.id)
   const deleteDep = useDeleteBSIObjectDependency(object.id)
+  // Abhängigkeiten ansehen darf jeder; anlegen/entfernen sind `rw`-Routen.
+  const canWrite = useCanWrite()
   const [targetId, setTargetId] = useState('')
   const [depType, setDepType] = useState<BSIDependencyType>('runs_on')
 
@@ -291,54 +295,59 @@ function DepsDialog({ object, allObjects, onClose }: DepsDialogProps) {
                 <span className="mx-1 text-secondary text-xs">{depTypeLabels[d.dependency_type]}</span>
                 <span className="font-medium text-primary">{d.target_id === object.id ? object.name : nameById(d.target_id)}</span>
               </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="w-6 h-6 text-red-400 hover:text-red-300 shrink-0"
-                onClick={() => { deleteDep.mutate(d.id) }}
-              >
-                <Trash2 className="w-3 h-3" />
-              </Button>
+              {canWrite && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="w-6 h-6 text-red-400 hover:text-red-300 shrink-0"
+                  onClick={() => { deleteDep.mutate(d.id) }}
+                  aria-label={t('common.delete')}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              )}
             </div>
           ))}
 
-          <div className="border-t border-border pt-3 space-y-2">
-            <p className="text-xs font-medium text-primary">{t('bsi.depsDialog.addNew')}</p>
-            <div className="flex gap-2">
-              <Select value={depType} onValueChange={(v) => { setDepType(v as BSIDependencyType) }}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(depTypeLabels) as BSIDependencyType[]).map((tp) => (
-                    <SelectItem key={tp} value={tp}>{depTypeLabels[tp]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={targetId} onValueChange={setTargetId}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder={t('bsi.depsDialog.targetPlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {available.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>{typeLabels[o.type]}: {o.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                size="sm"
-                onClick={() => { void handleAdd() }}
-                disabled={!targetId || createDep.isPending}
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
+          {canWrite && (
+            <div className="border-t border-border pt-3 space-y-2">
+              <p className="text-xs font-medium text-primary">{t('bsi.depsDialog.addNew')}</p>
+              <div className="flex gap-2">
+                <Select value={depType} onValueChange={(v) => { setDepType(v as BSIDependencyType) }}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(depTypeLabels) as BSIDependencyType[]).map((tp) => (
+                      <SelectItem key={tp} value={tp}>{depTypeLabels[tp]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={targetId} onValueChange={setTargetId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder={t('bsi.depsDialog.targetPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {available.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>{typeLabels[o.type]}: {o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  onClick={() => { void handleAdd() }}
+                  disabled={!targetId || createDep.isPending}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              {createDep.isError && (
+                <p className="text-xs text-red-400">
+                  {createDep.error.message || t('bsi.depsDialog.errorAdd')}
+                </p>
+              )}
             </div>
-            {createDep.isError && (
-              <p className="text-xs text-red-400">
-                {createDep.error.message || t('bsi.depsDialog.errorAdd')}
-              </p>
-            )}
-          </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -650,6 +659,8 @@ function RiskDialog({ object, onClose }: RiskDialogProps) {
   const { data: threats = [] } = useBSIThreats()
   const createRisk = useCreateBSIRisk(object.id)
   const deleteRisk = useDeleteBSIRisk(object.id)
+  // Risiken ansehen darf jeder; anlegen/ändern/löschen sind `rw`-Routen.
+  const canWrite = useCanWrite()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [threatId, setThreatId] = useState('')
   const [haeufigkeit, setHaeufigkeit] = useState<BSIEintrittshaeufigkeit>('selten')
@@ -711,25 +722,28 @@ function RiskDialog({ object, onClose }: RiskDialogProps) {
                     {r.massnahme ? ` · ${r.massnahme.slice(0, 60)}${r.massnahme.length > 60 ? '…' : ''}` : ''}
                   </p>
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="w-6 h-6 text-secondary hover:text-primary"
-                    onClick={() => { setEditingId(editingId === r.id ? null : r.id) }}
-                    title={t('bsi.riskDialog.editTitle')}
-                  >
-                    <Pencil className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="w-6 h-6 text-red-400 hover:text-red-300"
-                    onClick={() => { deleteRisk.mutate(r.id) }}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
+                {canWrite && (
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="w-6 h-6 text-secondary hover:text-primary"
+                      onClick={() => { setEditingId(editingId === r.id ? null : r.id) }}
+                      title={t('bsi.riskDialog.editTitle')}
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="w-6 h-6 text-red-400 hover:text-red-300"
+                      onClick={() => { deleteRisk.mutate(r.id) }}
+                      aria-label={t('common.delete')}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
               {editingId === r.id && (
                 <EditRiskForm
@@ -741,54 +755,56 @@ function RiskDialog({ object, onClose }: RiskDialogProps) {
             </div>
           ))}
 
-          <div className="border-t border-border pt-3 space-y-2">
-            <p className="text-xs font-semibold text-primary">{t('bsi.riskDialog.addTitle')}</p>
-            <form onSubmit={(e) => void handleAdd(e)} className="space-y-2">
-              <div className="space-y-1">
-                <Label className="text-[11px]">{t('bsi.riskDialog.threatLabel')}</Label>
-                <Select value={threatId} onValueChange={setThreatId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('bsi.riskDialog.threatPlaceholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {threats.map((th) => (
-                      <SelectItem key={th.id} value={th.id}>
-                        <span className="font-mono text-[11px] text-secondary mr-2">{th.threat_id}</span>
-                        {th.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+          {canWrite && (
+            <div className="border-t border-border pt-3 space-y-2">
+              <p className="text-xs font-semibold text-primary">{t('bsi.riskDialog.addTitle')}</p>
+              <form onSubmit={(e) => void handleAdd(e)} className="space-y-2">
                 <div className="space-y-1">
-                  <Label className="text-[11px]">{t('bsi.riskDialog.haeufigkeitLabel')}</Label>
-                  <Select value={haeufigkeit} onValueChange={(v) => { setHaeufigkeit(v as BSIEintrittshaeufigkeit) }}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <Label className="text-[11px]">{t('bsi.riskDialog.threatLabel')}</Label>
+                  <Select value={threatId} onValueChange={setThreatId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('bsi.riskDialog.threatPlaceholder')} />
+                    </SelectTrigger>
                     <SelectContent>
-                      {haeufigkeitOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      {threats.map((th) => (
+                        <SelectItem key={th.id} value={th.id}>
+                          <span className="font-mono text-[11px] text-secondary mr-2">{th.threat_id}</span>
+                          {th.title}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px]">{t('bsi.riskDialog.auswirkungLabel')}</Label>
-                  <Select value={auswirkung} onValueChange={(v) => { setAuswirkung(v as BSISchadensauswirkung) }}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {auswirkungOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">{t('bsi.riskDialog.haeufigkeitLabel')}</Label>
+                    <Select value={haeufigkeit} onValueChange={(v) => { setHaeufigkeit(v as BSIEintrittshaeufigkeit) }}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {haeufigkeitOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">{t('bsi.riskDialog.auswirkungLabel')}</Label>
+                    <Select value={auswirkung} onValueChange={(v) => { setAuswirkung(v as BSISchadensauswirkung) }}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {auswirkungOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-              {createRisk.isError && (
-                <p className="text-xs text-red-400">{createRisk.error.message}</p>
-              )}
-              <Button type="submit" size="sm" disabled={!threatId || createRisk.isPending}>
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                {t('bsi.riskDialog.add')}
-              </Button>
-            </form>
-          </div>
+                {createRisk.isError && (
+                  <p className="text-xs text-red-400">{createRisk.error.message}</p>
+                )}
+                <Button type="submit" size="sm" disabled={!threatId || createRisk.isPending}>
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  {t('bsi.riskDialog.add')}
+                </Button>
+              </form>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -805,6 +821,9 @@ export default function BSITargetObjectsPage() {
   const { t } = useTranslation()
   const { data: objects = [], isLoading, isError, error } = useBSITargetObjects()
   const deleteMutation = useDeleteBSITargetObject()
+  // Alle Schreibrouten der Zielobjekte sind `rw` (Admin/SecurityAnalyst).
+  // Abhängigkeiten, Risiken und der Check bleiben für Leser einsehbar.
+  const canWrite = useCanWrite()
   const [showCreate, setShowCreate] = useState(false)
   const [depsObject, setDepsObject] = useState<BSITargetObject | null>(null)
   const [overrideObject, setOverrideObject] = useState<BSITargetObject | null>(null)
@@ -843,14 +862,17 @@ export default function BSITargetObjectsPage() {
         title={t('bsi.targetObjects.title')}
         description={t('bsi.targetObjects.description')}
         actions={
-          <Button size="sm" onClick={() => { setShowCreate(true) }}>
-            <Plus className="w-4 h-4 mr-1" />
-            {t('bsi.targetObjects.addButton')}
-          </Button>
+          canWrite ? (
+            <Button size="sm" onClick={() => { setShowCreate(true) }}>
+              <Plus className="w-4 h-4 mr-1" />
+              {t('bsi.targetObjects.addButton')}
+            </Button>
+          ) : undefined
         }
       />
 
       <div className="p-6 space-y-3">
+        <ReadOnlyHint />
         {isLoading && (
           <p className="text-sm text-secondary">{t('bsi.targetObjects.loading')}</p>
         )}
@@ -861,10 +883,12 @@ export default function BSITargetObjectsPage() {
             <p className="text-xs text-secondary">
               {t('bsi.targetObjects.emptyDescription')}
             </p>
-            <Button size="sm" className="mt-2" onClick={() => { setShowCreate(true) }}>
-              <Plus className="w-4 h-4 mr-1" />
-              {t('bsi.targetObjects.emptyAddButton')}
-            </Button>
+            {canWrite && (
+              <Button size="sm" className="mt-2" onClick={() => { setShowCreate(true) }}>
+                <Plus className="w-4 h-4 mr-1" />
+                {t('bsi.targetObjects.emptyAddButton')}
+              </Button>
+            )}
           </div>
         )}
 
@@ -934,15 +958,18 @@ export default function BSITargetObjectsPage() {
                 >
                   <GitBranch className="w-3.5 h-3.5" />
                 </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="w-7 h-7 text-secondary hover:text-primary"
-                  title={t('bsi.targetObjects.overrideButton')}
-                  onClick={() => { setOverrideObject(obj) }}
-                >
-                  <ArrowRightLeft className="w-3.5 h-3.5" />
-                </Button>
+                {/* Der Override-Dialog ist ein reines Bearbeitungsformular. */}
+                {canWrite && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="w-7 h-7 text-secondary hover:text-primary"
+                    title={t('bsi.targetObjects.overrideButton')}
+                    onClick={() => { setOverrideObject(obj) }}
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                  </Button>
+                )}
                 <Button
                   size="icon"
                   variant="ghost"
@@ -958,14 +985,17 @@ export default function BSITargetObjectsPage() {
                 >
                   {t('bsi.targetObjects.checkButton')} <ChevronRight className="w-3 h-3" />
                 </Link>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="w-7 h-7 text-red-400 hover:text-red-300"
-                  onClick={() => { handleDelete(obj.id, obj.name) }}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+                {canWrite && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="w-7 h-7 text-red-400 hover:text-red-300"
+                    onClick={() => { handleDelete(obj.id, obj.name) }}
+                    aria-label={t('common.delete')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
             </div>
           )

@@ -1,7 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import BIAPage from './BIAPage'
+import { signInAs } from '../../../test-utils/signInAs'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
@@ -26,6 +27,9 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('BIAPage', () => {
+  // Anlegen/Bearbeiten/Löschen sind `rw` — ohne Schreibrolle fehlen die Knöpfe.
+  beforeEach(() => { signInAs('Admin') })
+
   it('shows spinner while loading', () => {
     mockUseBIAProcesses.mockReturnValue({ data: undefined, isLoading: true, isError: false } as unknown as ReturnType<typeof useBIAProcesses>)
     const { container } = render(<BIAPage />, { wrapper })

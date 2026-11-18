@@ -21,12 +21,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AuditProgramPage from './AuditProgramPage'
+import { signInAs } from '../../../test-utils/signInAs'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 
-vi.mock('../../../api/client', () => ({ apiFetch: vi.fn() }))
+vi.mock('../../../api/client', () => ({ apiFetch: vi.fn(), registerUnauthorizedHandler: vi.fn() }))
 const { apiFetch } = await import('../../../api/client')
 const mockApiFetch = vi.mocked(apiFetch)
 
@@ -88,7 +89,8 @@ function renderPage() {
   )
 }
 
-beforeEach(() => { mockApiFetch.mockReset() })
+// Anlegen/Feststellung sind `rw` → Admin; Abschließen ist `internalAuditor` (eigener beforeEach unten).
+beforeEach(() => { mockApiFetch.mockReset(); signInAs('Admin') })
 
 describe('AuditProgramPage — summary tiles (K5-04)', () => {
   it('renders every number audit.AuditProgramSummary actually sends', async () => {
@@ -147,6 +149,9 @@ describe('AuditProgramPage — create (K5-05, three independent causes)', () => 
 })
 
 describe('AuditProgramPage — complete (K5-06)', () => {
+  // PATCH /audit-program/:id/complete ist `internalAuditor` — nur diese Rolle sieht den Knopf.
+  beforeEach(() => { signInAs('InternalAuditor') })
+
   it('patches audit_report and actual_date, not summary/overall_rating', async () => {
     const { writes } = stubApi()
     renderPage()

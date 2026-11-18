@@ -20,6 +20,17 @@ export function useFrameworks() {
   })
 }
 
+/**
+ * True, wenn die Organisation das Framework mit diesem Schlüssel aktiviert hat
+ * („DORA" ≙ Backend-Name „DORA"). Für unverkaufte Frameworks: Auswahlstellen bieten
+ * sie nur noch an, wenn sie schon aktiv sind (Bestandsdaten, Entscheid 2026-11-18).
+ */
+export function useIsFrameworkActive(key: string): boolean {
+  const { data } = useFrameworks()
+  const wanted = key.toUpperCase()
+  return (data ?? []).some((f) => f.name.split(' ')[0].toUpperCase() === wanted)
+}
+
 export function useFramework(frameworkId: string) {
   return useQuery<Framework>({
     queryKey: ['vaktcomply', 'frameworks', frameworkId],

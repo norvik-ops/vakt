@@ -221,3 +221,22 @@ export function frameworkDisplayName(key: string | null | undefined): string {
   if (!key) return ''
   return DISPLAY_NAMES.get(normalizeKey(key)) ?? key
 }
+
+/**
+ * Vakt verkauft dieses Framework in keinem Tarif (`notOffered`, gespiegelt aus
+ * features.UnsoldFeatures). Solche Frameworks werden nirgends mehr zur Auswahl
+ * angeboten (Entscheid 2026-11-18) — außer der Kunde hat sie schon aktiv.
+ * frameworkCatalogue.test.ts hält `notOffered` und UNSOLD_FEATURES zusammen.
+ */
+export function isNotOffered(fw: FrameworkCatalogueEntry): boolean {
+  return fw.notOffered === true
+}
+
+const NOT_OFFERED_KEYS = new Set(
+  FRAMEWORK_CATALOGUE.filter(isNotOffered).map((fw) => normalizeKey(fw.key)),
+)
+
+/** Wie isNotOffered, aber für einen Schlüssel oder Backend-Namen („DORA", „ISO42001"). */
+export function isNotOfferedFramework(key: string | null | undefined): boolean {
+  return key != null && NOT_OFFERED_KEYS.has(normalizeKey(key))
+}

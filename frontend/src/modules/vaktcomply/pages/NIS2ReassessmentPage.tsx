@@ -18,6 +18,8 @@ import {
 import { apiFetch, FeatureLockedError } from '../../../api/client'
 import { ProGate } from '../../../shared/components/ProGate'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
@@ -372,6 +374,9 @@ export default function NIS2ReassessmentPage() {
   const { formatDate } = useFormatDate()
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
   const [cooldownMsg, setCooldownMsg] = useState<string | null>(null)
+  // Neu bewerten startet einen Run (POST /vaktcomply/reassess, `write` =
+  // Admin/SecurityAnalyst in nis2wizard/handler.go) — Leser sehen nur die Historie.
+  const canWrite = useCanWrite()
 
   const {
     data: historyData,
@@ -452,20 +457,23 @@ export default function NIS2ReassessmentPage() {
         title={t('nis2Reassessment.pageTitle')}
         description={t('nis2Reassessment.pageDescription')}
         actions={
-          <Button
-            onClick={() => {
-              if (!inCooldown) {
-                startMutation.mutate()
-              }
-            }}
-            disabled={inCooldown || startMutation.isPending}
-            className="gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${startMutation.isPending ? 'animate-spin' : ''}`} />
-            {t('nis2Reassessment.btnReassess')}
-          </Button>
+          canWrite ? (
+            <Button
+              onClick={() => {
+                if (!inCooldown) {
+                  startMutation.mutate()
+                }
+              }}
+              disabled={inCooldown || startMutation.isPending}
+              className="gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${startMutation.isPending ? 'animate-spin' : ''}`} />
+              {t('nis2Reassessment.btnReassess')}
+            </Button>
+          ) : undefined
         }
       />
+      <ReadOnlyHint />
 
       {/* Cooldown-Hinweis */}
       {inCooldown && cooldownExpires && (
@@ -494,15 +502,17 @@ export default function NIS2ReassessmentPage() {
             <p className="text-xs text-gray-500">
               {t('nis2Reassessment.emptyDesc')}
             </p>
-            <Button
-              size="sm"
-              onClick={() => { startMutation.mutate(); }}
-              disabled={startMutation.isPending}
-              className="gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${startMutation.isPending ? 'animate-spin' : ''}`} />
-              {t('nis2Reassessment.btnStartFirst')}
-            </Button>
+            {canWrite && (
+              <Button
+                size="sm"
+                onClick={() => { startMutation.mutate(); }}
+                disabled={startMutation.isPending}
+                className="gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${startMutation.isPending ? 'animate-spin' : ''}`} />
+                {t('nis2Reassessment.btnStartFirst')}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}

@@ -1,7 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import RecoveryPlansPage from './RecoveryPlansPage'
+import { signInAs } from '../../../test-utils/signInAs'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
@@ -29,6 +30,9 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('RecoveryPlansPage', () => {
+  // Schreibknöpfe sind nur für Schreibrollen sichtbar (useCanWrite).
+  beforeEach(() => { signInAs('Admin') })
+
   it('shows empty state when no plans', () => {
     mockUseRecoveryPlans.mockReturnValue({ data: [], isLoading: false, isError: false } as unknown as ReturnType<typeof useRecoveryPlans>)
     render(<RecoveryPlansPage />, { wrapper })

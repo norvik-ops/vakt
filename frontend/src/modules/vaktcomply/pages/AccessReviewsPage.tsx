@@ -32,7 +32,8 @@ import {
   TableHeader,
   TableRow,
 } from '../../../components/ui/table'
-import { useAuthStore } from '../../../shared/stores/auth'
+import { useCanWrite, useIsAdmin } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import {
   useAccessReviewCampaigns,
@@ -110,6 +111,9 @@ function ReviewItemsPanel({ campaign }: { campaign: AccessReviewCampaign }) {
   const { data: items = [], isLoading } = useAccessReviewItems(campaign.id)
   const createItem = useCreateAccessReviewItem()
   const updateItem = useUpdateAccessReviewItem()
+  // Prüfeinträge anlegen/entscheiden ist `ar` (Admin, SecurityAnalyst) in
+  // registerAccessReviewRoutes — Leser bekommen weder Entscheidungs- noch Hinzufügen-Knöpfe.
+  const canWrite = useCanWrite()
 
   const [newItemForm, setNewItemForm] = useState<Omit<CreateAccessReviewItemInput, 'campaign_id'>>({
     user_email: '',
@@ -157,7 +161,7 @@ function ReviewItemsPanel({ campaign }: { campaign: AccessReviewCampaign }) {
                 <TableHead>{t('vaktcomply.accessReviews.fields.role')}</TableHead>
                 <TableHead>{t('vaktcomply.accessReviews.fields.decision')}</TableHead>
                 <TableHead>{t('vaktcomply.accessReviews.fields.comment')}</TableHead>
-                <TableHead className="w-32">{t('vaktcomply.accessReviews.fields.actions')}</TableHead>
+                {canWrite && <TableHead className="w-32">{t('vaktcomply.accessReviews.fields.actions')}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -173,6 +177,7 @@ function ReviewItemsPanel({ campaign }: { campaign: AccessReviewCampaign }) {
                   <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
                     {item.reviewer_comment ?? '—'}
                   </TableCell>
+                  {canWrite && (
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button
@@ -197,6 +202,7 @@ function ReviewItemsPanel({ campaign }: { campaign: AccessReviewCampaign }) {
                       </Button>
                     </div>
                   </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -208,7 +214,7 @@ function ReviewItemsPanel({ campaign }: { campaign: AccessReviewCampaign }) {
         </p>
       )}
 
-      {addingItem ? (
+      {!canWrite ? null : addingItem ? (
         <div className="flex items-end gap-2 pt-2">
           <div className="flex-1 space-y-1">
             <Label className="text-xs">{t('vaktcomply.accessReviews.fields.userEmail')}</Label>
@@ -332,8 +338,8 @@ function CampaignRow({
 
 export default function AccessReviewsPage() {
   const { t } = useTranslation()
-  const { user } = useAuthStore()
-  const isAdmin = user?.roles.includes('Admin') ?? false
+  // Kampagnen anlegen/ändern/löschen ist Admin-only (`admin` in registerAccessReviewRoutes).
+  const isAdmin = useIsAdmin()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -401,6 +407,7 @@ export default function AccessReviewsPage() {
       />
 
       <div className="flex-1 p-6 space-y-3">
+        <ReadOnlyHint />
         {isLoading && (
           <div className="flex items-center justify-center h-48">
             <Spinner size="lg" color="primary" />

@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import { GripVertical, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
@@ -73,10 +75,20 @@ interface QuestionRowProps {
   onDragStart: (id: string) => void
   onDragOver: (e: React.DragEvent, id: string) => void
   onDrop: (targetId: string) => void
+  /** Umsortieren ist ein Schreibvorgang (POST …/questions/reorder, `rw`). */
+  canReorder: boolean
 }
 
-function QuestionRow({ question, onDragStart, onDragOver, onDrop }: QuestionRowProps) {
-  const { t } = useTranslation()
+function QuestionRow({ question, onDragStart, onDragOver, onDrop, canReorder }: QuestionRowProps) {
+  if (!canReorder) {
+    return (
+      <Card className="mb-2">
+        <CardContent className="flex items-center gap-3 p-3">
+          <QuestionRowBody question={question} />
+        </CardContent>
+      </Card>
+    )
+  }
   return (
     <Card
       className="mb-2 cursor-grab active:cursor-grabbing"
@@ -93,6 +105,16 @@ function QuestionRow({ question, onDragStart, onDragOver, onDrop }: QuestionRowP
         >
           <GripVertical className="h-4 w-4" />
         </span>
+        <QuestionRowBody question={question} />
+      </CardContent>
+    </Card>
+  )
+}
+
+function QuestionRowBody({ question }: { question: Question }) {
+  const { t } = useTranslation()
+  return (
+    <>
         <span className="flex-1 text-sm">{question.question_text}</span>
         <Badge className={TYPE_CLASS[question.question_type]}>
           {TYPE_LABELS[question.question_type]}
@@ -105,8 +127,7 @@ function QuestionRow({ question, onDragStart, onDragOver, onDrop }: QuestionRowP
             🔗
           </span>
         )}
-      </CardContent>
-    </Card>
+    </>
   )
 }
 
@@ -218,6 +239,8 @@ export default function QuestionnairePage() {
   const { id = '' } = useParams<{ id: string }>()
   const { data: questionnaire, isLoading } = useQuestionnaire(id)
   const reorderQuestions = useReorderQuestions(id)
+  // Fragen hinzufügen und umsortieren sind `rw` (Admin/SecurityAnalyst).
+  const canWrite = useCanWrite()
   const [dialogOpen, setDialogOpen] = useState(false)
   const draggedIdRef = useRef<string | null>(null)
 
@@ -255,15 +278,18 @@ export default function QuestionnairePage() {
         title={questionnaire.name}
         description={questionnaire.description}
       />
+      <ReadOnlyHint />
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {t('vaktcomply.questionnaire.questionCount', { count: questions.length })}
         </p>
-        <Button onClick={() => { setDialogOpen(true) }} size="sm">
-          <Plus className="mr-1 h-4 w-4" />
-          {t('vaktcomply.questionnaire.addQuestion')}
-        </Button>
+        {canWrite && (
+          <Button onClick={() => { setDialogOpen(true) }} size="sm">
+            <Plus className="mr-1 h-4 w-4" />
+            {t('vaktcomply.questionnaire.addQuestion')}
+          </Button>
+        )}
       </div>
 
       <div>
@@ -279,16 +305,19 @@ export default function QuestionnairePage() {
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
+              canReorder={canWrite}
             />
           ))
         )}
       </div>
 
-      <AddQuestionDialog
-        questionnaireId={id}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      />
+      {canWrite && (
+        <AddQuestionDialog
+          questionnaireId={id}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+        />
+      )}
     </div>
   )
 }

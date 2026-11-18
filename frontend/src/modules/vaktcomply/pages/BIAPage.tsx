@@ -32,6 +32,8 @@ import {
 } from '../hooks/useBIA'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
 import type { BIAProcess, BIACriticality, CreateBIAProcessInput } from '../types'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 const CRIT_CLASS: Record<BIACriticality, string> = {
   critical: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -78,6 +80,8 @@ function BIACard({
   onDelete: () => void
 }) {
   const { t } = useTranslation()
+  // PUT/DELETE /bia/processes/:id sind `rw`.
+  const canWrite = useCanWrite()
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -93,19 +97,22 @@ function BIACard({
               </Badge>
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
-              <Pencil className="w-3.5 h-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-red-400 hover:text-red-300"
-              onClick={onDelete}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          </div>
+          {canWrite && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} data-testid="bia-edit-btn">
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-red-400 hover:text-red-300"
+                onClick={onDelete}
+                data-testid="bia-delete-btn"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-1.5">
@@ -146,6 +153,8 @@ export default function BIAPage() {
   const create = useCreateBIAProcess()
   const update = useUpdateBIAProcess(editId ?? '')
   const del = useDeleteBIAProcess()
+  // POST /bia/processes ist `rw` (routes.go) — Leser legen keine Prozesse an.
+  const canWrite = useCanWrite()
 
   function openCreate() {
     setEditId(null)
@@ -180,14 +189,17 @@ export default function BIAPage() {
         title={t('bcm.bia.title')}
         description={t('bcm.bia.description')}
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            {t('bcm.bia.new')}
-          </Button>
+          canWrite ? (
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              {t('bcm.bia.new')}
+            </Button>
+          ) : undefined
         }
       />
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         {isLoading && (
           <div className="flex items-center justify-center h-48">
             <Spinner size="lg" color="primary" />
@@ -204,10 +216,12 @@ export default function BIAPage() {
             title={t('bcm.bia.emptyTitle')}
             description={t('bcm.bia.emptyDescription')}
             action={
-              <Button onClick={openCreate}>
-                <Plus className="w-4 h-4 mr-1" />
-                {t('bcm.bia.new')}
-              </Button>
+              canWrite ? (
+                <Button onClick={openCreate}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t('bcm.bia.new')}
+                </Button>
+              ) : undefined
             }
           />
         )}

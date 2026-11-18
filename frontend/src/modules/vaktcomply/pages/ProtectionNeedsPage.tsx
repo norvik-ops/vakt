@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
@@ -103,6 +105,8 @@ function ProtectionNeedCard({
 }) {
   const { t } = useTranslation()
   const finalized = item.status === 'finalized'
+  // Bearbeiten, Asset verknüpfen, Abschließen, Löschen sind `rw` (Admin/SecurityAnalyst).
+  const canWrite = useCanWrite()
 
   return (
     <Card>
@@ -114,10 +118,11 @@ function ProtectionNeedCard({
               {t(`protectionNeeds.objectType.${item.object_type}`)} · {item.object_name}
             </p>
           </div>
+          {canWrite && (
           <div className="flex items-center gap-1 shrink-0">
             {!finalized && (
               <>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t('common.edit')} onClick={onEdit}>
                   <Pencil className="w-3.5 h-3.5" />
                 </Button>
                 {item.object_type === 'system' && onLinkAsset && (
@@ -146,11 +151,13 @@ function ProtectionNeedCard({
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-red-400 hover:text-red-300"
+              aria-label={t('common.delete')}
               onClick={onDelete}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
+          )}
         </div>
 
         <div className="grid grid-cols-4 gap-2 text-xs">
@@ -213,6 +220,7 @@ export default function ProtectionNeedsPage() {
   const finalizeItem = useFinalizeProtectionNeed()
   const deleteItem = useDeleteProtectionNeed()
   const linkAsset = useLinkAssetToPNA()
+  const canWrite = useCanWrite()
 
   const { data: assetsResp } = useQuery<{ data: AssetOption[] } | AssetOption[]>({
     queryKey: ['vaktcomply', 'assets', 'picker'],
@@ -264,14 +272,17 @@ export default function ProtectionNeedsPage() {
         title={t('protectionNeeds.title')}
         description={t('protectionNeeds.description')}
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            {t('protectionNeeds.new')}
-          </Button>
+          canWrite ? (
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              {t('protectionNeeds.new')}
+            </Button>
+          ) : undefined
         }
       />
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         {isLoading && (
           <div className="flex items-center justify-center h-48">
             <Spinner size="lg" color="primary" />
@@ -287,12 +298,12 @@ export default function ProtectionNeedsPage() {
             icon={Shield}
             title={t('protectionNeeds.emptyTitle')}
             description={t('protectionNeeds.emptyDescription')}
-            action={
+            action={canWrite && (
               <Button onClick={openCreate}>
                 <Plus className="w-4 h-4 mr-1" />
                 {t('protectionNeeds.new')}
               </Button>
-            }
+            )}
           />
         )}
         {!isLoading && !isError && items.length > 0 && (

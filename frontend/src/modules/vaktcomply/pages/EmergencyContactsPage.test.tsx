@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
+import { signInAs } from '../../../test-utils/signInAs'
 import EmergencyContactsPage from './EmergencyContactsPage'
 
 vi.mock('react-i18next', () => ({
@@ -19,6 +20,9 @@ vi.mock('../hooks/useEmergencyContacts', () => ({
 
 const { useEmergencyContacts } = await import('../hooks/useEmergencyContacts')
 const mockUseEmergencyContacts = vi.mocked(useEmergencyContacts)
+
+// Schreibknöpfe sind nur für Schreibrollen sichtbar (useCanWrite).
+beforeEach(() => { signInAs('Admin') })
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <MemoryRouter>{children}</MemoryRouter>

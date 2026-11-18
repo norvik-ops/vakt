@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { FRAMEWORK_CATALOGUE, frameworkDisplayName } from './frameworkCatalogue'
+import { FRAMEWORK_CATALOGUE, frameworkDisplayName, isNotOffered, isNotOfferedFramework } from './frameworkCatalogue'
+import { UNSOLD_FEATURES } from '../../../shared/featureTiers'
 
 // Das Backend führt Frameworks unter ihrem Schlüssel („ISO27001", „EUAIACT").
 // Die Oberfläche zeigt den Anzeigenamen aus dem Katalog.
@@ -42,5 +43,27 @@ describe('frameworkDisplayName', () => {
   it('hat keine doppelten Schlüssel im Katalog', () => {
     const keys = FRAMEWORK_CATALOGUE.map((fw) => fw.key.toLowerCase().replace(/[^a-z0-9]/g, ''))
     expect(new Set(keys).size).toBe(keys.length)
+  })
+})
+
+// Entscheid 2026-11-18: unverkaufte Frameworks werden nicht mehr angeboten. Die
+// Kennzeichnung im Katalog muss genau der Liste unverkaufter Merkmale folgen, sonst
+// verschwindet ein kaufbares Framework oder ein unkaufbares bleibt stehen.
+describe('isNotOffered', () => {
+  it('kennzeichnet genau die Frameworks, deren Merkmal in keinem Tarif liegt', () => {
+    for (const fw of FRAMEWORK_CATALOGUE) {
+      const unsold = fw.feature !== undefined && UNSOLD_FEATURES.includes(fw.feature)
+      expect(isNotOffered(fw), fw.key).toBe(unsold)
+    }
+    expect(FRAMEWORK_CATALOGUE.filter(isNotOffered).map((fw) => fw.key).sort()).toEqual(['DORA', 'ISO42001', 'TISAX'])
+  })
+
+  it('erkennt Backend-Namen unabhängig von der Schreibweise', () => {
+    expect(isNotOfferedFramework('DORA')).toBe(true)
+    expect(isNotOfferedFramework('iso_42001')).toBe(true)
+    expect(isNotOfferedFramework('TISAX')).toBe(true)
+    expect(isNotOfferedFramework('NIS2')).toBe(false)
+    expect(isNotOfferedFramework('BSI')).toBe(false)
+    expect(isNotOfferedFramework(undefined)).toBe(false)
   })
 })

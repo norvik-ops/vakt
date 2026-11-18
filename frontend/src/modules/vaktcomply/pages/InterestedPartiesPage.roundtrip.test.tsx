@@ -21,12 +21,13 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import InterestedPartiesPage from './InterestedPartiesPage'
+import { signInAs } from '../../../test-utils/signInAs'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 
-vi.mock('../../../api/client', () => ({ apiFetch: vi.fn() }))
+vi.mock('../../../api/client', () => ({ apiFetch: vi.fn(), registerUnauthorizedHandler: vi.fn() }))
 const { apiFetch } = await import('../../../api/client')
 const mockApiFetch = vi.mocked(apiFetch)
 
@@ -67,7 +68,8 @@ function renderPage() {
   )
 }
 
-beforeEach(() => { mockApiFetch.mockReset() })
+// Anlegen/Bearbeiten sind nur für Schreibrollen sichtbar (useCanWrite).
+beforeEach(() => { mockApiFetch.mockReset(); signInAs('Admin') })
 
 describe('InterestedPartiesPage — display (K5-07 part 2)', () => {
   it('shows the requirements column and the review date the backend sent', async () => {

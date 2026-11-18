@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { apiFetch } from '../../../api/client'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { EmptyState } from '../../../shared/components/EmptyState'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 
 // K5-07: mirrors vaktcomply.InterestedParty / CreateInterestedPartyInput
 // (backend/internal/modules/vaktcomply/handler_ops.go). The old shape shared not
@@ -111,6 +113,9 @@ export default function InterestedPartiesPage() {
   const updateMut = useUpdateIP()
   const deleteMut = useDeleteIP()
   const seedMut = useSeedDefaults()
+  // Anlegen, Vorlagen, Bearbeiten, Löschen sind `rw` (Admin/SecurityAnalyst) —
+  // Leser sehen Liste und PDF-Export.
+  const canWrite = useCanWrite()
 
   // Exactly the eight values the `oneof` tag and the DDL CHECK allow.
   const categoryLabels: Record<string, string> = {
@@ -176,7 +181,7 @@ export default function InterestedPartiesPage() {
           <p className="text-gray-500 text-sm mt-1">{t('vaktcomply.interestedParties.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
-          {data.length === 0 && (
+          {canWrite && data.length === 0 && (
             <Button variant="outline" size="sm" onClick={() => { seedMut.mutate(); }} disabled={seedMut.isPending}>
               <Wand2 className="h-4 w-4 mr-1.5" />
               {t('vaktcomply.interestedParties.seedDefaults')}
@@ -186,19 +191,22 @@ export default function InterestedPartiesPage() {
             <Download className="h-4 w-4 mr-1.5" />
             {t('vaktcomply.interestedParties.exportPdf')}
           </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            {t('vaktcomply.interestedParties.addParty')}
-          </Button>
+          {canWrite && (
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              {t('vaktcomply.interestedParties.addParty')}
+            </Button>
+          )}
         </div>
       </div>
+      <ReadOnlyHint />
 
       {data.length === 0 ? (
         <EmptyState
           icon={Users}
           title={t('vaktcomply.interestedParties.emptyTitle')}
           description={t('vaktcomply.interestedParties.emptyDesc')}
-          action={
+          action={canWrite && (
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { seedMut.mutate(); }} disabled={seedMut.isPending}>
                 <Wand2 className="h-4 w-4 mr-1.5" />
@@ -206,7 +214,7 @@ export default function InterestedPartiesPage() {
               </Button>
               <Button onClick={openCreate}><Plus className="h-4 w-4 mr-1.5" />{t('vaktcomply.interestedParties.addParty')}</Button>
             </div>
-          }
+          )}
         />
       ) : (
         <div className="bg-surface rounded-lg border border-border overflow-x-auto">
@@ -246,19 +254,22 @@ export default function InterestedPartiesPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { openEdit(ip); }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => { setDeleteId(ip.id); }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    {canWrite && (
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" aria-label={t('common.edit')} onClick={() => { openEdit(ip); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive"
+                          aria-label={t('common.delete')}
+                          onClick={() => { setDeleteId(ip.id); }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

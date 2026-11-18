@@ -20,6 +20,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useIncident, useUpdateIncident, useMarkDeadlineReported, useIncidentReports, useGenerateIncidentReport } from '../hooks/useIncidents'
+import { useIsFrameworkActive } from '../hooks/useFrameworks'
 import { useAICopilot } from '../../../shared/hooks/useAICopilot'
 import { useAIStatus } from '../hooks/useAIAdvisor'
 import { toast } from '../../../shared/hooks/useToast'
@@ -138,6 +139,7 @@ export default function IncidentDetailPage() {
   const update = useUpdateIncident(id ?? '')
   const { data: incidentReports } = useIncidentReports(id ?? '')
   const generateReport = useGenerateIncidentReport(id ?? '')
+  const doraActive = useIsFrameworkActive('DORA')
 
   const [form, setForm] = useState<UpdateIncidentInput | null>(null)
   const [rawSystems, setRawSystems] = useState('')
@@ -163,6 +165,10 @@ export default function IncidentDetailPage() {
     nis2: t('vaktcomply.incidentDetail.typeNIS2'),
     dora: t('vaktcomply.incidentDetail.typeDORA'),
   }
+  // DORA wird in keinem Tarif verkauft: als Vorfalltyp nur wählbar, wenn DORA schon
+  // aktiv ist oder dieser Vorfall bereits als DORA geführt wird (Bestandsdaten).
+  const offerDORA = doraActive || incident?.incident_type === 'dora'
+  const selectableTypes = Object.entries(incidentTypeLabels).filter(([k]) => k !== 'dora' || offerDORA)
   const obligationLabels = {
     unknown: t('vaktcomply.incidentDetail.obligationUnknown'),
     required: t('vaktcomply.incidentDetail.obligationRequired'),
@@ -511,7 +517,7 @@ export default function IncidentDetailPage() {
                   <Select value={form.incident_type ?? 'general'} onValueChange={(v) => { set('incident_type', v as Incident['incident_type']); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {Object.entries(incidentTypeLabels).map(([k, label]) => (
+                      {selectableTypes.map(([k, label]) => (
                         <SelectItem key={k} value={k}>{label}</SelectItem>
                       ))}
                     </SelectContent>

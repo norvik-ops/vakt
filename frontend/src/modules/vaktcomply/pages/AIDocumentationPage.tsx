@@ -14,6 +14,9 @@ import { useAISystem } from '../hooks/useAISystems'
 import { useAIDocumentation, useAIDocumentationVersions, useSaveAIDocumentation } from '../hooks/useAISystems'
 import type { UpsertAIDocumentationInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { WriteFieldset } from '../../../shared/components/WriteFieldset'
 
 function emptyForm(): UpsertAIDocumentationInput {
   return {
@@ -51,6 +54,8 @@ export default function AIDocumentationPage() {
   const { data: latestDoc, isLoading: docLoading } = useAIDocumentation(id ?? '')
   const { data: versions } = useAIDocumentationVersions(id ?? '')
   const saveDoc = useSaveAIDocumentation(id ?? '')
+  // POST /ai-systems/:id/documentation ist `rw` — Leser sehen das Dossier, speichern nicht.
+  const canWrite = useCanWrite()
   const [form, setForm] = useState<UpsertAIDocumentationInput>(emptyForm())
   const [showVersions, setShowVersions] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -130,14 +135,17 @@ export default function AIDocumentationPage() {
               </Button>
               {pdfError && <p className="text-xs text-red-500">{pdfError}</p>}
             </div>
-            <Button onClick={() => { handleSave('final'); }} disabled={saveDoc.isPending} data-testid="finalize-doc-btn">
-              {t('vaktcomply.aiDocumentation.saveAsFinal')}
-            </Button>
+            {canWrite && (
+              <Button onClick={() => { handleSave('final'); }} disabled={saveDoc.isPending} data-testid="finalize-doc-btn">
+                {t('vaktcomply.aiDocumentation.saveAsFinal')}
+              </Button>
+            )}
           </div>
         }
       />
 
       <div className="flex-1 p-6 space-y-2">
+        <ReadOnlyHint className="mb-4" />
         {/* Back link */}
         <Link to="../ai-systems" className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 mb-4">
           <ChevronLeft className="w-3.5 h-3.5" />
@@ -166,6 +174,7 @@ export default function AIDocumentationPage() {
             <Spinner size="lg" color="primary" />
           </div>
         ) : (
+          <WriteFieldset>
           <div className="space-y-6 max-w-3xl">
             {SECTIONS.map((sec) => (
               <div key={sec.key} className="space-y-1.5">
@@ -211,6 +220,7 @@ export default function AIDocumentationPage() {
               </div>
             </div>
 
+            {canWrite && (
             <div className="flex gap-3 pt-2">
               <Button
                 variant="outline"
@@ -234,7 +244,9 @@ export default function AIDocumentationPage() {
                 </span>
               )}
             </div>
+            )}
           </div>
+          </WriteFieldset>
         )}
       </div>
     </div>

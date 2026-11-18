@@ -22,6 +22,8 @@ import { useFrameworks } from '../hooks/useFrameworks'
 import type { AuditMilestone, MilestoneStatus, MilestoneType, CreateMilestoneInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import { frameworkDisplayName } from '../utils/frameworkCatalogue'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 // ---- constants ----
 
@@ -60,6 +62,8 @@ function CountdownCard({
 }) {
   const { t } = useTranslation()
   const { formatDate } = useFormatDate()
+  // „Erledigt" ist PUT /milestones/:id (`rw`) — Leser sehen nur den Countdown.
+  const canWrite = useCanWrite()
   const days = m.days_remaining
   const color = countdownColor(days)
 
@@ -91,7 +95,7 @@ function CountdownCard({
       </p>
       <p className="text-[13px] font-semibold text-primary truncate">{m.title}</p>
       <p className="text-[11px] text-secondary">{formatDate(m.milestone_date)}</p>
-      {m.status === 'upcoming' && (
+      {canWrite && m.status === 'upcoming' && (
         <Button size="sm" variant="outline" className="mt-auto text-[11px]" onClick={onComplete}>
           <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
           {t('certificationTimeline.markDone')}
@@ -513,6 +517,8 @@ function MilestoneRow({
 }) {
   const { t } = useTranslation()
   const { formatDate } = useFormatDate()
+  // Erledigt/Löschen sind `rw`-Routen (Admin/SecurityAnalyst).
+  const canWrite = useCanWrite()
 
   const TYPE_LABEL: Record<MilestoneType, string> = {
     internal_audit:       t('certificationTimeline.type_internal_audit'),
@@ -551,22 +557,25 @@ function MilestoneRow({
       </td>
       <td className={`py-2 px-3 text-[12px] font-semibold ${daysColor} whitespace-nowrap`}>{daysStr}</td>
       <td className="py-2 px-3">
-        <div className="flex items-center gap-1">
-          {m.status === 'upcoming' && (
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={onComplete}>
-              <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-              {t('certificationTimeline.done')}
+        {canWrite && (
+          <div className="flex items-center gap-1">
+            {m.status === 'upcoming' && (
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={onComplete}>
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                {t('certificationTimeline.done')}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+              onClick={onDelete}
+              aria-label={t('common.delete')}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
             </Button>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-            onClick={onDelete}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
+          </div>
+        )}
       </td>
     </tr>
   )
@@ -594,6 +603,7 @@ export default function CertificationTimelinePage() {
 
   const { data: all, isLoading } = useMilestones()
   const deleteMilestone = useDeleteMilestone()
+  const canWrite = useCanWrite()
 
   // We do client-side filtering to avoid extra query keys
   const milestones = all ?? []
@@ -612,12 +622,15 @@ export default function CertificationTimelinePage() {
         title={t('certificationTimeline.title')}
         description={t('certificationTimeline.description')}
         actions={
-          <Button onClick={() => { setAddOpen(true); }} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" />
-            {t('certificationTimeline.addMilestone')}
-          </Button>
+          canWrite ? (
+            <Button onClick={() => { setAddOpen(true); }} size="sm">
+              <Plus className="w-4 h-4 mr-1.5" />
+              {t('certificationTimeline.addMilestone')}
+            </Button>
+          ) : undefined
         }
       />
+      <ReadOnlyHint />
 
       {/* Countdown Cards — Top 3 upcoming */}
       {upcoming.length > 0 && (
@@ -711,7 +724,7 @@ export default function CertificationTimelinePage() {
         <MiniCalendar milestones={milestones} />
       </section>
 
-      <AddMilestoneDialog open={addOpen} onClose={() => { setAddOpen(false); }} />
+      {canWrite && <AddMilestoneDialog open={addOpen} onClose={() => { setAddOpen(false); }} />}
     </div>
   )
 }

@@ -22,6 +22,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import BCPPage from './BCPPage'
+import { signInAs } from '../../../test-utils/signInAs'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'de' } }),
@@ -87,6 +88,7 @@ function renderPage() {
 
 describe('BCPPage — BSI-200-4-Felder (ESK-12)', () => {
   beforeEach(() => {
+    signInAs('Admin')
     mockApiFetch.mockReset()
   })
 

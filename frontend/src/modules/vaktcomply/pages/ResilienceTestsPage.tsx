@@ -4,6 +4,8 @@ import { ShieldAlert, Plus, Pencil, Trash2, Paperclip, Link2 } from 'lucide-reac
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { ProGate } from '../../../shared/components/ProGate'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -105,6 +107,8 @@ function ResilienceTestRow({
 }) {
   const { t } = useTranslation()
   const { formatDate } = useFormatDate()
+  // Bearbeiten, Als Nachweis verknüpfen, Löschen sind `rw` (Admin/SecurityAnalyst).
+  const canWrite = useCanWrite()
   const typeKey = TYPE_LABEL_KEYS[test.type]
   const typeLabel = typeKey.startsWith('vaktcomply') ? t(typeKey) : typeKey
   return (
@@ -140,6 +144,7 @@ function ResilienceTestRow({
               </p>
             )}
           </div>
+          {canWrite && (
           <div className="flex items-center gap-1 shrink-0">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} title={t('vaktcomply.resilienceTests.editTitle')}>
               <Pencil className="w-3.5 h-3.5" />
@@ -157,6 +162,7 @@ function ResilienceTestRow({
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -179,6 +185,7 @@ export default function ResilienceTestsPage() {
   const deleteTest = useDeleteResilienceTest()
   const uploadAttachment = useUploadResilienceTestAttachment(editId ?? '')
   const linkEvidence = useLinkResilienceTestAsEvidence(linkTestId ?? '')
+  const canWrite = useCanWrite()
 
   const tests = data?.tests ?? []
   const tlptOverdueWarning = data?.tlpt_overdue_warning ?? false
@@ -246,14 +253,17 @@ export default function ResilienceTestsPage() {
         title={t('vaktcomply.resilienceTests.pageTitle')}
         description={t('vaktcomply.resilienceTests.pageDescription')}
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            {t('vaktcomply.resilienceTests.newTest')}
-          </Button>
+          canWrite ? (
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              {t('vaktcomply.resilienceTests.newTest')}
+            </Button>
+          ) : undefined
         }
       />
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         {isLoading && (
           <div className="flex items-center justify-center h-48">
             <Spinner size="lg" color="primary" />
@@ -269,12 +279,12 @@ export default function ResilienceTestsPage() {
             icon={ShieldAlert}
             title={t('vaktcomply.resilienceTests.emptyTitle')}
             description={t('vaktcomply.resilienceTests.emptyDescription')}
-            action={
+            action={canWrite && (
               <Button onClick={openCreate}>
                 <Plus className="w-4 h-4 mr-1" />
                 {t('vaktcomply.resilienceTests.newTest')}
               </Button>
-            }
+            )}
           />
         )}
         {!isLoading && !isError && tests.length > 0 && (

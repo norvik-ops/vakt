@@ -25,3 +25,13 @@ export function useIsAdmin(): boolean {
   const roles = useAuthStore((s) => s.user?.roles)
   return (roles ?? []).includes('Admin')
 }
+
+/**
+ * True when the signed-in user holds `role` — for routes gated with a single role
+ * that WRITE_ROLES does not cover, e.g. `auth.RequireRole("InternalAuditor")`
+ * (Vier-Augen-Freigaben: Auditprogramm abschließen, Managementbewertung freigeben).
+ */
+export function useHasRole(role: string): boolean {
+  const roles = useAuthStore((s) => s.user?.roles)
+  return (roles ?? []).includes(role)
+}

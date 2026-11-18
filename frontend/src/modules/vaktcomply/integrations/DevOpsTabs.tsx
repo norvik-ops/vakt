@@ -16,6 +16,7 @@ import {
 } from '../../../hooks/useCloud'
 import { toast } from '../../../shared/hooks/useToast'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useIsAdmin } from '../../../shared/hooks/useCanWrite'
 import { SyncLastBadge, RecentEvidenceList, AllowPrivateTargetToggle } from './shared'
 
 // --- GitLab tab ---
@@ -28,6 +29,8 @@ export function GitLabTab() {
   const saveConfig = useSaveGitLabConfig()
   const syncGitLab = useSyncGitLab()
   const { formatDateTime } = useFormatDate()
+  // Backend: /integrations/cloud ist komplett Admin-only (cmd/api/routes.go) — Sync und Zugangsdaten nur für Admin.
+  const isAdmin = useIsAdmin()
 
   const [gitlabURL, setGitlabURL] = useState('')
   const [accessToken, setAccessToken] = useState('')
@@ -96,47 +99,51 @@ export function GitLabTab() {
             {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
           </div>
           <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
-          <button onClick={() => { void handleSync() }} disabled={syncGitLab.isPending || !cfg?.is_configured}
-            title="Jetzt synchronisieren"
-            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${syncGitLab.isPending ? 'animate-spin' : ''}`} />
-          </button>
+          {isAdmin && (
+            <button onClick={() => { void handleSync() }} disabled={syncGitLab.isPending || !cfg?.is_configured}
+              title="Jetzt synchronisieren"
+              className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${syncGitLab.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       )}
 
-      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">GitLab URL</label>
-          <input type="url" value={gitlabURL} onChange={(e) => { setGitlabURL(e.target.value); }}
-            placeholder="https://gitlab.example.com"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required />
-          <p className="text-[11px] text-secondary mt-1">Für GitLab.com: <code>https://gitlab.com</code></p>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Personal / Group Access Token</label>
-          <input type="password" value={accessToken} onChange={(e) => { setAccessToken(e.target.value); }}
-            placeholder={cfg?.is_configured && cfg.access_token === '****' ? '****' : 'glpat-...'}
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required />
-          <p className="text-[11px] text-secondary mt-1">Benötigte Scopes: <code>read_api</code>, <code>read_repository</code></p>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Gruppen-ID oder Namespace (optional)</label>
-          <input type="text" value={groupID} onChange={(e) => { setGroupID(e.target.value); }}
-            placeholder="my-group oder 42"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
-          />
-          <p className="text-[11px] text-secondary mt-1">Leer lassen um alle zugänglichen Projekte (Membership) zu erfassen.</p>
-        </div>
-        <AllowPrivateTargetToggle id="gitlab-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
-        <div className="flex gap-2 pt-1">
-          <button type="submit" disabled={saveConfig.isPending}
-            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
-            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
-          </button>
-        </div>
-      </form>
+      {isAdmin && (
+        <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">GitLab URL</label>
+            <input type="url" value={gitlabURL} onChange={(e) => { setGitlabURL(e.target.value); }}
+              placeholder="https://gitlab.example.com"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required />
+            <p className="text-[11px] text-secondary mt-1">Für GitLab.com: <code>https://gitlab.com</code></p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Personal / Group Access Token</label>
+            <input type="password" value={accessToken} onChange={(e) => { setAccessToken(e.target.value); }}
+              placeholder={cfg?.is_configured && cfg.access_token === '****' ? '****' : 'glpat-...'}
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required />
+            <p className="text-[11px] text-secondary mt-1">Benötigte Scopes: <code>read_api</code>, <code>read_repository</code></p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Gruppen-ID oder Namespace (optional)</label>
+            <input type="text" value={groupID} onChange={(e) => { setGroupID(e.target.value); }}
+              placeholder="my-group oder 42"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+            />
+            <p className="text-[11px] text-secondary mt-1">Leer lassen um alle zugänglichen Projekte (Membership) zu erfassen.</p>
+          </div>
+          <AllowPrivateTargetToggle id="gitlab-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={saveConfig.isPending}
+              className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+              {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+            </button>
+          </div>
+        </form>
+      )}
 
       {evidence && evidence.length > 0 && (
         <div className="mt-6">
@@ -158,6 +165,7 @@ export function SonarQubeTab() {
   const saveConfig = useSaveSonarQubeConfig()
   const syncSonarQube = useSyncSonarQube()
   const { formatDateTime } = useFormatDate()
+  const isAdmin = useIsAdmin()
 
   const [baseURL, setBaseURL] = useState('')
   const [token, setToken] = useState('')
@@ -225,41 +233,45 @@ export function SonarQubeTab() {
             {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
           </div>
           <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
-          <button onClick={() => { void handleSync() }} disabled={syncSonarQube.isPending || !cfg?.is_configured}
-            title="Jetzt synchronisieren"
-            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${syncSonarQube.isPending ? 'animate-spin' : ''}`} />
-          </button>
+          {isAdmin && (
+            <button onClick={() => { void handleSync() }} disabled={syncSonarQube.isPending || !cfg?.is_configured}
+              title="Jetzt synchronisieren"
+              className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${syncSonarQube.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       )}
 
-      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">SonarQube Base URL</label>
-          <input type="url" value={baseURL} onChange={(e) => { setBaseURL(e.target.value); }}
-            placeholder="https://sonarqube.example.com"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required />
-          <p className="text-[11px] text-secondary mt-1">Für SonarCloud: <code>https://sonarcloud.io</code></p>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">User Token</label>
-          <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }}
-            placeholder={cfg?.is_configured && cfg.token === '****' ? '****' : 'squ_...'}
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required />
-          <p className="text-[11px] text-secondary mt-1">
-            Token aus SonarQube → My Account → Security → Generate Token. Typ: <code>User Token</code>.
-          </p>
-        </div>
-        <AllowPrivateTargetToggle id="sonarqube-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
-        <div className="flex gap-2 pt-1">
-          <button type="submit" disabled={saveConfig.isPending}
-            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
-            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
-          </button>
-        </div>
-      </form>
+      {isAdmin && (
+        <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">SonarQube Base URL</label>
+            <input type="url" value={baseURL} onChange={(e) => { setBaseURL(e.target.value); }}
+              placeholder="https://sonarqube.example.com"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required />
+            <p className="text-[11px] text-secondary mt-1">Für SonarCloud: <code>https://sonarcloud.io</code></p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">User Token</label>
+            <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }}
+              placeholder={cfg?.is_configured && cfg.token === '****' ? '****' : 'squ_...'}
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required />
+            <p className="text-[11px] text-secondary mt-1">
+              Token aus SonarQube → My Account → Security → Generate Token. Typ: <code>User Token</code>.
+            </p>
+          </div>
+          <AllowPrivateTargetToggle id="sonarqube-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={saveConfig.isPending}
+              className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+              {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+            </button>
+          </div>
+        </form>
+      )}
 
       {evidence && evidence.length > 0 && (
         <div className="mt-6">

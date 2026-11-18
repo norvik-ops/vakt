@@ -11,9 +11,10 @@ import { MemoryRouter } from 'react-router-dom'
 import AISystemsPage from './AISystemsPage'
 import type { AISystem } from '../types'
 
+// Admin-Rolle: die Seite blendet Schreibknöpfe für Leser aus (useCanWrite liest user.roles).
 vi.mock('../../../shared/stores/auth', () => ({
-  useAuthStore: (selector: (s: { token: string | null }) => unknown) =>
-    selector({ token: 'test-token' }),
+  useAuthStore: (selector: (s: { token: string | null; user: { roles: string[] } }) => unknown) =>
+    selector({ token: 'test-token', user: { roles: ['Admin'] } }),
 }))
 
 const OPEN: AISystem = {

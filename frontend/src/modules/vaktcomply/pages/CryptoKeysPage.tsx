@@ -34,6 +34,8 @@ import {
 } from '../../../components/ui/table'
 import { useCryptoKeys, useCreateCryptoKey, useRotateCryptoKey, useDeleteCryptoKey } from '../hooks/useCryptoKeys'
 import { toast } from '../../../shared/hooks/useToast'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import type { CryptoKey, CreateCryptoKeyInput, CryptoKeyType, RotationStatus } from '../types'
 
 const ROTATION_STATUS_CLASS: Record<RotationStatus, string> = {
@@ -117,6 +119,9 @@ export default function CryptoKeysPage() {
   const { data: keys, isLoading } = useCryptoKeys()
   const createKey = useCreateCryptoKey()
   const deleteKey = useDeleteCryptoKey()
+  // Anlegen, Rotation dokumentieren und Löschen sind `rw`-Routen
+  // (Admin/SecurityAnalyst); Leser sehen nur das Inventar.
+  const canWrite = useCanWrite()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [rotateTarget, setRotateTarget] = useState<CryptoKey | null>(null)
@@ -172,14 +177,17 @@ export default function CryptoKeysPage() {
         title={t('vaktcomply.cryptoKeys.title')}
         description={t('vaktcomply.cryptoKeys.description')}
         actions={
-          <Button onClick={() => { setCreateOpen(true); }} data-testid="add-key-btn">
-            <Plus className="w-4 h-4 mr-1" />
-            {t('vaktcomply.cryptoKeys.addKey')}
-          </Button>
+          canWrite ? (
+            <Button onClick={() => { setCreateOpen(true); }} data-testid="add-key-btn">
+              <Plus className="w-4 h-4 mr-1" />
+              {t('vaktcomply.cryptoKeys.addKey')}
+            </Button>
+          ) : undefined
         }
       />
 
       <div className="flex-1 p-6 space-y-4">
+        <ReadOnlyHint />
         {(weakCount > 0 || overdueCount > 0) && (
           <Card className="border-amber-500/30 bg-amber-500/5">
             <CardContent className="py-3 flex items-center gap-3 text-sm">
@@ -216,10 +224,12 @@ export default function CryptoKeysPage() {
             title={t('vaktcomply.cryptoKeys.emptyTitle')}
             description={t('vaktcomply.cryptoKeys.emptyDescription')}
             action={
-              <Button size="sm" onClick={() => { setCreateOpen(true); }}>
-                <Plus className="w-4 h-4 mr-1" />
-                {t('vaktcomply.cryptoKeys.addFirstKey')}
-              </Button>
+              canWrite ? (
+                <Button size="sm" onClick={() => { setCreateOpen(true); }}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t('vaktcomply.cryptoKeys.addFirstKey')}
+                </Button>
+              ) : undefined
             }
           />
         )}
@@ -268,27 +278,29 @@ export default function CryptoKeysPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          onClick={() => { setRotateTarget(k); }}
-                          title={t('vaktcomply.cryptoKeys.rotationDocumentTitle')}
-                          data-testid={`rotate-btn-${k.id}`}
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => { handleDelete(k); }}
-                          data-testid={`delete-btn-${k.id}`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+                      {canWrite && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => { setRotateTarget(k); }}
+                            title={t('vaktcomply.cryptoKeys.rotationDocumentTitle')}
+                            data-testid={`rotate-btn-${k.id}`}
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => { handleDelete(k); }}
+                            data-testid={`delete-btn-${k.id}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

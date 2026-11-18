@@ -33,6 +33,8 @@ import {
   useAddBCPTest,
 } from '../hooks/useBCP'
 import type { BCPPlan, BCPTest, CreateBCPPlanInput, CreateBCPTestInput } from '../types'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -117,6 +119,8 @@ function BCPTestList({ plan }: { plan: BCPPlan }) {
   const [testForm, setTestForm] = useState<CreateBCPTestInput>(emptyTestForm(plan.id))
   const { data: tests = [], isLoading } = useBCPTests(open ? plan.id : '')
   const addTest = useAddBCPTest()
+  // POST /bcp/plans/:id/tests ist `rw` — Leser sehen die Tests, erfassen keine.
+  const canWrite = useCanWrite()
 
   const latestTest = tests.length > 0 ? tests[0] : undefined
   const stale = isTestStale(latestTest)
@@ -166,18 +170,20 @@ function BCPTestList({ plan }: { plan: BCPPlan }) {
               )}
             </div>
           ))}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-6 text-xs"
-            onClick={() => {
-              setTestForm(emptyTestForm(plan.id))
-              setTestDialogOpen(true)
-            }}
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            {t('bcp.addTest')}
-          </Button>
+          {canWrite && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 text-xs"
+              onClick={() => {
+                setTestForm(emptyTestForm(plan.id))
+                setTestDialogOpen(true)
+              }}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              {t('bcp.addTest')}
+            </Button>
+          )}
         </div>
       )}
 
@@ -294,6 +300,8 @@ function BCPPlanCard({
   onDelete: () => void
 }) {
   const { t } = useTranslation()
+  // PATCH/DELETE /bcp/plans/:id sind `rw`.
+  const canWrite = useCanWrite()
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -310,19 +318,22 @@ function BCPPlanCard({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
-              <Pencil className="w-3.5 h-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-red-400 hover:text-red-300"
-              onClick={onDelete}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          </div>
+          {canWrite && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} data-testid="bcp-edit-btn">
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-red-400 hover:text-red-300"
+                onClick={onDelete}
+                data-testid="bcp-delete-btn"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
         {plan.scope && (
           <p className="text-xs text-muted-foreground">{plan.scope}</p>
@@ -348,6 +359,8 @@ export default function BCPPage() {
   const createPlan = useCreateBCPPlan()
   const updatePlan = useUpdateBCPPlan(editId ?? '')
   const deletePlan = useDeleteBCPPlan()
+  // POST /bcp/plans ist `rw` (routes.go) — Leser legen keine Pläne an.
+  const canWrite = useCanWrite()
 
   function openCreate() {
     setEditId(null)
@@ -392,14 +405,17 @@ export default function BCPPage() {
         title={t('bcp.title')}
         description={t('bcp.description')}
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            {t('bcp.newPlan')}
-          </Button>
+          canWrite ? (
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              {t('bcp.newPlan')}
+            </Button>
+          ) : undefined
         }
       />
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         {isLoading && (
           <div className="flex items-center justify-center h-48">
             <Spinner size="lg" color="primary" />
@@ -416,10 +432,12 @@ export default function BCPPage() {
             title={t('bcp.emptyTitle')}
             description={t('bcp.emptyDescription')}
             action={
-              <Button onClick={openCreate}>
-                <Plus className="w-4 h-4 mr-1" />
-                {t('bcp.newPlan')}
-              </Button>
+              canWrite ? (
+                <Button onClick={openCreate}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t('bcp.newPlan')}
+                </Button>
+              ) : undefined
             }
           />
         )}

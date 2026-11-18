@@ -35,6 +35,8 @@ import { ProGate } from '../../../shared/components/ProGate'
 import { useFrameworks } from '../hooks/useFrameworks'
 import type { CCMCheck, CCMCheckType, CCMStatus, CreateCCMCheckInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -128,6 +130,7 @@ function ResultsDialog({
 
 function CCMCheckRow({
   check,
+  canWrite,
   onDelete,
   onToggle,
   onTrigger,
@@ -135,6 +138,7 @@ function CCMCheckRow({
   isRunning,
 }: {
   check: CCMCheck
+  canWrite: boolean
   onDelete: () => void
   onToggle: () => void
   onTrigger: () => void
@@ -174,16 +178,20 @@ function CCMCheckRow({
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              title="Jetzt ausführen"
-              onClick={onTrigger}
-              disabled={isRunning}
-            >
-              <Play className="w-3.5 h-3.5" />
-            </Button>
+            {/* Ausführen, Ein/Aus und Löschen sind `rw`-Routen; „Ergebnisse" bleibt für Leser. */}
+            {canWrite && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Jetzt ausführen"
+                aria-label="Jetzt ausführen"
+                onClick={onTrigger}
+                disabled={isRunning}
+              >
+                <Play className="w-3.5 h-3.5" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -197,22 +205,28 @@ function CCMCheckRow({
                 <ChevronUp className="w-3.5 h-3.5" />
               )}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={onToggle}
-            >
-              {check.enabled ? 'Aus' : 'Ein'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-red-400 hover:text-red-300"
-              onClick={onDelete}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
+            {canWrite && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={onToggle}
+                >
+                  {check.enabled ? 'Aus' : 'Ein'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-red-400 hover:text-red-300"
+                  title="Check löschen"
+                  aria-label="Check löschen"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </CardContent>
@@ -279,6 +293,7 @@ export default function CCMPage() {
   const deleteCheck = useDeleteCCMCheck()
   const toggleCheck = useToggleCCMCheck()
   const triggerCheck = useTriggerCCMCheck()
+  const canWrite = useCanWrite()
 
   // Collect all controls across frameworks for the control selector.
   const frameworks = frameworksData ?? []
@@ -334,14 +349,17 @@ export default function CCMPage() {
           title="Continuous Control Monitoring"
           description="Automatisierte Checks für Compliance-Controls — HTTP-Endpunkte, CVE-Scans, Nachweis-Aktualität."
           actions={
-            <Button onClick={openCreate}>
-              <Plus className="w-4 h-4 mr-1" />
-              Neuen Check anlegen
-            </Button>
+            canWrite ? (
+              <Button onClick={openCreate}>
+                <Plus className="w-4 h-4 mr-1" />
+                Neuen Check anlegen
+              </Button>
+            ) : undefined
           }
         />
 
         <div className="flex-1 p-6">
+          <ReadOnlyHint className="mb-4" />
           {isError && (
             <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">
               Fehler beim Laden der CCM-Checks.
@@ -353,10 +371,12 @@ export default function CCMPage() {
               title="Keine CCM-Checks definiert"
               description="Legen Sie automatisierte Checks an, um Control-Status kontinuierlich zu überwachen."
               action={
-                <Button onClick={openCreate}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Neuen Check anlegen
-                </Button>
+                canWrite ? (
+                  <Button onClick={openCreate}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Neuen Check anlegen
+                  </Button>
+                ) : undefined
               }
             />
           )}
@@ -366,6 +386,7 @@ export default function CCMPage() {
                 <CCMCheckRow
                   key={check.id}
                   check={check}
+                  canWrite={canWrite}
                   onDelete={() => { handleDelete(check.id); }}
                   onToggle={() => { handleToggle(check); }}
                   onTrigger={() => { handleTrigger(check); }}

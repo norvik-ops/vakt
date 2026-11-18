@@ -33,6 +33,8 @@ import {
   useCreateRestoreTest,
 } from '../hooks/useBackupJobs'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import type {
   BackupJob,
   BackupJobInput,
@@ -178,6 +180,9 @@ export default function BackupEvidencePage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<BackupJobInput>(emptyJob())
   const [restoreJobId, setRestoreJobId] = useState<string | null>(null)
+  // Backup-Jobs und Wiederherstellungstests schreiben über `rw`-Routen
+  // (Admin/SecurityAnalyst); Leser sehen nur Nachweise und Kennzahlen.
+  const canWrite = useCanWrite()
 
   const { data: jobs = [], isLoading, isError } = useBackupJobs()
   const { data: summary } = useBackupSummary()
@@ -210,14 +215,17 @@ export default function BackupEvidencePage() {
         title={t('backup.title')}
         description={t('backup.description')}
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            {t('backup.new')}
-          </Button>
+          canWrite ? (
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              {t('backup.new')}
+            </Button>
+          ) : undefined
         }
       />
 
       <div className="flex-1 p-6 space-y-6">
+        <ReadOnlyHint />
         {summary && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card><CardContent className="pt-5">
@@ -262,7 +270,7 @@ export default function BackupEvidencePage() {
             icon={DatabaseBackup}
             title={t('backup.emptyTitle')}
             description={t('backup.emptyDescription')}
-            action={<Button onClick={openCreate}><Plus className="w-4 h-4 mr-1" />{t('backup.new')}</Button>}
+            action={canWrite ? <Button onClick={openCreate}><Plus className="w-4 h-4 mr-1" />{t('backup.new')}</Button> : undefined}
           />
         )}
         {!isLoading && !isError && jobs.length > 0 && (
@@ -286,14 +294,16 @@ export default function BackupEvidencePage() {
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { openEdit(j) }}>
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={() => { handleDelete(j.id) }}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
+                    {canWrite && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { openEdit(j) }} aria-label={t('common.edit')}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={() => { handleDelete(j.id) }} aria-label={t('common.delete')}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-1.5 text-xs text-muted-foreground">
@@ -306,9 +316,11 @@ export default function BackupEvidencePage() {
                     {t('backup.lastRestoreTest')}:{' '}
                     {j.last_restore_test_at ? new Date(j.last_restore_test_at).toLocaleDateString() : t('backup.never')}
                   </p>
-                  <Button variant="outline" size="sm" className="mt-2" onClick={() => { setRestoreJobId(j.id) }}>
-                    {t('backup.restoreTest.document')}
-                  </Button>
+                  {canWrite && (
+                    <Button variant="outline" size="sm" className="mt-2" onClick={() => { setRestoreJobId(j.id) }}>
+                      {t('backup.restoreTest.document')}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}

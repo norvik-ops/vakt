@@ -13,6 +13,8 @@ import { apiFetch } from '../../../api/client'
 import { SkeletonTable } from '../../../shared/components/SkeletonLoaders'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { EmptyState } from '../../../shared/components/EmptyState'
+import { useCanWrite, useHasRole } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 // K5-04/05/06: mirrors of audit.AuditProgramAudit / audit.AuditFinding /
 // audit.AuditProgramSummary (backend/internal/modules/vaktcomply/audit/models.go).
@@ -181,6 +183,11 @@ export default function AuditProgramPage() {
   const createMut = useCreateAudit()
   const completeMut = useCompleteAudit()
   const createFindingMut = useCreateFinding()
+  // Audit anlegen und Feststellung erfassen sind `rw`; Abschließen ist die
+  // Vier-Augen-Freigabe `internalAuditor` (routes.go) — auch ein Admin ohne diese
+  // Rolle bekäme 403, deshalb sieht nur ein InternalAuditor den Knopf.
+  const canWrite = useCanWrite()
+  const canComplete = useHasRole('InternalAuditor')
 
   const [createOpen, setCreateOpen] = useState(false)
   const [auditForm, setAuditForm] = useState<CreateAuditProgramAuditInput>({ title: '', audit_type: 'isms_internal', scope: '', planned_date: '' })
@@ -245,11 +252,15 @@ export default function AuditProgramPage() {
           <h1 className="text-2xl font-bold">{t('vaktcomply.auditProgram.title')}</h1>
           <p className="text-gray-500 text-sm mt-1"><TermTooltip term="ISO 27001" glossaryKey="ISO27001">ISO 27001</TermTooltip> {t('vaktcomply.auditProgram.description')}</p>
         </div>
-        <Button size="sm" onClick={() => { setCreateOpen(true); }}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          {t('vaktcomply.auditProgram.createBtn')}
-        </Button>
+        {canWrite && (
+          <Button size="sm" onClick={() => { setCreateOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            {t('vaktcomply.auditProgram.createBtn')}
+          </Button>
+        )}
       </div>
+
+      <ReadOnlyHint />
 
       {/* Summary — four tiles, one per field audit.AuditProgramSummary actually
           emits. There is no major-NC and no plan-period count in that struct; the
@@ -276,7 +287,7 @@ export default function AuditProgramPage() {
           icon={ClipboardList}
           title={t('vaktcomply.auditProgram.emptyTitle')}
           description={t('vaktcomply.auditProgram.emptyDesc')}
-          action={<Button onClick={() => { setCreateOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />{t('vaktcomply.auditProgram.createBtn')}</Button>}
+          action={canWrite ? <Button onClick={() => { setCreateOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />{t('vaktcomply.auditProgram.createBtn')}</Button> : undefined}
         />
       ) : (
         <div className="space-y-3">
@@ -305,17 +316,21 @@ export default function AuditProgramPage() {
                     </span>
                     {audit.status !== 'completed' && audit.status !== 'cancelled' && (
                       <>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setFindingTarget(audit); }}>
-                          <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-                          {t('vaktcomply.auditProgram.findingBtn')}
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
-                          setCompleteTarget(audit)
-                          setCompleteForm({ audit_report: '', actual_date: new Date().toISOString().slice(0, 10) })
-                        }}>
-                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                          {t('vaktcomply.auditProgram.completeBtn')}
-                        </Button>
+                        {canWrite && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setFindingTarget(audit); }}>
+                            <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+                            {t('vaktcomply.auditProgram.findingBtn')}
+                          </Button>
+                        )}
+                        {canComplete && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
+                            setCompleteTarget(audit)
+                            setCompleteForm({ audit_report: '', actual_date: new Date().toISOString().slice(0, 10) })
+                          }}>
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                            {t('vaktcomply.auditProgram.completeBtn')}
+                          </Button>
+                        )}
                       </>
                     )}
                     {audit.status === 'completed' && (

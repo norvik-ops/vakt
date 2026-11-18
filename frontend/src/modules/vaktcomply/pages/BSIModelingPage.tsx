@@ -57,6 +57,8 @@ import {
   useBSIBausteinSuggestions,
 } from '../hooks/useBSIModeling'
 import type { BSIModelingEntry, CreateBSIModelingInput } from '../types'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -116,7 +118,9 @@ function MatrixTab({
   onBulkAdd: () => void
 }) {
   const { t } = useTranslation()
-  const actionButtons = (
+  // POST/DELETE /bsi-modeling sind `rw` — Leser bekommen weder Zuordnen noch Löschen.
+  const canWrite = useCanWrite()
+  const actionButtons = canWrite && (
     <div className="flex gap-2 justify-end">
       <Button size="sm" variant="outline" onClick={onBulkAdd}>
         <Layers className="w-4 h-4 mr-1" />
@@ -154,7 +158,7 @@ function MatrixTab({
               <TableHead>{t('bsiModeling.colPriority')}</TableHead>
               <TableHead>{t('common.status')}</TableHead>
               <TableHead>{t('bsiModeling.colNotes')}</TableHead>
-              <TableHead className="w-12" />
+              {canWrite && <TableHead className="w-12" />}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -188,16 +192,19 @@ function MatrixTab({
                     {e.interview_notes || '—'}
                   </p>
                 </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => { onDelete(e.id) }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </TableCell>
+                {canWrite && (
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={t('common.delete')}
+                      onClick={() => { onDelete(e.id) }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -671,6 +678,7 @@ export default function BSIModelingPage() {
       />
 
       <div className="p-6 space-y-6">
+        <ReadOnlyHint />
         {isLoading ? (
           <Spinner />
         ) : (

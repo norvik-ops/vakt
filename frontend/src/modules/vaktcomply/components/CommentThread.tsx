@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Button } from '../../../components/ui/button'
 import { useComments, useCreateComment, useDeleteComment } from '../hooks/useTasks'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 
 // ── Relative time helper ──────────────────────────────────────────────────────
 
@@ -33,6 +34,10 @@ export function CommentThread({
   const createComment = useCreateComment(entityType, entityId)
   const deleteComment = useDeleteComment(entityType, entityId)
   const { formatDate, formatDateTime } = useFormatDate()
+  // Kommentieren ist eine Schreibaktion (POST /:entity/:id/comments und DELETE /comments/:cid
+  // sind `rw` in vaktcomply/routes.go). Leser sehen den Verlauf, aber weder Formular noch
+  // Löschen — den Grund nennt der ReadOnlyHint der umgebenden Seite.
+  const canWrite = useCanWrite()
 
   const [body, setBody] = useState('')
   const [authorEmail, setAuthorEmail] = useState('')
@@ -87,53 +92,57 @@ export function CommentThread({
                     {comment.body}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { deleteComment.mutate(comment.id); }}
-                  disabled={deleteComment.isPending}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0 mt-0.5"
-                  title="Kommentar löschen"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {canWrite && (
+                  <button
+                    type="button"
+                    onClick={() => { deleteComment.mutate(comment.id); }}
+                    disabled={deleteComment.isPending}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0 mt-0.5"
+                    title="Kommentar löschen"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         ) : (
           <p className="text-xs text-muted-foreground">
-            Noch keine Kommentare. Schreibe den ersten Kommentar.
+            {canWrite ? 'Noch keine Kommentare. Schreibe den ersten Kommentar.' : 'Noch keine Kommentare.'}
           </p>
         )}
 
         {/* New comment form */}
-        <form onSubmit={handleSubmit} className="space-y-2 border-t border-border pt-4">
-          {!authorEmail && (
-            <input
-              type="email"
-              placeholder="Deine E-Mail (optional)"
-              value={authorEmail}
-              onChange={(e) => { setAuthorEmail(e.target.value); }}
-              className="w-full rounded-md border border-border bg-surface2 text-primary px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+        {canWrite && (
+          <form onSubmit={handleSubmit} className="space-y-2 border-t border-border pt-4">
+            {!authorEmail && (
+              <input
+                type="email"
+                placeholder="Deine E-Mail (optional)"
+                value={authorEmail}
+                onChange={(e) => { setAuthorEmail(e.target.value); }}
+                className="w-full rounded-md border border-border bg-surface2 text-primary px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+            )}
+            <textarea
+              rows={3}
+              placeholder="Kommentar schreiben …"
+              value={body}
+              onChange={(e) => { setBody(e.target.value); }}
+              maxLength={5000}
+              className="w-full rounded-md border border-border bg-surface2 text-primary px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand resize-none"
             />
-          )}
-          <textarea
-            rows={3}
-            placeholder="Kommentar schreiben …"
-            value={body}
-            onChange={(e) => { setBody(e.target.value); }}
-            maxLength={5000}
-            className="w-full rounded-md border border-border bg-surface2 text-primary px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand resize-none"
-          />
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!body.trim() || createComment.isPending}
-            >
-              {createComment.isPending ? 'Wird gesendet…' : 'Kommentar senden'}
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!body.trim() || createComment.isPending}
+              >
+                {createComment.isPending ? 'Wird gesendet…' : 'Kommentar senden'}
+              </Button>
+            </div>
+          </form>
+        )}
       </CardContent>
     </Card>
   )

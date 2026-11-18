@@ -9,6 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { WriteFieldset } from '../../../shared/components/WriteFieldset'
+import { useCanWrite, useIsAdmin } from '../../../shared/hooks/useCanWrite'
 import {
   useISMSScope,
   useISMSScopeVersions,
@@ -33,6 +36,10 @@ export default function ISMSScopePage() {
   const { data: versions = [] } = useISMSScopeVersions()
   const saveMutation = useSaveISMSScope()
   const approveMutation = useApproveISMSScope()
+  // Speichern ist `rw` (Admin/SecurityAnalyst), Freigabe ist enger: Admin allein
+  // (vaktcomply/routes.go, POST /isms-scope/approve). Leser sehen nur den Stand.
+  const canWrite = useCanWrite()
+  const isAdmin = useIsAdmin()
 
   const [scopeDefinition, setScopeDefinition] = useState('')
   const [outsourcing, setOutsourcing] = useState('')
@@ -84,6 +91,7 @@ export default function ISMSScopePage() {
         title="ISMS-Scope-Dokument"
         description="Definieren Sie den Geltungsbereich Ihres Informationssicherheitsmanagementsystems (ISO 27001 Kap. 4.3)."
       />
+      <ReadOnlyHint />
 
       <Card>
         <CardHeader>
@@ -99,6 +107,7 @@ export default function ISMSScopePage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <WriteFieldset>
           <div className="space-y-2">
             <Label htmlFor="scope-definition">Scope-Definition</Label>
             <Textarea
@@ -113,10 +122,12 @@ export default function ISMSScopePage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>{t('vaktcomply.ismsScopePage.exclusionsLabel')}</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addExclusion}>
-                <Plus className="mr-1 h-4 w-4" />
-                {t('vaktcomply.ismsScopePage.addExclusion')}
-              </Button>
+              {canWrite && (
+                <Button type="button" variant="outline" size="sm" onClick={addExclusion}>
+                  <Plus className="mr-1 h-4 w-4" />
+                  {t('vaktcomply.ismsScopePage.addExclusion')}
+                </Button>
+              )}
             </div>
             {exclusions.length === 0 && (
               <p className="text-sm text-muted-foreground">{t('vaktcomply.ismsScopePage.noExclusions')}</p>
@@ -135,15 +146,17 @@ export default function ISMSScopePage() {
                   onChange={(e) => { updateExclusion(idx, 'justification', e.target.value); }}
                   className="flex-1"
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => { removeExclusion(idx); }}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {canWrite && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => { removeExclusion(idx); }}
+                    className="text-red-400 hover:text-red-300"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             ))}
           </div>
@@ -170,11 +183,15 @@ export default function ISMSScopePage() {
             />
           </div>
 
+          </WriteFieldset>
+
           <div className="flex gap-3 pt-2">
-            <Button onClick={handleSave} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? 'Wird gespeichert …' : 'Speichern (neue Version)'}
-            </Button>
-            {current && current.status === 'draft' && (
+            {canWrite && (
+              <Button onClick={handleSave} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? 'Wird gespeichert …' : 'Speichern (neue Version)'}
+              </Button>
+            )}
+            {isAdmin && current && current.status === 'draft' && (
               <Button
                 variant="outline"
                 onClick={handleApprove}

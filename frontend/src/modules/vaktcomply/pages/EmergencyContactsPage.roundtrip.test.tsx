@@ -20,12 +20,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import EmergencyContactsPage from './EmergencyContactsPage'
+import { signInAs } from '../../../test-utils/signInAs'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 
-vi.mock('../../../api/client', () => ({ apiFetch: vi.fn() }))
+// registerUnauthorizedHandler: der Auth-Store (über useCanWrite geladen) registriert sich beim Import.
+vi.mock('../../../api/client', () => ({ apiFetch: vi.fn(), registerUnauthorizedHandler: vi.fn() }))
 const { apiFetch } = await import('../../../api/client')
 const mockApiFetch = vi.mocked(apiFetch)
 
@@ -68,7 +70,8 @@ function stubApi(): { writes: { path: string; body: unknown }[] } {
   return { writes }
 }
 
-beforeEach(() => { mockApiFetch.mockReset() })
+// Bearbeiten/Anlegen sind nur für Schreibrollen sichtbar (useCanWrite).
+beforeEach(() => { mockApiFetch.mockReset(); signInAs('Admin') })
 
 describe('EmergencyContactsPage — 24/7 flag round trip (K5-09)', () => {
   it('renders the 24/7 badge for a contact the backend marks available_24_7', async () => {

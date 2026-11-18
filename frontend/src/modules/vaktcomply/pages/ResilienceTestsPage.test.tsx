@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import ResilienceTestsPage from './ResilienceTestsPage'
+import { signInAs } from '../../../test-utils/signInAs'
 import type { ResilienceTestsResponse } from '../types'
 
 const mockResponseWithOverdue: ResilienceTestsResponse = {
@@ -69,6 +70,9 @@ function renderPage() {
 }
 
 describe('ResilienceTestsPage', () => {
+  // Schreibknöpfe sind nur für Schreibrollen sichtbar (useCanWrite).
+  beforeEach(() => { signInAs('Admin') })
+
   it('renders tlpt-overdue-warning banner when tlpt_overdue_warning is true', () => {
     vi.mocked(useResilienceTests).mockReturnValue({
       data: mockResponseWithOverdue,

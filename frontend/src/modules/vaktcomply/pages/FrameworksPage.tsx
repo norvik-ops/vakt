@@ -21,7 +21,7 @@ import { FeatureLockedError } from '../../../api/client'
 import { FeatureLock, FeatureLockHint } from '../../../shared/components/ProGate'
 import { useLicenseStatus } from '../../../shared/hooks/useFeature'
 import { downloadBlob } from '../../../shared/utils/downloadBlob'
-import { FRAMEWORK_CATALOGUE, frameworkDisplayName } from '../utils/frameworkCatalogue'
+import { FRAMEWORK_CATALOGUE, frameworkDisplayName, isNotOffered, type FrameworkCatalogueEntry } from '../utils/frameworkCatalogue'
 import { ReadinessBreakdown } from '../components/ReadinessBreakdown'
 import { roundPercent } from '../../../shared/utils/percent'
 
@@ -154,6 +154,13 @@ export default function FrameworksPage() {
   const switchDORAVariant = useSwitchDORAVariant()
 
   const enabledKeys = new Set((frameworks ?? []).map((f) => f.name.split(' ')[0].toUpperCase()))
+  const isEnabled = (fw: FrameworkCatalogueEntry) =>
+    enabledKeys.has(fw.key.toUpperCase()) || enabledKeys.has(fw.name.toUpperCase())
+  // R1-KW-84 (Entscheid 2026-11-18): Frameworks, die Vakt in keinem Tarif verkauft
+  // (TISAX, DORA, ISO 42001), stehen nicht mehr im Katalog — eine Karte, die man
+  // nie aktivieren kann, ist nur Rauschen. Ist eins davon schon aktiv (Bestandsdaten),
+  // bleibt die Karte stehen: Was ein Kunde aktiv hat, darf nicht verschwinden.
+  const visibleCatalogue = FRAMEWORK_CATALOGUE.filter((fw) => isEnabled(fw) || !isNotOffered(fw))
 
   function handleExport() {
     // S131-D1 (D18-04): downloadBlob checks res.ok before saving — otherwise a
@@ -292,21 +299,19 @@ export default function FrameworksPage() {
             <FeatureLock kind={isUnsoldFeature(enableFramework.error.feature) ? 'unsold' : 'pro'} className="mb-4" />
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {FRAMEWORK_CATALOGUE.map((fw) => {
-              const alreadyEnabled = enabledKeys.has(fw.key.toUpperCase()) ||
-                enabledKeys.has(fw.name.toUpperCase())
+            {visibleCatalogue.map((fw) => {
+              const alreadyEnabled = isEnabled(fw)
               // UX-12: Warum ist die Karte gesperrt? Vorher stand das nur im Tooltip
               // eines ausgegrauten Knopfs. Pro-Hinweis erst, wenn die Lizenz geladen
               // ist und das Merkmal wirklich fehlt — kein Flackern für Pro-Kunden.
-              const lockKind: 'pro' | 'unsold' | 'draft' | null = alreadyEnabled
+              // Unverkaufte Karten erscheinen hier nur noch, wenn sie schon aktiv sind.
+              const lockKind: 'pro' | 'draft' | null = alreadyEnabled
                 ? null
-                : fw.notOffered || isUnsoldFeature(fw.feature)
-                  ? 'unsold'
-                  : fw.draft
-                    ? 'draft'
-                    : fw.feature && license && !(license.is_pro && license.features.includes(fw.feature))
-                      ? 'pro'
-                      : null
+                : fw.draft
+                  ? 'draft'
+                  : fw.feature && license && !(license.is_pro && license.features.includes(fw.feature))
+                    ? 'pro'
+                    : null
               return (
                 <div
                   key={fw.key}
@@ -361,13 +366,11 @@ export default function FrameworksPage() {
                           </Button>
                         )}
                       </div>
-                    ) : !canWrite ? null : fw.draft || fw.notOffered ? (
+                    ) : !canWrite ? null : fw.draft ? (
                       <Button
                         size="sm"
                         disabled
-                        title={fw.notOffered
-                          ? t('vaktcomply.frameworksPage.frameworkStatusNotOfferedHint')
-                          : t('vaktcomply.frameworksPage.frameworkStatusDraft')}
+                        title={t('vaktcomply.frameworksPage.frameworkStatusDraft')}
                       >
                         <Plus className="w-3.5 h-3.5 mr-1" />
                         {t('vaktcomply.frameworksPage.activate')}

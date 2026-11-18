@@ -24,6 +24,8 @@ import {
   useSetBSICheckResult,
 } from '../hooks/useBSICheck'
 import type { BSIUmsetzungsstatus, BSICheckResult } from '../types'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 // ── stufe helpers ─────────────────────────────────────────────────────────────
 
@@ -74,6 +76,9 @@ function SummaryBar({ pct, ja, teilweise, entbehrlich, nein, total }: {
 function CheckRow({ row, targetObjectId }: { row: BSICheckResult; targetObjectId: string }) {
   const { t } = useTranslation()
   const setResult = useSetBSICheckResult(targetObjectId)
+  // PUT /bsi/target-objects/:id/check/:anforderungId ist `rw` — Leser sehen den
+  // Umsetzungsstatus als Badge statt als Auswahl.
+  const canWrite = useCanWrite()
 
   const statusLabels: Record<BSIUmsetzungsstatus, string> = {
     ja: t('bsi.status.ja'),
@@ -104,6 +109,14 @@ function CheckRow({ row, targetObjectId }: { row: BSICheckResult; targetObjectId
         </Badge>
       )}
       <div className="w-[140px] shrink-0">
+        {!canWrite ? (
+          <Badge
+            className={`text-[11px] border ${STATUS_COLORS[row.umsetzungsstatus]}`}
+            data-testid="bsi-check-status-readonly"
+          >
+            {statusLabels[row.umsetzungsstatus]}
+          </Badge>
+        ) : (
         <Select
           value={row.umsetzungsstatus}
           onValueChange={handleStatusChange}
@@ -124,6 +137,7 @@ function CheckRow({ row, targetObjectId }: { row: BSICheckResult; targetObjectId
             ))}
           </SelectContent>
         </Select>
+        )}
       </div>
     </div>
   )
@@ -244,6 +258,7 @@ export default function BSICheckSheetPage() {
       />
 
       <div className="p-6 space-y-4">
+        <ReadOnlyHint />
         {obj && (obj.effective_c === 'sehr_hoch' || obj.effective_i === 'sehr_hoch' || obj.effective_a === 'sehr_hoch') &&
           obj.absicherungsniveau !== 'kern' && (
           <div className="rounded-lg border border-orange-800 bg-orange-900/20 px-4 py-3 flex gap-3">

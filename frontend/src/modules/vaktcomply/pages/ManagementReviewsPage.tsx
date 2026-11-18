@@ -7,6 +7,8 @@ import { Plus, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { useCanWrite, useHasRole } from '../../../shared/hooks/useCanWrite'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -63,6 +65,10 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
   const approve = useApproveManagementReview(review.id)
   const updateInputs = useUpdateManagementReviewInputs(review.id)
   const updateOutputs = useUpdateManagementReviewOutputs(review.id)
+  // Eingaben/Ergebnisse bearbeiten ist `rw` (Admin/SecurityAnalyst); Freigeben ist
+  // Vier-Augen und nur für InternalAuditor (vaktcomply/routes.go `internalAuditor`).
+  const canWrite = useCanWrite()
+  const canApprove = useHasRole('InternalAuditor')
 
   const [inputsForm, setInputsForm] = useState<UpdateManagementReviewInputsInput>({
     audit_findings_summary: review.audit_findings_summary,
@@ -162,7 +168,7 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
             )}
           </div>
           <div className="flex gap-2">
-            {review.status === 'draft' && (
+            {canApprove && review.status === 'draft' && (
               <Button size="sm" variant="outline" onClick={handleApprove} disabled={approve.isPending}>
                 <CheckCircle2 className="w-3 h-3 mr-1" />
                 {t('vaktcomply.managementReviews.approve')}
@@ -187,9 +193,11 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium">{t('vaktcomply.managementReviews.sectionInputs')}</h4>
-              <Button size="sm" variant="outline" onClick={() => { setInputsOpen(true); }}>
-                {t('vaktcomply.managementReviews.edit')}
-              </Button>
+              {canWrite && (
+                <Button size="sm" variant="outline" onClick={() => { setInputsOpen(true); }}>
+                  {t('vaktcomply.managementReviews.edit')}
+                </Button>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
@@ -223,9 +231,11 @@ function ReviewDetail({ review }: { review: ManagementReview }) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium">{t('vaktcomply.managementReviews.sectionOutputs')}</h4>
-              <Button size="sm" variant="outline" onClick={() => { setOutputsOpen(true); }}>
-                {t('vaktcomply.managementReviews.edit')}
-              </Button>
+              {canWrite && (
+                <Button size="sm" variant="outline" onClick={() => { setOutputsOpen(true); }}>
+                  {t('vaktcomply.managementReviews.edit')}
+                </Button>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
@@ -333,6 +343,7 @@ export default function ManagementReviewsPage() {
   const { t } = useTranslation()
   const { data: reviews, isLoading } = useManagementReviews()
   const createReview = useCreateManagementReview()
+  const canWrite = useCanWrite()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState<CreateManagementReviewInput>({
@@ -365,24 +376,27 @@ export default function ManagementReviewsPage() {
         title={t('vaktcomply.managementReviews.pageTitle')}
         description={t('vaktcomply.managementReviews.pageDescription')}
         actions={
-          <Button onClick={() => { setCreateOpen(true); }}>
-            <Plus className="w-4 h-4 mr-1" />
-            {t('vaktcomply.managementReviews.newReview')}
-          </Button>
+          canWrite ? (
+            <Button onClick={() => { setCreateOpen(true); }}>
+              <Plus className="w-4 h-4 mr-1" />
+              {t('vaktcomply.managementReviews.newReview')}
+            </Button>
+          ) : undefined
         }
       />
+      <ReadOnlyHint />
 
       {(!reviews || reviews.length === 0) ? (
         <EmptyState
           icon={Clock}
           title={t('vaktcomply.managementReviews.emptyTitle')}
           description={t('vaktcomply.managementReviews.emptyDescription')}
-          action={
+          action={canWrite && (
             <Button onClick={() => { setCreateOpen(true); }}>
               <Plus className="w-4 h-4 mr-1" />
               {t('vaktcomply.managementReviews.newReview')}
             </Button>
-          }
+          )}
         />
       ) : (
         <div>

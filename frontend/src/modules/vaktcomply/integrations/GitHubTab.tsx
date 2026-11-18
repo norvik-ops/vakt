@@ -10,6 +10,7 @@ import {
   type GitHubIntegration,
 } from '../../../hooks/useGitHub'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useIsAdmin } from '../../../shared/hooks/useCanWrite'
 import { SyncStatusBadge, CheckResultsPanel } from './shared'
 
 // --- Integration row ---
@@ -20,6 +21,8 @@ function IntegrationRow({ integration }: { integration: GitHubIntegration }) {
   const deleteIntegration = useDeleteGitHubIntegration()
   const syncIntegration = useSyncGitHubIntegration()
   const { formatDateTime } = useFormatDate()
+  // Backend: /integrations/github ist komplett Admin-only (cmd/api/routes.go).
+  const isAdmin = useIsAdmin()
 
   const lastSync = integration.last_synced_at
     ? formatDateTime(integration.last_synced_at, { dateStyle: 'short', timeStyle: 'short' })
@@ -52,14 +55,16 @@ function IntegrationRow({ integration }: { integration: GitHubIntegration }) {
         </div>
         <SyncStatusBadge status={integration.sync_status} />
         <div className="flex items-center gap-1">
-          <button
-            onClick={handleSync}
-            disabled={syncIntegration.isPending}
-            title="Jetzt synchronisieren"
-            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncIntegration.isPending ? 'animate-spin' : ''}`} />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleSync}
+              disabled={syncIntegration.isPending}
+              title="Jetzt synchronisieren"
+              className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncIntegration.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          )}
           <button
             onClick={() => { setExpanded((v) => !v); }}
             title="Details anzeigen"
@@ -67,14 +72,16 @@ function IntegrationRow({ integration }: { integration: GitHubIntegration }) {
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleteIntegration.isPending}
-            title="Integration entfernen"
-            className="p-1.5 rounded-md text-secondary hover:text-red-500 hover:bg-bg transition-colors disabled:opacity-50"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleDelete}
+              disabled={deleteIntegration.isPending}
+              title="Integration entfernen"
+              className="p-1.5 rounded-md text-secondary hover:text-red-500 hover:bg-bg transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
       {expanded && (
@@ -179,6 +186,7 @@ export function GitHubTab() {
   const { t } = useTranslation()
   const { data: integrations, isLoading, error } = useGitHubIntegrations()
   const [showDialog, setShowDialog] = useState(false)
+  const isAdmin = useIsAdmin()
 
   if (isLoading) {
     return (
@@ -201,22 +209,26 @@ export function GitHubTab() {
             Automatische Compliance-Checks: Branch Protection, PR-Reviews, Dependency Alerts, Secret Scanning.
           </p>
         </div>
-        <button
-          onClick={() => { setShowDialog(true); }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          {t('integrations.page.connectRepo')}
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => { setShowDialog(true); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {t('integrations.page.connectRepo')}
+          </button>
+        )}
       </div>
 
       {integrations && integrations.length === 0 ? (
         <div className="border border-dashed border-border rounded-lg p-8 text-center">
           <GitBranch className="w-8 h-8 text-secondary mx-auto mb-2" />
           <p className="text-sm font-medium text-primary">{t('integrations.page.noReposConnected')}</p>
-          <p className="text-xs text-secondary mt-1">
-            {t('integrations.page.connectFirstRepo')}
-          </p>
+          {isAdmin && (
+            <p className="text-xs text-secondary mt-1">
+              {t('integrations.page.connectFirstRepo')}
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -226,7 +238,7 @@ export function GitHubTab() {
         </div>
       )}
 
-      {showDialog && <AddIntegrationDialog onClose={() => { setShowDialog(false); }} />}
+      {isAdmin && showDialog && <AddIntegrationDialog onClose={() => { setShowDialog(false); }} />}
     </div>
   )
 }

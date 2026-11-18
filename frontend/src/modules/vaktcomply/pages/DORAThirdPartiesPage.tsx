@@ -45,6 +45,8 @@ import type {
   CreateDORAThirdPartyInput,
 } from '../types'
 import { useTranslation } from 'react-i18next'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -261,10 +263,12 @@ function ThirdPartyDialog({
 
 function ThirdPartyRow({
   tp,
+  canWrite,
   onEdit,
   onDelete,
 }: {
   tp: DORAThirdParty
+  canWrite: boolean
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -304,14 +308,16 @@ function ThirdPartyRow({
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0 ml-2">
-        <Button variant="ghost" size="sm" onClick={onEdit} title={t('vaktcomply.doraThirdParties.titleEdit')}>
-          <Pencil className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onDelete} title={t('vaktcomply.doraThirdParties.titleDelete')} className="text-destructive hover:text-destructive">
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </div>
+      {canWrite && (
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          <Button variant="ghost" size="sm" onClick={onEdit} title={t('vaktcomply.doraThirdParties.titleEdit')} aria-label={t('vaktcomply.doraThirdParties.titleEdit')}>
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onDelete} title={t('vaktcomply.doraThirdParties.titleDelete')} aria-label={t('vaktcomply.doraThirdParties.titleDelete')} className="text-destructive hover:text-destructive">
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -324,6 +330,9 @@ export default function DORAThirdPartiesPage() {
   const { data: list, isLoading, isError, error } = useDORAThirdParties(criticality || undefined)
   const createMut = useCreateDORAThirdParty()
   const deleteMut = useDeleteDORAThirdParty()
+  // Anlegen/Ändern/Löschen sind `rw`-Routen (Admin/SecurityAnalyst);
+  // Leser behalten Liste und Filter.
+  const canWrite = useCanWrite()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<DORAThirdParty | null>(null)
@@ -353,14 +362,17 @@ export default function DORAThirdPartiesPage() {
           title={t('vaktcomply.doraThirdParties.pageTitle')}
           description={t('vaktcomply.doraThirdParties.pageDescription')}
           actions={
-            <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true) }}>
-              <Plus className="w-4 h-4 mr-1" />
-              {t('vaktcomply.doraThirdParties.addProvider')}
-            </Button>
+            canWrite ? (
+              <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true) }}>
+                <Plus className="w-4 h-4 mr-1" />
+                {t('vaktcomply.doraThirdParties.addProvider')}
+              </Button>
+            ) : undefined
           }
         />
 
         <div className="flex-1 p-6 space-y-4">
+          <ReadOnlyHint />
           {/* Summary badges */}
           {list && list.length > 0 && (
             <div className="flex items-center gap-3 flex-wrap">
@@ -398,10 +410,12 @@ export default function DORAThirdPartiesPage() {
               title={t('vaktcomply.doraThirdParties.emptyTitle')}
               description={t('vaktcomply.doraThirdParties.emptyDescription')}
               action={
-                <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true) }}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  {t('vaktcomply.doraThirdParties.addProvider')}
-                </Button>
+                canWrite ? (
+                  <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true) }}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    {t('vaktcomply.doraThirdParties.addProvider')}
+                  </Button>
+                ) : undefined
               }
             />
           ) : (
@@ -410,6 +424,7 @@ export default function DORAThirdPartiesPage() {
                 <ThirdPartyRow
                   key={tp.id}
                   tp={tp}
+                  canWrite={canWrite}
                   onEdit={() => { setEditing(tp); setDialogOpen(true) }}
                   onDelete={() => { setDeleteTarget(tp); }}
                 />

@@ -38,6 +38,7 @@ import {
 } from '../../../hooks/useCloud'
 import { toast } from '../../../shared/hooks/useToast'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useIsAdmin } from '../../../shared/hooks/useCanWrite'
 import { SyncLastBadge, RecentEvidenceList, AllowPrivateTargetToggle } from './shared'
 
 // --- AWS tab ---
@@ -65,6 +66,8 @@ export function AWSTab() {
   const testConnection = useTestAWSConnection()
   const syncAWS = useSyncAWS()
   const { formatDateTime } = useFormatDate()
+  // Backend: /integrations/cloud ist komplett Admin-only (cmd/api/routes.go) — Sync und Zugangsdaten nur für Admin.
+  const isAdmin = useIsAdmin()
 
   const [accessKeyID, setAccessKeyID] = useState('')
   const [secretAccessKey, setSecretAccessKey] = useState('')
@@ -149,91 +152,95 @@ export function AWSTab() {
             )}
           </div>
           <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
-          <button
-            onClick={() => { void handleSync() }}
-            disabled={syncAWS.isPending || !cfg?.is_configured}
-            title="Jetzt synchronisieren"
-            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncAWS.isPending ? 'animate-spin' : ''}`} />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => { void handleSync() }}
+              disabled={syncAWS.isPending || !cfg?.is_configured}
+              title="Jetzt synchronisieren"
+              className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncAWS.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       )}
 
-      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Access Key ID</label>
-          <input
-            type="text"
-            value={accessKeyID}
-            onChange={(e) => { setAccessKeyID(e.target.value); }}
-            placeholder="AKIA..."
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Secret Access Key</label>
-          <input
-            type="password"
-            value={secretAccessKey}
-            onChange={(e) => { setSecretAccessKey(e.target.value); }}
-            placeholder={cfg?.is_configured ? '****' : 'Secret Access Key eingeben'}
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required
-          />
-          <p className="text-[11px] text-secondary mt-1">
-            Empfohlen: IAM-Benutzer mit schreibgeschützter Policy (<code>SecurityAudit</code> + <code>ReadOnlyAccess</code>).
-          </p>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.region')}</label>
-          <select
-            value={region}
-            onChange={(e) => { setRegion(e.target.value); }}
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary focus:outline-none focus:ring-2 focus:ring-brand/30"
-          >
-            {AWS_REGIONS.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Account ID (optional)</label>
-          <input
-            type="text"
-            value={accountID}
-            onChange={(e) => { setAccountID(e.target.value); }}
-            placeholder="123456789012"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-          />
-        </div>
-
-        {testResult && (
-          <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-md border ${testResult.ok ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
-            {testResult.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
-            {testResult.message}
+      {isAdmin && (
+        <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Access Key ID</label>
+            <input
+              type="text"
+              value={accessKeyID}
+              onChange={(e) => { setAccessKeyID(e.target.value); }}
+              placeholder="AKIA..."
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required
+            />
           </div>
-        )}
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Secret Access Key</label>
+            <input
+              type="password"
+              value={secretAccessKey}
+              onChange={(e) => { setSecretAccessKey(e.target.value); }}
+              placeholder={cfg?.is_configured ? '****' : 'Secret Access Key eingeben'}
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required
+            />
+            <p className="text-[11px] text-secondary mt-1">
+              Empfohlen: IAM-Benutzer mit schreibgeschützter Policy (<code>SecurityAudit</code> + <code>ReadOnlyAccess</code>).
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.region')}</label>
+            <select
+              value={region}
+              onChange={(e) => { setRegion(e.target.value); }}
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary focus:outline-none focus:ring-2 focus:ring-brand/30"
+            >
+              {AWS_REGIONS.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Account ID (optional)</label>
+            <input
+              type="text"
+              value={accountID}
+              onChange={(e) => { setAccountID(e.target.value); }}
+              placeholder="123456789012"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+            />
+          </div>
 
-        <div className="flex items-center gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => { void handleTest() }}
-            disabled={testConnection.isPending || !cfg?.is_configured}
-            className="px-3 py-1.5 text-xs rounded-md border border-border text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
-          >
-            {testConnection.isPending ? t('integrations.page.testing') : t('integrations.page.testConnection')}
-          </button>
-          <button
-            type="submit"
-            disabled={saveConfig.isPending}
-            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
-          >
-            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
-          </button>
-        </div>
-      </form>
+          {testResult && (
+            <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-md border ${testResult.ok ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
+              {testResult.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+              {testResult.message}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => { void handleTest() }}
+              disabled={testConnection.isPending || !cfg?.is_configured}
+              className="px-3 py-1.5 text-xs rounded-md border border-border text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
+            >
+              {testConnection.isPending ? t('integrations.page.testing') : t('integrations.page.testConnection')}
+            </button>
+            <button
+              type="submit"
+              disabled={saveConfig.isPending}
+              className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
+            >
+              {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Recent evidence */}
       {evidence && evidence.length > 0 && (
@@ -257,6 +264,7 @@ export function AzureTab() {
   const testConnection = useTestAzureConnection()
   const syncAzure = useSyncAzure()
   const { formatDateTime } = useFormatDate()
+  const isAdmin = useIsAdmin()
 
   const [tenantID, setTenantID] = useState('')
   const [clientID, setClientID] = useState('')
@@ -341,91 +349,95 @@ export function AzureTab() {
             )}
           </div>
           <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
-          <button
-            onClick={() => { void handleSync() }}
-            disabled={syncAzure.isPending || !cfg?.is_configured}
-            title="Jetzt synchronisieren"
-            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncAzure.isPending ? 'animate-spin' : ''}`} />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => { void handleSync() }}
+              disabled={syncAzure.isPending || !cfg?.is_configured}
+              title="Jetzt synchronisieren"
+              className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncAzure.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       )}
 
-      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Tenant ID</label>
-          <input
-            type="text"
-            value={tenantID}
-            onChange={(e) => { setTenantID(e.target.value); }}
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Client ID (App Registration)</label>
-          <input
-            type="text"
-            value={clientID}
-            onChange={(e) => { setClientID(e.target.value); }}
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Client Secret</label>
-          <input
-            type="password"
-            value={clientSecret}
-            onChange={(e) => { setClientSecret(e.target.value); }}
-            placeholder={cfg?.is_configured ? '****' : 'Client Secret eingeben'}
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required
-          />
-          <p className="text-[11px] text-secondary mt-1">
-            Service Principal mit <code>Security Reader</code> + <code>Policy Insights Reader</code> Rollen.
-          </p>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Subscription ID</label>
-          <input
-            type="text"
-            value={subscriptionID}
-            onChange={(e) => { setSubscriptionID(e.target.value); }}
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required
-          />
-        </div>
-
-        {testResult && (
-          <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-md border ${testResult.ok ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
-            {testResult.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
-            {testResult.message}
+      {isAdmin && (
+        <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Tenant ID</label>
+            <input
+              type="text"
+              value={tenantID}
+              onChange={(e) => { setTenantID(e.target.value); }}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required
+            />
           </div>
-        )}
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Client ID (App Registration)</label>
+            <input
+              type="text"
+              value={clientID}
+              onChange={(e) => { setClientID(e.target.value); }}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Client Secret</label>
+            <input
+              type="password"
+              value={clientSecret}
+              onChange={(e) => { setClientSecret(e.target.value); }}
+              placeholder={cfg?.is_configured ? '****' : 'Client Secret eingeben'}
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required
+            />
+            <p className="text-[11px] text-secondary mt-1">
+              Service Principal mit <code>Security Reader</code> + <code>Policy Insights Reader</code> Rollen.
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Subscription ID</label>
+            <input
+              type="text"
+              value={subscriptionID}
+              onChange={(e) => { setSubscriptionID(e.target.value); }}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required
+            />
+          </div>
 
-        <div className="flex items-center gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => { void handleTest() }}
-            disabled={testConnection.isPending || !cfg?.is_configured}
-            className="px-3 py-1.5 text-xs rounded-md border border-border text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
-          >
-            {testConnection.isPending ? t('integrations.page.testing') : t('integrations.page.testConnection')}
-          </button>
-          <button
-            type="submit"
-            disabled={saveConfig.isPending}
-            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
-          >
-            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
-          </button>
-        </div>
-      </form>
+          {testResult && (
+            <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-md border ${testResult.ok ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
+              {testResult.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+              {testResult.message}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => { void handleTest() }}
+              disabled={testConnection.isPending || !cfg?.is_configured}
+              className="px-3 py-1.5 text-xs rounded-md border border-border text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
+            >
+              {testConnection.isPending ? t('integrations.page.testing') : t('integrations.page.testConnection')}
+            </button>
+            <button
+              type="submit"
+              disabled={saveConfig.isPending}
+              className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
+            >
+              {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Recent evidence */}
       {evidence && evidence.length > 0 && (
@@ -450,6 +462,7 @@ export function HetznerTab() {
   const saveConfig = useSaveHetznerConfig()
   const syncHetzner = useSyncHetzner()
   const { formatDateTime } = useFormatDate()
+  const isAdmin = useIsAdmin()
 
   const [apiToken, setApiToken] = useState('')
   const [location, setLocation] = useState('')
@@ -510,37 +523,41 @@ export function HetznerTab() {
             {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
           </div>
           <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
-          <button onClick={() => { void handleSync() }} disabled={syncHetzner.isPending || !cfg?.is_configured}
-            title="Jetzt synchronisieren"
-            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${syncHetzner.isPending ? 'animate-spin' : ''}`} />
-          </button>
+          {isAdmin && (
+            <button onClick={() => { void handleSync() }} disabled={syncHetzner.isPending || !cfg?.is_configured}
+              title="Jetzt synchronisieren"
+              className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${syncHetzner.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       )}
 
-      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">API-Token</label>
-          <input type="password" value={apiToken} onChange={(e) => { setApiToken(e.target.value); }}
-            placeholder={cfg?.is_configured ? '****' : 'Hetzner Cloud API-Token'}
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required />
-          <p className="text-[11px] text-secondary mt-1">Empfohlen: Read-only-Token (Berechtigungen: Server, Firewall, SSH Key, Image)</p>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Standort-Filter (optional)</label>
-          <select value={location} onChange={(e) => { setLocation(e.target.value); }}
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary focus:outline-none focus:ring-2 focus:ring-brand/30">
-            {HETZNER_LOCATIONS.map((l) => <option key={l} value={l}>{l || '— Alle Standorte —'}</option>)}
-          </select>
-        </div>
-        <div className="flex gap-2 pt-1">
-          <button type="submit" disabled={saveConfig.isPending}
-            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
-            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
-          </button>
-        </div>
-      </form>
+      {isAdmin && (
+        <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">API-Token</label>
+            <input type="password" value={apiToken} onChange={(e) => { setApiToken(e.target.value); }}
+              placeholder={cfg?.is_configured ? '****' : 'Hetzner Cloud API-Token'}
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required />
+            <p className="text-[11px] text-secondary mt-1">Empfohlen: Read-only-Token (Berechtigungen: Server, Firewall, SSH Key, Image)</p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Standort-Filter (optional)</label>
+            <select value={location} onChange={(e) => { setLocation(e.target.value); }}
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary focus:outline-none focus:ring-2 focus:ring-brand/30">
+              {HETZNER_LOCATIONS.map((l) => <option key={l} value={l}>{l || '— Alle Standorte —'}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={saveConfig.isPending}
+              className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+              {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+            </button>
+          </div>
+        </form>
+      )}
 
       {evidence && evidence.length > 0 && (
         <div className="mt-6">
@@ -562,6 +579,7 @@ export function IONOSTab() {
   const saveConfig = useSaveIONOSConfig()
   const syncIONOS = useSyncIONOS()
   const { formatDateTime } = useFormatDate()
+  const isAdmin = useIsAdmin()
 
   const [authMode, setAuthMode] = useState<'credentials' | 'token'>('credentials')
   const [username, setUsername] = useState('')
@@ -629,59 +647,65 @@ export function IONOSTab() {
             {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
           </div>
           <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
-          <button onClick={() => { void handleSync() }} disabled={syncIONOS.isPending || !cfg?.is_configured}
-            title="Jetzt synchronisieren"
-            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${syncIONOS.isPending ? 'animate-spin' : ''}`} />
-          </button>
+          {isAdmin && (
+            <button onClick={() => { void handleSync() }} disabled={syncIONOS.isPending || !cfg?.is_configured}
+              title="Jetzt synchronisieren"
+              className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${syncIONOS.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       )}
 
-      <div className="flex gap-2 mb-4 max-w-lg">
-        <button type="button" onClick={() => { setAuthMode('credentials'); }}
-          className={`px-3 py-1 text-xs rounded-md border transition-colors ${authMode === 'credentials' ? 'bg-brand text-white border-brand' : 'border-border text-secondary hover:text-primary'}`}>
-          Benutzername / Passwort
-        </button>
-        <button type="button" onClick={() => { setAuthMode('token'); }}
-          className={`px-3 py-1 text-xs rounded-md border transition-colors ${authMode === 'token' ? 'bg-brand text-white border-brand' : 'border-border text-secondary hover:text-primary'}`}>
-          API Token
-        </button>
-      </div>
-
-      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
-        {authMode === 'credentials' ? (
-          <>
-            <div>
-              <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.username')}</label>
-              <input type="text" value={username} onChange={(e) => { setUsername(e.target.value); }}
-                placeholder="IONOS-Benutzername"
-                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
-                required />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.password')}</label>
-              <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); }}
-                placeholder={cfg?.is_configured && cfg.password === '****' ? '****' : 'Passwort eingeben'}
-                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
-                required />
-            </div>
-          </>
-        ) : (
-          <div>
-            <label className="block text-xs font-medium text-secondary mb-1">API-Token</label>
-            <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }}
-              placeholder={cfg?.is_configured && cfg.token === '****' ? '****' : 'IONOS API-Token'}
-              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-              required />
+      {isAdmin && (
+        <>
+          <div className="flex gap-2 mb-4 max-w-lg">
+            <button type="button" onClick={() => { setAuthMode('credentials'); }}
+              className={`px-3 py-1 text-xs rounded-md border transition-colors ${authMode === 'credentials' ? 'bg-brand text-white border-brand' : 'border-border text-secondary hover:text-primary'}`}>
+              Benutzername / Passwort
+            </button>
+            <button type="button" onClick={() => { setAuthMode('token'); }}
+              className={`px-3 py-1 text-xs rounded-md border transition-colors ${authMode === 'token' ? 'bg-brand text-white border-brand' : 'border-border text-secondary hover:text-primary'}`}>
+              API Token
+            </button>
           </div>
-        )}
-        <div className="flex gap-2 pt-1">
-          <button type="submit" disabled={saveConfig.isPending}
-            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
-            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
-          </button>
-        </div>
-      </form>
+
+          <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+            {authMode === 'credentials' ? (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.username')}</label>
+                  <input type="text" value={username} onChange={(e) => { setUsername(e.target.value); }}
+                    placeholder="IONOS-Benutzername"
+                    className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    required />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.password')}</label>
+                  <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); }}
+                    placeholder={cfg?.is_configured && cfg.password === '****' ? '****' : 'Passwort eingeben'}
+                    className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    required />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="block text-xs font-medium text-secondary mb-1">API-Token</label>
+                <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }}
+                  placeholder={cfg?.is_configured && cfg.token === '****' ? '****' : 'IONOS API-Token'}
+                  className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+                  required />
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button type="submit" disabled={saveConfig.isPending}
+                className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+                {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
 
       {evidence && evidence.length > 0 && (
         <div className="mt-6">
@@ -703,6 +727,7 @@ export function WazuhTab() {
   const saveConfig = useSaveWazuhConfig()
   const syncWazuh = useSyncWazuh()
   const { formatDateTime } = useFormatDate()
+  const isAdmin = useIsAdmin()
 
   const [baseURL, setBaseURL] = useState('')
   const [username, setUsername] = useState('')
@@ -771,49 +796,53 @@ export function WazuhTab() {
             {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
           </div>
           <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
-          <button onClick={() => { void handleSync() }} disabled={syncWazuh.isPending || !cfg?.is_configured}
-            title="Jetzt synchronisieren"
-            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${syncWazuh.isPending ? 'animate-spin' : ''}`} />
-          </button>
+          {isAdmin && (
+            <button onClick={() => { void handleSync() }} disabled={syncWazuh.isPending || !cfg?.is_configured}
+              title="Jetzt synchronisieren"
+              className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${syncWazuh.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       )}
 
-      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Wazuh Manager URL</label>
-          <input type="url" value={baseURL} onChange={(e) => { setBaseURL(e.target.value); }}
-            placeholder="https://wazuh-manager:55000"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.username')}</label>
-          <input type="text" value={username} onChange={(e) => { setUsername(e.target.value); }}
-            placeholder="wazuh-readonly"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
-            required />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.password')}</label>
-          <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); }}
-            placeholder={cfg?.is_configured && cfg.password === '****' ? '****' : 'Passwort eingeben'}
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
-            required />
-        </div>
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="wazuh-tls" checked={!verifyTLS} onChange={(e) => { setVerifyTLS(!e.target.checked); }}
-            className="rounded border-border" />
-          <label htmlFor="wazuh-tls" className="text-xs text-secondary">Self-signed Zertifikat akzeptieren (TLS-Verifizierung deaktivieren)</label>
-        </div>
-        <AllowPrivateTargetToggle id="wazuh-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
-        <div className="flex gap-2 pt-1">
-          <button type="submit" disabled={saveConfig.isPending}
-            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
-            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
-          </button>
-        </div>
-      </form>
+      {isAdmin && (
+        <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Wazuh Manager URL</label>
+            <input type="url" value={baseURL} onChange={(e) => { setBaseURL(e.target.value); }}
+              placeholder="https://wazuh-manager:55000"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.username')}</label>
+            <input type="text" value={username} onChange={(e) => { setUsername(e.target.value); }}
+              placeholder="wazuh-readonly"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+              required />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">{t('vaktcomply.cloudProviderTabs.password')}</label>
+            <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); }}
+              placeholder={cfg?.is_configured && cfg.password === '****' ? '****' : 'Passwort eingeben'}
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30"
+              required />
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="wazuh-tls" checked={!verifyTLS} onChange={(e) => { setVerifyTLS(!e.target.checked); }}
+              className="rounded border-border" />
+            <label htmlFor="wazuh-tls" className="text-xs text-secondary">Self-signed Zertifikat akzeptieren (TLS-Verifizierung deaktivieren)</label>
+          </div>
+          <AllowPrivateTargetToggle id="wazuh-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={saveConfig.isPending}
+              className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+              {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+            </button>
+          </div>
+        </form>
+      )}
 
       {evidence && evidence.length > 0 && (
         <div className="mt-6">
@@ -835,6 +864,7 @@ export function PrometheusTab() {
   const saveConfig = useSavePrometheusConfig()
   const syncPrometheus = useSyncPrometheus()
   const { formatDateTime } = useFormatDate()
+  const isAdmin = useIsAdmin()
 
   const [prometheusURL, setPrometheusURL] = useState('')
   const [alertmanagerURL, setAlertmanagerURL] = useState('')
@@ -901,42 +931,46 @@ export function PrometheusTab() {
             {status.last_sync_error && <p className="text-xs text-red-500 truncate mt-0.5">{status.last_sync_error}</p>}
           </div>
           <SyncLastBadge status={status.last_sync_status} lastSyncAt={status.last_sync_at} />
-          <button onClick={() => { void handleSync() }} disabled={syncPrometheus.isPending || !cfg?.is_configured}
-            title="Jetzt synchronisieren"
-            className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${syncPrometheus.isPending ? 'animate-spin' : ''}`} />
-          </button>
+          {isAdmin && (
+            <button onClick={() => { void handleSync() }} disabled={syncPrometheus.isPending || !cfg?.is_configured}
+              title="Jetzt synchronisieren"
+              className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-bg transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${syncPrometheus.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       )}
 
-      <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Prometheus URL</label>
-          <input type="url" value={prometheusURL} onChange={(e) => { setPrometheusURL(e.target.value); }}
-            placeholder="http://prometheus:9090"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
-            required />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Alertmanager URL (optional)</label>
-          <input type="url" value={alertmanagerURL} onChange={(e) => { setAlertmanagerURL(e.target.value); }}
-            placeholder="http://alertmanager:9093"
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1">Bearer Token (optional)</label>
-          <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }}
-            placeholder={cfg?.is_configured && cfg.token === '****' ? '****' : 'Leer lassen wenn keine Auth'}
-            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono" />
-        </div>
-        <AllowPrivateTargetToggle id="prometheus-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
-        <div className="flex gap-2 pt-1">
-          <button type="submit" disabled={saveConfig.isPending}
-            className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
-            {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
-          </button>
-        </div>
-      </form>
+      {isAdmin && (
+        <form onSubmit={(e) => { void handleSave(e) }} className="space-y-4 max-w-lg">
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Prometheus URL</label>
+            <input type="url" value={prometheusURL} onChange={(e) => { setPrometheusURL(e.target.value); }}
+              placeholder="http://prometheus:9090"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+              required />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Alertmanager URL (optional)</label>
+            <input type="url" value={alertmanagerURL} onChange={(e) => { setAlertmanagerURL(e.target.value); }}
+              placeholder="http://alertmanager:9093"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">Bearer Token (optional)</label>
+            <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }}
+              placeholder={cfg?.is_configured && cfg.token === '****' ? '****' : 'Leer lassen wenn keine Auth'}
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-bg text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono" />
+          </div>
+          <AllowPrivateTargetToggle id="prometheus-allow-private" checked={allowPrivateTarget} onChange={setAllowPrivateTarget} />
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={saveConfig.isPending}
+              className="px-4 py-1.5 text-xs font-medium bg-brand text-white rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+              {saveConfig.isPending ? t('integrations.page.saving') : t('integrations.page.save')}
+            </button>
+          </div>
+        </form>
+      )}
 
       {evidence && evidence.length > 0 && (
         <div className="mt-6">

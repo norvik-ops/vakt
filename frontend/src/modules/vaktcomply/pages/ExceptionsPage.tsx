@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
-import { useAuthStore } from '../../../shared/stores/auth'
+import { useIsAdmin } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import { useDeferredDelete } from '../../../shared/hooks/useDeferredDelete'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
@@ -34,8 +35,9 @@ function statusIcon(status: ControlException['status']) {
 export default function ExceptionsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user } = useAuthStore()
-  const isAdmin = user?.roles?.includes('Admin') ?? false
+  // Löschen ist Admin-only (DELETE /exceptions/:id → admin in routes.go);
+  // Anlegen/Ändern (rw) passiert am Control, nicht auf dieser Seite.
+  const isAdmin = useIsAdmin()
   const [confirmDelete, setConfirmDelete] = useState<ControlException | null>(null)
   // Optimistically hidden items — ids of items removed from view while timer is running
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
@@ -93,6 +95,7 @@ export default function ExceptionsPage() {
         title={t('vaktcomply.exceptions.title')}
         description={t('vaktcomply.exceptions.description')}
       />
+      <ReadOnlyHint />
 
       {isLoading && (
         <div className="flex items-center justify-center py-16 text-slate-400">{t('vaktcomply.exceptions.loading')}</div>
@@ -203,6 +206,7 @@ function ExceptionCard({
                 size="sm"
                 className="text-slate-400 hover:text-red-400 h-7 px-2"
                 onClick={onDelete}
+                aria-label={t('vaktcomply.exceptions.delete')}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>

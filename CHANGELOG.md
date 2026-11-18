@@ -23,6 +23,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Richtlinie auf „Entwurf“ und gibt sie erneut frei.
 
 ### Geändert
+- **Leser sehen keine Schreibknöpfe mehr:** Auf allen übrigen Vakt-Comply-Seiten (u. a. BCP,
+  BIA, Pentests, Resilienztests, Schutzbedarf, Krypto-Schlüssel, Managementbewertungen,
+  Auditprogramm, Zugriffsprüfungen, Notfallkontakte, interessierte Parteien,
+  ISMS-Geltungsbereich, Fragebögen, CCM, Zertifizierungsplan, BSI-Modellierung und -Zielobjekte,
+  DORA-Dienstleister, NIS2-Neubewertung, KI-Dokumentation, Integrationen, Bedrohungskatalog)
+  blenden Viewer und AuditorReadOnly Anlegen, Bearbeiten, Löschen und Kommentieren aus und sehen
+  „Nur Lesezugriff“. Leser kommentieren nicht. Freigaben, die nur Admin oder Interne Revision
+  dürfen, erscheinen nur für diese Rolle.
+- **Framework-Katalog ohne unverkaufte Frameworks:** TISAX, DORA und ISO 42001 werden in keinem
+  Tarif verkauft und stehen nicht mehr im Katalog; auch „DORA“ als Vorfalltyp und als Filter im
+  Bedrohungskatalog entfällt. Wer eines davon schon aktiviert hat, sieht und nutzt es weiter.
+  Pro-Frameworks bleiben mit Sperrhinweis sichtbar.
 - **Handy-Breite (390 px):** Seitenköpfe brechen um — Aktionen wie „Zurück“, Exporte und
   „Nachweis hinzufügen“ rutschen unter den Titel, statt aus dem Bild zu laufen. Die
   Anwendbarkeitserklärung zeigt ihre Kennzahlen zweispaltig, die Reiter scrollen in einem eigenen

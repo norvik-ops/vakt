@@ -19,6 +19,7 @@ import { FieldError } from '../../../shared/components/FieldError'
 import { useSavedFilters } from '../../../shared/hooks/useSavedFilters'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { useIncidents, useCreateIncident } from '../hooks/useIncidents'
+import { useIsFrameworkActive } from '../hooks/useFrameworks'
 import { useFirstAction } from '../../../shared/hooks/useFirstAction'
 import { useCAPAsForSource } from '../hooks/useCAPAs'
 import type { Incident, CreateIncidentInput } from '../types'
@@ -156,6 +157,7 @@ export default function IncidentsPage() {
 
   const { data: incidents, isLoading, isError, pagination } = useIncidents(page)
   const createIncident = useCreateIncident()
+  const doraActive = useIsFrameworkActive('DORA')
   useFirstAction('incident:first-created', (incidents?.length ?? 0) > 0)
   const { errors: incErrors, validate: validateInc, clearError: clearIncError, clearAll: clearIncErrors } = useFormValidation<Record<string, unknown>>({
     title: { required: true, maxLength: 255 },
@@ -377,7 +379,8 @@ export default function IncidentsPage() {
                   <SelectContent>
                     <SelectItem value="general">{t('vaktcomply.incidentsPage.typeGeneral')}</SelectItem>
                     <SelectItem value="nis2">{t('vaktcomply.incidentsPage.typeNIS2')}</SelectItem>
-                    <SelectItem value="dora">{t('vaktcomply.incidentsPage.typeDORA')}</SelectItem>
+                    {/* DORA liegt in keinem Tarif: nur anbieten, wenn DORA schon aktiv ist. */}
+                    {doraActive && <SelectItem value="dora">{t('vaktcomply.incidentsPage.typeDORA')}</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>

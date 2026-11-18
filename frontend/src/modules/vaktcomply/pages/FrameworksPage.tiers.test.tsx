@@ -85,8 +85,8 @@ describe('FrameworksPage — Tier-Kennzeichnung der Katalogkarten', () => {
         expect(badge, `${key} (${feature}) braucht die Pro-Plakette`).not.toBeNull()
         expect(within(card).getByRole('button', { name: /Aktivieren/ })).toBeEnabled()
       } else if (feature && unsold.has(feature)) {
-        expect(badge, `${key} ist unverkauft, keine Pro-Plakette`).toBeNull()
-        expect(within(card).getByText('Nicht im Angebot')).toBeInTheDocument()
+        // Seit 2026-11-18 ohne aktive Bestandsdaten gar nicht im Katalog.
+        throw new Error(`${key} ist unverkauft und darf ohne Aktivierung nicht im Katalog stehen`)
       } else {
         expect(badge, `${key} ist nicht gegatet`).toBeNull()
       }

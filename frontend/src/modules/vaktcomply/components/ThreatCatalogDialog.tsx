@@ -6,7 +6,9 @@ import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Spinner } from '../../../components/Spinner'
 import { useThreatCatalog, useCreateRiskFromCatalog, type ThreatCatalogFilter } from '../hooks/useThreatCatalog'
-import { frameworkDisplayName } from '../utils/frameworkCatalogue'
+import { frameworkDisplayName, isNotOfferedFramework } from '../utils/frameworkCatalogue'
+import { useFrameworks } from '../hooks/useFrameworks'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 
 const FRAMEWORKS = ['ISO27001', 'BSI', 'NIS2', 'DSGVO-TOM', 'C5', 'DORA']
 const ASSET_TYPES = ['server', 'endpoint', 'data', 'identity', 'network', 'application', 'cloud', 'facility', 'supplier', 'process', 'service']
@@ -17,6 +19,12 @@ export function ThreatCatalogDialog({ open, onClose }: { open: boolean; onClose:
   const [filter, setFilter] = useState<ThreatCatalogFilter>({})
   const { data: items = [], isLoading } = useThreatCatalog(filter)
   const createFromCatalog = useCreateRiskFromCatalog()
+  // POST /threat-catalog/create-risk ist `rw` — Leser dürfen den Katalog nur ansehen.
+  const canWrite = useCanWrite()
+  // Unverkaufte Frameworks (DORA) nur als Filter anbieten, wenn sie schon aktiv sind.
+  const { data: enabled } = useFrameworks()
+  const enabledKeys = new Set((enabled ?? []).map((f) => f.name.split(' ')[0].toUpperCase()))
+  const frameworkFilters = FRAMEWORKS.filter((fw) => !isNotOfferedFramework(fw) || enabledKeys.has(fw.toUpperCase()))
 
   function toggle(key: keyof ThreatCatalogFilter, value: string) {
     setFilter((f) => ({ ...f, [key]: f[key] === value ? undefined : value }))
@@ -41,7 +49,7 @@ export function ThreatCatalogDialog({ open, onClose }: { open: boolean; onClose:
             <div>
               <p className="font-medium mb-1">{t('threatCatalog.framework')}</p>
               <div className="flex flex-wrap gap-1">
-                {FRAMEWORKS.map((fw) => (
+                {frameworkFilters.map((fw) => (
                   <button
                     key={fw}
                     onClick={() => { toggle('framework', fw) }}
@@ -89,15 +97,17 @@ export function ThreatCatalogDialog({ open, onClose }: { open: boolean; onClose:
                     <p className="text-sm font-medium">{it.title}</p>
                     <p className="text-xs text-muted-foreground line-clamp-2">{it.scenario}</p>
                   </div>
-                  <Button
-                    size="sm"
-                    className="h-7 text-xs shrink-0"
-                    onClick={() => { createRisk(it.id) }}
-                    disabled={createFromCatalog.isPending}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    {t('threatCatalog.createRisk')}
-                  </Button>
+                  {canWrite && (
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs shrink-0"
+                      onClick={() => { createRisk(it.id) }}
+                      disabled={createFromCatalog.isPending}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      {t('threatCatalog.createRisk')}
+                    </Button>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
                   <Badge variant="outline" className="text-[10px]">{it.category}</Badge>

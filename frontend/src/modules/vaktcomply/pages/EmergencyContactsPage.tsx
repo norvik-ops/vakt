@@ -32,6 +32,8 @@ import {
   useDeleteEmergencyContact,
 } from '../hooks/useEmergencyContacts'
 import type { EmergencyContact, CreateEmergencyContactInput } from '../types'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 const LEVEL_CLASS: Record<1 | 2 | 3, string> = {
   1: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -65,10 +67,12 @@ function contactToForm(c: EmergencyContact): CreateEmergencyContactInput {
 
 function ContactCard({
   contact,
+  canWrite,
   onEdit,
   onDelete,
 }: {
   contact: EmergencyContact
+  canWrite: boolean
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -94,19 +98,22 @@ function ContactCard({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
-              <Pencil className="w-3.5 h-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-red-400 hover:text-red-300"
-              onClick={onDelete}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          </div>
+          {canWrite && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} aria-label={t('common.edit')}>
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-red-400 hover:text-red-300"
+                onClick={onDelete}
+                aria-label={t('common.delete')}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-1">
@@ -135,6 +142,8 @@ export default function EmergencyContactsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<CreateEmergencyContactInput>(emptyForm())
+  // Schreibrouten sind `rw` (Admin/SecurityAnalyst); Leser sehen nur die Liste.
+  const canWrite = useCanWrite()
 
   const { data: contacts = [], isLoading, isError } = useEmergencyContacts()
   const create = useCreateEmergencyContact()
@@ -182,14 +191,17 @@ export default function EmergencyContactsPage() {
         title={t('bcm.emergencyContacts.title')}
         description={t('bcm.emergencyContacts.description')}
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            {t('bcm.emergencyContacts.new')}
-          </Button>
+          canWrite ? (
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              {t('bcm.emergencyContacts.new')}
+            </Button>
+          ) : undefined
         }
       />
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         {isLoading && (
           <div className="flex items-center justify-center h-48">
             <Spinner size="lg" color="primary" />
@@ -206,10 +218,12 @@ export default function EmergencyContactsPage() {
             title={t('bcm.emergencyContacts.emptyTitle')}
             description={t('bcm.emergencyContacts.emptyDescription')}
             action={
-              <Button onClick={openCreate}>
-                <Plus className="w-4 h-4 mr-1" />
-                {t('bcm.emergencyContacts.new')}
-              </Button>
+              canWrite ? (
+                <Button onClick={openCreate}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t('bcm.emergencyContacts.new')}
+                </Button>
+              ) : undefined
             }
           />
         )}
@@ -230,6 +244,7 @@ export default function EmergencyContactsPage() {
                     <ContactCard
                       key={c.id}
                       contact={c}
+                      canWrite={canWrite}
                       onEdit={() => { openEdit(c) }}
                       onDelete={() => { handleDelete(c.id) }}
                     />

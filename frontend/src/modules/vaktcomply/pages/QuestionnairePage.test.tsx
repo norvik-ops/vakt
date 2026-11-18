@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import QuestionnairePage, { buildReorderPayload } from './QuestionnairePage'
+import { signInAs } from '../../../test-utils/signInAs'
 import type { Questionnaire } from '../types'
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -78,6 +79,9 @@ function renderPage(id = 'qnr-1') {
 // ─── Tests: page rendering ────────────────────────────────────────────────────
 
 describe('QuestionnairePage', () => {
+  // Schreibknöpfe sind nur für Schreibrollen sichtbar (useCanWrite).
+  beforeEach(() => { signInAs('Admin') })
+
   it('renders questionnaire name as heading', () => {
     vi.mocked(useQuestionnaire).mockReturnValue({
       data: mockQuestionnaire,
