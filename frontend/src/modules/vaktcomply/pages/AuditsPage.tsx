@@ -16,6 +16,8 @@ import { ComplianceTooltip } from '../../../shared/components/ComplianceTooltip'
 import { useAuditRecords, useCreateAuditRecord } from '../hooks/useAudits'
 import type { AuditRecord, CreateAuditRecordInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 const STATUS_CLASS: Record<AuditRecord['status'], string> = {
   planned: 'bg-secondary text-secondary-foreground',
@@ -69,6 +71,7 @@ export default function AuditsPage() {
 
   const { data: records, isLoading, isError } = useAuditRecords()
   const createRecord = useCreateAuditRecord()
+  const canWrite = useCanWrite()
 
   function openDialog() {
     setForm(emptyForm())
@@ -84,15 +87,16 @@ export default function AuditsPage() {
       <PageHeader
         title={t('vaktcomply.auditsPage.title')}
         description={t('vaktcomply.auditsPage.description')}
-        actions={
+        actions={canWrite ? (
           <Button onClick={openDialog}>
             <Plus className="w-4 h-4 mr-1" />
             {t('vaktcomply.auditsPage.createAudit')}
           </Button>
-        }
+        ) : undefined}
       />
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         {isLoading && (
           <div className="flex items-center justify-center h-48">
             <Spinner size="lg" color="primary" />
@@ -106,7 +110,7 @@ export default function AuditsPage() {
             icon={ClipboardCheck}
             title={t('vaktcomply.auditsPage.noAudits')}
             description={t('vaktcomply.auditsPage.noAuditsDesc')}
-            action={<Button onClick={openDialog}><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.auditsPage.createAudit')}</Button>}
+            action={canWrite ? <Button onClick={openDialog}><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.auditsPage.createAudit')}</Button> : undefined}
           />
         )}
         {!isLoading && !isError && records && records.length > 0 && (

@@ -20,6 +20,8 @@ import { FieldError } from '../../../shared/components/FieldError'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { toast } from '../../../shared/hooks/useToast'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
 
 // ─── Toast (minimal inline) ───────────────────────────────────────────────────
@@ -145,6 +147,7 @@ function SupplierStatusBadge({ supplierId }: { supplierId: string }) {
 function SupplierCard({ supplier, onEdit, onDelete }: { supplier: Supplier; onEdit: () => void; onDelete: () => void }) {
   const { t } = useTranslation()
   const { formatDate } = useFormatDate()
+  const canWrite = useCanWrite()
   const criticalityLabels: Record<Supplier['criticality'], string> = {
     standard: t('suppliers.criticality_standard'),
     important: t('suppliers.criticality_important'),
@@ -160,8 +163,8 @@ function SupplierCard({ supplier, onEdit, onDelete }: { supplier: Supplier; onEd
             <ContractStatusBadge status={supplier.contract_status} />
             <AssessmentStatusBadge status={supplier.assessment_status} />
             <SupplierStatusBadge supplierId={supplier.id} />
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Pencil className="w-3.5 h-3.5" /></Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
+            {canWrite && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Pencil className="w-3.5 h-3.5" /></Button>}
+            {canWrite && <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>}
           </div>
         </div>
         {supplier.service_type && (
@@ -200,6 +203,7 @@ export default function SuppliersPage() {
   const updateSupplier = useUpdateSupplier(editId ?? '')
   const deleteSupplier = useDeleteSupplier()
   const importCSV = useImportSuppliersCSV()
+  const canWrite = useCanWrite()
   const { errors: supErrors, validate: validateSup, clearError: clearSupError, clearAll: clearSupErrors } = useFormValidation<Record<string, unknown>>({
     name: { required: true, maxLength: 200 },
     contact_email: { pattern: /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/, patternMessage: t('validation.email') },
@@ -304,10 +308,12 @@ export default function SuppliersPage() {
               <Download className="w-4 h-4 mr-1" />
               {t('suppliers.csvExport')}
             </Button>
-            <Button variant="outline" onClick={handleImportCSVClick} disabled={importCSV.isPending} data-testid="import-csv-button">
-              <Upload className="w-4 h-4 mr-1" />
-              {importCSV.isPending ? t('suppliers.importing') : t('suppliers.csvImport')}
-            </Button>
+            {canWrite && (
+              <Button variant="outline" onClick={handleImportCSVClick} disabled={importCSV.isPending} data-testid="import-csv-button">
+                <Upload className="w-4 h-4 mr-1" />
+                {importCSV.isPending ? t('suppliers.importing') : t('suppliers.csvImport')}
+              </Button>
+            )}
             <input
               ref={fileInputRef}
               type="file"
@@ -316,10 +322,12 @@ export default function SuppliersPage() {
               onChange={handleImportFileChange}
               data-testid="csv-file-input"
             />
-            <Button onClick={openCreate}>
-              <Plus className="w-4 h-4 mr-1" />
-              {t('suppliers.addSupplier')}
-            </Button>
+            {canWrite && (
+              <Button onClick={openCreate}>
+                <Plus className="w-4 h-4 mr-1" />
+                {t('suppliers.addSupplier')}
+              </Button>
+            )}
           </div>
         }
       />
@@ -375,6 +383,7 @@ export default function SuppliersPage() {
       </div>
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         {isLoading && <SkeletonCardGrid count={6} />}
         {isError && (
           <div className="text-sm text-red-400 p-4 bg-red-500/10 rounded-lg">{t('suppliers.loadError')}</div>
@@ -384,7 +393,7 @@ export default function SuppliersPage() {
             icon={Building2}
             title={t('suppliers.emptyTitle')}
             description={t('suppliers.emptyDesc')}
-            action={<Button onClick={openCreate}><Plus className="w-4 h-4 mr-1" />{t('suppliers.addSupplier')}</Button>}
+            action={canWrite ? <Button onClick={openCreate}><Plus className="w-4 h-4 mr-1" />{t('suppliers.addSupplier')}</Button> : undefined}
           />
         )}
         {!isLoading && !isError && suppliers && suppliers.length > 0 && (

@@ -20,6 +20,9 @@ import { Select, SelectContent, SelectItem, SELECT_NONE, SelectTrigger, SelectVa
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { toast } from '../../../shared/hooks/useToast'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { WriteFieldset } from '../../../shared/components/WriteFieldset'
 import {
   useCAPAs, useCreateCAPA, useUpdateCAPA, useDeleteCAPA, useBulkUpdateCAPAs,
   useUpdateCAPANCFields, useCompleteEffectivenessCheck,
@@ -163,6 +166,7 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
   const update = useUpdateCAPA()
   const updateNCFields = useUpdateCAPANCFields(capa.id)
   const completeEffectiveness = useCompleteEffectivenessCheck(capa.id)
+  const canWrite = useCanWrite()
   const [rootCause, setRootCause] = useState(capa.root_cause)
   const [actionPlan, setActionPlan] = useState(capa.action_plan)
   const [verificationNote, setVerificationNote] = useState(capa.verification_note)
@@ -219,6 +223,7 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
 
   return (
     <div className="border-t border-border bg-muted/20 px-5 py-4 space-y-4">
+      <WriteFieldset>
       <div className="space-y-1.5">
         <Label className="text-xs">{t('capas.rootCause')}</Label>
         <Textarea rows={3} value={rootCause} onChange={(e) => { setRootCause(e.target.value); }} placeholder={t('capas.rootCausePlaceholder')} />
@@ -233,9 +238,10 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
           <Textarea rows={2} value={verificationNote} onChange={(e) => { setVerificationNote(e.target.value); }} placeholder={t('capas.verificationPlaceholder')} />
         </div>
       )}
+      </WriteFieldset>
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={saveText} disabled={update.isPending}>{t('common.save')}</Button>
-        {nextStatus && (
+        {canWrite && <Button size="sm" variant="outline" onClick={saveText} disabled={update.isPending}>{t('common.save')}</Button>}
+        {canWrite && nextStatus && (
           <Button size="sm" onClick={advanceStatus} disabled={update.isPending}>
             {NEXT_STATUS_LABEL[capa.status]}
           </Button>
@@ -244,6 +250,7 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
       </div>
 
       {/* S61-3: NC root-cause + effectiveness section */}
+      <WriteFieldset>
       <div className="border-t border-border pt-3 space-y-3">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('capas.ncSection')}</p>
         <div className="grid grid-cols-2 gap-3">
@@ -273,9 +280,9 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
           <Label className="text-xs">{t('capas.similarNcs')}</Label>
           <Textarea rows={2} className="text-xs" value={similarNcsNotes} onChange={(e) => { setSimilarNcsNotes(e.target.value); }} placeholder={t('capas.similarNcsPlaceholder')} />
         </div>
-        <Button size="sm" variant="outline" onClick={saveNCFields} disabled={updateNCFields.isPending}>{t('capas.saveNcFields')}</Button>
+        {canWrite && <Button size="sm" variant="outline" onClick={saveNCFields} disabled={updateNCFields.isPending}>{t('capas.saveNcFields')}</Button>}
 
-        {capa.effectiveness_check_date && capa.effectiveness_confirmed == null && (
+        {canWrite && capa.effectiveness_check_date && capa.effectiveness_confirmed == null && (
           <div className="space-y-2 border border-border rounded p-3">
             <p className="text-xs font-medium">{t('capas.effectivenessCheck')}</p>
             <div className="space-y-1.5">
@@ -295,6 +302,7 @@ function CAPADetail({ capa, onClose }: { capa: CAPA; onClose: () => void }) {
           <p className="text-xs text-red-400">{t('capas.effectivenessNotConfirmed')}</p>
         )}
       </div>
+      </WriteFieldset>
     </div>
   )
 }
@@ -313,6 +321,7 @@ function CAPACard({
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const del = useDeleteCAPA()
+  const canWrite = useCanWrite()
   const { formatDate } = useFormatDate()
 
   const SOURCE_LABEL: Record<CAPA['source_type'], string> = {
@@ -351,7 +360,7 @@ function CAPACard({
       {/* WCAG 2.1.1 + 4.1.2: interactive div replaced with button for keyboard + screen-reader support */}
       <div className="flex items-start gap-2 px-4 py-3">
         {/* Checkbox — stops propagation so it doesn't toggle the expand panel */}
-        <div className="pt-0.5 shrink-0" onClick={(e) => { e.stopPropagation(); }}>
+        {canWrite && <div className="pt-0.5 shrink-0" onClick={(e) => { e.stopPropagation(); }}>
           <input
             type="checkbox"
             checked={selected}
@@ -359,7 +368,7 @@ function CAPACard({
             aria-label={t('capas.cardAriaLabel', { title: capa.title })}
             className="rounded"
           />
-        </div>
+        </div>}
       <button
         type="button"
         className="flex-1 min-w-0 text-left flex items-start gap-3 cursor-pointer hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset rounded"
@@ -399,9 +408,11 @@ function CAPACard({
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={handleDelete} aria-label={t('capas.deleteAria')}>
-            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-          </Button>
+          {canWrite && (
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={handleDelete} aria-label={t('capas.deleteAria')}>
+              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+            </Button>
+          )}
           {expanded
             ? <ChevronUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
             : <ChevronDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
@@ -466,6 +477,7 @@ export default function CAPAsPage() {
 
   const { data: capas, isLoading, pagination } = useCAPAs(activeTab === 'all' ? undefined : activeTab, page)
   const bulkUpdateCAPAs = useBulkUpdateCAPAs()
+  const canWrite = useCanWrite()
 
   const today = new Date()
   const overdueCAPAs = capas?.filter(
@@ -505,15 +517,18 @@ export default function CAPAsPage() {
                 {t('capas.overdueCount', { count: overdueCAPAs.length })}
               </span>
             )}
-            <Button onClick={() => { setCreateOpen(true); }}>
-              <Plus className="w-4 h-4 mr-1" />
-              {t('capas.createBtn')}
-            </Button>
+            {canWrite && (
+              <Button onClick={() => { setCreateOpen(true); }}>
+                <Plus className="w-4 h-4 mr-1" />
+                {t('capas.createBtn')}
+              </Button>
+            )}
           </div>
         }
       />
 
       <div className="flex-1 p-6 space-y-4">
+        <ReadOnlyHint />
         {/* Filter tabs */}
         <div className="flex gap-1 flex-wrap">
           {TABS.map((tab) => (
@@ -543,12 +558,12 @@ export default function CAPAsPage() {
             icon={ClipboardCheck}
             title={t('capas.emptyTitle')}
             description={t('capas.emptyDesc')}
-            action={
+            action={canWrite ? (
               <Button onClick={() => { setCreateOpen(true); }}>
                 <Plus className="w-4 h-4 mr-1" />
                 {t('capas.createBtn')}
               </Button>
-            }
+            ) : undefined}
           />
         ) : (
           <div className="space-y-2">

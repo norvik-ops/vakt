@@ -3,7 +3,7 @@ import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import { WriteFieldset } from '../../../shared/components/WriteFieldset'
 import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Save, Users } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Eye, Pencil, Save, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -18,6 +18,7 @@ import PolicyVersionHistory from '../components/PolicyVersionHistory'
 import type { Policy, UpdatePolicyInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import { policyVersionLine } from '../utils/policyVersion'
+import { MarkdownView } from '../../../shared/components/MarkdownView'
 
 function toDateInput(ts?: string): string {
   if (!ts) return ''
@@ -35,6 +36,9 @@ export default function PolicyDetailPage() {
 
   const [form, setForm] = useState<UpdatePolicyInput | null>(null)
   const [dirty, setDirty] = useState(false)
+  // UX-23: Richtlinientext gerendert lesen, zum Ändern auf den Editor umschalten.
+  // null = noch nicht gewählt → Vorschau, sobald Text da ist, sonst Editor.
+  const [textMode, setTextMode] = useState<'preview' | 'edit' | null>(null)
 
   const statusLabels: Record<Policy['status'], string> = {
     draft: t('vaktcomply.policyDetail.statusDraft'),
@@ -110,6 +114,10 @@ export default function PolicyDetailPage() {
     })
   }
 
+  const mode: 'preview' | 'edit' = !canWrite
+    ? 'preview'
+    : textMode ?? (form?.description?.trim() ? 'preview' : 'edit')
+
   if (isLoading) return (
     <div className="flex items-center justify-center h-48">
       <Spinner size="lg" color="primary" />
@@ -173,8 +181,54 @@ export default function PolicyDetailPage() {
                   <Input value={form.category ?? ''} placeholder={t('vaktcomply.policyDetail.placeholderCategory')} onChange={(e) => { set('category', e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.policyDetail.labelDescriptionPurpose')}</Label>
-                  <Textarea rows={5} value={form.description ?? ''} onChange={(e) => { set('description', e.target.value); }} />
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="pol-text">{t('vaktcomply.policyDetail.labelDescriptionPurpose')}</Label>
+                    {canWrite && (
+                      <div className="inline-flex rounded-md border border-border p-0.5" role="group" aria-label={t('vaktcomply.policyDetail.textModeLabel')}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={mode === 'preview' ? 'secondary' : 'ghost'}
+                          className="h-6 px-2 text-xs"
+                          aria-pressed={mode === 'preview'}
+                          onClick={() => { setTextMode('preview'); }}
+                        >
+                          <Eye className="w-3.5 h-3.5 mr-1" />
+                          {t('vaktcomply.policyDetail.textPreview')}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={mode === 'edit' ? 'secondary' : 'ghost'}
+                          className="h-6 px-2 text-xs"
+                          aria-pressed={mode === 'edit'}
+                          onClick={() => { setTextMode('edit'); }}
+                        >
+                          <Pencil className="w-3.5 h-3.5 mr-1" />
+                          {t('vaktcomply.policyDetail.textEdit')}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  {mode === 'edit' ? (
+                    <>
+                      <Textarea
+                        id="pol-text"
+                        rows={18}
+                        className="font-mono text-xs"
+                        value={form.description ?? ''}
+                        onChange={(e) => { set('description', e.target.value); }}
+                      />
+                      <p className="text-xs text-muted-foreground">{t('vaktcomply.policyDetail.textMarkdownHint')}</p>
+                    </>
+                  ) : form.description?.trim() ? (
+                    <MarkdownView
+                      source={form.description}
+                      className="rounded-md border border-border bg-surface p-4 max-h-[36rem] overflow-y-auto"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t('vaktcomply.policyDetail.textEmpty')}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -43,6 +43,7 @@ import { BulkActionBar } from '../../../shared/components/BulkActionBar'
 import { cn } from '../../../lib/utils'
 import { exportToCSV } from '../../../lib/csv'
 import type { AuditorLink, Control } from '../types'
+import { groupControls } from '../utils/controlGroups'
 import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 import { ReadinessBreakdown } from '../components/ReadinessBreakdown'
 import { roundPercent } from '../../../shared/utils/percent'
@@ -642,16 +643,29 @@ function DomainSection({
 
 type ControlStatusChoice = 'missing' | 'in_progress' | 'implemented' | 'not_applicable'
 
+function useAnnexChapterLabels(): Record<string, string> {
+  const { t } = useTranslation()
+  return {
+    '5': t('vaktcomply.soaPage.groupA5'),
+    '6': t('vaktcomply.soaPage.groupA6'),
+    '7': t('vaktcomply.soaPage.groupA7'),
+    '8': t('vaktcomply.soaPage.groupA8'),
+  }
+}
+
 function ControlsTab({
   frameworkId,
+  frameworkName,
   controls,
   controlsLoading,
 }: {
   frameworkId: string
+  frameworkName: string | undefined
   controls: Control[] | undefined
   controlsLoading: boolean
 }) {
   const { t } = useTranslation()
+  const chapterLabels = useAnnexChapterLabels()
   const updateControl = useUpdateControl(frameworkId)
   const bulkUpdateControls = useBulkUpdateControls()
   const [naDialog, setNaDialog] = useState<Control | null>(null)
@@ -735,12 +749,8 @@ function ControlsTab({
     )
   }
 
-  const byDomain = new Map<string, Control[]>()
-  for (const ctrl of controls) {
-    const list = byDomain.get(ctrl.domain) ?? []
-    list.push(ctrl)
-    byDomain.set(ctrl.domain, list)
-  }
+  // UX-19: ISO 27001 nach Anhang-A-Kapiteln wie die SoA, sonst nach Thema.
+  const groups = groupControls(controls, frameworkName, chapterLabels)
 
   // UX-16: Der Reiter wiederholte die Kopfzahlen als zweiten Kartenblock mit
   // anderem Begriff („In Bearbeitung" statt „Teilweise") plus eigenem Balken.
@@ -780,7 +790,7 @@ function ControlsTab({
 
       <div className="space-y-5">
         {/* Controls grouped by domain — collapsible */}
-        {Array.from(byDomain.entries()).map(([domain, domainControls]) => (
+        {groups.map(([domain, domainControls]) => (
           <DomainSection
             key={domain}
             domain={domain}
@@ -830,6 +840,7 @@ export default function FrameworkDetailPage() {
   const { formatDate } = useFormatDate()
   const frameworkId = id ?? ''
 
+  const chapterLabels = useAnnexChapterLabels()
   const { data: framework, isLoading: frameworkLoading, isError: frameworkError, refetch: refetchFramework } = useFramework(frameworkId)
   const { data: report, isLoading: reportLoading } = useReadinessReport(frameworkId)
   const { data: gaps, isLoading: gapsLoading } = useGapAnalysis(frameworkId)
@@ -886,14 +897,7 @@ export default function FrameworkDetailPage() {
               size="sm"
               onClick={() => {
                 const sections = controls
-                  ? Array.from(
-                      controls.reduce((map, ctrl) => {
-                        const list = map.get(ctrl.domain) ?? []
-                        list.push(ctrl)
-                        map.set(ctrl.domain, list)
-                        return map
-                      }, new Map<string, typeof controls>()),
-                    ).map(([domain, domainControls]) => ({
+                  ? groupControls(controls, framework?.name, chapterLabels).map(([domain, domainControls]) => ({
                       heading: domain,
                       rows: domainControls.map((c) => [c.control_id, c.title, effectiveStatus(c)]),
                     }))
@@ -1004,6 +1008,7 @@ export default function FrameworkDetailPage() {
           <TabsContent value="controls">
             <ControlsTab
               frameworkId={frameworkId}
+              frameworkName={framework?.name}
               controls={controls}
               controlsLoading={controlsLoading}
             />

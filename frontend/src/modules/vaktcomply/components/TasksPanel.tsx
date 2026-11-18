@@ -244,24 +244,29 @@ export function TasksPanel({
   entityType: string
   entityId: string
 }) {
+  const { t } = useTranslation()
   const { data: tasks, isLoading } = useTasks(entityType, entityId)
   const [addOpen, setAddOpen] = useState(false)
   const canWrite = useCanWrite()
 
-  const openCount = tasks?.filter((t) => t.status !== 'done').length ?? 0
+  const openCount = tasks?.filter((task) => task.status !== 'done').length ?? 0
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm">
-            Aufgaben
-            {openCount > 0 && (
-              <Badge variant="secondary" className="ml-2 text-xs">
-                {openCount} offen
-              </Badge>
-            )}
-          </CardTitle>
+          <div>
+            <CardTitle className="text-sm">
+              {t('vaktcomply.tasksPanel.panelTitle')}
+              {openCount > 0 && (
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  {openCount} offen
+                </Badge>
+              )}
+            </CardTitle>
+            {/* UX-32: drei Listen auf der Kontrollseite — jede sagt, wofür sie da ist. */}
+            <p className="text-xs text-secondary mt-1">{t('vaktcomply.tasksPanel.panelHint')}</p>
+          </div>
           {canWrite && !addOpen && (
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setAddOpen(true); }}>
               <Plus className="w-3.5 h-3.5 mr-1" />

@@ -15,6 +15,8 @@ import { EmptyState } from '../../../shared/components/EmptyState'
 import { apiFetch } from '../../../api/client'
 import type { Policy } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import {
   useCampaigns,
   useCreateCampaign,
@@ -290,6 +292,7 @@ export default function PolicyAcceptancePage() {
   const { t } = useTranslation()
   const { id: policyId = '' } = useParams<{ id: string }>()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const canWrite = useCanWrite()
 
   const { data: policy } = useQuery<Policy>({
     queryKey: ['vaktcomply', 'policies', policyId],
@@ -306,12 +309,13 @@ export default function PolicyAcceptancePage() {
       <PageHeader
         title={t('policyAcceptance.title')}
         description={t('policyAcceptance.description', { policyTitle })}
-        actions={
+        actions={canWrite ? (
           <Button size="sm" onClick={() => { setDialogOpen(true); }}>
             <Plus size={14} className="mr-1" /> {t('policyAcceptance.newCampaign')}
           </Button>
-        }
+        ) : undefined}
       />
+      <ReadOnlyHint />
 
       {isLoading && (
         <div className="flex justify-center py-12">
@@ -324,12 +328,12 @@ export default function PolicyAcceptancePage() {
           icon={Users}
           title={t('policyAcceptance.emptyTitle')}
           description={t('policyAcceptance.emptyDescription')}
-          action={
+          action={canWrite ? (
             <Button size="sm" onClick={() => { setDialogOpen(true); }}>
               <Plus size={14} className="mr-1" />
               {t('policyAcceptance.newCampaign')}
             </Button>
-          }
+          ) : undefined}
         />
       )}
 

@@ -181,6 +181,7 @@ function AddMeasureForm({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function MeasuresList({ controlId }: { controlId: string }) {
+  const { t } = useTranslation()
   const { data: measures, isLoading } = useMeasures(controlId)
   const [addOpen, setAddOpen] = useState(false)
   const canWrite = useCanWrite()
@@ -192,16 +193,19 @@ export function MeasuresList({ controlId }: { controlId: string }) {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm">
-            Empfohlene Maßnahmen
-            {measures && measures.length > 0 && (
-              <span className={cn('ml-2 text-xs font-normal text-secondary')}>
-                {builtinCount > 0 && `${builtinCount.toString()} integriert`}
-                {builtinCount > 0 && customCount > 0 && ', '}
-                {customCount > 0 && `${customCount.toString()} benutzerdefiniert`}
-              </span>
-            )}
-          </CardTitle>
+          <div>
+            <CardTitle className="text-sm">
+              {t('vaktcomply.measuresList.panelTitle')}
+              {measures && measures.length > 0 && (
+                <span className={cn('ml-2 text-xs font-normal text-secondary')}>
+                  {builtinCount > 0 && `${builtinCount.toString()} integriert`}
+                  {builtinCount > 0 && customCount > 0 && ', '}
+                  {customCount > 0 && `${customCount.toString()} benutzerdefiniert`}
+                </span>
+              )}
+            </CardTitle>
+            <p className="text-xs text-secondary mt-1">{t('vaktcomply.measuresList.panelHint')}</p>
+          </div>
           {canWrite && !addOpen && (
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setAddOpen(true); }}>
               <Plus className="w-3.5 h-3.5 mr-1" />

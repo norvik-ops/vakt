@@ -4,7 +4,7 @@ import { Spinner } from '../../../components/Spinner'
 import { Link } from 'react-router-dom'
 import {
   Building2, Layers, Bell, Trash2, Plus, Check, X,
-  Webhook, Globe, Mail, Server, MapPin, Download, ShieldCheck, Shield, FileText, ExternalLink, Sparkles, Rocket, Key, Clock, ArrowUpCircle, RefreshCw, Zap, FileBarChart2, Radio,
+  Webhook, Globe, Mail, Server, Download, ShieldCheck, Shield, FileText, ExternalLink, Sparkles, Rocket, Key, Clock, ArrowUpCircle, RefreshCw, Zap, FileBarChart2, Radio,
   Siren, UserCheck, Users, Palette, Network, HardDrive,
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
@@ -21,9 +21,7 @@ import { apiFetch, FeatureLockedError } from '../../../api/client'
 import { useAuthStore } from '../../../shared/stores/auth'
 import { cn } from '../../../lib/utils'
 import { VAKT_LICENSE_RENEW_URL } from '../../../lib/constants'
-import { useOrgSector, useUpdateOrgSector } from '../../../shared/hooks/useOrgSector'
 import { useApprovalSetting, useUpdateApprovalSetting } from '../../../shared/hooks/useApprovals'
-import { SECTOR_LABELS } from '../../../shared/types/sectors'
 import { useExportData } from '../../../hooks/useDataExport'
 import { useAuditReport } from '../../../shared/hooks/useAuditReport'
 import { ProGate } from '../../../shared/components/ProGate'
@@ -665,108 +663,6 @@ function OrgSection() {
 }
 
 // ─── Sector / NIS2 Configuration ─────────────────────────────────────────────
-
-const FEDERAL_STATES = [
-  'Baden-Württemberg', 'Bayern', 'Berlin', 'Brandenburg', 'Bremen',
-  'Hamburg', 'Hessen', 'Mecklenburg-Vorpommern', 'Niedersachsen',
-  'Nordrhein-Westfalen', 'Rheinland-Pfalz', 'Saarland', 'Sachsen',
-  'Sachsen-Anhalt', 'Schleswig-Holstein', 'Thüringen',
-]
-
-function SectorSection() {
-  const { t } = useTranslation()
-  const { data: settings } = useOrgSector()
-  const { data: lic } = useLicense()
-  const update = useUpdateOrgSector()
-  const [sector, setSector] = useState('other')
-  const [federalState, setFederalState] = useState('')
-
-  useEffect(() => {
-    if (settings) {
-      setSector(settings.sector)
-      setFederalState(settings.federal_state ?? '')
-    }
-  }, [settings])
-
-  function handleSave() {
-    update.mutate({ sector, federal_state: federalState || undefined })
-  }
-
-  const isDirty = settings
-    ? sector !== settings.sector || federalState !== (settings.federal_state ?? '')
-    : false
-
-  // Community users see an upgrade prompt instead of the sector form
-  const isPro = lic?.is_pro ?? true // default to true while loading to avoid flicker
-
-  return (
-    <SectionCard title={t('settingsPage.sectorTitle')} icon={MapPin}>
-      {lic !== undefined && !isPro ? (
-        <div className="flex items-start gap-4">
-          <div className="mt-0.5 p-2 rounded-lg bg-brand/10 shrink-0">
-            <Sparkles className="w-4 h-4 text-brand" />
-          </div>
-          <div>
-            <p className="font-semibold text-primary text-sm mb-1">{t('settingsPage.sectorProFeature')}</p>
-            <p className="text-secondary text-sm leading-relaxed mb-2">
-              {t('settingsPage.sectorProDesc')}
-            </p>
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand">
-              <Clock className="w-3.5 h-3.5" />
-              {t('settingsPage.comingSoon')}
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs">{t('settingsPage.labelSector')}</Label>
-            <Select value={sector} onValueChange={setSector}>
-              <SelectTrigger className="h-8 text-sm" data-testid="sector-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(SECTOR_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-secondary">{t('settingsPage.sectorHint')}</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">{t('settingsPage.labelFederalState')}</Label>
-            <Select value={federalState} onValueChange={setFederalState}>
-              <SelectTrigger className="h-8 text-sm" data-testid="federal-state-select">
-                <SelectValue placeholder={t('settingsPage.federalStatePlaceholder')} />
-              </SelectTrigger>
-              <SelectContent>
-                {FEDERAL_STATES.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-secondary">{t('settingsPage.federalStateHint')}</p>
-          </div>
-          <Button
-            size="sm"
-            className="h-7 text-xs"
-            onClick={handleSave}
-            disabled={!isDirty || update.isPending}
-            data-testid="sector-save-btn"
-          >
-            {update.isPending ? t('common.saving') : t('common.save')}
-          </Button>
-          {update.isSuccess && (
-            <p className="text-[11px] text-green-600 dark:text-green-400">{t('settingsPage.saved')}</p>
-          )}
-          {update.isError && (
-            <p className="text-[11px] text-red-500">{t('settingsPage.saveError')}</p>
-          )}
-        </div>
-      )}
-    </SectionCard>
-  )
-}
 
 // ─── Module Status ────────────────────────────────────────────────────────────
 
@@ -2578,7 +2474,9 @@ export default function Settings() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <OrgSection />
                 <ModulesSection />
-                <SectorSection />
+                {/* Karte „Sektor" ausgeblendet, bis die Funktion fertig ist (Entscheid
+                    Stefan 2026-11-18): Für Community stand dort „Pro-Feature … Demnächst
+                    verfügbar". Die Komponente steht in der Versionshistorie dieser Datei. */}
                 <LicenseSection />
                 <LinkCard
                   title={t('settingsPage.brandingTitle')}

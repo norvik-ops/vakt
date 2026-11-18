@@ -229,7 +229,8 @@
       "statusClosed": "Geschlossen",
       "reporting": "Melden …",
       "successReported": "Vorfall erfolgreich gemeldet",
-      "createIncident": "Vorfall anlegen"
+      "createIncident": "Vorfall anlegen",
+      "labelBreachId": "Datenpannen-ID (optional)"
     },
     "frameworksPage": {
       "title": "Compliance-Frameworks",
@@ -408,7 +409,8 @@
       "fieldMaturityScore": "Reifegrad",
       "fieldReviewInterval": "Prüfungsintervall",
       "evidenceLabelFileOptional": "Datei (optional)",
-      "evidenceFileHint": "Die Datei wird als Anhang dieses Nachweises gespeichert und landet im Audit-Paket."
+      "evidenceFileHint": "Die Datei wird als Anhang dieses Nachweises gespeichert und landet im Audit-Paket.",
+      "implementationStepsHint": "Kurze Checkliste für diese Kontrolle, ohne Person und Frist. Abhaken, wenn erledigt."
     },
     "policiesPage": {
       "title": "Richtlinienmanagement",
@@ -965,7 +967,12 @@
       "approveBtn": "Freigeben",
       "approvePending": "Wird freigegeben…",
       "approveNote": "Freigegeben",
-      "approveHint": "Setzt den Status auf „Aktiv“ und speichert. Wer freigegeben hat, hält Vakt noch nicht fälschungssicher fest."
+      "approveHint": "Setzt den Status auf „Aktiv“ und speichert. Wer freigegeben hat, hält Vakt noch nicht fälschungssicher fest.",
+      "textModeLabel": "Ansicht des Richtlinientexts",
+      "textPreview": "Vorschau",
+      "textEdit": "Bearbeiten",
+      "textMarkdownHint": "Formatierung mit Markdown: # Überschrift, - Aufzählung, **fett**, *kursiv*, [Link](https://…).",
+      "textEmpty": "Noch kein Richtlinientext hinterlegt."
     },
     "interestedParties": {
       "title": "Interessierte Parteien",
@@ -1388,14 +1395,18 @@
       "priorityHigh": "Hoch",
       "priorityCritical": "Kritisch",
       "labelTitle": "Titel",
-      "labelAssignee": "Verantwortlich (E-Mail)"
+      "labelAssignee": "Verantwortlich (E-Mail)",
+      "panelTitle": "Zugewiesene Aufgaben",
+      "panelHint": "Aufgaben mit verantwortlicher Person, Frist und Priorität."
     },
     "measuresList": {
       "title": "Titel",
       "difficulty": "Schwierigkeitsgrad",
       "difficultyEasy": "Einfach",
       "difficultyMedium": "Mittel",
-      "difficultyComplex": "Komplex"
+      "difficultyComplex": "Komplex",
+      "panelTitle": "Umsetzungshilfe",
+      "panelHint": "Vorschläge, wie sich die Kontrolle umsetzen lässt. Zum Nachlesen, nicht zum Abhaken."
     },
     "aiDocumentation": {
       "versionHistory": "Versionshistorie",
@@ -2476,10 +2487,20 @@
       "cta": "Jetzt upgraden →",
       "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · NIS2-Assistent · Audit-PDF · SSO · API-Keys",
       "demoHint": "Pro",
-      "activateLicense": "Lizenz aktivieren"
+      "activateLicense": "Lizenz aktivieren",
+      "hintShort": "Braucht eine Vakt-Pro-Lizenz."
     },
     "notOffered": {
       "description": "Diese Funktion ist in Vakt enthalten, wird aber derzeit in keinem Tarif angeboten. Eine Lizenz schaltet sie nicht frei."
+    },
+    "draft": {
+      "hint": "Der Standard ist noch nicht veröffentlicht. Aktivierbar, sobald die Endfassung vorliegt."
+    },
+    "notFound": {
+      "title": "Seite nicht gefunden",
+      "description": "Die aufgerufene Seite existiert nicht oder wurde verschoben.",
+      "back": "Zurück zur Startseite",
+      "searchHint": "Tipp: Nutze die Suche (⌘K) um schnell zum Ziel zu gelangen."
     }
   },
   "validation": {

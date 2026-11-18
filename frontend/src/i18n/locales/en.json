@@ -229,7 +229,8 @@
       "statusClosed": "Closed",
       "reporting": "Reporting…",
       "successReported": "Incident reported successfully",
-      "createIncident": "Create incident"
+      "createIncident": "Create incident",
+      "labelBreachId": "Data breach ID (optional)"
     },
     "frameworksPage": {
       "title": "Compliance Frameworks",
@@ -408,7 +409,8 @@
       "fieldMaturityScore": "Maturity score",
       "fieldReviewInterval": "Review interval",
       "evidenceLabelFileOptional": "File (optional)",
-      "evidenceFileHint": "The file is stored as an attachment of this evidence and included in the audit package."
+      "evidenceFileHint": "The file is stored as an attachment of this evidence and included in the audit package.",
+      "implementationStepsHint": "Short checklist for this control, without owner or due date. Tick off when done."
     },
     "policiesPage": {
       "title": "Policy Management",
@@ -965,7 +967,12 @@
       "approveBtn": "Approve",
       "approvePending": "Approving…",
       "approveNote": "Approved",
-      "approveHint": "Sets the status to “Active” and saves. Vakt does not yet record who approved in a tamper-proof way."
+      "approveHint": "Sets the status to “Active” and saves. Vakt does not yet record who approved in a tamper-proof way.",
+      "textModeLabel": "Policy text view",
+      "textPreview": "Preview",
+      "textEdit": "Edit",
+      "textMarkdownHint": "Formatting with Markdown: # heading, - bullet, **bold**, *italic*, [link](https://…).",
+      "textEmpty": "No policy text yet."
     },
     "interestedParties": {
       "title": "Interested Parties",
@@ -1388,14 +1395,18 @@
       "priorityHigh": "High",
       "priorityCritical": "Critical",
       "labelTitle": "Title",
-      "labelAssignee": "Responsible (e-mail)"
+      "labelAssignee": "Responsible (e-mail)",
+      "panelTitle": "Assigned tasks",
+      "panelHint": "Tasks with an owner, a due date and a priority."
     },
     "measuresList": {
       "title": "Title",
       "difficulty": "Difficulty",
       "difficultyEasy": "Easy",
       "difficultyMedium": "Medium",
-      "difficultyComplex": "Complex"
+      "difficultyComplex": "Complex",
+      "panelTitle": "Implementation guidance",
+      "panelHint": "Suggestions for implementing the control. For reference, not a checklist."
     },
     "aiDocumentation": {
       "versionHistory": "Version history",
@@ -2476,10 +2487,20 @@
       "cta": "Upgrade now →",
       "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · NIS2 assistant · Audit PDF · SSO · API keys",
       "demoHint": "Pro",
-      "activateLicense": "Activate license"
+      "activateLicense": "Activate license",
+      "hintShort": "Requires a Vakt Pro licence."
     },
     "notOffered": {
       "description": "This feature is part of Vakt but is currently not offered in any plan. A license does not unlock it."
+    },
+    "draft": {
+      "hint": "The standard has not been published yet. It can be activated once the final version is out."
+    },
+    "notFound": {
+      "title": "Page not found",
+      "description": "The page you requested does not exist or has been moved.",
+      "back": "Back to the start page",
+      "searchHint": "Tip: use search (⌘K) to get where you want quickly."
     }
   },
   "validation": {

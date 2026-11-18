@@ -37,6 +37,7 @@ import { UserPicker } from '../../../shared/components/UserPicker'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 import { policyVersionLine } from '../utils/policyVersion'
+import { markdownToPlainText } from '../../../shared/utils/markdown'
 
 const POLICY_TYPES = [
   'Informationssicherheitsrichtlinie (ISO 27001 A.5.1)',
@@ -95,7 +96,8 @@ function PolicyCard({ policy, onClick }: { policy: Policy; onClick: () => void }
           <Badge className={STATUS_CLASS[policy.status]}>{STATUS_LABELS[policy.status]}</Badge>
         </div>
         {policy.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{policy.description}</p>
+          // UX-23: Vorschau ohne Markdown-Zeichen („# … ## 1." stand roh da).
+          <p className="text-xs text-muted-foreground line-clamp-2">{markdownToPlainText(policy.description)}</p>
         )}
         {reviewDate && (
           <p className={`text-xs ${isOverdue ? 'text-amber-400' : 'text-muted-foreground'}`}>

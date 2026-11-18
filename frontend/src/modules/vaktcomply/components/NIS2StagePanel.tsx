@@ -10,6 +10,7 @@ import { Label } from '../../../components/ui/label'
 import { Spinner } from '../../../components/Spinner'
 import { useNIS2Status, useNIS2AssessReportability, useNIS2SubmitStage } from '../hooks/useNIS2Reporting'
 import { toast } from '../../../shared/hooks/useToast'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import type { NIS2ReportInput } from '../types'
 
 const STAGE_LABELS: Record<string, string> = {
@@ -188,6 +189,7 @@ function StageForm({
 }
 
 export function NIS2StagePanel({ incidentId }: { incidentId: string }) {
+  const canWrite = useCanWrite()
   const { data: status, isLoading, isError } = useNIS2Status(incidentId)
   const assess = useNIS2AssessReportability(incidentId)
   const [openStage, setOpenStage] = useState<Stage | null>(null)
@@ -245,7 +247,8 @@ export function NIS2StagePanel({ incidentId }: { incidentId: string }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!status?.is_reportable && (
+        {/* R1-KW-44: Bewerten und Einreichen sind Schreibwege (rw) — Leser sehen nur den Stand. */}
+        {canWrite && !status?.is_reportable && (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
               Prüfen Sie, ob dieser Vorfall nach NIS2 Art.23 meldepflichtig ist:
@@ -299,7 +302,7 @@ export function NIS2StagePanel({ incidentId }: { incidentId: string }) {
               ))}
             </div>
 
-            <div className="space-y-2">
+            {canWrite && <div className="space-y-2">
               {stages.map(({ key, label }) => {
                 const done = status.completed_stages.includes(key)
                 if (done) return null
@@ -326,7 +329,7 @@ export function NIS2StagePanel({ incidentId }: { incidentId: string }) {
                   </div>
                 )
               })}
-            </div>
+            </div>}
           </>
         )}
       </CardContent>

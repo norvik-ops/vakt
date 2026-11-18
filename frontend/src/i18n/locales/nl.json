@@ -229,7 +229,8 @@
       "statusClosed": "Gesloten",
       "reporting": "Melden…",
       "successReported": "Incident succesvol gemeld",
-      "createIncident": "Incident aanmaken"
+      "createIncident": "Incident aanmaken",
+      "labelBreachId": "Datalek-ID (optioneel)"
     },
     "frameworksPage": {
       "title": "Nalevingsraamwerken",
@@ -408,7 +409,8 @@
       "fieldMaturityScore": "Volwassenheidsscore",
       "fieldReviewInterval": "Herzieningsinterval",
       "evidenceLabelFileOptional": "Bestand (optioneel)",
-      "evidenceFileHint": "Het bestand wordt als bijlage bij dit bewijs opgeslagen en komt in het auditpakket."
+      "evidenceFileHint": "Het bestand wordt als bijlage bij dit bewijs opgeslagen en komt in het auditpakket.",
+      "implementationStepsHint": "Korte checklist voor deze maatregel, zonder verantwoordelijke of termijn. Afvinken als het klaar is."
     },
     "policiesPage": {
       "title": "Beleidsbeheer",
@@ -965,7 +967,12 @@
       "approveBtn": "Goedkeuren",
       "approvePending": "Wordt goedgekeurd…",
       "approveNote": "Goedgekeurd",
-      "approveHint": "Zet de status op ‘Actief’ en slaat op. Vakt legt nog niet fraudebestendig vast wie heeft goedgekeurd."
+      "approveHint": "Zet de status op ‘Actief’ en slaat op. Vakt legt nog niet fraudebestendig vast wie heeft goedgekeurd.",
+      "textModeLabel": "Weergave van de beleidstekst",
+      "textPreview": "Voorbeeld",
+      "textEdit": "Bewerken",
+      "textMarkdownHint": "Opmaak met Markdown: # kop, - opsomming, **vet**, *cursief*, [link](https://…).",
+      "textEmpty": "Nog geen beleidstekst."
     },
     "interestedParties": {
       "title": "Geïnteresseerde partijen",
@@ -1388,14 +1395,18 @@
       "priorityHigh": "Hoog",
       "priorityCritical": "Kritiek",
       "labelTitle": "Titel",
-      "labelAssignee": "Verantwoordelijke (e-mail)"
+      "labelAssignee": "Verantwoordelijke (e-mail)",
+      "panelTitle": "Toegewezen taken",
+      "panelHint": "Taken met verantwoordelijke, termijn en prioriteit."
     },
     "measuresList": {
       "title": "Titel",
       "difficulty": "Moeilijkheidsgraad",
       "difficultyEasy": "Eenvoudig",
       "difficultyMedium": "Gemiddeld",
-      "difficultyComplex": "Complex"
+      "difficultyComplex": "Complex",
+      "panelTitle": "Implementatiehulp",
+      "panelHint": "Suggesties om de maatregel te implementeren. Ter referentie, niet om af te vinken."
     },
     "aiDocumentation": {
       "versionHistory": "Versiegeschiedenis",
@@ -2476,10 +2487,20 @@
       "cta": "Nu upgraden →",
       "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · NIS2-assistent · Audit PDF · SSO · API-sleutels",
       "demoHint": "Pro",
-      "activateLicense": "Licentie activeren"
+      "activateLicense": "Licentie activeren",
+      "hintShort": "Vereist een Vakt Pro-licentie."
     },
     "notOffered": {
       "description": "Deze functie maakt deel uit van Vakt, maar wordt momenteel in geen enkel abonnement aangeboden. Een licentie ontgrendelt haar niet."
+    },
+    "draft": {
+      "hint": "De norm is nog niet gepubliceerd. Te activeren zodra de definitieve versie verschijnt."
+    },
+    "notFound": {
+      "title": "Pagina niet gevonden",
+      "description": "De opgevraagde pagina bestaat niet of is verplaatst.",
+      "back": "Terug naar de startpagina",
+      "searchHint": "Tip: gebruik de zoekfunctie (⌘K) om snel op je bestemming te komen."
     }
   },
   "validation": {

@@ -14,6 +14,9 @@ import { useAuditRecord, useUpdateAuditRecord } from '../hooks/useAudits'
 import { useCreateCAPA } from '../hooks/useCAPAs'
 import type { AuditRecord, UpdateAuditRecordInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
+import { WriteFieldset } from '../../../shared/components/WriteFieldset'
 import { useTranslation } from 'react-i18next'
 
 export default function AuditDetailPage() {
@@ -23,6 +26,7 @@ export default function AuditDetailPage() {
   const { formatDate } = useFormatDate()
   const { data: record, isLoading, isError } = useAuditRecord(id ?? '')
   const update = useUpdateAuditRecord(id ?? '')
+  const canWrite = useCanWrite()
   const createCAPA = useCreateCAPA()
 
   const STATUS_LABELS: Record<AuditRecord['status'], string> = {
@@ -88,14 +92,18 @@ export default function AuditDetailPage() {
               <ArrowLeft className="w-4 h-4 mr-1" />
               {t('vaktcomply.auditDetail.back')}
             </Button>
-            <Button variant="outline" onClick={() => { setCAPADialogOpen(true); }}>
-              <ClipboardCheck className="w-4 h-4 mr-1" />
-              {t('vaktcomply.auditDetail.createCAPA')}
-            </Button>
-            <Button onClick={handleSave} disabled={!dirty || update.isPending}>
-              <Save className="w-4 h-4 mr-1" />
-              {update.isPending ? t('vaktcomply.auditDetail.saving') : t('vaktcomply.auditDetail.save')}
-            </Button>
+            {canWrite && (
+              <Button variant="outline" onClick={() => { setCAPADialogOpen(true); }}>
+                <ClipboardCheck className="w-4 h-4 mr-1" />
+                {t('vaktcomply.auditDetail.createCAPA')}
+              </Button>
+            )}
+            {canWrite && (
+              <Button onClick={handleSave} disabled={!dirty || update.isPending}>
+                <Save className="w-4 h-4 mr-1" />
+                {update.isPending ? t('vaktcomply.auditDetail.saving') : t('vaktcomply.auditDetail.save')}
+              </Button>
+            )}
           </div>
         }
       />
@@ -103,6 +111,8 @@ export default function AuditDetailPage() {
       {form && (
         <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
+            <ReadOnlyHint />
+            <WriteFieldset>
             <Card>
               <CardHeader><CardTitle className="text-sm">{t('vaktcomply.auditDetail.cardAuditData')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -140,9 +150,11 @@ export default function AuditDetailPage() {
                 </div>
               </CardContent>
             </Card>
+            </WriteFieldset>
           </div>
 
           <div className="space-y-4">
+            <WriteFieldset>
             <Card>
               <CardHeader><CardTitle className="text-sm">{t('vaktcomply.auditDetail.cardStatus')}</CardTitle></CardHeader>
               <CardContent>
@@ -156,6 +168,7 @@ export default function AuditDetailPage() {
                 </Select>
               </CardContent>
             </Card>
+            </WriteFieldset>
 
             <Card>
               <CardContent className="pt-4 space-y-1 text-xs text-muted-foreground">

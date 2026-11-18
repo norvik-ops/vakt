@@ -229,7 +229,8 @@
       "statusClosed": "Clôturé",
       "reporting": "Déclaration…",
       "successReported": "Incident déclaré avec succès",
-      "createIncident": "Créer un incident"
+      "createIncident": "Créer un incident",
+      "labelBreachId": "ID de violation de données (facultatif)"
     },
     "frameworksPage": {
       "title": "Référentiels de conformité",
@@ -408,7 +409,8 @@
       "fieldMaturityScore": "Score de maturité",
       "fieldReviewInterval": "Intervalle de révision",
       "evidenceLabelFileOptional": "Fichier (facultatif)",
-      "evidenceFileHint": "Le fichier est enregistré en pièce jointe de cette preuve et inclus dans le dossier d’audit."
+      "evidenceFileHint": "Le fichier est enregistré en pièce jointe de cette preuve et inclus dans le dossier d’audit.",
+      "implementationStepsHint": "Courte liste de contrôle, sans responsable ni échéance. À cocher une fois fait."
     },
     "policiesPage": {
       "title": "Gestion des politiques",
@@ -965,7 +967,12 @@
       "approveBtn": "Approuver",
       "approvePending": "Approbation…",
       "approveNote": "Approuvé",
-      "approveHint": "Passe le statut à « Actif » et enregistre. Vakt n'enregistre pas encore de façon infalsifiable qui a approuvé."
+      "approveHint": "Passe le statut à « Actif » et enregistre. Vakt n'enregistre pas encore de façon infalsifiable qui a approuvé.",
+      "textModeLabel": "Affichage du texte de la politique",
+      "textPreview": "Aperçu",
+      "textEdit": "Modifier",
+      "textMarkdownHint": "Mise en forme en Markdown : # titre, - liste, **gras**, *italique*, [lien](https://…).",
+      "textEmpty": "Aucun texte de politique pour l'instant."
     },
     "interestedParties": {
       "title": "Parties intéressées",
@@ -1388,14 +1395,18 @@
       "priorityHigh": "Élevé",
       "priorityCritical": "Critique",
       "labelTitle": "Titre",
-      "labelAssignee": "Responsable (e-mail)"
+      "labelAssignee": "Responsable (e-mail)",
+      "panelTitle": "Tâches attribuées",
+      "panelHint": "Tâches avec responsable, échéance et priorité."
     },
     "measuresList": {
       "title": "Titre",
       "difficulty": "Difficulté",
       "difficultyEasy": "Facile",
       "difficultyMedium": "Moyen",
-      "difficultyComplex": "Complexe"
+      "difficultyComplex": "Complexe",
+      "panelTitle": "Aide à la mise en œuvre",
+      "panelHint": "Suggestions pour mettre en œuvre le contrôle. À consulter, pas à cocher."
     },
     "aiDocumentation": {
       "versionHistory": "Historique des versions",
@@ -2476,10 +2487,20 @@
       "cta": "Passer à Pro →",
       "featureList": "BSI IT-Grundschutz · EU AI Act · CRA · Assistant NIS2 · PDF audit · SSO · Clés API",
       "demoHint": "Pro",
-      "activateLicense": "Activer la licence"
+      "activateLicense": "Activer la licence",
+      "hintShort": "Nécessite une licence Vakt Pro."
     },
     "notOffered": {
       "description": "Cette fonctionnalité fait partie de Vakt, mais n'est actuellement proposée dans aucune offre. Une licence ne la débloque pas."
+    },
+    "draft": {
+      "hint": "La norme n'est pas encore publiée. Elle pourra être activée dès la parution de la version finale."
+    },
+    "notFound": {
+      "title": "Page introuvable",
+      "description": "La page demandée n'existe pas ou a été déplacée.",
+      "back": "Retour à l'accueil",
+      "searchHint": "Astuce : utilisez la recherche (⌘K) pour arriver rapidement à destination."
     }
   },
   "validation": {

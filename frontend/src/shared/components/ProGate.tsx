@@ -1,4 +1,4 @@
-import { Ban, Sparkles } from 'lucide-react'
+import { Ban, Clock, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { FeatureLockedError } from '../../api/client'
@@ -79,6 +79,40 @@ export function FeatureLock({ kind, extraAction, className = 'mx-6 mt-4' }: Feat
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * Kurzform der Sperre für eine Karte (UX-12): eine Zeile, warum die Karte
+ * gesperrt ist, statt eines Knopfs, der nur im Tooltip erklärt.
+ *
+ * 'pro'    = Pro-Lizenz fehlt → Link zur Lizenz (dieselben Texte wie FeatureLock)
+ * 'unsold' = in keinem Tarif → kein Kauf-Link
+ * 'draft'  = der Standard selbst ist noch nicht veröffentlicht → keine Lizenzfrage
+ */
+export function FeatureLockHint({ kind, className = '' }: { kind: 'pro' | 'unsold' | 'draft'; className?: string }) {
+  const { t } = useTranslation()
+  const Icon = kind === 'unsold' ? Ban : kind === 'draft' ? Clock : Sparkles
+  const text = kind === 'unsold'
+    ? t('errors.notOffered.description')
+    : kind === 'draft'
+      ? t('errors.draft.hint')
+      : t('errors.pro.hintShort')
+  return (
+    <p data-testid={`feature-lock-hint-${kind}`} className={`flex items-start gap-1.5 text-xs text-secondary ${className}`}>
+      <Icon className="w-3.5 h-3.5 mt-0.5 shrink-0 text-brand" aria-hidden="true" />
+      <span>
+        {text}
+        {kind === 'pro' && (
+          <>
+            {' '}
+            <Link to="/settings" className="font-semibold text-brand hover:text-brand/80">
+              {t('errors.pro.activateLicense')}
+            </Link>
+          </>
+        )}
+      </span>
+    </p>
   )
 }
 

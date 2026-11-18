@@ -1,14 +1,15 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SuppliersPage from './SuppliersPage'
 import type { Supplier } from '../types'
 import type { SupplierFilters } from '../hooks/useSuppliers'
 
-// Mock auth store
+// Mock auth store — Rolle je Test umschaltbar (R1-KW-44: Leser sehen keine Schreibknöpfe).
+const authState = vi.hoisted(() => ({ roles: ['Admin'] as string[] }))
 vi.mock('../../../shared/stores/auth', () => ({
-  useAuthStore: (selector: (s: { token: string | null }) => unknown) =>
-    selector({ token: 'test-token' }),
+  useAuthStore: (selector: (s: { token: string | null; user: { roles: string[] } }) => unknown) =>
+    selector({ token: 'test-token', user: { roles: authState.roles } }),
 }))
 
 const mockExpiredSupplier: Supplier = {
@@ -88,6 +89,25 @@ function renderPage() {
 }
 
 describe('SuppliersPage', () => {
+  beforeEach(() => { authState.roles = ['Admin'] })
+
+  it('zeigt einem Viewer keine Schreibknöpfe, nur Export und den Lese-Hinweis (R1-KW-44)', () => {
+    authState.roles = ['Viewer']
+    renderPage()
+    expect(screen.queryByTestId('import-csv-button')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Lieferant hinzufügen/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /CSV exportieren/ })).toBeInTheDocument()
+    expect(screen.getByRole('note')).toBeInTheDocument()
+    // Karten ohne Bearbeiten/Löschen: nur Badges, keine Icon-Knöpfe.
+    expect(document.querySelectorAll('.lucide-pencil, .lucide-trash2, .lucide-trash-2')).toHaveLength(0)
+  })
+
+  it('zeigt einem Admin Bearbeiten und Löschen je Karte (Gegenprobe zum Viewer-Test)', () => {
+    renderPage()
+    expect(screen.getByTestId('import-csv-button')).toBeInTheDocument()
+    expect(document.querySelectorAll('.lucide-pencil').length).toBe(3)
+  })
+
   it('renders contract-status-badge for expired supplier', () => {
     renderPage()
     const badges = screen.getAllByTestId('contract-status-badge')

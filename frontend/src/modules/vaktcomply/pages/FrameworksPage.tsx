@@ -18,7 +18,8 @@ import type { Framework } from '../types'
 import { formatLocale } from '../../../shared/utils/locale'
 import { isUnsoldFeature } from '../../../shared/featureTiers'
 import { FeatureLockedError } from '../../../api/client'
-import { FeatureLock } from '../../../shared/components/ProGate'
+import { FeatureLock, FeatureLockHint } from '../../../shared/components/ProGate'
+import { useLicenseStatus } from '../../../shared/hooks/useFeature'
 import { downloadBlob } from '../../../shared/utils/downloadBlob'
 import { FRAMEWORK_CATALOGUE, frameworkDisplayName } from '../utils/frameworkCatalogue'
 import { ReadinessBreakdown } from '../components/ReadinessBreakdown'
@@ -148,6 +149,7 @@ export default function FrameworksPage() {
   } | null>(null)
   const { data: frameworks, isLoading, isError } = useFrameworks()
   const enableFramework = useEnableFramework()
+  const { data: license } = useLicenseStatus()
   const deleteFramework = useDeleteFramework()
   const switchDORAVariant = useSwitchDORAVariant()
 
@@ -293,6 +295,18 @@ export default function FrameworksPage() {
             {FRAMEWORK_CATALOGUE.map((fw) => {
               const alreadyEnabled = enabledKeys.has(fw.key.toUpperCase()) ||
                 enabledKeys.has(fw.name.toUpperCase())
+              // UX-12: Warum ist die Karte gesperrt? Vorher stand das nur im Tooltip
+              // eines ausgegrauten Knopfs. Pro-Hinweis erst, wenn die Lizenz geladen
+              // ist und das Merkmal wirklich fehlt — kein Flackern für Pro-Kunden.
+              const lockKind: 'pro' | 'unsold' | 'draft' | null = alreadyEnabled
+                ? null
+                : fw.notOffered || isUnsoldFeature(fw.feature)
+                  ? 'unsold'
+                  : fw.draft
+                    ? 'draft'
+                    : fw.feature && license && !(license.is_pro && license.features.includes(fw.feature))
+                      ? 'pro'
+                      : null
               return (
                 <div
                   key={fw.key}
@@ -315,6 +329,7 @@ export default function FrameworksPage() {
                     </div>
                   </div>
                   <p className="text-xs text-secondary leading-relaxed line-clamp-2">{fw.description}</p>
+                  {lockKind && <FeatureLockHint kind={lockKind} />}
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-xs text-secondary">{fw.controls}</span>
                     {alreadyEnabled ? (

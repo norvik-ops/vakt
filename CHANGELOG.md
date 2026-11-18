@@ -29,6 +29,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **„Auch abgedeckt in“:** Jede Zielkontrolle erscheint einmal, ohne doppelten Framework-Namen
   („NIS2-A.1“ statt „NIS2 NIS2-A.1“); eine Legende erklärt die Farben (gleichwertig, teilweise,
   informativ), der Tooltip ist übersetzt.
+- **Richtlinientext gerendert:** Die Richtlinien-Detailseite zeigt den Text formatiert
+  (Überschriften, Listen, Tabellen, fett/kursiv, Links) statt als rohen Markdown. Zum Ändern
+  schaltet „Bearbeiten“ auf ein großes Eingabefeld, „Vorschau“ zurück; Leser sehen nur die
+  formatierte Fassung. Die Karten der Richtlinienliste zeigen den Anfang des Texts ohne
+  Markdown-Zeichen. Eingebettetes HTML wird nie ausgeführt, Links nur zu http(s), mailto und
+  Vakt-Seiten.
+- **ISO 27001 nach Normkapiteln:** Das Framework-Detail gruppiert ISO-27001-Kontrollen nach den
+  Kapiteln A.5–A.8 des Anhangs A, in der Reihenfolge der Norm — wie die Anwendbarkeitserklärung.
+  Andere Frameworks bleiben nach Themen gruppiert.
+- **Framework-Katalog nennt den Sperrgrund:** Gesperrte Karten sagen sichtbar, warum: „in keinem
+  Tarif angeboten“, „Standard noch nicht veröffentlicht“ oder „Braucht eine Vakt-Pro-Lizenz“ mit
+  Link zur Lizenz.
+- **Kontrollseite: drei Listen klar getrennt:** „Umsetzungshilfe“ (Vorschläge aus dem Katalog,
+  vorher „Empfohlene Maßnahmen“), „Umsetzungsschritte“ (Checkliste) und „Zugewiesene Aufgaben“
+  (mit Person, Frist, Priorität) stehen jetzt direkt untereinander und sagen je in einem Satz,
+  wofür sie da sind.
+- **Karte „Sektor“ ausgeblendet:** In Einstellungen → Plattform entfällt die Karte „Sektor &
+  NIS2-Konfiguration“ („Pro-Feature … Demnächst verfügbar“), bis die Funktion fertig ist.
+- **Leser sehen weniger Schreibknöpfe:** Auf den Seiten Korrekturmaßnahmen (CAPAs), Audits,
+  Audit-Detail, Lieferanten, Akzeptanz-Kampagnen und im NIS2-Meldewesen eines Vorfalls sehen
+  Leser und externe Prüfer keine Knöpfe zum Anlegen, Ändern oder Löschen mehr, sondern den
+  Hinweis „nur lesen“. Der Server lehnt diese Aktionen für sie weiterhin ab.
 - **Risiko-Detail: jede Angabe einmal, ein Speichern:** Strategie, Verantwortlicher,
   Maßnahmen/Behandlungsplan und Restrisiko standen bisher zwei- bis dreimal auf der Seite, mit
   drei Speichern-Knöpfen. Jetzt gibt es einen Behandlungsblock; „Speichern“ oben und „Behandlung
@@ -86,6 +108,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   „Angemeldet als“ statt „Administrator“ — es zeigt das eigene Konto, nicht den Administrator.
 
 ### Behoben
+- **Fehlende Übersetzungen:** Die 404-Seite und das Feld „Datenpannen-ID“ im Vorfall-Dialog
+  zeigten auf Englisch, Französisch und Niederländisch deutschen Text.
 - **Fortschritt: überall dieselbe Zahl, dieselbe Zählung:** Neben „0 von 88 umgesetzt“ stand
   „5 %“, weil Kontrollen in Bearbeitung im Prozentwert halb zählen, in der Zählung aber fehlten.
   Dashboard, Framework-Karte, Framework-Seite und Comply-Übersicht zeigen jetzt dieselbe Zeile

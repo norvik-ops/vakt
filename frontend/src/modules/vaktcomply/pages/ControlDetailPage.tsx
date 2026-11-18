@@ -965,6 +965,14 @@ export default function ControlDetailPage() {
           </Card>
         )}
 
+        {/* UX-32: Drei Listen, fachlich verschieden, jetzt beieinander und jede mit
+            einem Satz, wofür sie da ist: Umsetzungshilfe (Katalog-Vorschläge, nichts
+            zum Abhaken) → Umsetzungsschritte (schnelle Checkliste ohne Person/Frist)
+            → Zugewiesene Aufgaben (mit Verantwortlichem, Frist, Priorität). Ein
+            Zusammenlegen der beiden Aufgabenlisten bräuchte ein gemeinsames
+            Datenmodell im Backend — als Backlog notiert, nicht gebaut. */}
+        <MeasuresList controlId={controlId} />
+
         {/* Implementation checklist */}
         <Card>
           <CardHeader>
@@ -972,6 +980,7 @@ export default function ControlDetailPage() {
               <ListChecks className="w-4 h-4" />
               {t('vaktcomply.controlDetailPage.implementationSteps')}
             </CardTitle>
+            <p className="text-xs text-secondary">{t('vaktcomply.controlDetailPage.implementationStepsHint')}</p>
           </CardHeader>
           <CardContent className="space-y-3">
             <WriteFieldset>
@@ -1033,8 +1042,8 @@ export default function ControlDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Measures catalogue */}
-        <MeasuresList controlId={controlId} />
+        {/* Collaborative Tasks */}
+        <TasksPanel entityType="control" entityId={controlId} />
 
         {/* Control Review Cycle */}
         {control && (
@@ -1223,9 +1232,6 @@ export default function ControlDetailPage() {
         {(control?.status === 'missing' || control?.status === 'partial') && (
           <GapExplainPanel controlId={controlId} controlTitle={control?.title ?? ''} />
         )}
-
-        {/* Collaborative Tasks */}
-        <TasksPanel entityType="control" entityId={controlId} />
 
         {/* Comments */}
         <Comments entityType="control" entityId={controlId} />
