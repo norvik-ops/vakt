@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
-import { roleLabel } from '../../../shared/utils/roleLabel'
+import { roleDescription, roleLabel } from '../../../shared/utils/roleLabel'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { useFieldValidation, required, email as emailRule } from '../../../shared/hooks/useFieldValidation'
@@ -50,26 +50,17 @@ type Role = 'admin' | 'editor' | 'viewer'
 // org therefore could not complete an audit (ISO 27001 9.2) without an UPDATE in
 // the database (ESK-13).
 //
-// The two audit roles carry a descriptionKey. Admin/SecurityAnalyst/Viewer are
-// the vocabulary this product has always used and an operator knows them; nobody
-// can be expected to know from the name alone that InternalAuditor is the role
-// that completes audits and that ADR-0055 forbids the same person from doing both
-// (REV-ESK13 §2.3 — these strings existed in all four locales but were rendered
-// nowhere).
-const ASSIGNABLE_ROLES: { value: PlatformRole; labelKey: string; descriptionKey?: string }[] = [
-  { value: 'Admin', labelKey: 'settings.team.roleAdmin' },
-  { value: 'SecurityAnalyst', labelKey: 'settings.team.roleEditor' },
-  { value: 'Viewer', labelKey: 'settings.team.roleViewer' },
-  {
-    value: 'AuditorReadOnly',
-    labelKey: 'settings.team.roleAuditorReadOnly',
-    descriptionKey: 'teamSettingsPage.roleAuditorReadOnly',
-  },
-  {
-    value: 'InternalAuditor',
-    labelKey: 'settings.team.roleInternalAuditor',
-    descriptionKey: 'teamSettingsPage.roleInternalAuditor',
-  },
+// The select shows the display name from roleLabel ("Interner Auditor"), not the
+// backend value. Every role also has a one-sentence description (roleDescription)
+// in the legend below the table: nobody can be expected to know from the name
+// alone that InternalAuditor is the role that completes audits and that ADR-0055
+// forbids the same person from doing both (REV-ESK13 §2.3).
+const ASSIGNABLE_ROLES: readonly PlatformRole[] = [
+  'Admin',
+  'SecurityAnalyst',
+  'Viewer',
+  'AuditorReadOnly',
+  'InternalAuditor',
 ]
 
 function roleBadge(role: PlatformRole, t: (key: string) => string) {
@@ -158,11 +149,12 @@ function InviteDialog({ open, onClose }: InviteDialogProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">{t('teamSettingsPage.roleAdmin')}</SelectItem>
-                <SelectItem value="editor">{t('teamSettingsPage.roleEditor')}</SelectItem>
-                <SelectItem value="viewer">{t('teamSettingsPage.roleViewer')}</SelectItem>
+                {(['admin', 'editor', 'viewer'] as const).map((r) => (
+                  <SelectItem key={r} value={r}>{roleLabel(r, t)}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-secondary">{roleDescription(role, t)}</p>
           </div>
           {create.error && (
             <p className="text-sm text-destructive">{create.error.message}</p>
@@ -256,11 +248,12 @@ function CreateUserDialog({ open, onClose }: CreateUserDialogProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Admin">{t('teamSettingsPage.roleAdmin')}</SelectItem>
-                <SelectItem value="SecurityAnalyst">{t('teamSettingsPage.roleEditor')}</SelectItem>
-                <SelectItem value="Viewer">{t('teamSettingsPage.roleViewer')}</SelectItem>
+                {(['Admin', 'SecurityAnalyst', 'Viewer'] as const).map((r) => (
+                  <SelectItem key={r} value={r}>{roleLabel(r, t)}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-secondary">{roleDescription(role, t)}</p>
           </div>
           {create.error && (
             <p className="text-sm text-destructive">{create.error.message}</p>
@@ -394,7 +387,7 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
                       </SelectTrigger>
                       <SelectContent>
                         {ASSIGNABLE_ROLES.map((r) => (
-                          <SelectItem key={r.value} value={r.value}>{t(r.labelKey)}</SelectItem>
+                          <SelectItem key={r} value={r}>{roleLabel(r, t)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -430,22 +423,22 @@ function MembersTable({ members, currentUserID }: { members: TeamMember[]; curre
         </TableBody>
       </Table>
 
-      {/* What the two audit roles mean. The select can only show their names —
-          Radix mirrors an item's content into the trigger, so a second line there
-          would end up truncated in a 10rem-wide control. An operator picking
-          between "Viewer", "AuditorReadOnly" and "InternalAuditor" cannot tell
-          from the names which one completes audits, and that is the choice
-          ADR-0055's segregation of duties turns on. Driven off ASSIGNABLE_ROLES,
-          so a role that gains a description is documented here by adding it
-          there. */}
-      <dl className="border-t border-border px-4 py-3 space-y-1">
-        {ASSIGNABLE_ROLES.filter((r) => r.descriptionKey).map((r) => (
-          <div key={r.value} className="text-xs text-secondary">
-            <dt className="sr-only">{t(r.labelKey)}</dt>
-            <dd>{t(r.descriptionKey as string)}</dd>
-          </div>
-        ))}
-      </dl>
+      {/* What each role may do. The select can only show the names — Radix
+          mirrors an item's content into the trigger, so a second line there
+          would end up truncated in a 10rem-wide control. Which role completes
+          audits is the choice ADR-0055's segregation of duties turns on, so it
+          has to be readable here, next to the table. Driven off ASSIGNABLE_ROLES. */}
+      <div className="border-t border-border px-4 py-3">
+        <p className="text-xs font-medium mb-1">{t('teamSettingsPage.rolesLegendTitle')}</p>
+        <dl className="space-y-1">
+          {ASSIGNABLE_ROLES.map((r) => (
+            <div key={r} className="text-xs text-secondary flex gap-1">
+              <dt className="font-medium text-primary shrink-0">{roleLabel(r, t)}:</dt>
+              <dd>{roleDescription(r, t)}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
 
       <PermissionsDialog member={permTarget} onClose={() => { setPermTarget(null); }} />
 

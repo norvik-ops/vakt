@@ -236,7 +236,7 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
       {/* Treatment Option selector */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Behandlungsstrategie (ISO 27001 Clause 6)</CardTitle>
+          <CardTitle className="text-sm">Behandlungsstrategie (ISO 27001 Klausel 6)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-2">

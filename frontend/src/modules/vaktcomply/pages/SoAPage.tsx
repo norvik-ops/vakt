@@ -298,7 +298,7 @@ export default function SoAPage() {
     return (
       <div className="p-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation="Statement of Applicability — ISO 27001:2022 Klausel 6.1.3: dokumentierte Aussage über die Anwendbarkeit aller 93 Maßnahmen aus Anhang A, inkl. Begründung für Ausschlüsse.">Statement of Applicability</TermTooltip></h1>
+          <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation={t('vaktcomply.soaPage.headingTooltip')}>{t('vaktcomply.soaPage.heading')}</TermTooltip></h1>
           <p className="text-secondary text-sm mt-1">ISO 27001:2022 {t('vaktcomply.soaPage.subtitle')}</p>
         </div>
         <div className="flex flex-col items-center justify-center bg-surface border border-border rounded-xl p-12 gap-4">
@@ -324,7 +324,7 @@ export default function SoAPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation="Statement of Applicability — ISO 27001:2022 Klausel 6.1.3: dokumentierte Aussage über die Anwendbarkeit aller 93 Maßnahmen aus Anhang A, inkl. Begründung für Ausschlüsse.">Statement of Applicability</TermTooltip></h1>
+          <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation={t('vaktcomply.soaPage.headingTooltip')}>{t('vaktcomply.soaPage.heading')}</TermTooltip></h1>
           <p className="text-secondary text-sm mt-1">ISO 27001:2022 {t('vaktcomply.soaPage.subtitleShort')}</p>
         </div>
         <div className="flex items-center gap-2">

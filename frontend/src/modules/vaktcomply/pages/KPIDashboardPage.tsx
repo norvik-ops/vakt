@@ -27,7 +27,7 @@ const kpiConfig: KPIConfig[] = [
   { key: 'kpi_residual_risk_avg', label: 'Ø Residualrisiko', unit: '', warn: 8, higher_is_better: false },
   { key: 'kpi_open_incidents', label: 'Offene Incidents', unit: '', warn: 5, higher_is_better: false },
   { key: 'kpi_incident_mttr_days', label: 'MTTR Incidents', unit: ' Tage', warn: 30, higher_is_better: false },
-  { key: 'kpi_evidence_coverage', label: 'Evidence-Abdeckung', unit: '%', warn: 60, goal: 80, higher_is_better: true },
+  { key: 'kpi_evidence_coverage', label: 'Nachweis-Abdeckung', unit: '%', warn: 60, goal: 80, higher_is_better: true },
   { key: 'kpi_expiring_evidence_count', label: 'Ablaufende Evidenz', unit: '', warn: 10, higher_is_better: false },
   { key: 'kpi_open_major_ncs', label: 'Offene Major NCs', unit: '', warn: 3, higher_is_better: false },
   { key: 'kpi_suppliers_overdue_pct', label: 'Lieferanten überfällig', unit: '%', warn: 20, higher_is_better: false },

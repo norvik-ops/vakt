@@ -36,7 +36,7 @@ function VersionDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="w-4 h-4 text-muted-foreground" />
-            Version {version.version} — {version.title}
+            {t('vaktcomply.policyVersionHistory.revision', { n: version.version })} — {version.title}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
@@ -76,6 +76,7 @@ function VersionDetailDialog({
 }
 
 export default function PolicyVersionHistory({ policyId, currentVersion }: Props) {
+  const { t } = useTranslation()
   const { data: versions, isLoading, isError } = usePolicyVersions(policyId)
   const { formatDate } = useFormatDate()
   const [selected, setSelected] = useState<PolicyVersion | null>(null)
@@ -102,26 +103,34 @@ export default function PolicyVersionHistory({ policyId, currentVersion }: Props
         )}
         {!isLoading && !isError && versions && versions.length > 0 && (
           <ol className="space-y-2">
+            {/* UX-22: The snapshots hold the states BEFORE each save, so the
+                current revision is not among them. It heads the list, so the
+                history shows every state under the same name as the header. */}
+            <li className="flex items-start gap-3" data-testid="policy-revision-current">
+              <div className="flex flex-col items-center mt-0.5">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-blue-500" />
+                <div className="w-px flex-1 bg-border mt-1" />
+              </div>
+              <div className="flex-1 min-w-0 pb-2 flex items-center gap-2 flex-wrap">
+                <Badge className="text-xs px-1.5 py-0 bg-blue-500/20 text-blue-400 border-blue-500/30">
+                  {t('vaktcomply.policyVersionHistory.revision', { n: currentVersion })}
+                </Badge>
+                <span className="text-xs text-muted-foreground">{t('vaktcomply.policyVersionHistory.currentState')}</span>
+              </div>
+            </li>
             {versions.map((v) => {
-              const isCurrent = v.version === currentVersion - 1 // last snapshot = the version before current
               return (
                 <li key={v.id} className="flex items-start gap-3">
                   {/* Timeline dot */}
                   <div className="flex flex-col items-center mt-0.5">
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isCurrent ? 'bg-blue-500' : 'bg-border'}`} />
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-border" />
                     <div className="w-px flex-1 bg-border mt-1" />
                   </div>
                   {/* Content */}
                   <div className="flex-1 min-w-0 pb-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge
-                        className={`text-xs px-1.5 py-0 ${
-                          isCurrent
-                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                            : 'bg-secondary text-secondary-foreground'
-                        }`}
-                      >
-                        v{v.version}
+                      <Badge className="text-xs px-1.5 py-0 bg-secondary text-secondary-foreground">
+                        {t('vaktcomply.policyVersionHistory.revision', { n: v.version })}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
                         {formatDate(v.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}

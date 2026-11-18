@@ -24,10 +24,10 @@ function withInvite(role: string) {
 // only and showed platform names raw.
 describe('InviteAcceptPage — role label', () => {
   it.each([
-    ['SecurityAnalyst', 'Editor'],
-    ['Viewer', 'Viewer'],
-    ['InternalAuditor', 'InternalAuditor'],
-    ['viewer', 'Viewer'],
+    ['SecurityAnalyst', 'Bearbeiter'],
+    ['Viewer', 'Leser'],
+    ['InternalAuditor', 'Interner Auditor'],
+    ['viewer', 'Leser'],
   ])('labels %s like the team page', (role, label) => {
     withInvite(role)
     renderWithProviders(<InviteAcceptPage />, { initialPath: '/invite/accept?token=abc' })

@@ -12,15 +12,14 @@ describe('describeMissingRole', () => {
   it('names the missing role and where to get it', () => {
     const msg = describeMissingRole('forbidden: requires role InternalAuditor')
 
-    expect(msg).toContain('InternalAuditor')
+    expect(msg).toContain('Interner Auditor')
     expect(msg).toContain('Einstellungen → Team')
   })
 
   it('lists every accepted role when the route allows several', () => {
     const msg = describeMissingRole('forbidden: requires role Admin or SecurityAnalyst')
 
-    expect(msg).toContain('Admin')
-    expect(msg).toContain('SecurityAnalyst')
+    expect(msg).toContain('„Administrator" oder „Bearbeiter"')
   })
 
   it('returns null for anything else, so other errors pass through untouched', () => {
@@ -38,7 +37,7 @@ describe('describeMissingRole', () => {
     // the raw API string, which also contains "InternalAuditor" — a substring
     // check would stay green for a change that removed the helpful text.
     expect(humanizeError(new Error('forbidden: requires role InternalAuditor'))).toBe(
-      'Für diese Aktion fehlt dir die Rolle „InternalAuditor". ' +
+      'Für diese Aktion fehlt dir die Rolle „Interner Auditor". ' +
         'Ein Administrator vergibt sie unter Einstellungen → Team.',
     )
   })

@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { UNSOLD_FEATURES, isUnsoldFeature } from './featureTiers'
+import { UNSOLD_FEATURES, featureLabel, isUnsoldFeature } from './featureTiers'
 
 // vitest läuft mit dem frontend-Verzeichnis als cwd.
 const BACKEND = join(process.cwd(), '..', 'backend')
@@ -43,5 +43,31 @@ describe('UNSOLD_FEATURES', () => {
     expect(isUnsoldFeature('dora')).toBe(true)
     expect(isUnsoldFeature('eu_ai_act')).toBe(false)
     expect(isUnsoldFeature(undefined)).toBe(false)
+  })
+})
+
+// UX-05: Die Lizenzkarte zeigte Rohschlüssel („bsi_grundschutz", „siem_export").
+// Drift-Wächter: Jede Feature-Konstante in license.go braucht einen Anzeigenamen.
+// Prüft NICHT, ob der Name fachlich treffend ist.
+describe('featureLabel', () => {
+  it('kennt für jedes Merkmal aus license.go einen Anzeigenamen', () => {
+    const keys = [...featureConstants().values()]
+    expect(keys.length).toBeGreaterThan(10)
+    for (const key of keys) {
+      const label = featureLabel(key)
+      expect(label, key).not.toBe(key)
+      expect(label, key).not.toMatch(/_/)
+      expect(label, key).not.toMatch(/legacy/i)
+    }
+  })
+
+  it('nimmt für Framework-Merkmale den Namen aus dem Framework-Katalog', () => {
+    expect(featureLabel('eu_ai_act')).toBe('EU AI Act')
+    expect(featureLabel('iso_42001')).toBe('ISO 42001')
+    expect(featureLabel('bsi_grundschutz')).toBe('BSI IT-Grundschutz')
+  })
+
+  it('lässt unbekannte Schlüssel stehen, statt sie zu verschlucken', () => {
+    expect(featureLabel('kunden_plugin')).toBe('kunden_plugin')
   })
 })

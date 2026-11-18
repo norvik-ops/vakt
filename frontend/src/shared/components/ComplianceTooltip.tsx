@@ -24,7 +24,7 @@ const DEFINITIONS: Record<string, { de: string; en?: string }> = {
     de: 'Network and Information Security Directive 2 — EU-Richtlinie für Cybersicherheit kritischer Infrastrukturen. Gilt für viele Unternehmen ab 2024.',
   },
   soa: {
-    de: 'Statement of Applicability — Dokument (ISO 27001 Anhang A), das alle Controls listet und begründet, welche angewendet werden.',
+    de: 'Anwendbarkeitserklärung (engl. Statement of Applicability) — Dokument (ISO 27001 Anhang A), das alle Maßnahmen listet und begründet, welche angewendet werden.',
   },
   vvt: {
     de: 'Verzeichnis von Verarbeitungstätigkeiten (Art. 30 DSGVO) — Pflicht für alle Unternehmen ab 250 Mitarbeitern, und bei risikoreichen Verarbeitungen.',

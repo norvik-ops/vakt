@@ -7,6 +7,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Geändert
+- **Einheitliche deutsche Begriffe:** Rollen heißen in der Oberfläche jetzt „Administrator“,
+  „Bearbeiter“, „Leser“, „Externer Prüfer (nur lesen)“ und „Interner Auditor“ (in allen vier
+  Sprachen); unter der Teamtabelle und in den Dialogen steht je Rolle ein Satz, was sie darf. Die
+  Rollenwerte im Server bleiben unverändert. „Statement of Applicability“, „Evidence“, „Clause“
+  und „Readiness“ heißen auf Deutsch „Anwendbarkeitserklärung (SoA)“, „Nachweis(e)“, „Klausel“
+  und „Umsetzungsgrad“. Die Lizenzkarte nennt jede Pro-Funktion mit Namen statt mit internem
+  Schlüssel.
+- **Richtlinien: Freigeben, eine Versionsangabe, ein Prüftermin:** Auf der Richtlinienseite gibt
+  es für Admin und Bearbeiter den Knopf „Freigeben“. Er setzt den Status auf „Aktiv“ und speichert.
+  Wer freigegeben hat, zeigt die Seite bewusst nicht an, solange der Server es nicht
+  fälschungssicher festhält. Liste,
+  Detailseite und Versionshistorie nennen Version und Revision gleich („Version 1.0 · Revision
+  2“), die Historie führt den aktuellen Stand oben. Statt „Review-Datum“ und „Nächste
+  Überprüfung“ gibt es nur noch ein Feld „Nächste Überprüfung“. Keine Migration.
 - **Navigation ohne Modul-Ebene:** Die Seitenleiste zeigt die Bereiche Frameworks, Betrieb,
   Dokumentation, Drittparteien und Notfallmanagement (BCM) direkt unter dem Dashboard — der
   Umweg über „Module → Vakt Comply“ entfällt. Jeder Bereich lässt sich auf- und zuklappen; der

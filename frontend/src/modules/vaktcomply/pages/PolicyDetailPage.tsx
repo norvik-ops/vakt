@@ -3,7 +3,7 @@ import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import { WriteFieldset } from '../../../shared/components/WriteFieldset'
 import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Users } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Save, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
@@ -17,6 +17,7 @@ import { usePolicy, useUpdatePolicy } from '../hooks/usePolicies'
 import PolicyVersionHistory from '../components/PolicyVersionHistory'
 import type { Policy, UpdatePolicyInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { policyVersionLine } from '../utils/policyVersion'
 
 function toDateInput(ts?: string): string {
   if (!ts) return ''
@@ -41,6 +42,12 @@ export default function PolicyDetailPage() {
     archived: t('vaktcomply.policyDetail.statusArchived'),
   }
 
+  // UX-21: ck_policies has two date columns for the same thing — review_date
+  // (create dialog, list card, overdue badge, CSV export "Überprüfung fällig")
+  // and next_review_due (only ever edited here). The page shows one field,
+  // „Nächste Überprüfung", backed by review_date, and writes the same value into
+  // next_review_due so the two stop drifting apart. An older row that only has
+  // next_review_due set is read from there.
   useEffect(() => {
     if (policy && !form) {
       setForm({
@@ -50,11 +57,10 @@ export default function PolicyDetailPage() {
         status: policy.status,
         version: policy.version,
         effective_date: toDateInput(policy.effective_date),
-        review_date: toDateInput(policy.review_date),
+        review_date: toDateInput(policy.review_date ?? policy.next_review_due),
         owner: policy.owner ?? '',
         version_note: '',
         updated_by: policy.last_updated_by ?? '',
-        next_review_due: toDateInput(policy.next_review_due),
       })
     }
   }, [policy, form])
@@ -64,22 +70,43 @@ export default function PolicyDetailPage() {
     setDirty(true)
   }
 
-  function handleSave() {
-    if (!form) return
+  function save(input: UpdatePolicyInput) {
     const payload: UpdatePolicyInput = {
-      ...form,
-      effective_date: form.effective_date || undefined,
-      review_date: form.review_date || undefined,
-      next_review_due: form.next_review_due || undefined,
-      version_note: form.version_note || undefined,
-      updated_by: form.updated_by || undefined,
+      ...input,
+      effective_date: input.effective_date || undefined,
+      review_date: input.review_date || undefined,
+      next_review_due: input.review_date || undefined,
+      version_note: input.version_note || undefined,
+      updated_by: input.updated_by || undefined,
     }
     update.mutate(payload, {
       onSuccess: () => {
         setDirty(false)
         // Reset version_note after save so it's blank for the next change
-        setForm((f) => f ? { ...f, version_note: '' } : f)
+        setForm({ ...input, version_note: '' })
       },
+    })
+  }
+
+  function handleSave() {
+    if (!form) return
+    save(form)
+  }
+
+  // UX-20: „Freigeben" is the same PATCH as „Speichern" with status active.
+  //
+  // It deliberately records NO approver. The only "who" the policy row has is
+  // last_updated_by — free text the client sends — and PATCH /policies/:id writes
+  // no audit-trail entry with the authenticated identity. Showing either as
+  // „freigegeben von" would be a forgeable audit statement (security review
+  // 2026-11-18, integrity/forgeable-approval-attribution). An approver display
+  // needs a server-side source and therefore a migration (R1-KW-60).
+  function handleApprove() {
+    if (!form) return
+    save({
+      ...form,
+      status: 'active',
+      version_note: form.version_note || t('vaktcomply.policyDetail.approveNote'),
     })
   }
 
@@ -96,7 +123,7 @@ export default function PolicyDetailPage() {
     <div className="flex flex-col h-full">
       <PageHeader
         title={policy.title}
-        description={`v${policy.version} · Revision ${policy.version_num}${policy.category ? ` · ${policy.category}` : ''}`}
+        description={policyVersionLine(policy, t)}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { navigate('/vaktcomply/policies'); }}>
@@ -108,6 +135,17 @@ export default function PolicyDetailPage() {
               <Users className="w-4 h-4 mr-1" />
               {t('vaktcomply.policyDetail.acceptanceLink')}
             </Button>
+            {canWrite && policy.status !== 'active' && (
+              <Button
+                variant="outline"
+                onClick={handleApprove}
+                disabled={update.isPending}
+                title={t('vaktcomply.policyDetail.approveHint')}
+              >
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                {update.isPending ? t('vaktcomply.policyDetail.approvePending') : t('vaktcomply.policyDetail.approveBtn')}
+              </Button>
+            )}
             {canWrite && (
               <Button onClick={handleSave} disabled={!dirty || update.isPending}>
                 <Save className="w-4 h-4 mr-1" />
@@ -158,25 +196,14 @@ export default function PolicyDetailPage() {
                     onChange={(e) => { set('version_note', e.target.value); }}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pol-updated-by">{t('vaktcomply.policyDetail.labelUpdatedBy')}</Label>
-                    <Input
-                      id="pol-updated-by"
-                      placeholder={t('vaktcomply.policyDetail.placeholderUpdatedBy')}
-                      value={form.updated_by ?? ''}
-                      onChange={(e) => { set('updated_by', e.target.value); }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pol-next-review">{t('vaktcomply.policyDetail.labelNextReview')}</Label>
-                    <Input
-                      id="pol-next-review"
-                      type="date"
-                      value={form.next_review_due ?? ''}
-                      onChange={(e) => { set('next_review_due', e.target.value); }}
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pol-updated-by">{t('vaktcomply.policyDetail.labelUpdatedBy')}</Label>
+                  <Input
+                    id="pol-updated-by"
+                    placeholder={t('vaktcomply.policyDetail.placeholderUpdatedBy')}
+                    value={form.updated_by ?? ''}
+                    onChange={(e) => { set('updated_by', e.target.value); }}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -205,6 +232,7 @@ export default function PolicyDetailPage() {
                 <div className="space-y-1.5">
                   <Label>{t('vaktcomply.policyDetail.labelVersion')}</Label>
                   <Input value={form.version ?? ''} onChange={(e) => { set('version', e.target.value); }} placeholder={t('vaktcomply.policyDetail.placeholderVersion')} />
+                  <p className="text-xs text-muted-foreground">{t('vaktcomply.policyDetail.revisionHint')}</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t('vaktcomply.policyDetail.labelOwner')}</Label>
@@ -215,8 +243,8 @@ export default function PolicyDetailPage() {
                   <Input type="date" value={form.effective_date ?? ''} onChange={(e) => { set('effective_date', e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.policyDetail.labelReviewDate')}</Label>
-                  <Input type="date" value={form.review_date ?? ''} onChange={(e) => { set('review_date', e.target.value); }} />
+                  <Label htmlFor="pol-next-review">{t('vaktcomply.policyDetail.labelReviewDate')}</Label>
+                  <Input id="pol-next-review" type="date" value={form.review_date ?? ''} onChange={(e) => { set('review_date', e.target.value); }} />
                 </div>
               </CardContent>
             </Card>
@@ -228,9 +256,6 @@ export default function PolicyDetailPage() {
                 <p>{t('vaktcomply.policyDetail.metaUpdated')} {formatDate(policy.updated_at)}</p>
                 {policy.reviewed_at && (
                   <p>{t('vaktcomply.policyDetail.metaReviewed')} {formatDate(policy.reviewed_at)}</p>
-                )}
-                {policy.next_review_due && (
-                  <p>{t('vaktcomply.policyDetail.metaNextReview')} {formatDate(policy.next_review_due)}</p>
                 )}
                 {policy.last_updated_by && (
                   <p>{t('vaktcomply.policyDetail.metaUpdatedBy')} {policy.last_updated_by}</p>

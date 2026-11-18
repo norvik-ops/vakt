@@ -35,6 +35,7 @@ import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
 import { UserPicker } from '../../../shared/components/UserPicker'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import { frameworkDisplayName } from '../utils/frameworkCatalogue'
+import { policyVersionLine } from '../utils/policyVersion'
 
 const POLICY_TYPES = [
   'Informationssicherheitsrichtlinie (ISO 27001 A.5.1)',
@@ -71,10 +72,12 @@ function PolicyCard({ policy, onClick }: { policy: Policy; onClick: () => void }
     active: t('vaktcomply.policiesPage.statusActive'),
     archived: t('vaktcomply.policiesPage.statusArchived'),
   }
-  const reviewDate = policy.review_date
-    ? formatDate(policy.review_date, { year: 'numeric', month: 'short', day: 'numeric' })
+  // Same source as the detail page's „Nächste Überprüfung" (UX-21).
+  const nextReview = policy.review_date ?? policy.next_review_due
+  const reviewDate = nextReview
+    ? formatDate(nextReview, { year: 'numeric', month: 'short', day: 'numeric' })
     : null
-  const isOverdue = policy.review_date && new Date(policy.review_date) < new Date()
+  const isOverdue = nextReview && new Date(nextReview) < new Date()
 
   return (
     <Card className="cursor-pointer hover:border-brand/50 transition-colors" onClick={onClick}>
@@ -83,11 +86,10 @@ function PolicyCard({ policy, onClick }: { policy: Policy; onClick: () => void }
           <div>
             <div className="flex items-center gap-1.5">
               <p className="font-medium text-sm">{policy.title}</p>
-              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs px-1.5 py-0 shrink-0">
-                v{policy.version_num}
-              </Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{policy.version}{policy.category ? ` · ${policy.category}` : ''}</p>
+            {/* UX-22: same wording and fields as the detail page header —
+                „Version" is the label the owner sets, „Revision" the save counter. */}
+            <p className="text-xs text-muted-foreground mt-0.5">{policyVersionLine(policy, t)}</p>
           </div>
           <Badge className={STATUS_CLASS[policy.status]}>{STATUS_LABELS[policy.status]}</Badge>
         </div>

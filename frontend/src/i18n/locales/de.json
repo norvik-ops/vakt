@@ -46,7 +46,7 @@
       "approvals": "Genehmigungen",
       "overdue": "Überfällig",
       "policies": "Richtlinien",
-      "soa": "SoA",
+      "soa": "Anwendbarkeit (SoA)",
       "evidence": "Nachweise",
       "cryptography": "Kryptographie",
       "certTimeline": "Zert.-Plan",
@@ -83,7 +83,7 @@
     "aiReport": "KI-Bericht",
     "frameworksSection": {
       "title": "Frameworks",
-      "readinessScore": "Reifegrad",
+      "readinessScore": "Umsetzungsgrad",
       "controls": "Controls",
       "implemented": "Umgesetzt",
       "inProgress": "In Bearbeitung",
@@ -103,7 +103,7 @@
       "newPolicy": "Neue Richtlinie"
     },
     "evidence": {
-      "upload": "Evidence hochladen",
+      "upload": "Nachweis hochladen",
       "expiryDate": "Ablaufdatum",
       "expires": "Läuft ab",
       "expired": "Abgelaufen"
@@ -409,7 +409,7 @@
       "noPoliciesDesc": "Legen Sie Ihre Informationssicherheits- und Datenschutzrichtlinien an.",
       "overdue": "Überfällig",
       "owner": "Verantwortlich",
-      "reviewDate": "Review",
+      "reviewDate": "Nächste Überprüfung",
       "statusDraft": "Entwurf",
       "statusActive": "Aktiv",
       "statusArchived": "Archiviert",
@@ -438,7 +438,7 @@
       "labelVersion": "Version",
       "labelOwner": "Verantwortlicher",
       "labelEffectiveDate": "Gültig ab",
-      "labelReviewDate": "Review-Datum",
+      "labelReviewDate": "Nächste Überprüfung",
       "placeholderTitle": "z.B. Informationssicherheits-Leitlinie",
       "placeholderCategory": "z.B. IT-Sicherheit, Datenschutz, HR",
       "placeholderDescription": "Zweck und Geltungsbereich der Richtlinie …",
@@ -607,16 +607,16 @@
       "overdue": "Überfällig",
       "scope": "Scope",
       "editTitle": "Bearbeiten",
-      "linkEvidenceTitle": "Als DORA-Evidenz verknüpfen",
+      "linkEvidenceTitle": "Als DORA-Nachweis verknüpfen",
       "deleteTitle": "Löschen",
       "deleteConfirm": "Resilience-Test wirklich löschen?",
       "attachmentPresent": "Anhang vorhanden",
-      "linkEvidenceDialogTitle": "Als DORA-Evidenz verknüpfen",
-      "linkEvidenceDesc": "Verknüpfen Sie diesen Resilienztest als Evidenz mit einem DORA-Control (z.B. Art. 26). Die Control-ID finden Sie auf der Kontrolldetailseite.",
+      "linkEvidenceDialogTitle": "Als DORA-Nachweis verknüpfen",
+      "linkEvidenceDesc": "Verknüpfen Sie diesen Resilienztest als Nachweis mit einer DORA-Kontrolle (z.B. Art. 26). Die Kontroll-ID finden Sie auf der Kontrolldetailseite.",
       "controlIdLabel": "Control-ID *",
       "controlIdPlaceholder": "UUID des Controls (z.B. DORA-3.2)",
       "linking": "Verknüpfen …",
-      "saveAsEvidence": "Als Evidenz speichern",
+      "saveAsEvidence": "Als Nachweis speichern",
       "dialogTitleEdit": "Test bearbeiten",
       "dialogTitleNew": "Neuer Test",
       "typeLabelRequired": "Typ *",
@@ -663,11 +663,11 @@
       "framework": "Framework",
       "control": "Kontrolle",
       "evidence": "Nachweis",
-      "title": "Automatisch gesammelte Evidence",
+      "title": "Automatisch gesammelte Nachweise",
       "description": "Automatisch gesammelte Nachweise aus GitHub, Trainings und Scanner-Ergebnissen — bereit zum Zuordnen",
-      "loading": "Lade Evidence…",
-      "emptyTitle": "Kein ausstehender Evidence",
-      "emptyDescription": "Alle automatisch gesammelten Evidence-Einträge wurden bereits Kontrollen zugeordnet.",
+      "loading": "Lade Nachweise…",
+      "emptyTitle": "Keine offenen Nachweise",
+      "emptyDescription": "Alle automatisch gesammelten Nachweise wurden bereits Kontrollen zugeordnet.",
       "suggestion": "Vorschlag",
       "collected": "Gesammelt",
       "assignControl": "Kontrolle zuordnen",
@@ -769,8 +769,8 @@
       "statusCard": "Status",
       "createdAt": "Erstellt:",
       "updatedAt": "Geändert:",
-      "treatmentSection": "Risikobehandlung (ISO 27001 Clause 6)",
-      "residualTitle": "Berechnung (ISO 27001 Clause 8.3)",
+      "treatmentSection": "Risikobehandlung (ISO 27001 Klausel 6)",
+      "residualTitle": "Berechnung (ISO 27001 Klausel 8.3)",
       "grossRisk": "Bruttorisiko:",
       "netRisk": "Nettorisiko:",
       "grossLikelihood": "Brutto-Wahrscheinlichkeit",
@@ -907,7 +907,9 @@
       "statusApprovalRequired": "Statusänderungen brauchen eine Freigabe. Bitte auf der Kontrollseite beantragen.",
       "statusControlNotApplicable": "Die Kontrolle ist als nicht anwendbar markiert. Den Status pflegen Sie auf der Kontrollseite.",
       "openControl": "Kontrolle öffnen",
-      "statusSnapshotHint": "Freigegebene Version: Der Status zeigt den Stand bei der Freigabe. Eine Änderung legt einen neuen Entwurf an, der wieder den aktuellen Status der Kontrollen zeigt."
+      "statusSnapshotHint": "Freigegebene Version: Der Status zeigt den Stand bei der Freigabe. Eine Änderung legt einen neuen Entwurf an, der wieder den aktuellen Status der Kontrollen zeigt.",
+      "heading": "Anwendbarkeitserklärung (SoA)",
+      "headingTooltip": "Anwendbarkeitserklärung (engl. Statement of Applicability) — ISO 27001:2022 Klausel 6.1.3: dokumentierte Aussage über die Anwendbarkeit aller 93 Maßnahmen aus Anhang A, inkl. Begründung für Ausschlüsse."
     },
     "policyDetail": {
       "acceptanceLink": "Von Mitarbeitern bestätigen lassen",
@@ -929,15 +931,22 @@
       "placeholderVersion": "z.B. 1.0, 2.1",
       "labelOwner": "Verantwortlicher",
       "labelEffectiveDate": "Gültig ab",
-      "labelReviewDate": "Review-Datum",
+      "labelReviewDate": "Nächste Überprüfung",
       "metaCreated": "Erstellt:",
       "metaUpdated": "Geändert:",
       "metaReviewed": "Zuletzt geprüft:",
-      "metaNextReview": "Nächste Prüfung:",
+      "metaNextReview": "Nächste Überprüfung:",
       "metaUpdatedBy": "Bearbeitet von:",
       "statusDraft": "Entwurf",
       "statusActive": "Aktiv",
-      "statusArchived": "Archiviert"
+      "statusArchived": "Archiviert",
+      "versionLabel": "Version {{version}}",
+      "revisionLabel": "Revision {{n}}",
+      "revisionHint": "Die Version vergeben Sie selbst. Die Revision zählt Vakt bei jedem Speichern hoch.",
+      "approveBtn": "Freigeben",
+      "approvePending": "Wird freigegeben…",
+      "approveNote": "Freigegeben",
+      "approveHint": "Setzt den Status auf „Aktiv“ und speichert. Wer freigegeben hat, hält Vakt noch nicht fälschungssicher fest."
     },
     "interestedParties": {
       "title": "Interessierte Parteien",
@@ -1298,7 +1307,7 @@
       "accept": "Akzeptieren",
       "confirmRework": "Bestätigen",
       "reworkNotePlaceholder": "Begründung / Anforderung für Nacharbeit…",
-      "evidenceCreated": "Evidence erstellt → Control ansehen"
+      "evidenceCreated": "Nachweis erstellt → Kontrolle ansehen"
     },
     "frameworkSetupWizard": {
       "implemented": "Implementiert",
@@ -1476,7 +1485,9 @@
       "port": "Port"
     },
     "policyVersionHistory": {
-      "changeNote": "Änderungsnotiz"
+      "changeNote": "Änderungsnotiz",
+      "revision": "Revision {{n}}",
+      "currentState": "aktueller Stand"
     },
     "frameworkDetail": {
       "colLabel": "Bezeichnung",
@@ -1826,7 +1837,7 @@
     "aiEndpointLabel": "Custom Endpunkt (BYOK)",
     "aiEndpointHint": "Bei Extern-Endpunkten trägt der Betreiber die DSGVO-Verantwortung (Art. 28 AVV empfohlen).",
     "aiDigestTitle": "KI-Wochendigest",
-    "aiDigestDesc": "Montags per E-Mail: KI-generierte Zusammenfassung von offenen Risiken, veralteten Evidenzen und Compliance-Lücken. Erfordert SMTP-Konfiguration.",
+    "aiDigestDesc": "Montags per E-Mail: KI-generierte Zusammenfassung von offenen Risiken, veralteten Nachweisen und Compliance-Lücken. Erfordert SMTP-Konfiguration.",
     "aiDigestAria": "KI-Wochendigest aktivieren",
     "aiSaved": "Gespeichert",
     "aiSaving": "Speichern…",
@@ -1913,9 +1924,9 @@
     "labelEmail": "E-Mail-Adresse",
     "labelRole": "Rolle",
     "placeholderEmail": "kollegin@example.com",
-    "roleAdmin": "Admin — Vollzugriff inkl. Einstellungen",
-    "roleEditor": "Editor — Lesen und Schreiben",
-    "roleViewer": "Viewer — Nur lesen",
+    "roleAdmin": "Darf alles, auch Einstellungen, Team und Lizenz verwalten.",
+    "roleEditor": "Liest und bearbeitet Risiken, Kontrollen, Richtlinien und Nachweise.",
+    "roleViewer": "Sieht alles, ändert nichts.",
     "sending": "Sende...",
     "sendInvitation": "Einladung senden",
     "invitationSent": "Einladung gesendet",
@@ -1936,8 +1947,9 @@
     "createUser": "Nutzer anlegen",
     "userCreated": "Nutzer erfolgreich angelegt",
     "deleted": "Gelöscht",
-    "roleAuditorReadOnly": "AuditorReadOnly — Nur lesen, für externe Prüfer",
-    "roleInternalAuditor": "InternalAuditor — Audits abschließen und Management-Reviews genehmigen (Funktionstrennung)"
+    "roleAuditorReadOnly": "Nur lesen, für externe Prüfer, die das ISMS begutachten.",
+    "roleInternalAuditor": "Schließt Audits ab und genehmigt Management-Reviews (Funktionstrennung).",
+    "rolesLegendTitle": "Was die Rollen dürfen"
   },
   "accountSettingsPage": {
     "title": "Konto-Einstellungen",
@@ -2037,7 +2049,7 @@
     "exportControls": "Controls exportieren",
     "statusUpdated": "Status aktualisiert",
     "bulkUpdateFailed": "Bulk-Update fehlgeschlagen",
-    "readOnlyHint": "Nur Lesezugriff: Änderungen sind den Rollen Editor und Admin vorbehalten."
+    "readOnlyHint": "Nur Lesezugriff: Änderungen sind den Rollen Bearbeiter und Administrator vorbehalten."
   },
   "actions": {
     "save": "Speichern",
@@ -2353,11 +2365,11 @@
       "unknownDevice": "Unbekanntes Gerät"
     },
     "team": {
-      "roleAdmin": "Admin",
-      "roleEditor": "Editor",
-      "roleViewer": "Viewer",
-      "roleAuditorReadOnly": "AuditorReadOnly",
-      "roleInternalAuditor": "InternalAuditor"
+      "roleAdmin": "Administrator",
+      "roleEditor": "Bearbeiter",
+      "roleViewer": "Leser",
+      "roleAuditorReadOnly": "Externer Prüfer (nur lesen)",
+      "roleInternalAuditor": "Interner Auditor"
     }
   },
   "admin": {
@@ -2463,7 +2475,7 @@
       "org": "Organisation vervollständigen",
       "asset": "Ersten Asset hinzufügen",
       "team": "Team-Mitglied einladen",
-      "evidence": "Evidence hochladen",
+      "evidence": "Nachweis hochladen",
       "mfa": "2FA einrichten"
     }
   },
@@ -2733,7 +2745,7 @@
   "integrations": {
     "page": {
       "title": "Integrationen",
-      "description": "Externe Dienste verbinden und Compliance-Evidence automatisch sammeln.",
+      "description": "Externe Dienste verbinden und Compliance-Nachweise automatisch sammeln.",
       "syncBadgeOk": "Synchronisiert",
       "syncBadgeError": "Fehler",
       "syncBadgePending": "Ausstehend",
@@ -2746,15 +2758,15 @@
       "loadingChecks": "Lade Check-Ergebnisse…",
       "lastSync": "Letzter Sync: {{date}}",
       "neverSyncedLong": "Noch nie synchronisiert",
-      "recentEvidence": "Zuletzt gesammelte Evidence",
-      "noEvidence": "Noch keine Evidence gesammelt. Synchronisierung starten.",
+      "recentEvidence": "Zuletzt gesammelte Nachweise",
+      "noEvidence": "Noch keine Nachweise gesammelt. Synchronisierung starten.",
       "testConnection": "Verbindung testen",
       "testing": "Teste…",
       "save": "Speichern",
       "saving": "Wird gespeichert…",
       "saveSuccess": "Konfiguration gespeichert",
       "connectionOk": "Verbindung erfolgreich",
-      "syncDone": "Synchronisierung abgeschlossen — {{count}} Evidence-Einträge erstellt",
+      "syncDone": "Synchronisierung abgeschlossen — {{count}} Nachweise erstellt",
       "connect": "Verbinden",
       "connectRepo": "Repository verbinden",
       "repoOwner": "Repository-Owner",
@@ -2763,7 +2775,7 @@
       "noRepos": "Noch keine Repositories verbunden",
       "github": {
         "title": "GitHub Repositories",
-        "emptyHint": "Verbinde ein GitHub-Repository, um automatisch Compliance-Evidence zu sammeln.",
+        "emptyHint": "Verbinde ein GitHub-Repository, um automatisch Compliance-Nachweise zu sammeln.",
         "loadError": "Fehler beim Laden der Integrationen: {{message}}"
       },
       "noThirdParty": {
@@ -2777,32 +2789,32 @@
       "saveFailed": "Speichern fehlgeschlagen",
       "connecting": "Verbinde…",
       "noReposConnected": "Noch keine Repositories verbunden",
-      "connectFirstRepo": "Verbinde ein GitHub-Repository, um automatisch Compliance-Evidence zu sammeln.",
+      "connectFirstRepo": "Verbinde ein GitHub-Repository, um automatisch Compliance-Nachweise zu sammeln.",
       "noThirdPartyTitle": "Keine Drittanbieter-Integrationen",
       "noThirdPartyDesc": "Aus Datenschutzgründen (DSGVO Art. 28) verzichtet Vakt auf Integrationen, die Sicherheitsdaten an externe SaaS-Dienste übertragen. Nutze Webhooks für eigene Automatisierungen.",
       "syncNow": "Jetzt synchronisieren"
     },
     "intune": {
       "title": "Microsoft Intune (MDM) Integration",
-      "description": "Geräte-Compliance (Verschlüsselung, Patch-Stand, Conformität) aus Intune (Microsoft Graph, managedDevices) täglich als Endpoint-Evidence für ISO A.8.1/A.8.9 und NIS2-Cyberhygiene. Nur lesend, kein Management.",
+      "description": "Geräte-Compliance (Verschlüsselung, Patch-Stand, Konformität) aus Intune (Microsoft Graph, managedDevices) täglich als Endgeräte-Nachweis für ISO A.8.1/A.8.9 und NIS2-Cyberhygiene. Nur lesend, kein Management.",
       "compliance": "Compliance",
       "permissionsHint": "Benötigt App-Registration mit DeviceManagementManagedDevices.Read.All. Secret wird AES-256-GCM verschlüsselt gespeichert."
     },
     "identity": {
       "entraID": {
         "title": "Microsoft Entra ID (Azure AD) Integration",
-        "description": "MFA-Enrollment, Conditional Access, Risky Users und Admin-Rollen täglich als Identity-Evidence erfassen. Benötigt App Registration mit Application Permissions (User.Read.All, Policy.Read.All, IdentityRiskyUser.Read.All).",
+        "description": "MFA-Enrollment, Conditional Access, Risky Users und Admin-Rollen täglich als Identitäts-Nachweis erfassen. Benötigt App Registration mit Application Permissions (User.Read.All, Policy.Read.All, IdentityRiskyUser.Read.All).",
         "syncNow": "Jetzt synchronisieren",
         "secretHint": "Secret wird AES-256-GCM verschlüsselt gespeichert."
       },
       "keycloak": {
         "title": "Keycloak REST Collector",
-        "description": "MFA-Status, Password-Policy, inaktive Accounts und Admin-Rollen aus Keycloak als Compliance-Evidence erfassen. Service Account benötigt 'view-users' und 'view-realm' Rollen.",
+        "description": "MFA-Status, Password-Policy, inaktive Accounts und Admin-Rollen aus Keycloak als Compliance-Nachweis erfassen. Service Account benötigt 'view-users' und 'view-realm' Rollen.",
         "syncNow": "Jetzt synchronisieren"
       },
       "ldap": {
         "title": "LDAP / Active Directory Collector",
-        "description": "Inaktive Accounts, Password-Hygiene und privilegierte Gruppen aus Active Directory oder OpenLDAP als Evidence erfassen. Service Account benötigt Read-Zugriff auf das Verzeichnis.",
+        "description": "Inaktive Accounts, Password-Hygiene und privilegierte Gruppen aus Active Directory oder OpenLDAP als Nachweis erfassen. Service Account benötigt Read-Zugriff auf das Verzeichnis.",
         "syncNow": "Jetzt synchronisieren",
         "privilegedGroups": "Privilegierte Gruppen (kommagetrennt)",
         "useTLS": "LDAPS / STARTTLS verwenden (Port 636)",
@@ -2928,7 +2940,7 @@
     "newIncidentsHint": "Benachrichtigung wenn ein neuer Sicherheitsvorfall angelegt wird.",
     "overdueControls": "Überfällige Controls",
     "overdueControlsHint": "Tägliche Erinnerung wenn Controls ihr Review-Datum überschritten haben.",
-    "evidenceExpiry": "Evidence-Ablauf (30 Tage vorher)",
+    "evidenceExpiry": "Ablauf von Nachweisen (30 Tage vorher)",
     "evidenceExpiryHint": "Erinnerung wenn ein Nachweis in 30 Tagen abläuft.",
     "inappComments": "Neue Kommentare auf eigene Items",
     "inappCommentsHint": "Wenn jemand einen Kommentar auf ein von dir erstelltes Element hinterlässt.",
@@ -3565,13 +3577,13 @@
   },
   "glossary": {
     "Control": "Control (ISO 27001 Anhang A): Maßnahme oder Anforderung zur Informationssicherheit. ISO 27001:2022 definiert 93 Controls in 4 Themenbereichen.",
-    "Nachweis": "Evidence/Nachweis: dokumentierter Beleg, dass ein Control umgesetzt wurde — z.B. Screenshot, Protokoll, Audit-Log, Zertifikat.",
-    "Evidence": "Evidence/Nachweis: dokumentierter Beleg, dass ein Control umgesetzt wurde — z.B. Screenshot, Protokoll, Audit-Log, Zertifikat.",
+    "Nachweis": "Nachweis (engl. Evidence): dokumentierter Beleg, dass eine Kontrolle umgesetzt wurde — z.B. Screenshot, Protokoll, Audit-Log, Zertifikat.",
+    "Evidence": "Nachweis (engl. Evidence): dokumentierter Beleg, dass eine Kontrolle umgesetzt wurde — z.B. Screenshot, Protokoll, Audit-Log, Zertifikat.",
     "Schutzbedarf": "Schutzbedarf (BSI): Klassifizierung von Daten und Systemen nach dem Schadenpotenzial bei Verlust der Vertraulichkeit, Integrität oder Verfügbarkeit. Stufen: normal / hoch / sehr hoch.",
     "Residualrisiko": "Residualrisiko: verbleibendes Risiko nach Anwendung aller Maßnahmen. Muss dokumentiert und ggf. vom Management akzeptiert werden (ISO 27001 Kl. 6.1.3).",
     "Eintrittswahrscheinlichkeit": "Wahrscheinlichkeit des Risikoeintritts auf einer Skala 1 (sehr unwahrscheinlich) bis 5 (sehr wahrscheinlich). Multipliziert mit der Auswirkung ergibt sich der Risiko-Score.",
     "Auswirkung": "Impact/Auswirkung: Schadensausmaß im Risikoeintrittsfall auf einer Skala 1 (vernachlässigbar) bis 5 (kritisch/existenzbedrohend).",
-    "SoA": "Statement of Applicability — ISO 27001:2022 Kl. 6.1.3: Pflichtdokument mit Anwendbarkeit aller 93 Anhang-A-Controls und Begründung für Ausschlüsse.",
+    "SoA": "Anwendbarkeitserklärung (SoA, engl. Statement of Applicability) — ISO 27001:2022 Klausel 6.1.3: Pflichtdokument mit der Anwendbarkeit aller 93 Maßnahmen aus Anhang A und der Begründung für Ausschlüsse.",
     "RTO": "Recovery Time Objective: maximal tolerierbare Ausfallzeit eines Prozesses oder Systems vor Wiederanlauf. BCM-Kerngröße nach BSI 200-4.",
     "RPO": "Recovery Point Objective: maximaler Datenverlust-Zeitraum (Zeitpunkt des letzten Backups bis Ausfall). BCM-Kerngröße nach BSI 200-4.",
     "MBCO": "Minimum Business Continuity Objective: Mindestleistungsniveau, das ein Prozess im Notbetrieb erbringen muss. BSI 200-4.",
@@ -3884,13 +3896,13 @@
     "toastStatusUpdated": "Status aktualisiert",
     "toastBulkFailed": "Bulk-Update fehlgeschlagen",
     "descWithName": "Controls, Lückenanalyse und Auditor-Zugang für {{name}} verwalten.",
-    "descFallback": "Readiness-Score, Lückenanalyse und Auditor-Zugang verwalten.",
+    "descFallback": "Umsetzungsgrad, Lückenanalyse und Auditor-Zugang verwalten.",
     "openTisaxView": "TISAX-Ansicht öffnen",
     "openCisView": "CIS Controls v8 öffnen",
     "errorFramework": "Framework konnte nicht geladen werden.",
     "errorControls": "Controls konnten nicht geladen werden.",
     "totalLabel": "Gesamt",
-    "noReadinessData": "Keine Readiness-Daten verfügbar.",
+    "noReadinessData": "Keine Daten zum Umsetzungsgrad verfügbar.",
     "tabGaps": "Lücken",
     "tabAuditorLinks": "Auditor-Links",
     "expiresAt": "Läuft ab: {{date}}",
@@ -3900,7 +3912,7 @@
     "gapExpiringEvidence": "Nachweis läuft ab",
     "gapRecommendNoEvidence": "Nachweis hinzufügen, um dieses Control zu erfüllen.",
     "gapRecommendExpiring": "Bestehenden Nachweis erneuern — läuft in den nächsten 30 Tagen ab.",
-    "readinessScore": "Readiness Score",
+    "readinessScore": "Umsetzungsgrad",
     "statusMissing": "Offen",
     "statusInProgressLabel": "In Bearbeitung",
     "statusImplementedLabel": "Umgesetzt",
@@ -4155,7 +4167,7 @@
     "whatTitle": "Was darf der Agent?",
     "whatScope": "Nur Tools nutzen, deren RequireScope Ihre Rolle abdeckt.",
     "whatRead": "Lesende Tools (Findings, Controls, Risks listen) sind freigegeben.",
-    "whatWrite": "Mutierende Tools (Evidence anlegen, Status ändern) sind Pro-Tier — kommen mit Approve-Before-Apply.",
+    "whatWrite": "Ändernde Werkzeuge (Nachweise anlegen, Status ändern) sind Pro-Tier — kommen mit Approve-Before-Apply.",
     "whatAudit": "Jeder Lauf wird vollständig im Audit-Log persistiert (org-scoped).",
     "goalTitle": "Agent-Auftrag",
     "goalPlaceholder": "Z.B.: Erstelle eine Übersicht aller offenen Controls für NIS2 und schlage Prioritäten vor.",

@@ -71,8 +71,8 @@ describe('TeamSettingsPage — assigning the InternalAuditor role', () => {
     expect(row).not.toBeNull()
     fireEvent.click(within(row as HTMLElement).getByRole('combobox'))
 
-    expect(screen.getByRole('option', { name: /InternalAuditor/ })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /AuditorReadOnly/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Interner Auditor' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Externer Prüfer (nur lesen)' })).toBeInTheDocument()
   })
 
   it('sends the platform role name the backend guards check', () => {
@@ -80,7 +80,7 @@ describe('TeamSettingsPage — assigning the InternalAuditor role', () => {
 
     const row = screen.getByText('admin2@example.test').closest('tr')
     fireEvent.click(within(row as HTMLElement).getByRole('combobox'))
-    fireEvent.click(screen.getByRole('option', { name: /InternalAuditor/ }))
+    fireEvent.click(screen.getByRole('option', { name: 'Interner Auditor' }))
 
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'u-admin2', role: 'InternalAuditor' }),
@@ -95,7 +95,7 @@ describe('TeamSettingsPage — assigning the InternalAuditor role', () => {
     // the cache would show the org's internal auditor as a plain viewer, and the
     // select would offer to "change" them to the role they already hold.
     const row = screen.getByText('auditor@example.test').closest('tr')
-    expect(within(row as HTMLElement).getByRole('combobox')).toHaveTextContent('InternalAuditor')
+    expect(within(row as HTMLElement).getByRole('combobox')).toHaveTextContent('Interner Auditor')
   })
 
   // The four strings behind these keys existed in all four locales but were
@@ -106,7 +106,7 @@ describe('TeamSettingsPage — assigning the InternalAuditor role', () => {
   it('explains what the two audit roles do', () => {
     renderWithProviders(<TeamSettingsPage />)
 
-    expect(screen.getByText(/Audits abschließen und Management-Reviews genehmigen/)).toBeInTheDocument()
+    expect(screen.getByText(/Schließt Audits ab und genehmigt Management-Reviews/)).toBeInTheDocument()
     expect(screen.getByText(/Nur lesen, für externe Prüfer/)).toBeInTheDocument()
   })
 
@@ -157,8 +157,45 @@ describe('TeamSettingsPage — pending invitations', () => {
     renderWithProviders(<TeamSettingsPage />)
 
     const viewerRow = screen.getByText('viewer-invite@example.test').closest('tr') as HTMLElement
-    expect(within(viewerRow).getAllByRole('cell')[1]).toHaveTextContent('Viewer')
+    expect(within(viewerRow).getAllByRole('cell')[1]).toHaveTextContent('Leser')
     const analystRow = screen.getByText('analyst-invite@example.test').closest('tr') as HTMLElement
-    expect(within(analystRow).getAllByRole('cell')[1]).toHaveTextContent('Editor')
+    expect(within(analystRow).getAllByRole('cell')[1]).toHaveTextContent('Bearbeiter')
+  })
+})
+
+// UX-07: Rollen erschienen mit internen Namen („Viewer", „AuditorReadOnly",
+// „InternalAuditor"). Die Oberfläche zeigt jetzt deutsche Anzeigenamen aus
+// roleLabel; die Backend-Werte bleiben unverändert (siehe Test oben: gesendet
+// wird weiter 'InternalAuditor').
+describe('TeamSettingsPage — deutsche Rollennamen (UX-07)', () => {
+  const RAW = /\b(Viewer|Editor|AuditorReadOnly|InternalAuditor|SecurityAnalyst)\b/
+
+  it('erklärt alle fünf Rollen mit Anzeigenamen in der Legende', () => {
+    renderWithProviders(<TeamSettingsPage />)
+
+    for (const name of ['Administrator:', 'Bearbeiter:', 'Leser:', 'Externer Prüfer (nur lesen):', 'Interner Auditor:']) {
+      expect(screen.getByText(name)).toBeInTheDocument()
+    }
+    expect(screen.getByText('Sieht alles, ändert nichts.')).toBeInTheDocument()
+  })
+
+  it('bietet in der Rollenauswahl keine internen Rollennamen an', () => {
+    renderWithProviders(<TeamSettingsPage />)
+
+    const row = screen.getByText('admin2@example.test').closest('tr') as HTMLElement
+    fireEvent.click(within(row).getByRole('combobox'))
+    const options = screen.getAllByRole('option').map((o) => o.textContent ?? '')
+    expect(options).toEqual(['Administrator', 'Bearbeiter', 'Leser', 'Externer Prüfer (nur lesen)', 'Interner Auditor'])
+    for (const o of options) expect(o).not.toMatch(RAW)
+  })
+
+  it('zeigt im Einladungsdialog Name und Beschreibung der gewählten Rolle', () => {
+    renderWithProviders(<TeamSettingsPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mitglied einladen' }))
+    const dlg = screen.getByRole('dialog')
+    expect(within(dlg).getByRole('combobox')).toHaveTextContent('Bearbeiter')
+    expect(within(dlg).getByText('Liest und bearbeitet Risiken, Kontrollen, Richtlinien und Nachweise.')).toBeInTheDocument()
+    expect(dlg.textContent ?? '').not.toMatch(RAW)
   })
 })

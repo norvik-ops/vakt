@@ -308,7 +308,7 @@ export default function CISControlsPage() {
             {cisFramework && (
               <Button variant="secondary" size="sm" onClick={handleExportPDF}>
                 <Download className="w-4 h-4 mr-1" />
-                Readiness-Bericht (PDF)
+                Bericht zum Umsetzungsgrad (PDF)
               </Button>
             )}
             <Button

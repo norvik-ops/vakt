@@ -31,7 +31,7 @@ const RECOMMENDED_CONTROLS: Record<string, { label: string; hint: string }[]> = 
     { label: 'Zugangskontrolle', hint: 'Art. 21 Abs. 2 lit. i — Authentifizierung & Zugriff' },
     { label: 'Asset-Inventar', hint: 'Art. 21 Abs. 2 lit. a — Risikoanalyse' },
     { label: 'Vorfallmeldung', hint: 'Art. 23 — Meldepflichten für erhebliche Vorfälle' },
-    { label: 'Business Continuity', hint: 'Art. 21 Abs. 2 lit. c — Betriebskontinuität' },
+    { label: 'Betriebskontinuität (BCM)', hint: 'Art. 21 Abs. 2 lit. c — Notfall- und Wiederanlaufplanung' },
   ],
   BSI: [
     { label: 'ORP.4 Identitäts- und Berechtigungsmanagement', hint: 'Zugriffsrechte strukturiert verwalten' },

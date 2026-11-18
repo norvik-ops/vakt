@@ -27,6 +27,7 @@ import { SECTOR_LABELS } from '../../../shared/types/sectors'
 import { useExportData } from '../../../hooks/useDataExport'
 import { useAuditReport } from '../../../shared/hooks/useAuditReport'
 import { ProGate } from '../../../shared/components/ProGate'
+import { featureLabel } from '../../../shared/featureTiers'
 import { useUpdateCheck, useToggleUpdateCheck } from '../../../shared/hooks/useUpdateCheck'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 
@@ -325,24 +326,6 @@ interface LicenseInfo {
   renewal_failing: boolean
 }
 
-const FEATURE_LABELS: Record<string, string> = {
-  tisax: 'TISAX',
-  dora: 'DORA',
-  eu_ai_act: 'EU AI Act',
-  cra: 'CRA',
-  ai_advisor: 'KI-Berater (legacy — seit v0.6.x Community)',
-  audit_pdf: 'Audit-PDF Export',
-  sso: 'SSO (OIDC/SAML)',
-  api_access: 'API-Zugang',
-  // Module features of the archived modules (2026-10-23). Keys issued before
-  // still list them; they are shown, labelled, and grant nothing any more.
-  vaktaware_advanced: 'Vakt Aware Pro (Modul archiviert)',
-  vaktscan_advanced: 'Vakt Scan Pro (Modul archiviert)',
-  vaktvault_advanced: 'Vakt Vault Pro (Modul archiviert)',
-  vaktprivacy_advanced: 'Vakt Privacy Pro (Modul archiviert)',
-  granular_permissions: 'Granulare Modul-Berechtigungen pro Benutzer',
-}
-
 function useLicense() {
   return useQuery<LicenseInfo>({
     queryKey: ['license'],
@@ -422,7 +405,7 @@ function LicenseSection() {
           <div className="flex flex-wrap gap-1.5">
             {lic.features.map((f) => (
               <span key={f} className="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-md">
-                {FEATURE_LABELS[f] ?? f}
+                {featureLabel(f)}
               </span>
             ))}
           </div>

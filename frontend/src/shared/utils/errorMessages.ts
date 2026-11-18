@@ -1,3 +1,6 @@
+import i18next from 'i18next'
+import { roleLabel } from './roleLabel'
+
 const ERROR_MAP: Record<string, string> = {
   // Auth
   AUTH_INVALID_CREDENTIALS: 'E-Mail oder Passwort ist falsch.',
@@ -35,7 +38,10 @@ export function describeMissingRole(message: string): string | null {
   if (!m) return null
   const roles = m[1].split(' or ').map(r => r.trim()).filter(Boolean)
   if (roles.length === 0) return null
-  const list = roles.length === 1 ? `„${roles[0]}"` : roles.map(r => `„${r}"`).join(' oder ')
+  // Display names, not backend values: the operator looks for „Interner Auditor"
+  // in the team page, not for „InternalAuditor" (UX-07).
+  const names = roles.map(r => roleLabel(r, (k) => i18next.t(k)))
+  const list = names.length === 1 ? `„${names[0]}"` : names.map(r => `„${r}"`).join(' oder ')
   return (
     `Für diese Aktion fehlt dir die Rolle ${list}. ` +
     'Ein Administrator vergibt sie unter Einstellungen → Team.'

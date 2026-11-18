@@ -71,7 +71,7 @@ const AREA_LABELS: Record<string, string> = {
   governance: 'Governance & Verantwortlichkeit',
   risk_management: 'Risikomanagement',
   incident_response: 'Incident-Response',
-  business_continuity: 'Business Continuity',
+  business_continuity: 'Betriebskontinuität',
   supply_chain: 'Lieferketten-Sicherheit',
   crypto: 'Kryptographie',
   access_control: 'Zugriffskontrolle',

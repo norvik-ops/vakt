@@ -35,7 +35,10 @@ async function invite(page: Page, email: string): Promise<void> {
   const dlg = page.getByRole('dialog', { name: 'Mitglied einladen' })
   await dlg.getByLabel('E-Mail-Adresse').fill(email)
   await dlg.getByRole('combobox').click()
-  await page.getByRole('option', { name: /^Viewer/ }).click()
+  // Seit fix/begriffe zeigt die Auswahl den deutschen Rollennamen („Leser") statt
+  // „Viewer — Nur lesen". Gewählt wird weiter die Leserolle; die anderen Optionen
+  // („Administrator", „Bearbeiter") beginnen nicht mit „Leser".
+  await page.getByRole('option', { name: /^Leser/ }).click()
   await dlg.getByRole('button', { name: 'Einladung senden' }).click()
   await expect(page.getByText('Einladung gesendet', { exact: true })).toBeVisible()
 }
@@ -118,7 +121,9 @@ test.describe('KW3 Anmeldung & Rechte', () => {
     await invite(page, 'rolle@kernwege.test')
     const row = page.getByRole('row', { name: /rolle@kernwege\.test/ })
     await expect(row).toBeVisible()
-    await expect(row.getByRole('cell').nth(1)).toHaveText('Viewer', { timeout: 3000 })
+    // Seit fix/begriffe heißt die Rolle in der Liste „Leser" statt „Viewer"; geprüft
+    // wird weiter exakt der Zellentext der eingeladenen Rolle.
+    await expect(row.getByRole('cell').nth(1)).toHaveText('Leser', { timeout: 3000 })
   })
 
   test('KW3 Admin legt einen Viewer direkt an, Viewer meldet sich an', async ({ browser }) => {
@@ -127,9 +132,16 @@ test.describe('KW3 Anmeldung & Rechte', () => {
     const dlg = page.getByRole('dialog', { name: 'Nutzer direkt anlegen' })
     await dlg.getByLabel('E-Mail-Adresse').fill(VIEWER.email)
     await dlg.getByLabel('Passwort').fill(VIEWER.password)
-    await expect(dlg.getByRole('combobox')).toHaveText(/Viewer/)
+    // Seit fix/begriffe steht in der Vorauswahl „Leser" statt „Viewer"; geprüft wird
+    // weiter, dass die Leserolle vorausgewählt ist — und der englische Name nicht mehr.
+    await expect(dlg.getByRole('combobox')).toHaveText(/Leser/)
+    await expect(dlg.getByRole('combobox')).not.toHaveText(/Viewer/)
     await dlg.getByRole('button', { name: 'Nutzer anlegen' }).click()
-    await expect(page.getByRole('row', { name: /viewer@kernwege\.test/ })).toContainText('Viewer')
+    // Seit fix/begriffe zeigt die Mitgliederzeile „Leser" statt „Viewer". Der Vergleich
+    // ist groß-/kleinschreibungsgenau, die E-Mail „viewer@…" trifft „Viewer" also nicht.
+    const member = page.getByRole('row', { name: /viewer@kernwege\.test/ })
+    await expect(member).toContainText('Leser')
+    await expect(member).not.toContainText('Viewer')
     patchState({ viewer: { ...VIEWER } })
 
     const v = await freshPage(browser)
