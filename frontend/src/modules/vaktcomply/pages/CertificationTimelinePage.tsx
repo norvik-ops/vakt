@@ -21,6 +21,7 @@ import {
 import { useFrameworks } from '../hooks/useFrameworks'
 import type { AuditMilestone, MilestoneStatus, MilestoneType, CreateMilestoneInput } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
 // ---- constants ----
 
@@ -476,7 +477,7 @@ function AddMilestoneDialog({
               <SelectContent>
                 <SelectItem value="__none__">{t('certificationTimeline.frameworkNone')}</SelectItem>
                 {frameworks?.map(fw => (
-                  <SelectItem key={fw.id} value={fw.id}>{fw.name}</SelectItem>
+                  <SelectItem key={fw.id} value={fw.id}>{frameworkDisplayName(fw.name)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

@@ -265,13 +265,17 @@ export async function saveDialogUntilClosed(dialog: Locator, buttonName = 'Speic
 /** Framework-Übersicht → Katalogkarte „ISO/IEC 27001:2022" → „Anzeigen" → Detailseite. */
 export async function openIsoDetail(page: Page): Promise<void> {
   await page.goto('/vaktcomply/frameworks')
-  const heading = page.getByRole('heading', { name: 'ISO27001 Details', level: 1 })
+  // Seit fix/framework-anzeigenamen heißt die Detailseite „ISO 27001" (Anzeigename) statt
+  // „ISO27001 Details". Exakter Name + Ebene 1 + URL der Detailseite, damit der Selektor
+  // weiter beweist, dass die Detailseite offen ist, und auf nichts anderes trifft.
+  const heading = page.getByRole('heading', { name: 'ISO 27001', exact: true, level: 1 })
   await expect(async () => {
     if (!(await heading.isVisible())) {
       await page.getByText('ISO/IEC 27001:2022', { exact: true }).locator('xpath=ancestor::div[.//button][1]')
         .getByRole('button', { name: 'Anzeigen', exact: true }).click({ timeout: 5000 })
     }
     await expect(heading).toBeVisible({ timeout: 5000 })
+    await expect(page).toHaveURL(/\/vaktcomply\/frameworks\/[0-9a-f-]{36}$/, { timeout: 5000 })
   }).toPass({ timeout: 45_000 })
 }
 

@@ -34,6 +34,7 @@ import { handleApiError } from '../../../shared/utils/errorMessages'
 import { SkeletonCardGrid } from '../../../shared/components/SkeletonLoaders'
 import { UserPicker } from '../../../shared/components/UserPicker'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
 const POLICY_TYPES = [
   'Informationssicherheitsrichtlinie (ISO 27001 A.5.1)',
@@ -416,7 +417,7 @@ export default function PoliciesPage() {
                   <SelectContent>
                     <SelectItem value={SELECT_NONE}>{t('vaktcomply.policiesPage.noFramework')}</SelectItem>
                     {frameworks?.map((fw) => (
-                      <SelectItem key={fw.id} value={fw.id}>{fw.name}</SelectItem>
+                      <SelectItem key={fw.id} value={fw.id}>{frameworkDisplayName(fw.name)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

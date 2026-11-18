@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Spinner } from '../../../components/Spinner'
 import { useThreatCatalog, useCreateRiskFromCatalog, type ThreatCatalogFilter } from '../hooks/useThreatCatalog'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
 const FRAMEWORKS = ['ISO27001', 'BSI', 'NIS2', 'DSGVO-TOM', 'C5', 'DORA']
 const ASSET_TYPES = ['server', 'endpoint', 'data', 'identity', 'network', 'application', 'cloud', 'facility', 'supplier', 'process', 'service']
@@ -45,7 +46,7 @@ export function ThreatCatalogDialog({ open, onClose }: { open: boolean; onClose:
                     key={fw}
                     onClick={() => { toggle('framework', fw) }}
                     className={`px-2 py-0.5 rounded border ${filter.framework === fw ? 'bg-primary/20 border-primary text-primary' : 'border-border'}`}
-                  >{fw}</button>
+                  >{frameworkDisplayName(fw)}</button>
                 ))}
               </div>
             </div>
@@ -101,7 +102,7 @@ export function ThreatCatalogDialog({ open, onClose }: { open: boolean; onClose:
                 <div className="flex flex-wrap items-center gap-1">
                   <Badge variant="outline" className="text-[10px]">{it.category}</Badge>
                   {it.frameworks.map((fw) => (
-                    <Badge key={fw} variant="outline" className="text-[10px]">{fw}</Badge>
+                    <Badge key={fw} variant="outline" className="text-[10px]">{frameworkDisplayName(fw)}</Badge>
                   ))}
                   <span className="text-[10px] text-muted-foreground ml-auto">
                     {t('threatCatalog.defaultScore')}: {it.default_likelihood}×{it.default_impact}

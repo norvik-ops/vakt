@@ -43,6 +43,7 @@ import { BulkActionBar } from '../../../shared/components/BulkActionBar'
 import { cn } from '../../../lib/utils'
 import { exportToCSV } from '../../../lib/csv'
 import type { AuditorLink, Control } from '../types'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 import {
   useFramework,
   useReadinessReport,
@@ -852,25 +853,24 @@ export default function FrameworkDetailPage() {
 
   useMilestoneToast(report?.readiness_score)
 
-  const frameworkTitle = frameworkLoading
-    ? '…'
-    : framework
-    ? `${framework.name} Details`
-    : 'Framework'
+  // Anzeigename aus dem Katalog („ISO 27001"), nicht der interne Schlüssel („ISO27001").
+  const displayName = framework ? frameworkDisplayName(framework.name) : 'Framework'
+
+  const frameworkTitle = frameworkLoading ? '…' : displayName
 
   const frameworkDesc = framework
-    ? `Controls, Lückenanalyse und Auditor-Zugang für ${framework.name} verwalten.`
+    ? `Controls, Lückenanalyse und Auditor-Zugang für ${displayName} verwalten.`
     : 'Readiness-Score, Lückenanalyse und Auditor-Zugang verwalten.'
 
   useEffect(() => {
-    if (framework) trackPage(`/vaktcomply/frameworks/${frameworkId}`, framework.name, '📋')
+    if (framework) trackPage(`/vaktcomply/frameworks/${frameworkId}`, displayName, '📋')
   }, [framework?.id])
 
   return (
     <div className="flex flex-col h-full">
       <Breadcrumbs items={[
         { label: 'Vakt Comply', href: '/vaktcomply' },
-        { label: framework?.name ?? 'Framework' },
+        { label: displayName },
       ]} />
       <PageHeader
         title={frameworkTitle}
@@ -912,13 +912,13 @@ export default function FrameworkDetailPage() {
                       rows: domainControls.map((c) => [c.control_id, c.title, effectiveStatus(c)]),
                     }))
                   : []
-                exportAsRTF(framework?.name ?? 'Framework', sections)
+                exportAsRTF(displayName, sections)
               }}
             >
               <FileDown className="w-4 h-4 mr-1" />
               RTF Export
             </Button>
-            <Button variant="outline" size="sm" onClick={() => { downloadPDF(frameworkId, framework?.name); }}>
+            <Button variant="outline" size="sm" onClick={() => { downloadPDF(frameworkId, framework ? displayName : undefined); }}>
               <FileDown className="w-4 h-4 mr-1" />
               PDF Export
             </Button>

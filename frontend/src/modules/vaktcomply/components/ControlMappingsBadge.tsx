@@ -1,6 +1,7 @@
 import { Link2 } from 'lucide-react'
 import { useControlMappings } from '../hooks/useControlMappings'
 import type { ControlMapping } from '../hooks/useControlMappings'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
 // Colour scheme per mapping type
 const MAPPING_TYPE_STYLE: Record<ControlMapping['mapping_type'], string> = {
@@ -32,10 +33,10 @@ export function ControlMappingsBadge({ controlId }: ControlMappingsBadgeProps) {
       {mappings.map((m) => (
         <span
           key={m.id}
-          title={`${m.target_framework_name}: ${m.target_control_title} (${m.mapping_type})`}
+          title={`${frameworkDisplayName(m.target_framework_name)}: ${m.target_control_title} (${m.mapping_type})`}
           className={`inline-flex items-center rounded border px-2 py-0.5 font-mono font-medium ${MAPPING_TYPE_STYLE[m.mapping_type]}`}
         >
-          {m.target_framework} {m.target_control_code}
+          {frameworkDisplayName(m.target_framework)} {m.target_control_code}
         </span>
       ))}
     </div>

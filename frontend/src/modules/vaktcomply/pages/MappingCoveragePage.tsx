@@ -7,6 +7,7 @@ import { Badge } from '../../../components/ui/badge'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { useMappingCoverage } from '../hooks/useMappingCoverage'
 import type { FrameworkPairCoverage } from '../types'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
 function PairRow({ pair }: { pair: FrameworkPairCoverage }) {
   return (
@@ -18,9 +19,9 @@ function PairRow({ pair }: { pair: FrameworkPairCoverage }) {
           <XCircle className="w-4 h-4 text-red-400 shrink-0" />
         )}
         <span className="text-sm font-medium">
-          {pair.framework_a_name}
+          {frameworkDisplayName(pair.framework_a_name)}
           <span className="text-secondary mx-2">↔</span>
-          {pair.framework_b_name}
+          {frameworkDisplayName(pair.framework_b_name)}
         </span>
       </div>
       <div className="flex items-center gap-2">

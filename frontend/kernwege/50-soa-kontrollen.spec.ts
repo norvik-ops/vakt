@@ -69,12 +69,15 @@ test.describe('KW6 Anwendbarkeit & Kontrollen', () => {
     expect(detail, 'Vorbedingung: A.5.1 ist umgesetzt (1 von 93)').toBe(1)
 
     await page.goto('/')
-    const fw = page.getByText(/ISO27001\s*1 \/ 93/).first()
+    // Seit fix/framework-anzeigenamen nennt „Framework-Fortschritt" den Anzeigenamen
+    // („ISO 27001") statt des internen Schlüssels; geprüft wird weiter „1 / 93".
+    const fw = page.getByText(/ISO 27001\s*1 \/ 93/).first()
     await expect(fw, 'Dashboard „Framework-Fortschritt" zeigt 1 / 93').toBeVisible()
     await expect(page.getByText(`1 / 93 · ${detail}%`)).toBeVisible()
 
     await page.goto('/vaktcomply/frameworks')
-    const card = page.getByRole('heading', { name: 'ISO27001', level: 3 }).locator('xpath=ancestor::div[.//button][1]')
+    // Karte des aktiven Frameworks trägt jetzt den Anzeigenamen („ISO 27001").
+    const card = page.getByRole('heading', { name: 'ISO 27001', exact: true, level: 3 }).locator('xpath=ancestor::div[.//button][1]')
     await expect(card).toContainText(`${detail}%`, { timeout: 5000 })
   })
 

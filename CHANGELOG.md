@@ -33,6 +33,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   „Angemeldet als“ statt „Administrator“ — es zeigt das eigene Konto, nicht den Administrator.
 
 ### Behoben
+- **Frameworks heißen überall wie im Katalog:** Aktive Frameworks erschienen mit ihren internen
+  Schlüsseln („ISO27001“, „EUAIACT“), der Katalog darunter mit „ISO 27001“ und „EU AI Act“.
+  Karten, die Überschrift der Framework-Seite (jetzt ohne „Details“), der Einrichtungs-Assistent,
+  die Balken auf dem Dashboard, die Framework-Auswahl an Risiken, Richtlinien und Zertifizierungen,
+  die Nachweisliste, das Auditor-Portal und die Trust-Seite zeigen jetzt den Namen aus dem Katalog.
+  Eigene Frameworks behalten ihren Namen. Die Inhalte der CSV-Exporte bleiben unverändert.
 - **SoA-Seite im Dunkelmodus lesbar:** Auf der Anwendbarkeitserklärung (SoA) standen die
   Maßnahmen-Namen in der Tabelle und die Kennzahl „Kontrollen gesamt“ im Dunkelmodus weiß auf
   weiß. Tabelle, Kennzahl-Karten, Versions-Banner und Status-Badges folgen jetzt dem Farbschema in

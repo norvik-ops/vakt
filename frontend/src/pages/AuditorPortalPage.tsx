@@ -15,6 +15,7 @@ import {
   downloadAuditorFrameworkPDF,
   type AuditorFramework,
 } from '../hooks/useAuditorPortal'
+import { frameworkDisplayName } from '../modules/vaktcomply/utils/frameworkCatalogue'
 
 // ---------------------------------------------------------------------------
 // Token storage key in sessionStorage
@@ -104,7 +105,7 @@ function FrameworkRow({ fw, token }: FrameworkRowProps) {
         <div className="flex items-center gap-3 min-w-0">
           {expanded ? <ChevronDown className="w-4 h-4 shrink-0 text-secondary" /> : <ChevronRight className="w-4 h-4 shrink-0 text-secondary" />}
           <div className="min-w-0">
-            <p className="font-medium text-primary truncate">{fw.name}</p>
+            <p className="font-medium text-primary truncate">{frameworkDisplayName(fw.name)}</p>
             <p className="text-xs text-secondary">{fw.version}</p>
           </div>
         </div>
@@ -116,7 +117,7 @@ function FrameworkRow({ fw, token }: FrameworkRowProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={(e) => { e.stopPropagation(); downloadAuditorFrameworkPDF(token, fw.id, fw.name) }}
+            onClick={(e) => { e.stopPropagation(); downloadAuditorFrameworkPDF(token, fw.id, frameworkDisplayName(fw.name)) }}
             title={t('auditorPortal.downloadPdf')}
           >
             <FileText className="w-4 h-4 mr-1" />

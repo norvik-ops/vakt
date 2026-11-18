@@ -3,6 +3,8 @@ import { Shield, ChevronRight, ChevronLeft, AlertTriangle, CheckCircle2 } from '
 import { Spinner } from '../components/Spinner'
 import { apiFetch, FeatureLockedError } from '../api/client'
 import { FeatureLock } from '../shared/components/ProGate'
+// Anzeigenamen kommen aus dem Framework-Katalog — keine zweite Liste hier.
+import { frameworkDisplayName } from '../modules/vaktcomply/utils/frameworkCatalogue'
 
 // Sprint 28 / S28-4: Multi-Framework-Assessment-Wizard (NIS2 + ISO27001 + DSGVO-TOM).
 // Route: /nis2-check/multi
@@ -62,12 +64,6 @@ const VALUE_LABELS = [
   'Weitgehend umgesetzt',
   'Vollständig + getestet',
 ]
-
-const FRAMEWORK_LABELS: Record<string, string> = {
-  nis2:      'NIS2',
-  iso27001:  'ISO 27001',
-  dsgvo_tom: 'DSGVO-TOM',
-}
 
 const FRAMEWORK_COLORS: Record<string, string> = {
   nis2:      'text-indigo-600',
@@ -268,14 +264,14 @@ export default function MultiFrameworkWizardPage() {
         <div className="bg-white border rounded-xl p-6 space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-xs uppercase font-semibold ${FRAMEWORK_COLORS[q.framework] ?? 'text-gray-600'}`}>
-              {FRAMEWORK_LABELS[q.framework] ?? q.framework}
+              {frameworkDisplayName(q.framework)}
             </span>
             {(q.cross_frameworks ?? []).map((cf) => (
               <span
                 key={cf}
                 className={`text-xs px-1.5 py-0.5 rounded border font-medium ${FRAMEWORK_COLORS[cf] ?? 'text-gray-500'} ${FRAMEWORK_BG[cf] ?? 'bg-gray-50 border-gray-200'}`}
               >
-                +{FRAMEWORK_LABELS[cf] ?? cf}
+                +{frameworkDisplayName(cf)}
               </span>
             ))}
             <span className="text-xs text-gray-500 ml-auto">{q.ref}</span>
@@ -342,7 +338,7 @@ function FrameworkScoreBar({
   framework: string
   score: number
 }) {
-  const label = FRAMEWORK_LABELS[framework] ?? framework
+  const label = frameworkDisplayName(framework)
   const color = scoreColor(score)
   const barColor = FRAMEWORK_PROGRESS[framework] ?? 'bg-indigo-600'
 
@@ -433,7 +429,7 @@ function ResultView({ result }: { result: MultiRun }) {
                     <div>
                       <span className="text-gray-700">{gap.area_title}</span>
                       <span className={`ml-2 text-xs font-medium ${FRAMEWORK_COLORS[gap.framework] ?? 'text-gray-500'}`}>
-                        {FRAMEWORK_LABELS[gap.framework] ?? gap.framework}
+                        {frameworkDisplayName(gap.framework)}
                       </span>
                     </div>
                   </div>

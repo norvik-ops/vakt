@@ -23,6 +23,7 @@ import {
 import { useAutoEvidence, useAssignEvidence, type AutoEvidence } from '../hooks/useEvidenceAuto'
 import { useFrameworks, useFrameworkControls } from '../hooks/useFrameworks'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
 // --- Source helpers ---
 
@@ -103,7 +104,7 @@ function AssignDialog({ evidence, onClose }: AssignDialogProps) {
               <SelectContent>
                 {frameworks.map((fw) => (
                   <SelectItem key={fw.id} value={fw.id}>
-                    {fw.name}
+                    {frameworkDisplayName(fw.name)}
                   </SelectItem>
                 ))}
               </SelectContent>

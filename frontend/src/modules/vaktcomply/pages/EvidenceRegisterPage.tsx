@@ -13,6 +13,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { EvidenceExpiryBadge } from '../components/EvidenceExpiryBadge'
 import { EvidenceTabs } from '../components/EvidenceTabs'
 import { useEvidenceRegister, type EvidenceListItem } from '../hooks/useEvidenceRegister'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
 const EXPIRY_WINDOW_DAYS = 30
 
@@ -63,7 +64,7 @@ export default function EvidenceRegisterPage() {
 
   const frameworks = useMemo(() => {
     const byId = new Map<string, string>()
-    for (const ev of items) byId.set(ev.framework_id, ev.framework_name)
+    for (const ev of items) byId.set(ev.framework_id, frameworkDisplayName(ev.framework_name))
     return [...byId.entries()].sort((a, b) => a[1].localeCompare(b[1]))
   }, [items])
 
@@ -183,7 +184,7 @@ export default function EvidenceRegisterPage() {
                                 <span className="text-sm">{ev.control_title}</span>
                               </Link>
                             </TableCell>
-                            <TableCell className="text-sm text-secondary">{ev.framework_name}</TableCell>
+                            <TableCell className="text-sm text-secondary">{frameworkDisplayName(ev.framework_name)}</TableCell>
                             <TableCell className="text-sm text-secondary" title={ev.source}>{typeLabel[typeKey(ev)]}</TableCell>
                             <TableCell>
                               <Badge variant={STATUS_VARIANT[ev.status] ?? 'secondary'}>

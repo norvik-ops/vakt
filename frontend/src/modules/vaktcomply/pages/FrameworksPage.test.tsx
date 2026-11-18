@@ -40,3 +40,20 @@ describe('FrameworksPage (R1-KW-6)', () => {
     expect(screen.queryByText('0%')).not.toBeInTheDocument()
   })
 })
+
+// Die Karte eines aktiven Frameworks trug den internen Schlüssel „ISO27001",
+// der Katalog darunter schrieb „ISO 27001".
+describe('FrameworksPage — Anzeigename statt Schlüssel', () => {
+  it('beschriftet die Karte des aktiven Frameworks mit dem Katalognamen', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <FrameworksPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(screen.getByRole('heading', { name: 'ISO 27001', level: 3 })).toBeInTheDocument()
+    expect(screen.queryByText('ISO27001')).not.toBeInTheDocument()
+  })
+})

@@ -117,7 +117,9 @@ test.describe('KW4 Backup & Restore', () => {
       await page.goto('/vaktcomply/policies')
       await expect(page.getByText('Passwort- und Zugangskontrollrichtlinie').first()).toBeVisible()
       await page.goto('/vaktcomply/frameworks')
-      await expect(page.getByRole('heading', { name: 'ISO27001', level: 3 })).toBeVisible()
+      // Karte des aktiven Frameworks trägt seit fix/framework-anzeigenamen den
+      // Anzeigenamen („ISO 27001") statt des internen Schlüssels.
+      await expect(page.getByRole('heading', { name: 'ISO 27001', exact: true, level: 3 })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'NIS2', level: 3 })).toBeVisible()
 
       // Der hochgeladene Anhang (Uploads-Volume) ist mitgekommen: das Audit-Paket der

@@ -10,6 +10,7 @@ import {
   DialogFooter,
 } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
 interface FrameworkSetupWizardProps {
   // K5-15: no controlCount — policy.Framework carries no control count, so the
@@ -129,7 +130,7 @@ export function FrameworkSetupWizard({ framework, onClose }: FrameworkSetupWizar
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl">
                 <ShieldCheck className="w-5 h-5 text-brand" aria-hidden="true" />
-                Willkommen bei {framework.name}
+                Willkommen bei {frameworkDisplayName(framework.name)}
               </DialogTitle>
             </DialogHeader>
 
@@ -215,7 +216,7 @@ export function FrameworkSetupWizard({ framework, onClose }: FrameworkSetupWizar
 
             <div className="space-y-4 py-2">
               <p className="text-sm text-secondary">
-                Ihr Framework <span className="text-primary font-medium">{framework.name}</span> ist
+                Ihr Framework <span className="text-primary font-medium">{frameworkDisplayName(framework.name)}</span> ist
                 bereit. Jetzt geht es um die erste Bewertung.
               </p>
 

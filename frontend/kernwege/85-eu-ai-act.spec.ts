@@ -82,14 +82,21 @@ test.describe('KW10 EU AI Act', () => {
     const card = page.getByText('EU AI Act — Verordnung (EU) 2024/1689', { exact: true })
       .locator('xpath=ancestor::div[.//button][1]')
     await card.getByRole('button', { name: 'Aktivieren', exact: true }).click()
-    const wizard = page.getByRole('dialog', { name: 'Willkommen bei EUAIACT' })
+    // Seit fix/framework-anzeigenamen begrüßt der Assistent mit dem Anzeigenamen
+    // („EU AI Act") statt des internen Schlüssels („EUAIACT").
+    const wizard = page.getByRole('dialog', { name: 'Willkommen bei EU AI Act' })
     await expect(wizard).toBeVisible()
     await wizard.getByRole('button', { name: 'Später einrichten' }).click()
     await expect(wizard).toBeHidden()
     await expect(card.getByText('Aktiviert', { exact: true })).toBeVisible()
 
     await card.getByRole('button', { name: 'Anzeigen', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'EUAIACT Details', level: 1 })).toBeVisible()
+    // Die Detailseite heißt jetzt „EU AI Act" (vorher „EUAIACT Details"). Exakter Name,
+    // Ebene 1 und URL der Detailseite: der Selektor trifft weiter nur die offene
+    // Detailseite. Der Rohschlüssel ist nicht mehr sichtbar.
+    await expect(page).toHaveURL(/\/vaktcomply\/frameworks\/[0-9a-f-]{36}$/)
+    await expect(page.getByRole('heading', { name: 'EU AI Act', exact: true, level: 1 })).toBeVisible()
+    await expect(page.getByText('EUAIACT', { exact: true })).toHaveCount(0)
     await expect(page.getByText(/[1-9]\d*\s*Gesamt/)).toBeVisible()
     await expect(page.getByRole('row', { name: /AIACT-1\.1 KI-Risikomanagementsystem/ })).toBeVisible()
   })

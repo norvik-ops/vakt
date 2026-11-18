@@ -46,11 +46,22 @@ test.describe('KW5 Framework wählen', () => {
 
   test('KW5 ISO 27001 aktivieren → 93 Annex-A-Kontrollen erscheinen', async ({ browser }) => {
     const page = await openAs(browser, 'admin')
-    await activateFromCatalog(page, 'ISO/IEC 27001:2022', 'ISO27001', false)
-    await expect(page.getByRole('heading', { name: 'ISO27001', level: 3 })).toBeVisible()
+    // Seit fix/framework-anzeigenamen zeigen Assistent („Willkommen bei …") und Karte
+    // des aktiven Frameworks den Anzeigenamen aus dem Katalog („ISO 27001") statt des
+    // internen Schlüssels („ISO27001"). Geprüft wird dasselbe: Assistent öffnet sich,
+    // die Karte des aktivierten Frameworks steht da. Der Rohschlüssel darf nirgends
+    // mehr sichtbar sein.
+    await activateFromCatalog(page, 'ISO/IEC 27001:2022', 'ISO 27001', false)
+    await expect(page.getByRole('heading', { name: 'ISO 27001', exact: true, level: 3 })).toBeVisible()
+    await expect(page.getByText('ISO27001', { exact: true })).toHaveCount(0)
 
     await (await catalogCard(page, 'ISO/IEC 27001:2022')).getByRole('button', { name: 'Anzeigen', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'ISO27001 Details', level: 1 })).toBeVisible()
+    // Die Detailseite heißt jetzt nur „ISO 27001" (vorher „ISO27001 Details"). Damit der
+    // Selektor nicht auf etwas anderes mit demselben Text trifft: exakter Name, Ebene 1,
+    // und die URL ist die Detailseite eines Frameworks.
+    await expect(page).toHaveURL(/\/vaktcomply\/frameworks\/[0-9a-f-]{36}$/)
+    await expect(page.getByRole('heading', { name: 'ISO 27001', exact: true, level: 1 })).toBeVisible()
+    await expect(page.getByText('ISO27001', { exact: true })).toHaveCount(0)
     await expect(page.getByText(/93\s*Gesamt/)).toBeVisible()
     await expect(page.getByRole('row', { name: /A\.5\.1 Richtlinien zur Informationssicherheit/ })).toBeVisible()
   })

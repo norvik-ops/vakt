@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Spinner } from '../components/Spinner'
 import { Shield, CheckCircle, Clock, AlertCircle, ExternalLink, Award, FileText, Users } from 'lucide-react'
 import { useFormatDate } from '../shared/hooks/useFormatDate'
+import { frameworkDisplayName } from '../modules/vaktcomply/utils/frameworkCatalogue'
 
 interface FrameworkStatus {
   name: string
@@ -238,7 +239,7 @@ export default function TrustPage() {
                   <div className="flex items-center gap-2">
                     <StatusIcon percent={fw.compliance_percent} />
                     <div>
-                      <span className="font-semibold text-gray-900">{fw.name}</span>
+                      <span className="font-semibold text-gray-900">{frameworkDisplayName(fw.name)}</span>
                       {fw.version && (
                         <span className="ml-2 text-xs text-gray-500">{fw.version}</span>
                       )}

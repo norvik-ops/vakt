@@ -5,6 +5,7 @@ import {
 import { Skeleton } from '../components/ui/skeleton'
 import type { RiskSummary, ActivityEntry, FrameworkScore, OverallReadiness } from '../hooks/useDashboard'
 import { riskLevel, type RiskLevel } from '../shared/utils/riskLevel'
+import { frameworkDisplayName } from '../modules/vaktcomply/utils/frameworkCatalogue'
 
 export function fmt(n: number | null | undefined): string {
   return n == null ? '—' : n.toString()
@@ -134,11 +135,12 @@ export function FrameworkProgress({ scores }: {
         const pct = Math.round(fw.score_pct)
         const color = barColor(pct)
         const progressId = `fw-progress-${fw.framework_id}`
+        const name = frameworkDisplayName(fw.framework_name)
         return (
           <div key={fw.framework_id}>
             <div className="flex items-center justify-between mb-1">
               <span className="text-[12px] font-medium text-primary truncate max-w-[60%]" id={progressId}>
-                {fw.framework_name}
+                {name}
               </span>
               <span className="text-[12px] text-secondary shrink-0 ml-2">
                 {fw.implemented_controls} / {fw.total_controls} · {pct}%
@@ -151,7 +153,7 @@ export function FrameworkProgress({ scores }: {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-labelledby={progressId}
-              aria-label={`${fw.framework_name}: ${String(pct)}% umgesetzt`}
+              aria-label={`${name}: ${String(pct)}% umgesetzt`}
             >
               <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${String(pct)}%` }} />
             </div>

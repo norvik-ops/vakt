@@ -18,6 +18,7 @@ import {
 import { useFrameworks, useFrameworkControls } from '../hooks/useFrameworks'
 import type { Risk, UpdateRiskTreatmentInput, TreatmentOption, TreatmentStatus, Control } from '../types'
 import { riskLevel, type RiskLevel } from '../../../shared/utils/riskLevel'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
 // ---------------------------------------------------------------------------
 // Treatment option button configuration
@@ -137,7 +138,7 @@ function LinkControlDialog({ riskId, open, onClose }: { riskId: string; open: bo
             >
               <option value="">— Framework wählen —</option>
               {(frameworks ?? []).map((f) => (
-                <option key={f.id} value={f.id}>{f.name}</option>
+                <option key={f.id} value={f.id}>{frameworkDisplayName(f.name)}</option>
               ))}
             </select>
           </div>

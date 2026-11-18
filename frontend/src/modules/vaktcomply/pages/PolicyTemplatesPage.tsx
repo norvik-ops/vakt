@@ -20,6 +20,7 @@ import { apiFetch } from '../../../api/client'
 import { toast } from '../../../shared/hooks/useToast'
 import { useCreatePolicy } from '../hooks/usePolicies'
 import { handleApiError } from '../../../shared/utils/errorMessages'
+import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
 interface DBTemplate {
   id: string
@@ -78,7 +79,7 @@ function TemplateCard({
           <p className="font-medium text-sm leading-snug">{template.name}</p>
           {template.framework && (
             <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
-              {template.framework}
+              {frameworkDisplayName(template.framework)}
             </Badge>
           )}
         </div>
@@ -168,7 +169,7 @@ function TemplateCategoryTab({ category }: { category: Category }) {
                   {preview.tags.map((tag) => <TagBadge key={tag} tag={tag} />)}
                   {preview.framework && (
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                      {preview.framework}
+                      {frameworkDisplayName(preview.framework)}
                     </Badge>
                   )}
                 </div>

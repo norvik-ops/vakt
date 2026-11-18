@@ -77,7 +77,9 @@ test.describe('KW8 Risiken', () => {
     await page.getByPlaceholder(/Konkrete Maßnahmen, Verantwortlichkeiten und Zeitplan/).fill('Offline-Backups täglich, Restore-Test quartalsweise, EDR auf allen Clients.')
     await page.getByRole('button', { name: 'Control verknüpfen' }).click()
     const link = page.getByRole('dialog', { name: 'Control verknüpfen' })
-    await link.getByRole('combobox').selectOption({ label: 'ISO27001' })
+    // Seit fix/framework-anzeigenamen heißt die Option im Framework-Picker „ISO 27001"
+    // (Anzeigename) statt „ISO27001"; gewählt wird dasselbe Framework.
+    await link.getByRole('combobox').selectOption({ label: 'ISO 27001' })
     await link.getByPlaceholder('Controls durchsuchen …').fill('A.5.15')
     await link.getByRole('button', { name: /^A\.5\.15 / }).click()
     await expect(page.getByText(/A\.5\.15/).first()).toBeVisible()
@@ -114,7 +116,9 @@ test.describe('KW8 Risiken', () => {
     await page.getByText(RISK).click()
     await page.getByRole('button', { name: 'Control verknüpfen' }).click()
     const link = page.getByRole('dialog', { name: 'Control verknüpfen' })
-    await link.getByRole('combobox').selectOption({ label: 'ISO27001' })
+    // Seit fix/framework-anzeigenamen heißt die Option im Framework-Picker „ISO 27001"
+    // (Anzeigename) statt „ISO27001"; gewählt wird dasselbe Framework.
+    await link.getByRole('combobox').selectOption({ label: 'ISO 27001' })
     await expect(link.getByRole('button', { name: /^A\.5\.1 / })).toBeVisible()
     await link.getByPlaceholder('Controls durchsuchen …').fill('A.8.13')
     await expect(link.getByRole('button', { name: /^A\.8\.13 / })).toBeVisible({ timeout: 5000 })
