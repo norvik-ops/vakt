@@ -220,18 +220,24 @@ type Policy struct {
 	Title         string     `json:"title"`
 	Description   string     `json:"description,omitempty"`
 	Category      string     `json:"category,omitempty"`
-	Status        string     `json:"status"`       // draft | active | archived
-	Version       string     `json:"version"`      // user-editable version label, e.g. "1.0"
-	VersionNum    int        `json:"version_num"`  // auto-incremented integer version counter
-	VersionNote   string     `json:"version_note"` // change summary for the latest version
-	LastUpdatedBy string     `json:"last_updated_by"`
+	Status        string     `json:"status"`          // draft | active | archived
+	Version       string     `json:"version"`         // user-editable version label, e.g. "1.0"
+	VersionNum    int        `json:"version_num"`     // auto-incremented integer version counter
+	VersionNote   string     `json:"version_note"`    // change summary for the latest version
+	LastUpdatedBy string     `json:"last_updated_by"` // free text from the client, "Bearbeitet von" — never an approval
 	ReviewedAt    *time.Time `json:"reviewed_at,omitempty"`
-	NextReviewDue *string    `json:"next_review_due,omitempty"` // date string YYYY-MM-DD
-	EffectiveDate *time.Time `json:"effective_date,omitempty"`
-	ReviewDate    *time.Time `json:"review_date,omitempty"`
-	Owner         string     `json:"owner,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	// Approval (Migration 272). Written only by the server from the authenticated
+	// identity on the transition to status active; cleared when the policy leaves
+	// active. Null when the policy was never approved through this path.
+	ApprovedBy     *string    `json:"approved_by"`
+	ApprovedByName *string    `json:"approved_by_name"`
+	ApprovedAt     *time.Time `json:"approved_at"`
+	NextReviewDue  *string    `json:"next_review_due,omitempty"` // date string YYYY-MM-DD
+	EffectiveDate  *time.Time `json:"effective_date,omitempty"`
+	ReviewDate     *time.Time `json:"review_date,omitempty"`
+	Owner          string     `json:"owner,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 // PolicyVersion holds a historical snapshot of a policy at a given version number.
@@ -272,6 +278,9 @@ type UpdatePolicyInput struct {
 	VersionNote   *string `json:"version_note"    validate:"omitempty,max=500"`
 	UpdatedBy     *string `json:"updated_by"      validate:"omitempty,max=200"`
 	NextReviewDue *string `json:"next_review_due"`
+	// Deliberately NO approved_by / approved_at: who approved and when comes only
+	// from the authenticated request identity (Service.UpdatePolicy). A client
+	// that sends these fields has them dropped by the JSON decoder.
 }
 
 // ControlTask is a user-created implementation step for a compliance control.

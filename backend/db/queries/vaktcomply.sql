@@ -461,34 +461,55 @@ RETURNING id, org_id, title, description, category, status, version,
           reviewed_at, next_review_due;
 
 -- name: ListCKPolicies :many
-SELECT id, org_id, title, description, category, status, version,
-       effective_date, review_date, owner, created_at, updated_at,
-       version_num, version_note, last_updated_by,
-       reviewed_at, next_review_due
-FROM ck_policies
-WHERE org_id = $1
-ORDER BY created_at DESC
+SELECT p.id, p.org_id, p.title, p.description, p.category, p.status, p.version,
+       p.effective_date, p.review_date, p.owner, p.created_at, p.updated_at,
+       p.version_num, p.version_note, p.last_updated_by,
+       p.reviewed_at, p.next_review_due,
+       COALESCE(p.approved_by::text, '')::text AS approved_by,
+       p.approved_at,
+       COALESCE(NULLIF(u.display_name, ''), u.email, '')::text AS approved_by_name
+FROM ck_policies p
+LEFT JOIN users u ON u.id = p.approved_by
+WHERE p.org_id = $1
+ORDER BY p.created_at DESC
 LIMIT 10000;
 
 -- name: GetCKPolicy :one
-SELECT id, org_id, title, description, category, status, version,
-       effective_date, review_date, owner, created_at, updated_at,
-       version_num, version_note, last_updated_by,
-       reviewed_at, next_review_due
-FROM ck_policies
-WHERE id = $1 AND org_id = $2;
+-- approved_by/approved_at schreibt nur der Server (Migration 272). Der Name des
+-- Freigebers kommt per Join aus users, nie aus einem Client-Feld.
+SELECT p.id, p.org_id, p.title, p.description, p.category, p.status, p.version,
+       p.effective_date, p.review_date, p.owner, p.created_at, p.updated_at,
+       p.version_num, p.version_note, p.last_updated_by,
+       p.reviewed_at, p.next_review_due,
+       COALESCE(p.approved_by::text, '')::text AS approved_by,
+       p.approved_at,
+       COALESCE(NULLIF(u.display_name, ''), u.email, '')::text AS approved_by_name
+FROM ck_policies p
+LEFT JOIN users u ON u.id = p.approved_by
+WHERE p.id = $1 AND p.org_id = $2;
+
+-- name: GetCKPolicyStatusForUpdate :one
+-- Sperrt die Zeile bis zum Ende der Transaktion, damit der Statusübergang
+-- (und damit die Freigabe-Entscheidung) auf dem echten Vorzustand beruht.
+SELECT status FROM ck_policies
+WHERE id = $1 AND org_id = $2
+FOR UPDATE;
 
 -- name: CountCKPolicies :one
 SELECT COUNT(*) FROM ck_policies WHERE org_id = $1;
 
 -- name: ListCKPoliciesPaged :many
-SELECT id, org_id, title, description, category, status, version,
-       effective_date, review_date, owner, created_at, updated_at,
-       version_num, version_note, last_updated_by,
-       reviewed_at, next_review_due
-FROM ck_policies
-WHERE org_id = $1
-ORDER BY created_at DESC
+SELECT p.id, p.org_id, p.title, p.description, p.category, p.status, p.version,
+       p.effective_date, p.review_date, p.owner, p.created_at, p.updated_at,
+       p.version_num, p.version_note, p.last_updated_by,
+       p.reviewed_at, p.next_review_due,
+       COALESCE(p.approved_by::text, '')::text AS approved_by,
+       p.approved_at,
+       COALESCE(NULLIF(u.display_name, ''), u.email, '')::text AS approved_by_name
+FROM ck_policies p
+LEFT JOIN users u ON u.id = p.approved_by
+WHERE p.org_id = $1
+ORDER BY p.created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: SnapshotCKPolicyVersion :exec
@@ -520,6 +541,15 @@ SET title           = $3,
     last_updated_by = $12,
     reviewed_at     = CASE WHEN sqlc.arg('refresh_review')::bool THEN NOW() ELSE reviewed_at END,
     next_review_due = $13,
+    -- Freigabe (Migration 272): Wert und Zeitpunkt entscheidet die Service-Schicht
+    -- aus dem Statusübergang und der authentifizierten Identität. Ohne
+    -- set_approval bleiben beide Spalten unverändert.
+    approved_by     = CASE WHEN sqlc.arg('set_approval')::bool
+                           THEN NULLIF(sqlc.arg('approved_by')::text, '')::uuid
+                           ELSE approved_by END,
+    approved_at     = CASE WHEN sqlc.arg('set_approval')::bool
+                           THEN sqlc.narg('approved_at')::timestamptz
+                           ELSE approved_at END,
     updated_at      = NOW()
 WHERE id = $1 AND org_id = $2
 RETURNING id, org_id, title, description, category, status, version,

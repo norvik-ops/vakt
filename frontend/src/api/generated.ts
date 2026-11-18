@@ -3022,6 +3022,15 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
+                    content: {
+                        "application/json": components["schemas"]["Policy"];
+                    };
+                };
+                /** @description Policy not found (also for another organisation's policy) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -3031,7 +3040,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update policy */
+        /**
+         * Update policy
+         * @description Requires Admin or SecurityAnalyst. A change of status to active records the authenticated user as approver (approved_by, approved_at) and writes an audit-log entry with action approve; leaving active clears the approval. approved_by / approved_at in the body are ignored.
+         */
         patch: {
             parameters: {
                 query?: never;
@@ -3055,6 +3067,7 @@ export interface paths {
                         review_date?: string;
                         owner?: string;
                         version_note?: string;
+                        /** @description Free text "Bearbeitet von"; not an approval. */
                         updated_by?: string;
                         next_review_due?: string;
                     };
@@ -3063,6 +3076,22 @@ export interface paths {
             responses: {
                 /** @description Updated policy */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Policy"];
+                    };
+                };
+                /** @description Role without write access; or approval without an authenticated user */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Policy not found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -31368,16 +31397,33 @@ export interface components {
         };
         Policy: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             title?: string;
             /** @enum {string} */
-            status?: "draft" | "active" | "archived";
-            version?: number;
+            status: "draft" | "active" | "archived";
+            /** @description User-editable version label, e.g. "1.0" */
+            version?: string;
+            /** @description Revision counter; incremented on every update */
+            version_num?: number;
             owner?: string;
             /** Format: date */
             review_date?: string;
             /** Format: date-time */
             created_at?: string;
+            /** @description Free text sent by the client ("Bearbeitet von"). Never an approval — the approver is approved_by / approved_by_name. */
+            last_updated_by?: string;
+            /**
+             * Format: uuid
+             * @description Set only by the server, from the authenticated user, when the status changes to active (Migration 272). Cleared when the policy leaves active. Not accepted in any request body.
+             */
+            approved_by: string | null;
+            /** @description Display name of the approver, falling back to the e-mail (join on users). */
+            approved_by_name: string | null;
+            /**
+             * Format: date-time
+             * @description Server time of the approval. Cleared together with approved_by.
+             */
+            approved_at: string | null;
         };
         SLAPolicy: {
             /** Format: uuid */

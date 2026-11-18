@@ -421,6 +421,7 @@ export interface Policy {
   version: string       // user-editable version label, e.g. "1.0"
   version_num: number   // auto-incremented integer version counter (Migration 076)
   version_note: string
+  /** Free text from the client ("Bearbeitet von") — never shown as approver. */
   last_updated_by: string
   reviewed_at?: string
   next_review_due?: string
@@ -429,6 +430,14 @@ export interface Policy {
   owner?: string
   created_at: string
   updated_at: string
+  /**
+   * Approval, set only by the server from the authenticated user on the change
+   * to status active (Migration 272); null when not approved. The only source for
+   * „Freigegeben von … am …".
+   */
+  approved_by?: string | null
+  approved_by_name?: string | null
+  approved_at?: string | null
 }
 
 export interface CreatePolicyInput {

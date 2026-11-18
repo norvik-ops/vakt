@@ -590,6 +590,8 @@ type CkPolicies struct {
 	LastUpdatedBy string             `json:"last_updated_by"`
 	ReviewedAt    pgtype.Timestamptz `json:"reviewed_at"`
 	NextReviewDue pgtype.Date        `json:"next_review_due"`
+	ApprovedBy    pgtype.UUID        `json:"approved_by"`
+	ApprovedAt    pgtype.Timestamptz `json:"approved_at"`
 }
 
 type CkPolicyAcceptanceCampaigns struct {

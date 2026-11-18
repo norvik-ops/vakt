@@ -3562,12 +3562,16 @@ func (q *Queries) GetCKOrgSector(ctx context.Context, id string) (GetCKOrgSector
 }
 
 const getCKPolicy = `-- name: GetCKPolicy :one
-SELECT id, org_id, title, description, category, status, version,
-       effective_date, review_date, owner, created_at, updated_at,
-       version_num, version_note, last_updated_by,
-       reviewed_at, next_review_due
-FROM ck_policies
-WHERE id = $1 AND org_id = $2
+SELECT p.id, p.org_id, p.title, p.description, p.category, p.status, p.version,
+       p.effective_date, p.review_date, p.owner, p.created_at, p.updated_at,
+       p.version_num, p.version_note, p.last_updated_by,
+       p.reviewed_at, p.next_review_due,
+       COALESCE(p.approved_by::text, '')::text AS approved_by,
+       p.approved_at,
+       COALESCE(NULLIF(u.display_name, ''), u.email, '')::text AS approved_by_name
+FROM ck_policies p
+LEFT JOIN users u ON u.id = p.approved_by
+WHERE p.id = $1 AND p.org_id = $2
 `
 
 type GetCKPolicyParams struct {
@@ -3576,25 +3580,30 @@ type GetCKPolicyParams struct {
 }
 
 type GetCKPolicyRow struct {
-	ID            string             `json:"id"`
-	OrgID         string             `json:"org_id"`
-	Title         string             `json:"title"`
-	Description   string             `json:"description"`
-	Category      string             `json:"category"`
-	Status        string             `json:"status"`
-	Version       string             `json:"version"`
-	EffectiveDate pgtype.Date        `json:"effective_date"`
-	ReviewDate    pgtype.Date        `json:"review_date"`
-	Owner         string             `json:"owner"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	VersionNum    int32              `json:"version_num"`
-	VersionNote   string             `json:"version_note"`
-	LastUpdatedBy string             `json:"last_updated_by"`
-	ReviewedAt    pgtype.Timestamptz `json:"reviewed_at"`
-	NextReviewDue pgtype.Date        `json:"next_review_due"`
+	ID             string             `json:"id"`
+	OrgID          string             `json:"org_id"`
+	Title          string             `json:"title"`
+	Description    string             `json:"description"`
+	Category       string             `json:"category"`
+	Status         string             `json:"status"`
+	Version        string             `json:"version"`
+	EffectiveDate  pgtype.Date        `json:"effective_date"`
+	ReviewDate     pgtype.Date        `json:"review_date"`
+	Owner          string             `json:"owner"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	VersionNum     int32              `json:"version_num"`
+	VersionNote    string             `json:"version_note"`
+	LastUpdatedBy  string             `json:"last_updated_by"`
+	ReviewedAt     pgtype.Timestamptz `json:"reviewed_at"`
+	NextReviewDue  pgtype.Date        `json:"next_review_due"`
+	ApprovedBy     string             `json:"approved_by"`
+	ApprovedAt     pgtype.Timestamptz `json:"approved_at"`
+	ApprovedByName string             `json:"approved_by_name"`
 }
 
+// approved_by/approved_at schreibt nur der Server (Migration 272). Der Name des
+// Freigebers kommt per Join aus users, nie aus einem Client-Feld.
 func (q *Queries) GetCKPolicy(ctx context.Context, arg GetCKPolicyParams) (GetCKPolicyRow, error) {
 	row := q.db.QueryRow(ctx, getCKPolicy, arg.ID, arg.OrgID)
 	var i GetCKPolicyRow
@@ -3616,8 +3625,31 @@ func (q *Queries) GetCKPolicy(ctx context.Context, arg GetCKPolicyParams) (GetCK
 		&i.LastUpdatedBy,
 		&i.ReviewedAt,
 		&i.NextReviewDue,
+		&i.ApprovedBy,
+		&i.ApprovedAt,
+		&i.ApprovedByName,
 	)
 	return i, err
+}
+
+const getCKPolicyStatusForUpdate = `-- name: GetCKPolicyStatusForUpdate :one
+SELECT status FROM ck_policies
+WHERE id = $1 AND org_id = $2
+FOR UPDATE
+`
+
+type GetCKPolicyStatusForUpdateParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+// Sperrt die Zeile bis zum Ende der Transaktion, damit der Statusübergang
+// (und damit die Freigabe-Entscheidung) auf dem echten Vorzustand beruht.
+func (q *Queries) GetCKPolicyStatusForUpdate(ctx context.Context, arg GetCKPolicyStatusForUpdateParams) (string, error) {
+	row := q.db.QueryRow(ctx, getCKPolicyStatusForUpdate, arg.ID, arg.OrgID)
+	var status string
+	err := row.Scan(&status)
+	return status, err
 }
 
 const getCKPolicyVersion = `-- name: GetCKPolicyVersion :one
@@ -6743,34 +6775,41 @@ func (q *Queries) ListCKPendingApprovals(ctx context.Context, orgID string) ([]L
 }
 
 const listCKPolicies = `-- name: ListCKPolicies :many
-SELECT id, org_id, title, description, category, status, version,
-       effective_date, review_date, owner, created_at, updated_at,
-       version_num, version_note, last_updated_by,
-       reviewed_at, next_review_due
-FROM ck_policies
-WHERE org_id = $1
-ORDER BY created_at DESC
+SELECT p.id, p.org_id, p.title, p.description, p.category, p.status, p.version,
+       p.effective_date, p.review_date, p.owner, p.created_at, p.updated_at,
+       p.version_num, p.version_note, p.last_updated_by,
+       p.reviewed_at, p.next_review_due,
+       COALESCE(p.approved_by::text, '')::text AS approved_by,
+       p.approved_at,
+       COALESCE(NULLIF(u.display_name, ''), u.email, '')::text AS approved_by_name
+FROM ck_policies p
+LEFT JOIN users u ON u.id = p.approved_by
+WHERE p.org_id = $1
+ORDER BY p.created_at DESC
 LIMIT 10000
 `
 
 type ListCKPoliciesRow struct {
-	ID            string             `json:"id"`
-	OrgID         string             `json:"org_id"`
-	Title         string             `json:"title"`
-	Description   string             `json:"description"`
-	Category      string             `json:"category"`
-	Status        string             `json:"status"`
-	Version       string             `json:"version"`
-	EffectiveDate pgtype.Date        `json:"effective_date"`
-	ReviewDate    pgtype.Date        `json:"review_date"`
-	Owner         string             `json:"owner"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	VersionNum    int32              `json:"version_num"`
-	VersionNote   string             `json:"version_note"`
-	LastUpdatedBy string             `json:"last_updated_by"`
-	ReviewedAt    pgtype.Timestamptz `json:"reviewed_at"`
-	NextReviewDue pgtype.Date        `json:"next_review_due"`
+	ID             string             `json:"id"`
+	OrgID          string             `json:"org_id"`
+	Title          string             `json:"title"`
+	Description    string             `json:"description"`
+	Category       string             `json:"category"`
+	Status         string             `json:"status"`
+	Version        string             `json:"version"`
+	EffectiveDate  pgtype.Date        `json:"effective_date"`
+	ReviewDate     pgtype.Date        `json:"review_date"`
+	Owner          string             `json:"owner"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	VersionNum     int32              `json:"version_num"`
+	VersionNote    string             `json:"version_note"`
+	LastUpdatedBy  string             `json:"last_updated_by"`
+	ReviewedAt     pgtype.Timestamptz `json:"reviewed_at"`
+	NextReviewDue  pgtype.Date        `json:"next_review_due"`
+	ApprovedBy     string             `json:"approved_by"`
+	ApprovedAt     pgtype.Timestamptz `json:"approved_at"`
+	ApprovedByName string             `json:"approved_by_name"`
 }
 
 func (q *Queries) ListCKPolicies(ctx context.Context, orgID string) ([]ListCKPoliciesRow, error) {
@@ -6800,6 +6839,9 @@ func (q *Queries) ListCKPolicies(ctx context.Context, orgID string) ([]ListCKPol
 			&i.LastUpdatedBy,
 			&i.ReviewedAt,
 			&i.NextReviewDue,
+			&i.ApprovedBy,
+			&i.ApprovedAt,
+			&i.ApprovedByName,
 		); err != nil {
 			return nil, err
 		}
@@ -6812,13 +6854,17 @@ func (q *Queries) ListCKPolicies(ctx context.Context, orgID string) ([]ListCKPol
 }
 
 const listCKPoliciesPaged = `-- name: ListCKPoliciesPaged :many
-SELECT id, org_id, title, description, category, status, version,
-       effective_date, review_date, owner, created_at, updated_at,
-       version_num, version_note, last_updated_by,
-       reviewed_at, next_review_due
-FROM ck_policies
-WHERE org_id = $1
-ORDER BY created_at DESC
+SELECT p.id, p.org_id, p.title, p.description, p.category, p.status, p.version,
+       p.effective_date, p.review_date, p.owner, p.created_at, p.updated_at,
+       p.version_num, p.version_note, p.last_updated_by,
+       p.reviewed_at, p.next_review_due,
+       COALESCE(p.approved_by::text, '')::text AS approved_by,
+       p.approved_at,
+       COALESCE(NULLIF(u.display_name, ''), u.email, '')::text AS approved_by_name
+FROM ck_policies p
+LEFT JOIN users u ON u.id = p.approved_by
+WHERE p.org_id = $1
+ORDER BY p.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -6829,23 +6875,26 @@ type ListCKPoliciesPagedParams struct {
 }
 
 type ListCKPoliciesPagedRow struct {
-	ID            string             `json:"id"`
-	OrgID         string             `json:"org_id"`
-	Title         string             `json:"title"`
-	Description   string             `json:"description"`
-	Category      string             `json:"category"`
-	Status        string             `json:"status"`
-	Version       string             `json:"version"`
-	EffectiveDate pgtype.Date        `json:"effective_date"`
-	ReviewDate    pgtype.Date        `json:"review_date"`
-	Owner         string             `json:"owner"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	VersionNum    int32              `json:"version_num"`
-	VersionNote   string             `json:"version_note"`
-	LastUpdatedBy string             `json:"last_updated_by"`
-	ReviewedAt    pgtype.Timestamptz `json:"reviewed_at"`
-	NextReviewDue pgtype.Date        `json:"next_review_due"`
+	ID             string             `json:"id"`
+	OrgID          string             `json:"org_id"`
+	Title          string             `json:"title"`
+	Description    string             `json:"description"`
+	Category       string             `json:"category"`
+	Status         string             `json:"status"`
+	Version        string             `json:"version"`
+	EffectiveDate  pgtype.Date        `json:"effective_date"`
+	ReviewDate     pgtype.Date        `json:"review_date"`
+	Owner          string             `json:"owner"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	VersionNum     int32              `json:"version_num"`
+	VersionNote    string             `json:"version_note"`
+	LastUpdatedBy  string             `json:"last_updated_by"`
+	ReviewedAt     pgtype.Timestamptz `json:"reviewed_at"`
+	NextReviewDue  pgtype.Date        `json:"next_review_due"`
+	ApprovedBy     string             `json:"approved_by"`
+	ApprovedAt     pgtype.Timestamptz `json:"approved_at"`
+	ApprovedByName string             `json:"approved_by_name"`
 }
 
 func (q *Queries) ListCKPoliciesPaged(ctx context.Context, arg ListCKPoliciesPagedParams) ([]ListCKPoliciesPagedRow, error) {
@@ -6875,6 +6924,9 @@ func (q *Queries) ListCKPoliciesPaged(ctx context.Context, arg ListCKPoliciesPag
 			&i.LastUpdatedBy,
 			&i.ReviewedAt,
 			&i.NextReviewDue,
+			&i.ApprovedBy,
+			&i.ApprovedAt,
+			&i.ApprovedByName,
 		); err != nil {
 			return nil, err
 		}
@@ -9005,6 +9057,15 @@ SET title           = $3,
     last_updated_by = $12,
     reviewed_at     = CASE WHEN $14::bool THEN NOW() ELSE reviewed_at END,
     next_review_due = $13,
+    -- Freigabe (Migration 272): Wert und Zeitpunkt entscheidet die Service-Schicht
+    -- aus dem Statusübergang und der authentifizierten Identität. Ohne
+    -- set_approval bleiben beide Spalten unverändert.
+    approved_by     = CASE WHEN $15::bool
+                           THEN NULLIF($16::text, '')::uuid
+                           ELSE approved_by END,
+    approved_at     = CASE WHEN $15::bool
+                           THEN $17::timestamptz
+                           ELSE approved_at END,
     updated_at      = NOW()
 WHERE id = $1 AND org_id = $2
 RETURNING id, org_id, title, description, category, status, version,
@@ -9014,20 +9075,23 @@ RETURNING id, org_id, title, description, category, status, version,
 `
 
 type UpdateCKPolicyParams struct {
-	ID            string      `json:"id"`
-	OrgID         string      `json:"org_id"`
-	Title         string      `json:"title"`
-	Description   string      `json:"description"`
-	Category      string      `json:"category"`
-	Status        string      `json:"status"`
-	Version       string      `json:"version"`
-	EffectiveDate pgtype.Date `json:"effective_date"`
-	ReviewDate    pgtype.Date `json:"review_date"`
-	Owner         string      `json:"owner"`
-	VersionNote   string      `json:"version_note"`
-	LastUpdatedBy string      `json:"last_updated_by"`
-	NextReviewDue pgtype.Date `json:"next_review_due"`
-	RefreshReview bool        `json:"refresh_review"`
+	ID            string             `json:"id"`
+	OrgID         string             `json:"org_id"`
+	Title         string             `json:"title"`
+	Description   string             `json:"description"`
+	Category      string             `json:"category"`
+	Status        string             `json:"status"`
+	Version       string             `json:"version"`
+	EffectiveDate pgtype.Date        `json:"effective_date"`
+	ReviewDate    pgtype.Date        `json:"review_date"`
+	Owner         string             `json:"owner"`
+	VersionNote   string             `json:"version_note"`
+	LastUpdatedBy string             `json:"last_updated_by"`
+	NextReviewDue pgtype.Date        `json:"next_review_due"`
+	RefreshReview bool               `json:"refresh_review"`
+	SetApproval   bool               `json:"set_approval"`
+	ApprovedBy    string             `json:"approved_by"`
+	ApprovedAt    pgtype.Timestamptz `json:"approved_at"`
 }
 
 type UpdateCKPolicyRow struct {
@@ -9068,6 +9132,9 @@ func (q *Queries) UpdateCKPolicy(ctx context.Context, arg UpdateCKPolicyParams) 
 		arg.LastUpdatedBy,
 		arg.NextReviewDue,
 		arg.RefreshReview,
+		arg.SetApproval,
+		arg.ApprovedBy,
+		arg.ApprovedAt,
 	)
 	var i UpdateCKPolicyRow
 	err := row.Scan(

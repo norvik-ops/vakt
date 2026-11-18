@@ -179,6 +179,8 @@ type Querier interface {
 	// Liest den Org-Namen für Akzeptanz-Kampagnen-Emails (s26-sqlc-vitals-5).
 	GetCKOrgName(ctx context.Context, id string) (string, error)
 	GetCKOrgSector(ctx context.Context, id string) (GetCKOrgSectorRow, error)
+	// approved_by/approved_at schreibt nur der Server (Migration 272). Der Name des
+	// Freigebers kommt per Join aus users, nie aus einem Client-Feld.
 	GetCKPolicy(ctx context.Context, arg GetCKPolicyParams) (GetCKPolicyRow, error)
 	// Aggregiert Total/Accepted/Pending für eine Akzeptanz-Kampagne.
 	GetCKPolicyAcceptanceCampaignStats(ctx context.Context, arg GetCKPolicyAcceptanceCampaignStatsParams) (GetCKPolicyAcceptanceCampaignStatsRow, error)
@@ -186,6 +188,9 @@ type Querier interface {
 	GetCKPolicyAcceptancePublicInfo(ctx context.Context, tokenHash string) (GetCKPolicyAcceptancePublicInfoRow, error)
 	// Liest Request + Policy-Titel + Org-ID für den Token-basierten Accept-Flow.
 	GetCKPolicyAcceptanceRequestByToken(ctx context.Context, tokenHash string) (GetCKPolicyAcceptanceRequestByTokenRow, error)
+	// Sperrt die Zeile bis zum Ende der Transaktion, damit der Statusübergang
+	// (und damit die Freigabe-Entscheidung) auf dem echten Vorzustand beruht.
+	GetCKPolicyStatusForUpdate(ctx context.Context, arg GetCKPolicyStatusForUpdateParams) (string, error)
 	// Returns a single DB-backed compliance template by UUID.
 	GetCKPolicyTemplateByID(ctx context.Context, id string) (GetCKPolicyTemplateByIDRow, error)
 	// Letzter Score-Snapshot vor heute (Board-Report Delta).

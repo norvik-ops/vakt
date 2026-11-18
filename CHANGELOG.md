@@ -6,6 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Sicherheit
+- **Richtlinien-Freigabe fälschungssicher:** Wer eine Richtlinie freigibt (Status wechselt auf
+  „Aktiv“), hält jetzt der Server fest — aus dem angemeldeten Konto, nicht aus Eingaben des
+  Browsers. Die Detailseite zeigt „Freigegeben von <Name> am <Datum>“ nur aus diesen Daten; das
+  Freitextfeld bleibt als „Bearbeitet von“. Jede Änderung an einer Richtlinie schreibt einen
+  Audit-Eintrag (Freigabe als „approve“). Verlässt eine Richtlinie „Aktiv“, wird die Freigabe
+  geleert; die nächste Aktivierung braucht eine neue. Freigeben dürfen weiterhin nur Admin und
+  Security Analyst. `GET/PATCH /vaktcomply/policies/{id}` liefern dafür `approved_by`,
+  `approved_by_name` und `approved_at`; vom Client gesendete Werte werden ignoriert.
+
+### Upgrade-Hinweis
+- **Migration 272** ergänzt `ck_policies` um `approved_by` und `approved_at`. Sie läuft beim Start
+  automatisch und schreibt keine bestehenden Daten um. Bereits aktive Richtlinien haben danach
+  keinen eingetragenen Freigeber, weil es dafür keinen Beleg gibt; wer einen braucht, setzt die
+  Richtlinie auf „Entwurf“ und gibt sie erneut frei.
+
 ### Geändert
 - **Handy-Breite (390 px):** Seitenköpfe brechen um — Aktionen wie „Zurück“, Exporte und
   „Nachweis hinzufügen“ rutschen unter den Titel, statt aus dem Bild zu laufen. Die

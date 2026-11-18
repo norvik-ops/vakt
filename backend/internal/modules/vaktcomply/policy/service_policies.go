@@ -5,8 +5,10 @@ package policy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/matharnica/vakt/internal/db"
 )
@@ -32,8 +34,75 @@ func (s *Service) CreatePolicy(ctx context.Context, orgID string, in CreatePolic
 	return s.repo.CreatePolicy(ctx, orgID, in)
 }
 
-func (s *Service) UpdatePolicy(ctx context.Context, orgID, id string, in UpdatePolicyInput) (*Policy, error) {
-	return s.repo.UpdatePolicy(ctx, orgID, id, in)
+// PolicyApprovalEvent says what an update did to the approval, so the caller
+// can write the matching audit-trail entry.
+type PolicyApprovalEvent int
+
+const (
+	// ApprovalUnchanged: the update did not touch approved_by / approved_at.
+	ApprovalUnchanged PolicyApprovalEvent = iota
+	// ApprovalGranted: the policy moved to active; the actor is the approver.
+	ApprovalGranted
+	// ApprovalRevoked: the policy left active; the approval was cleared.
+	ApprovalRevoked
+)
+
+// ErrApproverUnknown is returned when a policy would be approved without an
+// authenticated user identity — an approval nobody can be held to is refused.
+var ErrApproverUnknown = errors.New("policy approval requires an authenticated user")
+
+// approvalChange is the write the repository applies to approved_by/approved_at.
+// Touch=false leaves both columns as they are; Touch=true writes By/At (an empty
+// By and a nil At clear them).
+type approvalChange struct {
+	Touch bool
+	By    string
+	At    *time.Time
+	Event PolicyApprovalEvent
+}
+
+// approvalTransition decides the approval write from the status transition.
+//
+//   - into active (from draft, archived): approver = actorID, approved_at = now.
+//   - out of active (to draft, archived): both cleared. A policy that is no longer
+//     in force has no valid approval; the next activation needs a new one. The
+//     historic approval stays in the audit log and in ck_policy_versions.
+//   - everything else (active → active, draft → archived, …): unchanged. Editing
+//     the text of an active policy does not re-approve it.
+//
+// actorID is the authenticated user id from the request context — never a value
+// from the request body.
+func approvalTransition(prevStatus, newStatus, actorID string, now time.Time) (approvalChange, error) {
+	const active = "active"
+	switch {
+	case newStatus == active && prevStatus != active:
+		if actorID == "" {
+			return approvalChange{}, ErrApproverUnknown
+		}
+		at := now
+		return approvalChange{Touch: true, By: actorID, At: &at, Event: ApprovalGranted}, nil
+	case newStatus != active && prevStatus == active:
+		return approvalChange{Touch: true, Event: ApprovalRevoked}, nil
+	default:
+		return approvalChange{Event: ApprovalUnchanged}, nil
+	}
+}
+
+// UpdatePolicy applies a policy update. actorID is the authenticated user from the
+// request context; it is the only source for who approved the policy (R1-KW-60
+// fix: last_updated_by is client free text and never counts as an approval).
+func (s *Service) UpdatePolicy(ctx context.Context, orgID, id, actorID string, in UpdatePolicyInput) (*Policy, PolicyApprovalEvent, error) {
+	now := time.Now().UTC()
+	var event PolicyApprovalEvent
+	p, err := s.repo.UpdatePolicy(ctx, orgID, id, in, func(prevStatus string) (approvalChange, error) {
+		change, err := approvalTransition(prevStatus, in.Status, actorID, now)
+		event = change.Event
+		return change, err
+	})
+	if err != nil {
+		return nil, ApprovalUnchanged, err
+	}
+	return p, event, nil
 }
 
 // ListPolicyVersions returns all historical version snapshots for a policy (Migration 076).

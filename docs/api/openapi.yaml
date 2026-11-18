@@ -2161,14 +2161,38 @@ components:
 
     Policy:
       type: object
+      required: [id, status, approved_by, approved_by_name, approved_at]
       properties:
         id: { type: string, format: uuid }
         title: { type: string }
         status: { type: string, enum: [draft, active, archived] }
-        version: { type: integer }
+        version: { type: string, description: 'User-editable version label, e.g. "1.0"' }
+        version_num: { type: integer, description: 'Revision counter; incremented on every update' }
         owner: { type: string }
         review_date: { type: string, format: date }
         created_at: { type: string, format: date-time }
+        last_updated_by:
+          type: string
+          description: >-
+            Free text sent by the client ("Bearbeitet von"). Never an approval —
+            the approver is approved_by / approved_by_name.
+        approved_by:
+          type: string
+          format: uuid
+          nullable: true
+          description: >-
+            Set only by the server, from the authenticated user, when the status
+            changes to active (Migration 272). Cleared when the policy leaves
+            active. Not accepted in any request body.
+        approved_by_name:
+          type: string
+          nullable: true
+          description: Display name of the approver, falling back to the e-mail (join on users).
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Server time of the approval. Cleared together with approved_by.
 
     # ── S69-3 ─────────────────────────────────────────────────────────────────
     SLAPolicy:
@@ -4478,8 +4502,18 @@ paths:
       responses:
         '200':
           description: Policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '404': { description: Policy not found (also for another organisation's policy) }
     patch:
       summary: Update policy
+      description: >-
+        Requires Admin or SecurityAnalyst. A change of status to active records
+        the authenticated user as approver (approved_by, approved_at) and writes an
+        audit-log entry with action approve; leaving active clears the approval.
+        approved_by / approved_at in the body are ignored.
       tags:
       - vaktcomply
       requestBody:
@@ -4499,11 +4533,17 @@ paths:
                 review_date: { type: string, format: date-time }
                 owner: { type: string }
                 version_note: { type: string }
-                updated_by: { type: string }
+                updated_by: { type: string, description: 'Free text "Bearbeitet von"; not an approval.' }
                 next_review_due: { type: string }
       responses:
         '200':
           description: Updated policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '403': { description: 'Role without write access; or approval without an authenticated user' }
+        '404': { description: Policy not found }
 
   # ── SecVitals — Audits ────────────────────────────────────────────────────
 

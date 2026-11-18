@@ -80,8 +80,8 @@ describe('PolicyDetailPage — Freigeben (UX-20)', () => {
   // Sicherheitsreview 2026-11-18 (integrity/forgeable-approval-attribution): Der
   // Freigeber darf nie aus Werten kommen, die der Client schickt oder kennt — weder
   // aus dem Freitext „Geändert von" (last_updated_by) noch aus dem angemeldeten
-  // Namen im Frontend. Eine serverseitige Quelle gibt es ohne Migration nicht
-  // (R1-KW-60), also zeigt die Seite keinen Freigeber an.
+  // Namen im Frontend. Die einzige Quelle sind die Server-Felder approved_by_name
+  // und approved_at (Migration 272), siehe die Tests weiter unten.
   it('schreibt den angemeldeten Namen nicht als Freigeber in die Anfrage', () => {
     signIn(['Admin'])
     renderPage()
@@ -101,6 +101,36 @@ describe('PolicyDetailPage — Freigeben (UX-20)', () => {
     for (const el of screen.queryAllByText(/Gefälschte Geschäftsführung/)) {
       expect(el.textContent).not.toMatch(/freigegeben|bestätigt/i)
     }
+  })
+
+  // Migration 272: Der Server liefert den Freigeber aus der angemeldeten Identität
+  // (approved_by_name, approved_at). Nur diese Felder füllen „Freigegeben von";
+  // der Freitext bleibt daneben als „Bearbeitet von" stehen.
+  it('zeigt den Freigeber aus den Server-Feldern, den Freitext nur als „Bearbeitet von"', () => {
+    policy = makePolicy({
+      status: 'active',
+      last_updated_by: 'Gefälschte Geschäftsführung',
+      approved_by: '99999999-9999-9999-9999-999999999999',
+      approved_by_name: 'Alice Freigabe',
+      approved_at: '2026-11-18T09:30:00Z',
+    })
+    signIn(['Viewer'])
+    renderPage()
+
+    const line = screen.getByTestId('policy-approved-by')
+    expect(line.textContent).toMatch(/^Freigegeben von Alice Freigabe am /)
+    expect(line.textContent).toContain('18.11.2026')
+    expect(line.textContent).not.toContain('Gefälschte Geschäftsführung')
+    expect(screen.getByText(/Bearbeitet von:/).textContent).toContain('Gefälschte Geschäftsführung')
+  })
+
+  it('zeigt keinen Freigeber, wenn der Server keinen liefert', () => {
+    policy = makePolicy({ status: 'active', approved_by: null, approved_by_name: null, approved_at: null })
+    signIn(['Admin'])
+    renderPage()
+
+    expect(screen.queryByTestId('policy-approved-by')).toBeNull()
+    expect(screen.queryByText(/freigegeben von/i)).toBeNull()
   })
 
   it.each([['Viewer'], ['AuditorReadOnly'], ['InternalAuditor']])('versteckt den Knopf für %s', (role) => {

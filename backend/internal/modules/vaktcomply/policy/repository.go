@@ -147,28 +147,41 @@ type policyFields struct {
 	VersionNote, LastUpdatedBy                               string
 	ReviewedAt                                               pgtype.Timestamptz
 	NextReviewDue                                            pgtype.Date
+	ApprovedBy, ApprovedByName                               string
+	ApprovedAt                                               pgtype.Timestamptz
 }
 
 func policyFromFields(f policyFields) Policy {
 	return Policy{
-		ID:            f.ID,
-		OrgID:         f.OrgID,
-		Title:         f.Title,
-		Description:   f.Description,
-		Category:      f.Category,
-		Status:        f.Status,
-		Version:       f.Version,
-		VersionNum:    int(f.VersionNum),
-		VersionNote:   f.VersionNote,
-		LastUpdatedBy: f.LastUpdatedBy,
-		ReviewedAt:    ckTsToTimePtr(f.ReviewedAt),
-		NextReviewDue: dateToStringPtrLocal(f.NextReviewDue),
-		EffectiveDate: ckDateToTimePtr(f.EffectiveDate),
-		ReviewDate:    ckDateToTimePtr(f.ReviewDate),
-		Owner:         f.Owner,
-		CreatedAt:     ckTsToTime(f.CreatedAt),
-		UpdatedAt:     ckTsToTime(f.UpdatedAt),
+		ID:             f.ID,
+		OrgID:          f.OrgID,
+		Title:          f.Title,
+		Description:    f.Description,
+		Category:       f.Category,
+		Status:         f.Status,
+		Version:        f.Version,
+		VersionNum:     int(f.VersionNum),
+		VersionNote:    f.VersionNote,
+		LastUpdatedBy:  f.LastUpdatedBy,
+		ReviewedAt:     ckTsToTimePtr(f.ReviewedAt),
+		NextReviewDue:  dateToStringPtrLocal(f.NextReviewDue),
+		EffectiveDate:  ckDateToTimePtr(f.EffectiveDate),
+		ReviewDate:     ckDateToTimePtr(f.ReviewDate),
+		Owner:          f.Owner,
+		CreatedAt:      ckTsToTime(f.CreatedAt),
+		UpdatedAt:      ckTsToTime(f.UpdatedAt),
+		ApprovedBy:     nonEmptyPtr(f.ApprovedBy),
+		ApprovedByName: nonEmptyPtr(f.ApprovedByName),
+		ApprovedAt:     ckTsToTimePtr(f.ApprovedAt),
 	}
+}
+
+// nonEmptyPtr yields nil for "", so an unset approval serialises as JSON null.
+func nonEmptyPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 // dateToStringPtrLocal yields "YYYY-MM-DD" or nil from pgtype.Date.

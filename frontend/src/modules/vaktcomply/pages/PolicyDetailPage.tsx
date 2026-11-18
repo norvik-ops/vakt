@@ -99,12 +99,12 @@ export default function PolicyDetailPage() {
 
   // UX-20: „Freigeben" is the same PATCH as „Speichern" with status active.
   //
-  // It deliberately records NO approver. The only "who" the policy row has is
-  // last_updated_by — free text the client sends — and PATCH /policies/:id writes
-  // no audit-trail entry with the authenticated identity. Showing either as
-  // „freigegeben von" would be a forgeable audit statement (security review
-  // 2026-11-18, integrity/forgeable-approval-attribution). An approver display
-  // needs a server-side source and therefore a migration (R1-KW-60).
+  // The request carries NO approver. The server records the authenticated user
+  // as approver on the change to active (approved_by / approved_at, Migration
+  // 272) and writes an audit-log entry. The page shows „Freigegeben von" only from
+  // those server fields — never from last_updated_by (client free text) or the
+  // signed-in name in the frontend (security review 2026-11-18,
+  // integrity/forgeable-approval-attribution).
   function handleApprove() {
     if (!form) return
     save({
@@ -310,6 +310,14 @@ export default function PolicyDetailPage() {
                 <p>{t('vaktcomply.policyDetail.metaUpdated')} {formatDate(policy.updated_at)}</p>
                 {policy.reviewed_at && (
                   <p>{t('vaktcomply.policyDetail.metaReviewed')} {formatDate(policy.reviewed_at)}</p>
+                )}
+                {policy.approved_by_name && policy.approved_at && (
+                  <p data-testid="policy-approved-by">
+                    {t('vaktcomply.policyDetail.metaApprovedBy', {
+                      name: policy.approved_by_name,
+                      date: formatDate(policy.approved_at),
+                    })}
+                  </p>
                 )}
                 {policy.last_updated_by && (
                   <p>{t('vaktcomply.policyDetail.metaUpdatedBy')} {policy.last_updated_by}</p>

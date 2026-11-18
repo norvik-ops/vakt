@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/matharnica/vakt/internal/modules/vaktcomply/policy"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/pagination"
@@ -520,12 +521,37 @@ func (h *Handler) UpdatePolicy(c echo.Context) error {
 	if err := h.validate.Struct(in); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"error": "Ungültige Eingabe", "code": "VALIDATION_ERROR"})
 	}
-	policy, err := h.service.UpdatePolicy(c.Request().Context(), orgID(c), id, in)
+	// The approver is the authenticated identity (userID(c)), never a body field.
+	// Role check: the route carries rw (Admin, SecurityAnalyst).
+	updated, event, err := h.service.UpdatePolicy(c.Request().Context(), orgID(c), id, userID(c), in)
 	if err != nil {
+		if isNotFound(err) {
+			return errResp(c, http.StatusNotFound, "policy not found", "CK_POLICY_NOT_FOUND")
+		}
+		if errors.Is(err, policy.ErrApproverUnknown) {
+			return errResp(c, http.StatusForbidden, "approval requires an authenticated user", "CK_POLICY_APPROVER_UNKNOWN")
+		}
 		log.Error().Err(err).Msg("update policy")
 		return errResp(c, http.StatusInternalServerError, "failed to update policy", "CK_UPDATE_POLICY_FAILED")
 	}
-	return c.JSON(http.StatusOK, policy)
+	action, details := "update", map[string]string{"status": updated.Status}
+	switch event {
+	case policy.ApprovalGranted:
+		action = "approve"
+	case policy.ApprovalRevoked:
+		details["approval"] = "revoked"
+	}
+	audit.Write(c.Request().Context(), h.db, audit.WriteEntry{
+		OrgID:        orgID(c),
+		UserID:       userID(c),
+		Action:       action,
+		ResourceType: "vakt-comply/policy",
+		ResourceID:   updated.ID,
+		ResourceName: updated.Title,
+		Details:      details,
+		IPAddress:    c.RealIP(),
+	})
+	return c.JSON(http.StatusOK, updated)
 }
 
 // ListPolicies handles GET /api/v1/vaktcomply/policies.

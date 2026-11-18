@@ -274,9 +274,10 @@ func (s *Service) CreatePolicy(ctx context.Context, orgID string, in CreatePolic
 	return s.Policy.CreatePolicy(ctx, orgID, in)
 }
 
-// UpdatePolicy updates a policy document.
-func (s *Service) UpdatePolicy(ctx context.Context, orgID, id string, in UpdatePolicyInput) (*Policy, error) {
-	return s.Policy.UpdatePolicy(ctx, orgID, id, in)
+// UpdatePolicy updates a policy document. actorID is the authenticated user; it
+// is the only source for the approver when the policy moves to active.
+func (s *Service) UpdatePolicy(ctx context.Context, orgID, id, actorID string, in UpdatePolicyInput) (*Policy, policy.PolicyApprovalEvent, error) {
+	return s.Policy.UpdatePolicy(ctx, orgID, id, actorID, in)
 }
 
 // ListPolicyVersions returns all versions of a policy.
