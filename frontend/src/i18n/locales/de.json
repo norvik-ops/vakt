@@ -254,6 +254,16 @@
       "frameworkStatusNotOffered": "Nicht im Angebot",
       "frameworkStatusNotOfferedHint": "Dieses Rahmenwerk wird derzeit nicht angeboten und kann nicht aktiviert werden."
     },
+    "controlMappings": {
+      "alsoCovered": "Auch abgedeckt in:",
+      "legend": "Bedeutung der Farben",
+      "typeEquivalent": "Gleichwertig",
+      "typePartial": "Teilweise",
+      "typeInformative": "Informativ",
+      "hintEquivalent": "deckt die Anforderung dort vollständig ab",
+      "hintPartial": "deckt einen Teil der Anforderung ab",
+      "hintInformative": "verwandtes Thema, kein Nachweis"
+    },
     "controlDetailPage": {
       "addEvidence": "Nachweis hinzufügen",
       "back": "Zurück",
@@ -2590,6 +2600,8 @@
   "backup": {
     "staleWarning": "Kein Backup in den letzten 7 Tagen",
     "staleAction": "Einstellungen öffnen",
+    "setupHint": "Noch kein Backup eingerichtet.",
+    "setupAction": "Backup einrichten",
     "title": "Backup-/Restore-Nachweis",
     "description": "Dokumentation von Backup-Jobs und Restore-Tests (ISO 27001 A.8.13, BSI DER.4) — kein Backup-Betrieb, nur Nachweis.",
     "new": "Backup-Job",

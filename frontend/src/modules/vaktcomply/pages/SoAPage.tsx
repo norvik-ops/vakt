@@ -321,13 +321,13 @@ export default function SoAPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      {/* Header — bricht auf dem Handy um, Exporte rutschen unter den Titel (UX-39) */}
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3" data-testid="soa-header">
+        <div className="min-w-0 flex-1 basis-64">
           <h1 className="text-2xl font-bold"><TermTooltip term="SoA" explanation={t('vaktcomply.soaPage.headingTooltip')}>{t('vaktcomply.soaPage.heading')}</TermTooltip></h1>
           <p className="text-secondary text-sm mt-1">ISO 27001:2022 {t('vaktcomply.soaPage.subtitleShort')}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => { handleExport('csv'); }}>
             <Download className="h-4 w-4 mr-1.5" />
             CSV
@@ -393,7 +393,7 @@ export default function SoAPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-surface border border-border rounded-lg p-4" data-testid="soa-stat-total">
           <div className="text-2xl font-bold text-primary">{totalEntries ?? 93}</div>
           <div className="text-xs text-secondary mt-0.5">{t('vaktcomply.soaPage.statTotal')}</div>
@@ -412,13 +412,13 @@ export default function SoAPage() {
         </div>
       </div>
 
-      {/* Group tabs */}
-      <div className="flex gap-1 border-b border-border">
+      {/* Group tabs — auf schmalen Bildschirmen eigener Scroll-Container statt Seitenüberlauf */}
+      <div className="flex gap-1 border-b border-border overflow-x-auto" data-testid="soa-group-tabs">
         {Object.entries(GROUP_LABELS).map(([g, label]) => (
           <button
             key={g}
             onClick={() => { setActiveGroup(g); }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`shrink-0 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeGroup === g
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-secondary hover:text-primary'

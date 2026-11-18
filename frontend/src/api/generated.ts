@@ -15173,6 +15173,8 @@ export interface paths {
                             /** Format: date-time */
                             last_backup_at?: string | null;
                             stale?: boolean;
+                            /** @description True on a fresh instance: no backup yet, no backup destination configured and the organisation is younger than 7 days. Display only — the UI shows "set up a backup" instead of the stale warning. */
+                            setup_pending?: boolean;
                         };
                     };
                 };
@@ -16858,6 +16860,8 @@ export interface paths {
                             auto_renewal_enabled: boolean;
                             /** @description True while auto-renewal is armed, the key has entered its renewal window and the last attempt did not yield a newer key (open invoice, cancelled subscription, missing renewal token or an unreachable renewal server). The key will lapse unless someone acts. Always false while renewal is not yet due. */
                             renewal_failing: boolean;
+                            /** @description True when a renewal token exists (inside the active key or via VAKT_LICENSE_TOKEN). Display only — the UI shows "auto-renewal active" only for a Pro key with a token. */
+                            renewal_token_set: boolean;
                         };
                     };
                 };
@@ -16920,6 +16924,8 @@ export interface paths {
                             auto_renewal_enabled: boolean;
                             /** @description True while auto-renewal is armed, the key has entered its renewal window and the last attempt did not yield a newer key (open invoice, cancelled subscription, missing renewal token or an unreachable renewal server). The key will lapse unless someone acts. Always false while renewal is not yet due. */
                             renewal_failing: boolean;
+                            /** @description True when a renewal token exists (inside the active key or via VAKT_LICENSE_TOKEN). Display only — the UI shows "auto-renewal active" only for a Pro key with a token. */
+                            renewal_token_set: boolean;
                         };
                     };
                 };

@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useTranslation } from 'react-i18next'
 import { useRisk, useSaveRiskDetail, useAcceptRisk } from '../hooks/useRisks'
 import { useRiskNarrative } from '../hooks/useAIInsights'
+import { useAIStatus } from '../hooks/useAIAdvisor'
 import { AIDisclaimer } from '../../../shared/components/AIDisclaimer'
 import RiskTreatmentPanel, { type TreatmentFields } from '../components/RiskTreatmentPanel'
 import type { Risk } from '../types'
@@ -31,6 +32,12 @@ const SCORE_COLOR = (score: number) => RISK_LEVEL_BADGE[riskLevel(score)]
 function AIRiskNarrativePanel({ riskId, existingNarrative }: { riskId: string; existingNarrative: string | null }) {
   const generate = useRiskNarrative(riskId)
   const { t } = useTranslation()
+  const { data: aiStatus } = useAIStatus()
+  const aiAvailable = aiStatus?.available === true
+
+  // Ohne KI-Anbieter sind die /ai/*-Routen nicht registriert; der Knopf würde nur
+  // einen Fehler erzeugen (UX-24). Eine früher erzeugte Narrative bleibt lesbar.
+  if (!aiAvailable && !existingNarrative) return null
 
   return (
     <Card>
@@ -49,16 +56,18 @@ function AIRiskNarrativePanel({ riskId, existingNarrative }: { riskId: string; e
         {generate.isError && (
           <p className="text-xs text-red-400">{generate.error?.message ?? t('vaktcomply.riskDetail.generateError')}</p>
         )}
-        <button
-          onClick={() => { generate.mutate(); }}
-          disabled={generate.isPending}
-          className="inline-flex items-center gap-1.5 text-xs text-brand hover:text-brand/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {generate.isPending
-            ? <><Loader2 className="w-3 h-3 animate-spin" /> {t('vaktcomply.riskDetail.generating')}</>
-            : <><Sparkles className="w-3 h-3" />{existingNarrative ? t('vaktcomply.riskDetail.regenerateBtn') : t('vaktcomply.riskDetail.generateBtn')}</>
-          }
-        </button>
+        {aiAvailable && (
+          <button
+            onClick={() => { generate.mutate(); }}
+            disabled={generate.isPending}
+            className="inline-flex items-center gap-1.5 text-xs text-brand hover:text-brand/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {generate.isPending
+              ? <><Loader2 className="w-3 h-3 animate-spin" /> {t('vaktcomply.riskDetail.generating')}</>
+              : <><Sparkles className="w-3 h-3" />{existingNarrative ? t('vaktcomply.riskDetail.regenerateBtn') : t('vaktcomply.riskDetail.generateBtn')}</>
+            }
+          </button>
+        )}
       </CardContent>
     </Card>
   )

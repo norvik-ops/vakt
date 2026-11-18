@@ -4,6 +4,8 @@ import { apiFetch } from '../api/client'
 export interface BackupStatus {
   last_backup_at: string | null
   stale: boolean
+  /** Frische Instanz: noch kein Backup, kein Ziel, jünger als 7 Tage (UX-10). Nur Anzeige. */
+  setup_pending?: boolean
 }
 
 export function useBackupStatus() {

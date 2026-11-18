@@ -190,6 +190,42 @@ func (s *Service) LastBackupAt(ctx context.Context, orgID string) (*time.Time, e
 	return lastBackup, err
 }
 
+// backupSetupGrace is how long a new instance may run without any backup before the
+// stale warning replaces the friendly "set up a backup" hint (UX-10). Same window as
+// the stale threshold, so a fresh instance never sees a warning it could not avoid.
+const backupSetupGrace = 7 * 24 * time.Hour
+
+// BackupSetupPending reports whether the org is still in the set-up phase for
+// backups: nothing was ever backed up, no backup destination is configured and the
+// org is younger than backupSetupGrace. The UI then shows a hint instead of the
+// "no backup in the last 7 days" warning. It only shapes the display; the stale
+// flag and the backup itself are untouched.
+func (s *Service) BackupSetupPending(ctx context.Context, orgID string, lastBackup *time.Time) (bool, error) {
+	if lastBackup != nil {
+		return false, nil
+	}
+	var createdAt time.Time
+	var destType *string
+	err := s.db.QueryRow(ctx,
+		`SELECT created_at, backup_dest_type FROM organizations WHERE id=$1::uuid`,
+		orgID).Scan(&createdAt, &destType)
+	if err != nil {
+		return false, err
+	}
+	return backupSetupPending(lastBackup, createdAt, destType, time.Now()), nil
+}
+
+// backupSetupPending is the pure decision behind BackupSetupPending.
+func backupSetupPending(lastBackup *time.Time, orgCreatedAt time.Time, destType *string, now time.Time) bool {
+	if lastBackup != nil {
+		return false
+	}
+	if destType != nil && *destType != "" && *destType != "none" {
+		return false
+	}
+	return now.Sub(orgCreatedAt) < backupSetupGrace
+}
+
 // disabledModules lists the archived modules. Notifications carry their module
 // name; old hints of an archived module (scan alerts, DSR reminders) still sit
 // in user_notifications and link to pages that no longer exist

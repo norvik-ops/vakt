@@ -432,6 +432,7 @@ func registerRoutes(lifecycleCtx context.Context, e *echo.Echo, internal *echo.E
 	// the instance never speaks to us — a supported path, not a trap. The Community
 	// Edition has no key and never calls at all.
 	licHandler := license.RegisterRoutes(api, licInst, auth.AuthMiddleware(pasetoKey, pool, rdb), pool, rdb)
+	licHandler.WithEnvRenewalToken(cfg.LicenseToken)
 	if cfg.LicenseAutoRenew {
 		licHandler.WithAutoRenewal()
 		refresher := license.NewAutoRefresher(cfg.LicenseToken, cfg.LicenseRefreshURL, true, licHandler, pool, rdb)

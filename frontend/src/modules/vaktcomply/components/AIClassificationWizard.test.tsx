@@ -102,4 +102,25 @@ describe('AIClassificationWizard', () => {
       expect.any(Object),
     )
   })
+
+  // UX-36: Der zweizeilige Titel lief über den Fortschrittsbalken (leading-none +
+  // negativer Abstand), und „Ja" war bei der Verbotsfrage der blaue Hauptknopf.
+  it('UX-36: Titel darf umbrechen ohne Überlappung, Ja und Nein gleich gewichtet', () => {
+    render(
+      <AIClassificationWizard
+        systemId="sys-1"
+        systemName="Bewerber-Vorauswahl mit einem sehr langen Namen KW10"
+        open={true}
+        onClose={vi.fn()}
+      />,
+      { wrapper },
+    )
+    const title = screen.getByTestId('wizard-title')
+    expect(title.className).not.toMatch(/leading-none/)
+    expect(title.className).toMatch(/leading-snug/)
+    expect(screen.getByTestId('wizard-progress').className).not.toMatch(/-mt-/)
+    const yes = screen.getByTestId('wizard-yes-btn')
+    const no = screen.getByTestId('wizard-no-btn')
+    expect(yes.className).toBe(no.className)
+  })
 })

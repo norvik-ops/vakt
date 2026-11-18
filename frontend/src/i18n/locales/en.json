@@ -254,6 +254,16 @@
       "frameworkStatusNotOffered": "Not offered",
       "frameworkStatusNotOfferedHint": "This framework is currently not offered and cannot be enabled."
     },
+    "controlMappings": {
+      "alsoCovered": "Also covered in:",
+      "legend": "Colour legend",
+      "typeEquivalent": "Equivalent",
+      "typePartial": "Partial",
+      "typeInformative": "Informative",
+      "hintEquivalent": "fully satisfies the requirement as well",
+      "hintPartial": "covers part of the requirement",
+      "hintInformative": "related topic, not evidence"
+    },
     "controlDetailPage": {
       "addEvidence": "Add Evidence",
       "back": "Back",
@@ -2590,6 +2600,8 @@
   "backup": {
     "staleWarning": "No backup in the last 7 days",
     "staleAction": "Open settings",
+    "setupHint": "No backup set up yet.",
+    "setupAction": "Set up backup",
     "title": "Backup / Restore Evidence",
     "description": "Documentation of backup jobs and restore tests (ISO 27001 A.8.13, BSI DER.4) — evidence only, no backup operation.",
     "new": "Backup job",

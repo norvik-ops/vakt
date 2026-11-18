@@ -14677,6 +14677,12 @@ paths:
                     nullable: true
                   stale:
                     type: boolean
+                  setup_pending:
+                    type: boolean
+                    description: >-
+                      True on a fresh instance: no backup yet, no backup destination
+                      configured and the organisation is younger than 7 days. Display
+                      only — the UI shows "set up a backup" instead of the stale warning.
         '401':
           description: Unauthorized
 
@@ -15821,6 +15827,12 @@ paths:
                       cancelled subscription, missing renewal token or an unreachable
                       renewal server). The key will lapse unless someone acts. Always false
                       while renewal is not yet due.
+                  renewal_token_set:
+                    type: boolean
+                    description: >-
+                      True when a renewal token exists (inside the active key or via
+                      VAKT_LICENSE_TOKEN). Display only — the UI shows "auto-renewal
+                      active" only for a Pro key with a token.
                 required:
                 - tier
                 - is_pro
@@ -15830,6 +15842,7 @@ paths:
                 - demo
                 - auto_renewal_enabled
                 - renewal_failing
+                - renewal_token_set
         '401':
           description: Unauthorized
 
@@ -15883,6 +15896,12 @@ paths:
                       cancelled subscription, missing renewal token or an unreachable
                       renewal server). The key will lapse unless someone acts. Always false
                       while renewal is not yet due.
+                  renewal_token_set:
+                    type: boolean
+                    description: >-
+                      True when a renewal token exists (inside the active key or via
+                      VAKT_LICENSE_TOKEN). Display only — the UI shows "auto-renewal
+                      active" only for a Pro key with a token.
                 required:
                 - tier
                 - is_pro
@@ -15892,6 +15911,7 @@ paths:
                 - demo
                 - auto_renewal_enabled
                 - renewal_failing
+                - renewal_token_set
         '400':
           description: Invalid body or missing key
           content:

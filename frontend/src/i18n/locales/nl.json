@@ -254,6 +254,16 @@
       "frameworkStatusNotOffered": "Niet aangeboden",
       "frameworkStatusNotOfferedHint": "Dit raamwerk wordt momenteel niet aangeboden en kan niet worden geactiveerd."
     },
+    "controlMappings": {
+      "alsoCovered": "Ook afgedekt in:",
+      "legend": "Betekenis van de kleuren",
+      "typeEquivalent": "Gelijkwaardig",
+      "typePartial": "Gedeeltelijk",
+      "typeInformative": "Informatief",
+      "hintEquivalent": "voldoet ook volledig aan de eis",
+      "hintPartial": "dekt een deel van de eis af",
+      "hintInformative": "verwant onderwerp, geen bewijs"
+    },
     "controlDetailPage": {
       "addEvidence": "Bewijsmateriaal toevoegen",
       "back": "Terug",
@@ -2590,6 +2600,8 @@
   "backup": {
     "staleWarning": "Geen back-up in de afgelopen 7 dagen",
     "staleAction": "Instellingen openen",
+    "setupHint": "Nog geen back-up ingesteld.",
+    "setupAction": "Back-up instellen",
     "title": "Back-up-/herstelbewijs",
     "description": "Documentatie van back-uptaken en hersteltests (ISO 27001 A.8.13, BSI DER.4) — alleen bewijs, geen back-upbeheer.",
     "new": "Back-uptaak",

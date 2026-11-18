@@ -30,6 +30,10 @@ type licenseResponse struct {
 	// expiry IS the failure, because a working renewal would have replaced it.
 	// Always false while renewal is not due, so it cannot nag a healthy instance.
 	RenewalFailing bool `json:"renewal_failing"`
+	// RenewalTokenSet is true when a renewal token exists — inside the active key or
+	// via VAKT_LICENSE_TOKEN. Display only: without a token, auto-renewal has nothing
+	// to renew with, so the UI must not claim "auto-renewal active" (UX-04).
+	RenewalTokenSet bool `json:"renewal_token_set"`
 }
 
 // Handler serves the /api/v1/license endpoint.
@@ -45,6 +49,9 @@ type Handler struct {
 	rdb                *redis.Client
 	autoRenewalEnabled bool
 	renewalFailing     bool
+	// envRenewalToken is true when VAKT_LICENSE_TOKEN is set (fallback for keys
+	// without an embedded token). Only read for renewal_token_set.
+	envRenewalToken bool
 }
 
 // setRenewalFailing records the outcome of the most recent renewal attempt.
@@ -97,6 +104,19 @@ func (h *Handler) WithAutoRenewal() *Handler {
 	return h
 }
 
+// WithEnvRenewalToken records whether VAKT_LICENSE_TOKEN is set, so the license
+// response can report renewal_token_set for keys without an embedded token.
+// The token itself is never stored here or returned.
+func (h *Handler) WithEnvRenewalToken(token string) *Handler {
+	h.envRenewalToken = token != ""
+	return h
+}
+
+// renewalTokenSet reports whether a renewal token exists for lic.
+func (h *Handler) renewalTokenSet(lic *License) bool {
+	return h.envRenewalToken || (lic != nil && lic.RenewalToken != "")
+}
+
 // Get returns the current license state.
 // It prefers the per-request license set by DBMiddleware (which carries the
 // org-specific DB key) and falls back to the in-memory static license.
@@ -120,6 +140,7 @@ func (h *Handler) Get(c echo.Context) error {
 		Demo:               lic.Demo,
 		AutoRenewalEnabled: h.autoRenewalEnabled,
 		RenewalFailing:     h.RenewalFailing(),
+		RenewalTokenSet:    h.renewalTokenSet(lic),
 	})
 }
 
@@ -225,5 +246,6 @@ func (h *Handler) Activate(c echo.Context) error {
 		Demo:               lic.Demo,
 		AutoRenewalEnabled: h.autoRenewalEnabled,
 		RenewalFailing:     h.RenewalFailing(),
+		RenewalTokenSet:    h.renewalTokenSet(lic),
 	})
 }

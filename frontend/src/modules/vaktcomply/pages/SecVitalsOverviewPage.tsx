@@ -412,12 +412,14 @@ export default function SecVitalsOverviewPage() {
     ),
     evidence: <ExpiringEvidenceWidget key="evidence" />,
     insights: <AIInsightsFeed key="insights" />,
-    advisor: (
+    // Ohne KI-Anbieter kein KI-Berater-Kasten (UX-24): der einzige Hinweis, wie man
+    // die KI einschaltet, steht unter Einstellungen → KI.
+    advisor: !aiStatus?.available ? null : (
       <AIAdvisor
         key="advisor"
-        aiAvailable={aiStatus?.available ?? false}
-        providerHost={aiStatus?.provider_host ?? ''}
-        model={aiStatus?.model}
+        aiAvailable
+        providerHost={aiStatus.provider_host}
+        model={aiStatus.model}
       />
     ),
     trend: <ScoreTrendChart key="trend" data={scoreHistory ?? []} />,

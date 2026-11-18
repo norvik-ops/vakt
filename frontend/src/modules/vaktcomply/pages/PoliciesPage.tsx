@@ -24,6 +24,7 @@ import { FieldError } from '../../../shared/components/FieldError'
 import { useSavedFilters } from '../../../shared/hooks/useSavedFilters'
 import { useFormValidation } from '../../../shared/hooks/useFormValidation'
 import { usePolicies, useCreatePolicy, useGeneratePolicyDraft } from '../hooks/usePolicies'
+import { useAIStatus } from '../hooks/useAIAdvisor'
 import { useFirstAction } from '../../../shared/hooks/useFirstAction'
 import { apiFetch } from '../../../api/client'
 import type { Policy, CreatePolicyInput, Framework } from '../types'
@@ -121,6 +122,8 @@ export default function PoliciesPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const canWrite = useCanWrite()
+  const { data: aiStatus } = useAIStatus()
+  const aiAvailable = aiStatus?.available === true
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [templateOpen, setTemplateOpen] = useState(false)
@@ -279,10 +282,15 @@ export default function PoliciesPage() {
                   <LayoutTemplate className="w-4 h-4 mr-1" />
                   {t('vaktcomply.policiesPage.fromTemplate')}
                 </Button>
-                <Button variant="outline" onClick={openAiDialog} aria-haspopup="dialog">
-                  <Sparkles className="w-4 h-4 mr-1" />
-                  {t('vaktcomply.policiesPage.aiDraft')}
-                </Button>
+                {/* Ohne erreichbaren KI-Anbieter ist /ai/draft-policy nicht registriert (404) —
+                    der Knopf öffnete trotzdem den Dialog (UX-24). Wie bei Kontrolle und Vorfall:
+                    nur anbieten, wenn die KI läuft. */}
+                {aiAvailable && (
+                  <Button variant="outline" onClick={openAiDialog} aria-haspopup="dialog">
+                    <Sparkles className="w-4 h-4 mr-1" />
+                    {t('vaktcomply.policiesPage.aiDraft')}
+                  </Button>
+                )}
                 <Button onClick={openDialog} aria-haspopup="dialog">
                   <Plus className="w-4 h-4 mr-1" />
                   {t('vaktcomply.policiesPage.createPolicy')}

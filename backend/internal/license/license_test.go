@@ -435,6 +435,44 @@ func TestHandler_Get_FromContext(t *testing.T) {
 	}
 }
 
+// UX-04: the settings card claimed "auto-renewal active" on a Community instance
+// without any key. renewal_token_set tells the UI whether a token exists at all.
+func TestHandler_Get_RenewalTokenSet(t *testing.T) {
+	get := func(h *Handler, lic *License) licenseResponse {
+		t.Helper()
+		e := echo.New()
+		rec := httptest.NewRecorder()
+		c := e.NewContext(httptest.NewRequest(http.MethodGet, "/api/v1/license", nil), rec)
+		if lic != nil {
+			c.Set("license", lic)
+		}
+		if err := h.Get(c); err != nil {
+			t.Fatalf("Get failed: %v", err)
+		}
+		var resp licenseResponse
+		if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		return resp
+	}
+
+	community := NewHandler(communityLicense()).WithAutoRenewal()
+	if resp := get(community, nil); resp.RenewalTokenSet || !resp.AutoRenewalEnabled {
+		t.Fatalf("community without token: want renewal_token_set=false, auto_renewal_enabled=true, got %+v", resp)
+	}
+	embedded := NewHandler(nil).WithAutoRenewal()
+	if resp := get(embedded, &License{Tier: "pro", RenewalToken: "tok"}); !resp.RenewalTokenSet {
+		t.Fatal("token inside the key: want renewal_token_set=true")
+	}
+	env := NewHandler(nil).WithEnvRenewalToken("tok")
+	if resp := get(env, &License{Tier: "pro"}); !resp.RenewalTokenSet {
+		t.Fatal("token via VAKT_LICENSE_TOKEN: want renewal_token_set=true")
+	}
+	if NewHandler(nil).WithEnvRenewalToken("").envRenewalToken {
+		t.Fatal("empty VAKT_LICENSE_TOKEN must not count as set")
+	}
+}
+
 func TestInvalidateLicenseCache_NilRDB(t *testing.T) {
 	// nil rdb → early return, must not panic
 	InvalidateLicenseCache(context.Background(), nil, "org-123")

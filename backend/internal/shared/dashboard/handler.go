@@ -112,9 +112,17 @@ func (h *Handler) GetBackupStatus(c echo.Context) error {
 	if lastBackup != nil {
 		stale = time.Since(*lastBackup) > 7*24*time.Hour
 	}
+	// Display only: on a fresh instance the UI shows "set up a backup" instead of
+	// the stale warning (UX-10). On error fall back to the warning.
+	setupPending, err := h.svc.BackupSetupPending(c.Request().Context(), orgID, lastBackup)
+	if err != nil {
+		log.Error().Err(err).Msg("dashboard: backup setup status")
+		setupPending = false
+	}
 	return c.JSON(http.StatusOK, map[string]any{
 		"last_backup_at": lastBackup,
 		"stale":          stale,
+		"setup_pending":  setupPending,
 	})
 }
 

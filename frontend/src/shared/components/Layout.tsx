@@ -13,6 +13,7 @@ import { useBackupStatus } from '../../hooks/useDashboard'
 import { useDemoMode } from '../hooks/useDemoMode'
 import { GlobalSearch } from './GlobalSearch'
 import { LicenseExpiryBanner } from './LicenseExpiryBanner'
+import { BackupBanner } from './BackupBanner'
 import { WhatsNewModal } from './WhatsNewModal'
 import { useOverdueControls } from '../../modules/vaktcomply/hooks/useControlReviews'
 import { useAutoEvidence } from '../../modules/vaktcomply/hooks/useEvidenceAuto'
@@ -30,6 +31,24 @@ import { TopBar } from './TopBar'
 import { SidebarNav } from './SidebarNav'
 
 const SIDEBAR_COLLAPSED_KEY = 'vakt_sidebar_collapsed'
+const DESKTOP_QUERY = '(min-width: 1024px)' // Tailwind `lg`, ab da ist die Seitenleiste fest
+
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(DESKTOP_QUERY).matches
+      : true,
+  )
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia(DESKTOP_QUERY)
+    const onChange = () => { setIsDesktop(mq.matches) }
+    onChange()
+    mq.addEventListener('change', onChange)
+    return () => { mq.removeEventListener('change', onChange) }
+  }, [])
+  return isDesktop
+}
 
 export default function Layout() {
   const { t } = useTranslation()
@@ -37,7 +56,6 @@ export default function Layout() {
   const { user } = useAuthStore()
   const { theme, toggle } = useThemeStore()
   const { data: backupStatus } = useBackupStatus()
-  const [backupDismissed, setBackupDismissed] = useState(false)
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(false)
   const [updateDismissed, setUpdateDismissed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -45,6 +63,11 @@ export default function Layout() {
     try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true' } catch { return false }
   })
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  // UX-39: Auf dem Handy ist die Seitenleiste ein Drawer. Ein auf dem Desktop
+  // gespeichertes „eingeklappt" (56 px, nur Icons) gilt dort nicht — sonst öffnet
+  // „Mehr" eine schmale Icon-Leiste ohne Beschriftung.
+  const isDesktop = useIsDesktop()
+  const collapsed = sidebarCollapsed && isDesktop
   const { data: updateInfo } = useUpdateCheck()
   const { data: licenseStatus } = useLicenseStatus()
   const isUserPro = licenseStatus?.is_pro ?? false
@@ -59,6 +82,14 @@ export default function Layout() {
   const pendingApprovalCount = pendingApprovalData?.count ?? 0
 
   useKeyboardShortcuts({ onOpenHelp: () => { setShortcutsOpen(true); } })
+
+  // Drawer mit Escape schließen (Handy/Tablet).
+  useEffect(() => {
+    if (!sidebarOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey) }
+  }, [sidebarOpen])
 
   function toggleSidebarCollapsed() {
     setSidebarCollapsed((prev) => {
@@ -100,17 +131,7 @@ export default function Layout() {
           <button onClick={() => { setDemoBannerDismissed(true); }} aria-label={t('common.close')} className="text-brand/60 hover:text-brand ml-4">✕</button>
         </div>
       )}
-      {backupStatus?.stale && !backupDismissed && !demoMode && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-sm shrink-0">
-          <span className="text-amber-800">
-            ⚠ {t('backup.staleWarning')} —{' '}
-            <Link to="/settings#system" className="underline font-medium hover:text-amber-900">
-              {t('backup.staleAction')}
-            </Link>
-          </span>
-          <button onClick={() => { setBackupDismissed(true); }} aria-label={t('common.close')} className="text-amber-600 hover:text-amber-800 ml-4">✕</button>
-        </div>
-      )}
+      {!demoMode && <BackupBanner status={backupStatus} />}
       {isAdminOrOwner && updateInfo?.update_available && !updateDismissed && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between text-sm shrink-0">
           <span className="text-amber-800 dark:text-amber-300 flex items-center gap-2">
@@ -152,21 +173,23 @@ export default function Layout() {
       )}
       {/* Sidebar */}
       <aside
-        aria-expanded={!sidebarCollapsed}
+        aria-expanded={!collapsed}
+        data-testid="app-sidebar"
+        data-open={sidebarOpen ? 'true' : 'false'}
         className={cn(
           'shrink-0 bg-surface border-r border-border flex flex-col',
           'fixed inset-y-0 left-0 z-30 transition-all duration-200 lg:static lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-          sidebarCollapsed ? 'w-[56px]' : 'w-[210px]',
+          collapsed ? 'w-[56px]' : 'w-[210px]',
         )}
       >
 
         {/* Brand */}
-        <div className={cn('px-3 pt-5 pb-4', sidebarCollapsed && 'px-2')}>
-          <div className={cn('flex items-center gap-2.5 px-2 mb-1', sidebarCollapsed && 'justify-center px-0')}>
+        <div className={cn('px-3 pt-5 pb-4', collapsed && 'px-2')}>
+          <div className={cn('flex items-center gap-2.5 px-2 mb-1', collapsed && 'justify-center px-0')}>
             <img src="/logo.svg" alt="Vakt" className="w-7 h-7 shrink-0" title="Vakt" />
-            {!sidebarCollapsed && <span className="font-bold text-[18px] text-brand leading-none">Vakt</span>}
-            {!sidebarCollapsed && (
+            {!collapsed && <span className="font-bold text-[18px] text-brand leading-none">Vakt</span>}
+            {!collapsed && (
               <button
                 className="ml-auto lg:hidden text-secondary hover:text-primary p-1 rounded"
                 onClick={() => { setSidebarOpen(false); }}
@@ -176,7 +199,7 @@ export default function Layout() {
               </button>
             )}
           </div>
-          {!sidebarCollapsed && (
+          {!collapsed && (
             <div className="flex items-center gap-2 px-2">
               <p className="text-[11px] text-secondary">Security Platform</p>
             </div>
@@ -184,7 +207,7 @@ export default function Layout() {
         </div>
 
         {/* Search trigger — only when sidebar is collapsed (TopBar covers expanded case) */}
-        {sidebarCollapsed && (
+        {collapsed && (
           <div className="px-2 pb-2 hidden lg:block">
             <button
               type="button"
@@ -199,10 +222,10 @@ export default function Layout() {
         )}
 
         {/* Nav */}
-        <nav role="navigation" aria-label={t('nav.mainNav')} className={cn('flex-1 overflow-y-auto', sidebarCollapsed ? 'px-2' : 'px-3')}>
+        <nav role="navigation" aria-label={t('nav.mainNav')} className={cn('flex-1 overflow-y-auto', collapsed ? 'px-2' : 'px-3')}>
           <SidebarNav
             pathname={location.pathname}
-            collapsed={sidebarCollapsed}
+            collapsed={collapsed}
             isUserPro={isUserPro}
             isAdminOrOwner={isAdminOrOwner}
             overdueCount={overdueCount}
@@ -213,17 +236,17 @@ export default function Layout() {
         </nav>
 
         {/* Bottom — user row + collapse + © */}
-        <div className={cn('pb-4 border-t border-border pt-3 space-y-[2px]', sidebarCollapsed ? 'px-2' : 'px-3')}>
+        <div className={cn('pb-4 border-t border-border pt-3 space-y-[2px]', collapsed ? 'px-2' : 'px-3')}>
           {/* User identity link */}
           {user && (
             <Link
               to="/account"
               onClick={() => { setSidebarOpen(false) }}
-              title={sidebarCollapsed ? (user.display_name || user.email) : undefined}
+              title={collapsed ? (user.display_name || user.email) : undefined}
               aria-label={t('nav.userProfile')}
               className={cn(
                 'flex items-center rounded-md transition-all duration-150 text-secondary hover:bg-muted/50 hover:text-primary',
-                sidebarCollapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
+                collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
               )}
             >
               <span
@@ -232,7 +255,7 @@ export default function Layout() {
               >
                 {(user.display_name || user.email || '?').charAt(0).toUpperCase()}
               </span>
-              {!sidebarCollapsed && (
+              {!collapsed && (
                 <span className="flex-1 min-w-0">
                   <span className="block text-[12px] font-medium truncate text-primary">
                     {user.display_name || user.email}
@@ -246,19 +269,19 @@ export default function Layout() {
           )}
           <button
             onClick={toggleSidebarCollapsed}
-            aria-label={sidebarCollapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
-            title={sidebarCollapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
+            aria-label={collapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
+            title={collapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
             className={cn(
-              'w-full flex items-center rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150',
-              sidebarCollapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-[9px]',
+              'hidden lg:flex w-full items-center rounded-md text-[13px] text-secondary hover:bg-muted/50 hover:text-primary transition-all duration-150',
+              collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-[9px]',
             )}
           >
-            {sidebarCollapsed
+            {collapsed
               ? <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
               : <><ChevronLeft className="w-4 h-4 shrink-0" aria-hidden="true" /><span>{t('nav.collapse')}</span></>
             }
           </button>
-          {!sidebarCollapsed && (
+          {!collapsed && (
             <div className="px-3 pt-2">
               <p className="text-[10px] text-secondary/50">© 2026 NorvikOps · ELv2</p>
             </div>

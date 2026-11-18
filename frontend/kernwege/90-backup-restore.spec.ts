@@ -53,7 +53,16 @@ test.describe('KW4 Backup & Restore', () => {
   test('KW4 Backup nach Anleitung läuft, Archiv ist signiert, der Backup-Status im Produkt springt um', async ({ browser }) => {
     const page = await openAs(browser, 'admin')
     await page.goto('/')
-    await expect(page.getByText(/Kein Backup in den letzten 7 Tagen/)).toBeVisible()
+    // Frische Instanz (noch nie ein Backup, kein Ziel, jünger als 7 Tage): Das Produkt
+    // weist seit fix/ui-kleinkram-mobil mit „Backup einrichten" auf das fehlende Backup
+    // hin statt mit der Warnung, die man am ersten Tag nicht vermeiden kann
+    // (setup_pending im Backend). Geprüft werden Text, Link zur Einrichtung und dass
+    // die Warnung dafür nicht zusätzlich erscheint.
+    const setupHint = page.getByTestId('backup-setup-hint')
+    await expect(setupHint).toBeVisible()
+    await expect(setupHint).toContainText('Noch kein Backup eingerichtet.')
+    await expect(setupHint.getByRole('link', { name: 'Backup einrichten' })).toHaveAttribute('href', '/settings#system')
+    await expect(page.getByText(/Kein Backup in den letzten 7 Tagen/)).toHaveCount(0)
 
     const dir = path.join(KW.dir, 'backups')
     fs.mkdirSync(dir, { recursive: true })
@@ -77,6 +86,10 @@ test.describe('KW4 Backup & Restore', () => {
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible()
     await expect(page.getByText(/Kein Backup in den letzten 7 Tagen/)).toHaveCount(0)
+    // Nach dem Backup gibt es nichts mehr einzurichten: Der Einrichtungs-Hinweis ist
+    // weg (setup_pending ist false, sobald backup_log einen Eintrag hat).
+    await expect(page.getByTestId('backup-setup-hint')).toHaveCount(0)
+    await expect(page.getByTestId('backup-stale-warning')).toHaveCount(0)
   })
 
   test('KW4 Restore auf leerer Instanz stellt Admin, Risiko, Richtlinie und Beleg wieder her', async ({ browser }) => {

@@ -254,6 +254,16 @@
       "frameworkStatusNotOffered": "Non proposé",
       "frameworkStatusNotOfferedHint": "Ce référentiel n'est actuellement pas proposé et ne peut pas être activé."
     },
+    "controlMappings": {
+      "alsoCovered": "Également couvert dans :",
+      "legend": "Signification des couleurs",
+      "typeEquivalent": "Équivalent",
+      "typePartial": "Partiel",
+      "typeInformative": "Informatif",
+      "hintEquivalent": "satisfait aussi entièrement l'exigence",
+      "hintPartial": "couvre une partie de l'exigence",
+      "hintInformative": "thème apparenté, pas une preuve"
+    },
     "controlDetailPage": {
       "addEvidence": "Ajouter des preuves",
       "back": "Retour",
@@ -2590,6 +2600,8 @@
   "backup": {
     "staleWarning": "Aucune sauvegarde au cours des 7 derniers jours",
     "staleAction": "Ouvrir les paramètres",
+    "setupHint": "Aucune sauvegarde configurée pour l'instant.",
+    "setupAction": "Configurer la sauvegarde",
     "title": "Preuve de sauvegarde / restauration",
     "description": "Documentation des tâches de sauvegarde et tests de restauration (ISO 27001 A.8.13, BSI DER.4) — preuve uniquement, aucune opération.",
     "new": "Tâche de sauvegarde",

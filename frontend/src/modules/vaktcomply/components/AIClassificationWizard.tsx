@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, CheckCircle, AlertTriangle, ChevronRight } from 'lucide-react'
+import { Bot, CheckCircle, AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
@@ -81,14 +81,17 @@ export function AIClassificationWizard({ systemId, systemName, open, onClose }: 
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-primary" />
-            {t('vaktcomply.aiClassificationWizard.title', { name: systemName })}
+          {/* UX-36: Der Titel ist oft zweizeilig („Risikoklassifizierung — <langer Name>").
+              Mit leading-none und negativem Abstand lief die zweite Zeile über den
+              Fortschrittsbalken; pr-6 hält ihn vom Schließen-Kreuz fern. */}
+          <DialogTitle className="flex items-start gap-2 pr-6 leading-snug break-words" data-testid="wizard-title">
+            <Bot className="w-5 h-5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+            <span className="min-w-0">{t('vaktcomply.aiClassificationWizard.title', { name: systemName })}</span>
           </DialogTitle>
         </DialogHeader>
 
         {/* Progress bar */}
-        <div className="w-full bg-muted rounded-full h-1.5 -mt-1">
+        <div className="w-full bg-muted rounded-full h-1.5 mt-3" data-testid="wizard-progress">
           <div
             className="bg-primary h-1.5 rounded-full transition-all duration-300"
             style={{ width: `${state.phase === 'result' ? 100 : progress}%` }}
@@ -105,6 +108,9 @@ export function AIClassificationWizard({ systemId, systemName, open, onClose }: 
               {currentStep.explanation}
             </div>
             <p className="text-xs text-primary/70">{currentStep.article}</p>
+            {/* UX-36: Ja und Nein sind gleichwertige Antworten. Ein blauer Haupt-Knopf
+                „Ja" bei „Fällt das System unter die verbotenen Anwendungen?" legt die
+                folgenschwere Antwort nahe — deshalb beide gleich gewichtet. */}
             <div className="flex gap-3 pt-1">
               <Button
                 className="flex-1"
@@ -116,11 +122,11 @@ export function AIClassificationWizard({ systemId, systemName, open, onClose }: 
               </Button>
               <Button
                 className="flex-1"
+                variant="outline"
                 onClick={() => { handleAnswer(true); }}
                 data-testid="wizard-yes-btn"
               >
                 {t('vaktcomply.aiClassificationWizard.yes')}
-                <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
           </div>

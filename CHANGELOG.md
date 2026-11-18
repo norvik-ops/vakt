@@ -7,6 +7,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Geändert
+- **Handy-Breite (390 px):** Seitenköpfe brechen um — Aktionen wie „Zurück“, Exporte und
+  „Nachweis hinzufügen“ rutschen unter den Titel, statt aus dem Bild zu laufen. Die
+  Anwendbarkeitserklärung zeigt ihre Kennzahlen zweispaltig, die Reiter scrollen in einem eigenen
+  Bereich. Die Seitenleiste öffnet auf dem Handy immer ausgeklappt (auch wenn sie am Desktop
+  eingeklappt ist) und schließt mit Escape.
+- **KI-Knöpfe nur mit KI:** „KI-Entwurf generieren“ (Richtlinien), „KI-Narrative generieren“
+  (Risiko) und der Kasten „KI-Compliance-Berater“ erscheinen nur, wenn ein KI-Anbieter erreichbar
+  ist. Eine früher erzeugte Risiko-Narrative bleibt lesbar.
+- **Backup-Hinweis auf frischen Instanzen:** Solange noch nie ein Backup lief, kein Backup-Ziel
+  eingerichtet ist und die Instanz jünger als 7 Tage ist, steht „Noch kein Backup eingerichtet. —
+  Backup einrichten“ statt der Warnung „Kein Backup in den letzten 7 Tagen“. Die Warnung bleibt,
+  sobald ein Backup fällig ist. `GET /dashboard/backup-status` liefert dafür `setup_pending`.
+- **Lizenzkarte:** „Auto-Renewal aktiv“ steht nur noch bei einem Pro-Schlüssel mit
+  Verlängerungs-Token, nicht mehr auf Community-Instanzen ohne Schlüssel. `GET /license` liefert
+  dafür `renewal_token_set` (nur ob, nie den Token).
+- **Assistent „Risikoklasse bestimmen“:** Ein langer Titel bricht um, ohne über den
+  Fortschrittsbalken zu laufen; „Ja“ und „Nein“ sind gleich gewichtet (vorher war „Ja“ bei der
+  Frage nach verbotenen Anwendungen der blaue Hauptknopf). Dialogtitel allgemein mit normalem
+  Zeilenabstand.
+- **„Auch abgedeckt in“:** Jede Zielkontrolle erscheint einmal, ohne doppelten Framework-Namen
+  („NIS2-A.1“ statt „NIS2 NIS2-A.1“); eine Legende erklärt die Farben (gleichwertig, teilweise,
+  informativ), der Tooltip ist übersetzt.
 - **Risiko-Detail: jede Angabe einmal, ein Speichern:** Strategie, Verantwortlicher,
   Maßnahmen/Behandlungsplan und Restrisiko standen bisher zwei- bis dreimal auf der Seite, mit
   drei Speichern-Knöpfen. Jetzt gibt es einen Behandlungsblock; „Speichern“ oben und „Behandlung

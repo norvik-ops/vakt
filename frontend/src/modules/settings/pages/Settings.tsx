@@ -30,6 +30,7 @@ import { ProGate } from '../../../shared/components/ProGate'
 import { featureLabel } from '../../../shared/featureTiers'
 import { useUpdateCheck, useToggleUpdateCheck } from '../../../shared/hooks/useUpdateCheck'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
+import { showAutoRenewalBadge } from '../utils/licenseDisplay'
 
 // ─── Retention / Digest hooks (used by DigestToggleSection) ──────────────────
 
@@ -324,6 +325,8 @@ interface LicenseInfo {
   auto_renewal_enabled: boolean
   /** Auto-renewal is armed but the last attempt produced no newer key. */
   renewal_failing: boolean
+  /** A renewal token exists (inside the key or via VAKT_LICENSE_TOKEN). */
+  renewal_token_set: boolean
 }
 
 function useLicense() {
@@ -391,7 +394,7 @@ function LicenseSection() {
           <Badge variant={isPro ? 'success' : 'secondary'} className="text-xs px-2.5 py-1">
             {isPro ? (lic?.demo ? 'Pro (Demo)' : 'Pro') : 'Community'}
           </Badge>
-          {lic?.auto_renewal_enabled && (
+          {showAutoRenewalBadge(lic) && (
             <Badge variant="outline" className="text-xs px-2 py-0.5 text-green-700 border-green-300 bg-green-50 dark:text-green-400 dark:border-green-800 dark:bg-green-950/30">
               {t('settingsPage.licenseAutoRenewal')}
             </Badge>
