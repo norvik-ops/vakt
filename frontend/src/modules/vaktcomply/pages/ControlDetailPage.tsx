@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Download, FileText, ChevronRight, RefreshCw, Info,
-  Circle, Clock, CheckCircle2, MinusCircle, Trash2, ListChecks, History,
+  Circle, Clock, CheckCircle2, MinusCircle, Trash2, History,
   Pencil, X, ShieldAlert, CalendarDays, Sparkles, Square, Loader2, ClipboardCheck,
 } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
@@ -26,7 +26,6 @@ import {
   useExportControl, useControl, useUpdateControl,
 } from '../hooks/useControls'
 import { useFrameworkControls, useFramework } from '../hooks/useFrameworks'
-import { useControlTasks, useCreateControlTask, useToggleControlTask, useDeleteControlTask } from '../hooks/useControlTasks'
 import { MeasuresList } from '../components/MeasuresList'
 import { TasksPanel } from '../components/TasksPanel'
 import { Comments } from '../../../shared/components/Comments'
@@ -415,7 +414,6 @@ export default function ControlDetailPage() {
   const { data: framework } = useFramework(frameworkId)
   const { data: allControls } = useFrameworkControls(frameworkId)
   const { data: evidence, isLoading: evidenceLoading } = useEvidence(controlId)
-  const { data: tasks } = useControlTasks(controlId)
   const updateControl = useUpdateControl(frameworkId)
   const queryClient = useQueryClient()
   const addEvidence = useAddEvidence(controlId)
@@ -432,9 +430,6 @@ export default function ControlDetailPage() {
     onError: (e) => { handleApiError(e) },
   })
   const exportControl = useExportControl(controlId)
-  const createTask = useCreateControlTask(controlId)
-  const toggleTask = useToggleControlTask(controlId)
-  const deleteTask = useDeleteControlTask(controlId)
   const requestApproval = useRequestControlApproval(controlId)
   const { data: approvalSetting } = useApprovalSetting()
   const approvalRequired = approvalSetting?.approval_required ?? false
@@ -545,15 +540,6 @@ export default function ControlDetailPage() {
   const subControls = allControls?.filter(
     (c) => c.control_id.startsWith((control?.control_id ?? '') + '.') && c.id !== controlId,
   ) ?? []
-
-  // Checklist
-  const [newTaskText, setNewTaskText] = useState('')
-
-  function handleAddTask(e: React.FormEvent) {
-    e.preventDefault()
-    if (!newTaskText.trim()) return
-    createTask.mutate({ text: newTaskText.trim() }, { onSuccess: () => { setNewTaskText(''); } })
-  }
 
   // Evidence form
   const [addOpen, setAddOpen] = useState(false)
@@ -965,84 +951,11 @@ export default function ControlDetailPage() {
           </Card>
         )}
 
-        {/* UX-32: Drei Listen, fachlich verschieden, jetzt beieinander und jede mit
-            einem Satz, wofür sie da ist: Umsetzungshilfe (Katalog-Vorschläge, nichts
-            zum Abhaken) → Umsetzungsschritte (schnelle Checkliste ohne Person/Frist)
-            → Zugewiesene Aufgaben (mit Verantwortlichem, Frist, Priorität). Ein
-            Zusammenlegen der beiden Aufgabenlisten bräuchte ein gemeinsames
-            Datenmodell im Backend — als Backlog notiert, nicht gebaut. */}
+        {/* UX-32: Umsetzungshilfe (Katalog-Vorschläge zum Nachlesen) und darunter
+            EINE Liste „Aufgaben“. Die frühere Checkliste „Umsetzungsschritte“
+            (ck_control_tasks) ist seit Migration 273 Teil dieser Liste: jede
+            Aufgabe abhakbar, Person und Frist optional. */}
         <MeasuresList controlId={controlId} />
-
-        {/* Implementation checklist */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <ListChecks className="w-4 h-4" />
-              {t('vaktcomply.controlDetailPage.implementationSteps')}
-            </CardTitle>
-            <p className="text-xs text-secondary">{t('vaktcomply.controlDetailPage.implementationStepsHint')}</p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <WriteFieldset>
-            {/* Task list */}
-            {tasks && tasks.length > 0 && (
-              <ul className="space-y-2">
-                {tasks.map((task) => (
-                  <li key={task.id} className="flex items-start gap-3 group">
-                    <button
-                      type="button"
-                      className={cn(
-                        'mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors',
-                        task.completed
-                          ? 'bg-green-500 border-green-500 text-white'
-                          : 'border-border hover:border-green-400',
-                      )}
-                      onClick={() => { toggleTask.mutate({ taskId: task.id, completed: !task.completed }); }}
-                      title={task.completed ? t('vaktcomply.controlDetailPage.markOpen') : t('vaktcomply.controlDetailPage.markDone')}
-                    >
-                      {task.completed && <CheckCircle2 className="w-3 h-3" />}
-                    </button>
-                    <span className={cn('text-sm flex-1', task.completed && 'line-through text-muted-foreground')}>
-                      {task.text}
-                    </span>
-                    {canWrite && (
-                      <button
-                        type="button"
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                        onClick={() => { deleteTask.mutate(task.id); }}
-                        title={t('vaktcomply.controlDetailPage.deleteStep')}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            </WriteFieldset>
-            {/* Add task form */}
-            {canWrite && (
-            <form onSubmit={handleAddTask} className="flex gap-2">
-              <Input
-                placeholder={t('vaktcomply.controlDetailPage.addStep')}
-                value={newTaskText}
-                onChange={(e) => { setNewTaskText(e.target.value); }}
-                className="flex-1 h-8 text-sm"
-              />
-              <Button type="submit" size="sm" disabled={!newTaskText.trim() || createTask.isPending} className="h-8">
-                <Plus className="w-3.5 h-3.5" />
-              </Button>
-            </form>
-            )}
-            {(!tasks || tasks.length === 0) && !newTaskText && (
-              <p className="text-xs text-muted-foreground">
-                {t('vaktcomply.controlDetailPage.stepsEmpty')}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Collaborative Tasks */}
         <TasksPanel entityType="control" entityId={controlId} />
 
         {/* Control Review Cycle */}

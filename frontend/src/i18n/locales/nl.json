@@ -275,12 +275,6 @@
       "colControlId": "Beheersmaatregel-ID",
       "colTitle": "Titel",
       "colStatus": "Status",
-      "implementationSteps": "Implementatiestappen",
-      "addStep": "Implementatiestap toevoegen…",
-      "stepsEmpty": "Voeg concrete implementatiestappen toe en vink ze af wanneer ze zijn voltooid.",
-      "markDone": "Markeren als voltooid",
-      "markOpen": "Markeren als open",
-      "deleteStep": "Stap verwijderen",
       "evidence": "Bewijsmateriaal",
       "noEvidence": "Nog geen bewijsmateriaal",
       "noEvidenceDesc": "Voeg bewijsmateriaal toe om naleving aan te tonen.",
@@ -409,8 +403,7 @@
       "fieldMaturityScore": "Volwassenheidsscore",
       "fieldReviewInterval": "Herzieningsinterval",
       "evidenceLabelFileOptional": "Bestand (optioneel)",
-      "evidenceFileHint": "Het bestand wordt als bijlage bij dit bewijs opgeslagen en komt in het auditpakket.",
-      "implementationStepsHint": "Korte checklist voor deze maatregel, zonder verantwoordelijke of termijn. Afvinken als het klaar is."
+      "evidenceFileHint": "Het bestand wordt als bijlage bij dit bewijs opgeslagen en komt in het auditpakket."
     },
     "policiesPage": {
       "title": "Beleidsbeheer",
@@ -1397,8 +1390,21 @@
       "priorityCritical": "Kritiek",
       "labelTitle": "Titel",
       "labelAssignee": "Verantwoordelijke (e-mail)",
-      "panelTitle": "Toegewezen taken",
-      "panelHint": "Taken met verantwoordelijke, termijn en prioriteit."
+      "panelTitle": "Taken",
+      "panelHint": "Wat er voor deze maatregel moet gebeuren. Afvinken wanneer klaar — persoon en deadline zijn optioneel.",
+      "addPlaceholder": "Taak toevoegen …",
+      "addButton": "Taak toevoegen",
+      "details": "Persoon en deadline",
+      "cancel": "Annuleren",
+      "empty": "Nog geen taken. Leg vast wat er voor deze maatregel moet gebeuren en vink het af wanneer het klaar is.",
+      "emptyReader": "Nog geen taken.",
+      "markDone": "Markeren als klaar",
+      "markOpen": "Markeren als open",
+      "delete": "Taak verwijderen",
+      "openCount": "{{count}} open",
+      "inProgress": "In behandeling",
+      "done": "Klaar",
+      "open": "Open"
     },
     "measuresList": {
       "title": "Titel",

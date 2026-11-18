@@ -290,6 +290,26 @@ func (q *Queries) BulkUpdateCKControlStatus(ctx context.Context, arg BulkUpdateC
 	return err
 }
 
+const cKControlExistsInOrg = `-- name: CKControlExistsInOrg :one
+SELECT EXISTS (
+    SELECT 1 FROM ck_controls WHERE id = $1 AND org_id = $2
+) AS exists
+`
+
+type CKControlExistsInOrgParams struct {
+	ID    string `json:"id"`
+	OrgID string `json:"org_id"`
+}
+
+// Aufgaben an einer Kontrolle: Gehört die Kontrolle nicht zur Organisation,
+// antwortet der Handler 404 (fremde Ressource), statt leer zu listen.
+func (q *Queries) CKControlExistsInOrg(ctx context.Context, arg CKControlExistsInOrgParams) (bool, error) {
+	row := q.db.QueryRow(ctx, cKControlExistsInOrg, arg.ID, arg.OrgID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const cKFrameworkExists = `-- name: CKFrameworkExists :one
 SELECT EXISTS(SELECT 1 FROM ck_frameworks WHERE org_id = $1 AND name = $2)
 `
@@ -1071,33 +1091,6 @@ func (q *Queries) CreateCKControlException(ctx context.Context, arg CreateCKCont
 		&i.ExpiresAt,
 		&i.Status,
 		&i.CreatedBy,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const createCKControlTask = `-- name: CreateCKControlTask :one
-INSERT INTO ck_control_tasks (control_id, org_id, text)
-VALUES ($1, $2, $3)
-RETURNING id, control_id, org_id, text, completed, created_at, updated_at
-`
-
-type CreateCKControlTaskParams struct {
-	ControlID string `json:"control_id"`
-	OrgID     string `json:"org_id"`
-	Text      string `json:"text"`
-}
-
-func (q *Queries) CreateCKControlTask(ctx context.Context, arg CreateCKControlTaskParams) (CkControlTasks, error) {
-	row := q.db.QueryRow(ctx, createCKControlTask, arg.ControlID, arg.OrgID, arg.Text)
-	var i CkControlTasks
-	err := row.Scan(
-		&i.ID,
-		&i.ControlID,
-		&i.OrgID,
-		&i.Text,
-		&i.Completed,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -2027,25 +2020,6 @@ type DeleteCKControlExceptionParams struct {
 
 func (q *Queries) DeleteCKControlException(ctx context.Context, arg DeleteCKControlExceptionParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteCKControlException, arg.ID, arg.OrgID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const deleteCKControlTask = `-- name: DeleteCKControlTask :execrows
-DELETE FROM ck_control_tasks
-WHERE id = $1 AND control_id = $2 AND org_id = $3
-`
-
-type DeleteCKControlTaskParams struct {
-	ID        string `json:"id"`
-	ControlID string `json:"control_id"`
-	OrgID     string `json:"org_id"`
-}
-
-func (q *Queries) DeleteCKControlTask(ctx context.Context, arg DeleteCKControlTaskParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteCKControlTask, arg.ID, arg.ControlID, arg.OrgID)
 	if err != nil {
 		return 0, err
 	}
@@ -5202,49 +5176,6 @@ func (q *Queries) ListCKControlReviews(ctx context.Context, arg ListCKControlRev
 	return items, nil
 }
 
-const listCKControlTasks = `-- name: ListCKControlTasks :many
-
-SELECT id, control_id, org_id, text, completed, created_at, updated_at
-FROM ck_control_tasks
-WHERE control_id = $1 AND org_id = $2
-ORDER BY created_at ASC
-LIMIT 500
-`
-
-type ListCKControlTasksParams struct {
-	ControlID string `json:"control_id"`
-	OrgID     string `json:"org_id"`
-}
-
-// ── Control Tasks ───────────────────────────────────────────────────────────
-func (q *Queries) ListCKControlTasks(ctx context.Context, arg ListCKControlTasksParams) ([]CkControlTasks, error) {
-	rows, err := q.db.Query(ctx, listCKControlTasks, arg.ControlID, arg.OrgID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []CkControlTasks{}
-	for rows.Next() {
-		var i CkControlTasks
-		if err := rows.Scan(
-			&i.ID,
-			&i.ControlID,
-			&i.OrgID,
-			&i.Text,
-			&i.Completed,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listCKControls = `-- name: ListCKControls :many
 SELECT id, framework_id, org_id, control_id, title,
        description, domain, evidence_type, weight,
@@ -7521,7 +7452,7 @@ SELECT id, org_id, entity_type, entity_id, title, description,
        created_at, updated_at
 FROM ck_tasks
 WHERE org_id = $1 AND entity_type = $2 AND entity_id = $3
-ORDER BY created_at DESC
+ORDER BY created_at ASC, id ASC
 `
 
 type ListCKTasksParams struct {
@@ -8708,40 +8639,6 @@ func (q *Queries) UpdateCKControlSoAMetadata(ctx context.Context, arg UpdateCKCo
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const updateCKControlTask = `-- name: UpdateCKControlTask :one
-UPDATE ck_control_tasks
-SET completed = $1, updated_at = NOW()
-WHERE id = $2 AND control_id = $3 AND org_id = $4
-RETURNING id, control_id, org_id, text, completed, created_at, updated_at
-`
-
-type UpdateCKControlTaskParams struct {
-	Completed bool   `json:"completed"`
-	ID        string `json:"id"`
-	ControlID string `json:"control_id"`
-	OrgID     string `json:"org_id"`
-}
-
-func (q *Queries) UpdateCKControlTask(ctx context.Context, arg UpdateCKControlTaskParams) (CkControlTasks, error) {
-	row := q.db.QueryRow(ctx, updateCKControlTask,
-		arg.Completed,
-		arg.ID,
-		arg.ControlID,
-		arg.OrgID,
-	)
-	var i CkControlTasks
-	err := row.Scan(
-		&i.ID,
-		&i.ControlID,
-		&i.OrgID,
-		&i.Text,
-		&i.Completed,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
 }
 
 const updateCKIncident = `-- name: UpdateCKIncident :one

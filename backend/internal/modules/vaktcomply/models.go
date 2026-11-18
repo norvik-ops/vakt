@@ -739,7 +739,9 @@ type Task struct {
 
 // CreateTaskInput holds validated input for creating a collaborative task.
 type CreateTaskInput struct {
-	Title         string  `json:"title"          validate:"required,min=2,max=200"`
+	// min=1/max=500: the former control checklist (ck_control_tasks) accepted
+	// any non-empty step up to 500 characters; the merged list keeps that.
+	Title         string  `json:"title"          validate:"required,min=1,max=500"`
 	Description   string  `json:"description"    validate:"max=2000"`
 	AssigneeEmail string  `json:"assignee_email" validate:"omitempty,email"`
 	DueDate       *string `json:"due_date"`
@@ -749,7 +751,7 @@ type CreateTaskInput struct {
 
 // UpdateTaskInput holds validated input for patching a collaborative task.
 type UpdateTaskInput struct {
-	Title         *string `json:"title"          validate:"omitempty,min=2,max=200"`
+	Title         *string `json:"title"          validate:"omitempty,min=1,max=500"`
 	Description   *string `json:"description"    validate:"omitempty,max=2000"`
 	AssigneeEmail *string `json:"assignee_email" validate:"omitempty,email"`
 	DueDate       *string `json:"due_date"`

@@ -678,16 +678,6 @@ export interface UpdateAuditRecordInput {
   recommendations?: string
 }
 
-export interface ControlTask {
-  id: string
-  control_id: string
-  org_id: string
-  text: string
-  completed: boolean
-  created_at: string
-  updated_at: string
-}
-
 // --- Resilience Tests (DORA Art. 24-27) ---
 
 export interface ResilienceTest {

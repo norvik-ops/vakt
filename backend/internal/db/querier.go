@@ -23,6 +23,7 @@ type Querier interface {
 	BulkUpdateCKCAPAStatus(ctx context.Context, arg BulkUpdateCKCAPAStatusParams) (int64, error)
 	// ── Bulk-Control-Status ─────────────────────────────────────────────────────
 	BulkUpdateCKControlStatus(ctx context.Context, arg BulkUpdateCKControlStatusParams) error
+	CKControlExistsInOrg(ctx context.Context, arg CKControlExistsInOrgParams) (bool, error)
 	CKFrameworkExists(ctx context.Context, arg CKFrameworkExistsParams) (bool, error)
 	CKSupplierExists(ctx context.Context, arg CKSupplierExistsParams) (bool, error)
 	// UX-35: Systeme, deren Dossier nicht fertig ist — kein Dossier, die neueste
@@ -71,7 +72,6 @@ type Querier interface {
 	CreateCKCCMCheck(ctx context.Context, arg CreateCKCCMCheckParams) (CreateCKCCMCheckRow, error)
 	CreateCKComment(ctx context.Context, arg CreateCKCommentParams) (CkComments, error)
 	CreateCKControlException(ctx context.Context, arg CreateCKControlExceptionParams) (CkControlExceptions, error)
-	CreateCKControlTask(ctx context.Context, arg CreateCKControlTaskParams) (CkControlTasks, error)
 	// ── Evidence Files ─────────────────────────────────────────────────────────
 	CreateCKEvidenceFile(ctx context.Context, arg CreateCKEvidenceFileParams) (CkEvidenceFiles, error)
 	// Vakt Comply queries — sqlc migration in v0.6.x (ADR-0005).
@@ -120,7 +120,6 @@ type Querier interface {
 	DeleteCKCCMCheck(ctx context.Context, arg DeleteCKCCMCheckParams) (int64, error)
 	DeleteCKComment(ctx context.Context, arg DeleteCKCommentParams) (int64, error)
 	DeleteCKControlException(ctx context.Context, arg DeleteCKControlExceptionParams) (int64, error)
-	DeleteCKControlTask(ctx context.Context, arg DeleteCKControlTaskParams) (int64, error)
 	DeleteCKEvidenceFile(ctx context.Context, arg DeleteCKEvidenceFileParams) (CkEvidenceFiles, error)
 	DeleteCKFramework(ctx context.Context, arg DeleteCKFrameworkParams) (int64, error)
 	DeleteCKMapping(ctx context.Context, arg DeleteCKMappingParams) (int64, error)
@@ -256,7 +255,6 @@ type Querier interface {
 	// ── Control extras (Reviews + Overdue + Pagination) ───────────────────────
 	ListCKControlReviews(ctx context.Context, arg ListCKControlReviewsParams) ([]ListCKControlReviewsRow, error)
 	// ── Control Tasks ───────────────────────────────────────────────────────────
-	ListCKControlTasks(ctx context.Context, arg ListCKControlTasksParams) ([]CkControlTasks, error)
 	ListCKControls(ctx context.Context, arg ListCKControlsParams) ([]ListCKControlsRow, error)
 	// SoA-Export: Controls + Evidence-Count (approved+pending) je Control.
 	ListCKControlsForSoA(ctx context.Context, arg ListCKControlsForSoAParams) ([]ListCKControlsForSoARow, error)
@@ -400,7 +398,6 @@ type Querier interface {
 	// "" wird zu NULL (explizit löschen), nil-Input behält den Wert.
 	UpdateCKControlException(ctx context.Context, arg UpdateCKControlExceptionParams) (CkControlExceptions, error)
 	UpdateCKControlSoAMetadata(ctx context.Context, arg UpdateCKControlSoAMetadataParams) (int64, error)
-	UpdateCKControlTask(ctx context.Context, arg UpdateCKControlTaskParams) (CkControlTasks, error)
 	// resolved_at-Logik:
 	//   - alter Status resolved/closed → behalten
 	//   - alter Status nicht, neuer ist  → NOW()

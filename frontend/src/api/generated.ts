@@ -22539,14 +22539,17 @@ export interface paths {
         };
         trace?: never;
     };
-    "/vaktcomply/controls/{id}/tasks": {
+    "/vaktcomply/controls/{id}/collab-tasks": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List the checklist tasks of a control */
+        /**
+         * List the tasks of a control (one list — the former checklist was merged in by migration 273)
+         * @description Oldest first. Person (assignee_email) and due date are optional. Readers (Viewer) may list.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -22558,7 +22561,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Control tasks (serialises as null when empty — handler does not nil-guard) */
+                /** @description Tasks of the control, oldest first */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -22566,18 +22569,27 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** Format: uuid */
-                            id?: string;
+                            id: string;
                             /** Format: uuid */
-                            control_id?: string;
+                            org_id: string;
+                            entity_type: string;
                             /** Format: uuid */
-                            org_id?: string;
-                            text?: string;
-                            completed?: boolean;
+                            entity_id: string;
+                            title: string;
+                            description?: string;
+                            assignee_email?: string;
+                            /** Format: date-time */
+                            due_date?: string | null;
+                            /** @enum {string} */
+                            status: "open" | "in_progress" | "done";
+                            /** @enum {string} */
+                            priority: "low" | "medium" | "high" | "critical";
+                            created_by?: string;
                             /** Format: date-time */
                             created_at?: string;
                             /** Format: date-time */
                             updated_at?: string;
-                        }[] | null;
+                        }[];
                     };
                 };
                 /** @description Invalid UUID in path */
@@ -22594,10 +22606,17 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Control not found in the caller's organisation */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         put?: never;
-        /** Create a checklist task on a control */
+        /** Create a task on a control */
         post: {
             parameters: {
                 query?: never;
@@ -22610,7 +22629,16 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        text: string;
+                        title: string;
+                        description?: string;
+                        /** Format: email */
+                        assignee_email?: string;
+                        /** @description YYYY-MM-DD */
+                        due_date?: string | null;
+                        /** @enum {string} */
+                        status?: "open" | "in_progress" | "done";
+                        /** @enum {string} */
+                        priority?: "low" | "medium" | "high" | "critical";
                     };
                 };
             };
@@ -22623,13 +22651,22 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** Format: uuid */
-                            id?: string;
+                            id: string;
                             /** Format: uuid */
-                            control_id?: string;
+                            org_id: string;
+                            entity_type: string;
                             /** Format: uuid */
-                            org_id?: string;
-                            text?: string;
-                            completed?: boolean;
+                            entity_id: string;
+                            title: string;
+                            description?: string;
+                            assignee_email?: string;
+                            /** Format: date-time */
+                            due_date?: string | null;
+                            /** @enum {string} */
+                            status: "open" | "in_progress" | "done";
+                            /** @enum {string} */
+                            priority: "low" | "medium" | "high" | "critical";
+                            created_by?: string;
                             /** Format: date-time */
                             created_at?: string;
                             /** Format: date-time */
@@ -22653,6 +22690,13 @@ export interface paths {
                 };
                 /** @description Forbidden — requires Admin or SecurityAnalyst */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Control not found in the caller's organisation */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -22671,141 +22715,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/vaktcomply/controls/{id}/tasks/{taskId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete a checklist task of a control */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                    taskId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Task deleted */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Invalid UUID in path */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden — requires Admin or SecurityAnalyst */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Task not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Toggle completion of a control checklist task */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                    taskId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        completed?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Updated task */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** Format: uuid */
-                            id?: string;
-                            /** Format: uuid */
-                            control_id?: string;
-                            /** Format: uuid */
-                            org_id?: string;
-                            text?: string;
-                            completed?: boolean;
-                            /** Format: date-time */
-                            created_at?: string;
-                            /** Format: date-time */
-                            updated_at?: string;
-                        };
-                    };
-                };
-                /** @description Invalid request body */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden — requires Admin or SecurityAnalyst */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Task not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
         trace?: never;
     };
     "/vaktcomply/dsgvo/tom-coverage": {

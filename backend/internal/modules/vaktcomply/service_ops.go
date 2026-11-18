@@ -166,8 +166,34 @@ func builtinMeasures() map[string][]CreateMeasureInput {
 
 // --- Collaborative Tasks ---
 
-// ListTasks returns all tasks for the given compliance entity.
+// requireTaskEntity answers "does the entity this task list hangs on belong to
+// the caller's org?" before a task is listed or created. Without it a list on a
+// foreign control answered 200 with an empty list and a create wrote a task that
+// points at another org's control — the 404-not-403 rule (authz-invariants)
+// was not met. Only controls are checked: the control page is the one place the
+// task list is shown; the other entity types keep their previous behaviour.
+func requireTaskEntity(ctx context.Context, orgID, entityType, entityID string,
+	controlExists func(ctx context.Context, orgID, controlID string) (bool, error)) error {
+	if entityType != "control" {
+		return nil
+	}
+	ok, err := controlExists(ctx, orgID, entityID)
+	if err != nil {
+		return fmt.Errorf("check control: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("control %w", ErrNotFound)
+	}
+	return nil
+}
+
+// ListTasks returns all tasks for the given compliance entity, oldest first —
+// on a control the list doubles as the implementation checklist, whose order is
+// the order the steps were written down.
 func (s *Service) ListTasks(ctx context.Context, orgID, entityType, entityID string) ([]Task, error) {
+	if err := requireTaskEntity(ctx, orgID, entityType, entityID, s.repo.ControlExistsInOrg); err != nil {
+		return nil, err
+	}
 	tasks, err := s.repo.ListTasks(ctx, orgID, entityType, entityID)
 	if err != nil {
 		return nil, fmt.Errorf("list tasks: %w", err)
@@ -180,6 +206,9 @@ func (s *Service) ListTasks(ctx context.Context, orgID, entityType, entityID str
 
 // CreateTask creates a new collaborative task for a compliance entity.
 func (s *Service) CreateTask(ctx context.Context, orgID, entityType, entityID string, in CreateTaskInput) (Task, error) {
+	if err := requireTaskEntity(ctx, orgID, entityType, entityID, s.repo.ControlExistsInOrg); err != nil {
+		return Task{}, err
+	}
 	return s.repo.CreateTask(ctx, orgID, entityType, entityID, in)
 }
 

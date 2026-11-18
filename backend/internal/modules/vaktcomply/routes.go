@@ -200,10 +200,8 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.DELETE("/evidence-files/:fid", h.DeleteEvidenceFile, rw)
 	g.POST("/controls/:id/collect", h.CollectEvidence, rw)
 	g.GET("/controls/:id/export", h.ExportEvidenceBundle)
-	g.GET("/controls/:id/tasks", h.ListControlTasks)
-	g.POST("/controls/:id/tasks", h.CreateControlTask, rw)
-	g.PATCH("/controls/:id/tasks/:taskId", h.UpdateControlTask, rw)
-	g.DELETE("/controls/:id/tasks/:taskId", h.DeleteControlTask, rw)
+	// Die frühere Checkliste /controls/:id/tasks ist seit Migration 273 Teil der
+	// Aufgaben (/controls/:id/collab-tasks); ck_control_tasks ist deprecated.
 	// Control review cycles (Migration 075)
 	g.POST("/controls/:id/review", h.RecordControlReview, rw)
 	g.GET("/controls/:id/reviews", h.ListControlReviews)
@@ -414,8 +412,8 @@ func registerRoutes(g *echo.Group, h *Handler) {
 	g.DELETE("/questionnaires/:id/questions/:qid", h.DeleteQuestion, rw)
 
 	// Collaborative Tasks & Comments
-	// NOTE: Routes use /collab-tasks and /comments to avoid conflicts with the existing
-	// simple checklist /controls/:id/tasks routes.
+	// One task model for every entity (ck_tasks). On a control this is THE task
+	// list — the former checklist ck_control_tasks was merged in by migration 273.
 	for _, entity := range []string{"controls", "risks", "incidents", "policies", "audits"} {
 		et := urlEntityType[entity]
 		g.GET("/"+entity+"/:id/collab-tasks", h.listTasksFor(et))

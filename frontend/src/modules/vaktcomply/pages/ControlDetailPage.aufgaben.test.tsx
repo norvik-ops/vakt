@@ -1,9 +1,9 @@
 /**
  * UX-32: Die Kontrollseite hatte drei Aufgabenlisten — „Umsetzungsschritte",
  * „Empfohlene Maßnahmen", „Aufgaben" — ohne Erklärung, verteilt über die Seite.
- * Sie sind fachlich verschieden (Katalog-Vorschläge / Checkliste / zugewiesene
- * Aufgaben mit Person und Frist), stehen jetzt beieinander und sagen je in einem
- * Satz, wofür sie da sind.
+ * Seit Migration 273 sind Checkliste und zugewiesene Aufgaben EIN Datenmodell:
+ * Auf der Seite stehen nur noch die Umsetzungshilfe (Katalog-Vorschläge) und
+ * direkt darunter eine Liste „Aufgaben", je mit einem Satz, wofür sie da ist.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -67,13 +67,6 @@ vi.mock('../hooks/useFrameworks', () => ({
   useFramework: () => ({ data: undefined }),
 }))
 
-vi.mock('../hooks/useControlTasks', () => ({
-  useControlTasks: () => ({ data: [], isLoading: false }),
-  useCreateControlTask: () => ({ mutate: vi.fn(), isPending: false }),
-  useToggleControlTask: () => ({ mutate: vi.fn(), isPending: false }),
-  useDeleteControlTask: () => ({ mutate: vi.fn(), isPending: false }),
-}))
-
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -88,12 +81,11 @@ function renderPage() {
 }
 
 describe('ControlDetailPage — Aufgabenlisten (UX-32)', () => {
-  it('zeigt Umsetzungshilfe, Umsetzungsschritte und zugewiesene Aufgaben direkt nacheinander, je mit Zweck', () => {
+  it('zeigt Umsetzungshilfe und direkt darunter eine einzige Liste „Aufgaben“, je mit Zweck', () => {
     signInAs('Admin')
     const { container } = renderPage()
     const titles = [
       i18n.t('vaktcomply.measuresList.panelTitle'),
-      i18n.t('vaktcomply.controlDetailPage.implementationSteps'),
       i18n.t('vaktcomply.tasksPanel.panelTitle'),
     ]
     // Reihenfolge im Dokument = Reihenfolge auf der Seite.
@@ -103,11 +95,14 @@ describe('ControlDetailPage — Aufgabenlisten (UX-32)', () => {
     expect([...pos].sort((a, b) => a - b)).toEqual(pos)
     // Nichts anderes dazwischen: der Abstand ist kleiner als z. B. der Ausnahmen-Block.
     const exceptions = text.indexOf(i18n.t('vaktcomply.controlDetailPage.exceptionsTitle'))
-    expect(exceptions).toBeGreaterThan(pos[2])
-    for (const hint of ['vaktcomply.measuresList.panelHint', 'vaktcomply.controlDetailPage.implementationStepsHint', 'vaktcomply.tasksPanel.panelHint']) {
+    expect(exceptions).toBeGreaterThan(pos[1])
+    for (const hint of ['vaktcomply.measuresList.panelHint', 'vaktcomply.tasksPanel.panelHint']) {
       expect(screen.getByText(i18n.t(hint))).toBeInTheDocument()
     }
-    // Der alte, mehrdeutige Titel ist weg.
+    // Genau eine Aufgabenliste: die frühere Checkliste und die alten Titel sind weg.
+    expect(screen.getAllByRole('heading', { name: new RegExp(`^${i18n.t('vaktcomply.tasksPanel.panelTitle')}`) })).toHaveLength(1)
+    expect(screen.queryByText('Umsetzungsschritte')).toBeNull()
+    expect(screen.queryByText('Zugewiesene Aufgaben')).toBeNull()
     expect(screen.queryByText('Empfohlene Maßnahmen')).toBeNull()
   })
 })

@@ -275,12 +275,6 @@
       "colControlId": "Control ID",
       "colTitle": "Titel",
       "colStatus": "Status",
-      "implementationSteps": "Umsetzungsschritte",
-      "addStep": "Umsetzungsschritt hinzufügen …",
-      "stepsEmpty": "Füge konkrete Umsetzungsschritte hinzu und hake sie ab, wenn sie abgeschlossen sind.",
-      "markDone": "Als erledigt markieren",
-      "markOpen": "Als offen markieren",
-      "deleteStep": "Schritt löschen",
       "evidence": "Nachweise",
       "noEvidence": "Noch keine Nachweise",
       "noEvidenceDesc": "Füge Nachweise hinzu, um die Compliance zu belegen.",
@@ -409,8 +403,7 @@
       "fieldMaturityScore": "Reifegrad",
       "fieldReviewInterval": "Prüfungsintervall",
       "evidenceLabelFileOptional": "Datei (optional)",
-      "evidenceFileHint": "Die Datei wird als Anhang dieses Nachweises gespeichert und landet im Audit-Paket.",
-      "implementationStepsHint": "Kurze Checkliste für diese Kontrolle, ohne Person und Frist. Abhaken, wenn erledigt."
+      "evidenceFileHint": "Die Datei wird als Anhang dieses Nachweises gespeichert und landet im Audit-Paket."
     },
     "policiesPage": {
       "title": "Richtlinienmanagement",
@@ -1397,8 +1390,21 @@
       "priorityCritical": "Kritisch",
       "labelTitle": "Titel",
       "labelAssignee": "Verantwortlich (E-Mail)",
-      "panelTitle": "Zugewiesene Aufgaben",
-      "panelHint": "Aufgaben mit verantwortlicher Person, Frist und Priorität."
+      "panelTitle": "Aufgaben",
+      "panelHint": "Was für diese Kontrolle zu tun ist. Abhaken, wenn erledigt — Person und Frist sind optional.",
+      "addPlaceholder": "Aufgabe hinzufügen …",
+      "addButton": "Aufgabe hinzufügen",
+      "details": "Person und Frist",
+      "cancel": "Abbrechen",
+      "empty": "Noch keine Aufgaben. Halte fest, was für diese Kontrolle zu tun ist, und hake es ab, wenn es erledigt ist.",
+      "emptyReader": "Noch keine Aufgaben.",
+      "markDone": "Als erledigt markieren",
+      "markOpen": "Als offen markieren",
+      "delete": "Aufgabe löschen",
+      "openCount": "{{count}} offen",
+      "inProgress": "In Bearbeitung",
+      "done": "Erledigt",
+      "open": "Offen"
     },
     "measuresList": {
       "title": "Titel",

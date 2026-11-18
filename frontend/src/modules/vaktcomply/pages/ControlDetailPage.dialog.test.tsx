@@ -57,11 +57,11 @@ vi.mock('../hooks/useFrameworks', () => ({
   useFramework: () => ({ data: undefined }),
 }))
 
-vi.mock('../hooks/useControlTasks', () => ({
-  useControlTasks: () => ({ data: [], isLoading: false }),
-  useCreateControlTask: () => ({ mutate: vi.fn(), isPending: false }),
-  useToggleControlTask: () => ({ mutate: vi.fn(), isPending: false }),
-  useDeleteControlTask: () => ({ mutate: vi.fn(), isPending: false }),
+vi.mock('../hooks/useTasks', () => ({
+  useTasks: () => ({ data: [], isLoading: false }),
+  useCreateTask: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateTask: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteTask: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 function renderPage() {

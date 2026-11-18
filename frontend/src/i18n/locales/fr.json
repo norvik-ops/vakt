@@ -275,12 +275,6 @@
       "colControlId": "ID du contrôle",
       "colTitle": "Titre",
       "colStatus": "Statut",
-      "implementationSteps": "Étapes de mise en œuvre",
-      "addStep": "Ajouter une étape de mise en œuvre…",
-      "stepsEmpty": "Ajoutez des étapes de mise en œuvre concrètes et cochez-les lorsqu'elles sont terminées.",
-      "markDone": "Marquer comme terminé",
-      "markOpen": "Marquer comme ouvert",
-      "deleteStep": "Supprimer l'étape",
       "evidence": "Preuves",
       "noEvidence": "Aucune preuve pour l'instant",
       "noEvidenceDesc": "Ajoutez des preuves pour démontrer la conformité.",
@@ -409,8 +403,7 @@
       "fieldMaturityScore": "Score de maturité",
       "fieldReviewInterval": "Intervalle de révision",
       "evidenceLabelFileOptional": "Fichier (facultatif)",
-      "evidenceFileHint": "Le fichier est enregistré en pièce jointe de cette preuve et inclus dans le dossier d’audit.",
-      "implementationStepsHint": "Courte liste de contrôle, sans responsable ni échéance. À cocher une fois fait."
+      "evidenceFileHint": "Le fichier est enregistré en pièce jointe de cette preuve et inclus dans le dossier d’audit."
     },
     "policiesPage": {
       "title": "Gestion des politiques",
@@ -1397,8 +1390,21 @@
       "priorityCritical": "Critique",
       "labelTitle": "Titre",
       "labelAssignee": "Responsable (e-mail)",
-      "panelTitle": "Tâches attribuées",
-      "panelHint": "Tâches avec responsable, échéance et priorité."
+      "panelTitle": "Tâches",
+      "panelHint": "Ce qu'il reste à faire pour ce contrôle. Cochez une fois terminé — personne et échéance sont facultatives.",
+      "addPlaceholder": "Ajouter une tâche …",
+      "addButton": "Ajouter la tâche",
+      "details": "Personne et échéance",
+      "cancel": "Annuler",
+      "empty": "Aucune tâche pour l'instant. Notez ce qu'il faut faire pour ce contrôle et cochez-le une fois terminé.",
+      "emptyReader": "Aucune tâche pour l'instant.",
+      "markDone": "Marquer comme terminé",
+      "markOpen": "Marquer comme ouvert",
+      "delete": "Supprimer la tâche",
+      "openCount": "{{count}} ouvertes",
+      "inProgress": "En cours",
+      "done": "Terminé",
+      "open": "Ouvert"
     },
     "measuresList": {
       "title": "Titre",

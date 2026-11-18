@@ -283,27 +283,6 @@ type UpdatePolicyInput struct {
 	// that sends these fields has them dropped by the JSON decoder.
 }
 
-// ControlTask is a user-created implementation step for a compliance control.
-type ControlTask struct {
-	ID        string    `json:"id"`
-	ControlID string    `json:"control_id"`
-	OrgID     string    `json:"org_id"`
-	Text      string    `json:"text"`
-	Completed bool      `json:"completed"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// CreateControlTaskInput holds validated input for creating a control task.
-type CreateControlTaskInput struct {
-	Text string `json:"text" validate:"required,max=500"`
-}
-
-// UpdateControlTaskInput holds validated input for toggling a task's completion.
-type UpdateControlTaskInput struct {
-	Completed bool `json:"completed"`
-}
-
 // FrameworkMapping represents a cross-framework control mapping stored in ck_framework_mappings.
 type FrameworkMapping struct {
 	ID              string    `json:"id"`

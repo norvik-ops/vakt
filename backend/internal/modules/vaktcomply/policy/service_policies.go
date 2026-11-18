@@ -66,7 +66,8 @@ type approvalChange struct {
 //   - into active (from draft, archived): approver = actorID, approved_at = now.
 //   - out of active (to draft, archived): both cleared. A policy that is no longer
 //     in force has no valid approval; the next activation needs a new one. The
-//     historic approval stays in the audit log and in ck_policy_versions.
+//     historic approval stays only in the audit log (action 'approve');
+//     ck_policy_versions does not record who approved.
 //   - everything else (active → active, draft → archived, …): unchanged. Editing
 //     the text of an active policy does not re-approve it.
 //

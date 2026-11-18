@@ -21,6 +21,8 @@ import { toast } from '../../../shared/hooks/useToast'
 import { useCreatePolicy } from '../hooks/usePolicies'
 import { handleApiError } from '../../../shared/utils/errorMessages'
 import { frameworkDisplayName } from '../utils/frameworkCatalogue'
+import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 
 interface DBTemplate {
   id: string
@@ -100,6 +102,9 @@ function TemplateCategoryTab({ category }: { category: Category }) {
   const [preview, setPreview] = useState<DBTemplate | null>(null)
   const navigate = useNavigate()
   const createPolicy = useCreatePolicy()
+  // Lesen dürfen alle; eine Richtlinie aus der Vorlage anlegen nur Admin/SecurityAnalyst
+  // (POST /vaktcomply/policies hängt am rw-Guard).
+  const canWrite = useCanWrite()
 
   const { data: templates, isLoading, isError } = useQuery<DBTemplate[]>({
     queryKey: ['vaktcomply', 'templates', category],
@@ -185,17 +190,19 @@ function TemplateCategoryTab({ category }: { category: Category }) {
             <Button variant="outline" onClick={() => { setPreview(null); }}>
               Schließen
             </Button>
-            <Button
-              onClick={() => {
-                if (preview) {
-                  handleUseTemplate(preview)
-                  setPreview(null)
-                }
-              }}
-            >
-              <ExternalLink className="w-4 h-4 mr-1" />
-              Diese Vorlage verwenden
-            </Button>
+            {canWrite && (
+              <Button
+                onClick={() => {
+                  if (preview) {
+                    handleUseTemplate(preview)
+                    setPreview(null)
+                  }
+                }}
+              >
+                <ExternalLink className="w-4 h-4 mr-1" />
+                Diese Vorlage verwenden
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -217,6 +224,7 @@ export default function PolicyTemplatesPage() {
       />
 
       <div className="flex-1 p-6">
+        <ReadOnlyHint className="mb-4" />
         <Tabs
           value={activeCategory}
           onValueChange={(v) => { setActiveCategory(v as Category); }}

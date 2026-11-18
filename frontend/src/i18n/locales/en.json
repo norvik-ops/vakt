@@ -275,12 +275,6 @@
       "colControlId": "Control ID",
       "colTitle": "Title",
       "colStatus": "Status",
-      "implementationSteps": "Implementation Steps",
-      "addStep": "Add implementation step…",
-      "stepsEmpty": "Add concrete implementation steps and check them off when completed.",
-      "markDone": "Mark as done",
-      "markOpen": "Mark as open",
-      "deleteStep": "Delete step",
       "evidence": "Evidence",
       "noEvidence": "No evidence yet",
       "noEvidenceDesc": "Add evidence to demonstrate compliance.",
@@ -409,8 +403,7 @@
       "fieldMaturityScore": "Maturity score",
       "fieldReviewInterval": "Review interval",
       "evidenceLabelFileOptional": "File (optional)",
-      "evidenceFileHint": "The file is stored as an attachment of this evidence and included in the audit package.",
-      "implementationStepsHint": "Short checklist for this control, without owner or due date. Tick off when done."
+      "evidenceFileHint": "The file is stored as an attachment of this evidence and included in the audit package."
     },
     "policiesPage": {
       "title": "Policy Management",
@@ -1397,8 +1390,21 @@
       "priorityCritical": "Critical",
       "labelTitle": "Title",
       "labelAssignee": "Responsible (e-mail)",
-      "panelTitle": "Assigned tasks",
-      "panelHint": "Tasks with an owner, a due date and a priority."
+      "panelTitle": "Tasks",
+      "panelHint": "What needs to be done for this control. Tick it off when done — person and due date are optional.",
+      "addPlaceholder": "Add a task …",
+      "addButton": "Add task",
+      "details": "Person and due date",
+      "cancel": "Cancel",
+      "empty": "No tasks yet. Write down what needs to be done for this control and tick it off when it is done.",
+      "emptyReader": "No tasks yet.",
+      "markDone": "Mark as done",
+      "markOpen": "Mark as open",
+      "delete": "Delete task",
+      "openCount": "{{count}} open",
+      "inProgress": "In progress",
+      "done": "Done",
+      "open": "Open"
     },
     "measuresList": {
       "title": "Title",

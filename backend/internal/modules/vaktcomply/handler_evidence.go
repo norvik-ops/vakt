@@ -486,6 +486,9 @@ func (h *Handler) listTasksFor(entityType string) echo.HandlerFunc {
 		}
 		tasks, err := h.service.ListTasks(c.Request().Context(), orgID(c), entityType, entityID)
 		if err != nil {
+			if isNotFound(err) {
+				return errResp(c, http.StatusNotFound, entityType+" not found", "CK_NOT_FOUND")
+			}
 			log.Error().Err(err).Str("entity_type", entityType).Str("entity_id", entityID).Msg("list collab tasks")
 			return errResp(c, http.StatusInternalServerError, "failed to list tasks", "CK_INTERNAL")
 		}
@@ -511,6 +514,9 @@ func (h *Handler) createTaskFor(entityType string) echo.HandlerFunc {
 		}
 		task, err := h.service.CreateTask(c.Request().Context(), orgID(c), entityType, entityID, in)
 		if err != nil {
+			if isNotFound(err) {
+				return errResp(c, http.StatusNotFound, entityType+" not found", "CK_NOT_FOUND")
+			}
 			log.Error().Err(err).Str("entity_type", entityType).Str("entity_id", entityID).Msg("create collab task")
 			return errResp(c, http.StatusInternalServerError, "failed to create task", "CK_INTERNAL")
 		}

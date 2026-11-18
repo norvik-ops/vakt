@@ -21,8 +21,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   automatisch und schreibt keine bestehenden Daten um. Bereits aktive Richtlinien haben danach
   keinen eingetragenen Freigeber, weil es dafür keinen Beleg gibt; wer einen braucht, setzt die
   Richtlinie auf „Entwurf“ und gibt sie erneut frei.
+- **Migration 273** legt die Checkliste „Umsetzungsschritte“ (`ck_control_tasks`) mit den
+  Aufgaben (`ck_tasks`) zusammen. Jeder Schritt wird als Aufgabe der Kontrolle übernommen: Titel,
+  erledigt/offen, Reihenfolge, Anlege- und Änderungszeitpunkt bleiben erhalten; Person und Frist
+  bleiben leer. Nichts wird gelöscht — die alte Tabelle bleibt als „deprecated“ stehen. Ein
+  Downgrade (`migrate down 1`) entfernt genau die übernommenen Aufgaben wieder und schreibt den
+  Erledigt-Stand in die alte Checkliste zurück. Die Zähler für überfällige Aufgaben ändern sich
+  nicht, weil übernommene Schritte keine Frist haben.
+- **API:** `GET/POST/PATCH/DELETE /vaktcomply/controls/{id}/tasks[/{taskId}]` entfällt. Aufgaben
+  einer Kontrolle laufen über `GET/POST /vaktcomply/controls/{id}/collab-tasks` und
+  `PATCH/DELETE /vaktcomply/collab-tasks/{tid}` (abhaken: `{"status":"done"}`). Die Liste kommt
+  jetzt älteste zuerst; für eine fremde oder unbekannte Kontrolle antwortet sie 404 statt einer
+  leeren Liste. Ein Titel darf 1 bis 500 Zeichen lang sein (bisher 2 bis 200).
 
 ### Geändert
+- **Eine Liste „Aufgaben“ auf der Kontrollseite:** „Umsetzungsschritte“ und „Zugewiesene
+  Aufgaben“ sind jetzt eine Liste direkt unter der Umsetzungshilfe. Jede Aufgabe lässt sich
+  abhaken; Person, Frist und Priorität sind optional und stehen hinter „Person und Frist“. Wer nur
+  lesen darf, sieht die Liste ohne Knöpfe.
+- **Vorlagenbibliothek:** „Diese Vorlage verwenden“ erscheint nur für Rollen, die Richtlinien
+  anlegen dürfen; Leser sehen die Vorschau und den Hinweis „Nur Lesezugriff“.
 - **Leser sehen keine Schreibknöpfe mehr:** Auf allen übrigen Vakt-Comply-Seiten (u. a. BCP,
   BIA, Pentests, Resilienztests, Schutzbedarf, Krypto-Schlüssel, Managementbewertungen,
   Auditprogramm, Zugriffsprüfungen, Notfallkontakte, interessierte Parteien,

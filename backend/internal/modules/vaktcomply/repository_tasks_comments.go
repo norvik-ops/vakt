@@ -153,6 +153,15 @@ func (r *Repository) UpdateTask(ctx context.Context, orgID, taskID string, in Up
 	return taskFromCk(row), nil
 }
 
+// ControlExistsInOrg reports whether the control belongs to the org.
+func (r *Repository) ControlExistsInOrg(ctx context.Context, orgID, controlID string) (bool, error) {
+	ok, err := r.q.CKControlExistsInOrg(ctx, db.CKControlExistsInOrgParams{ID: controlID, OrgID: orgID})
+	if err != nil {
+		return false, fmt.Errorf("control exists: %w", err)
+	}
+	return ok, nil
+}
+
 // DeleteTask removes a task.
 func (r *Repository) DeleteTask(ctx context.Context, orgID, taskID string) error {
 	n, err := r.q.DeleteCKTask(ctx, db.DeleteCKTaskParams{ID: taskID, OrgID: orgID})

@@ -237,69 +237,6 @@ func (h *Handler) UpdateControlSoAMetadata(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// ListControlTasks handles GET /api/v1/vaktcomply/controls/:id/tasks.
-func (h *Handler) ListControlTasks(c echo.Context) error {
-	controlID := c.Param("id")
-	ctx := c.Request().Context()
-	tasks, err := h.service.ListControlTasks(ctx, orgID(c), controlID)
-	if err != nil {
-		return errResp(c, http.StatusInternalServerError, "failed to list tasks", "CK_LIST_TASKS_FAILED")
-	}
-	return c.JSON(http.StatusOK, tasks)
-}
-
-// CreateControlTask handles POST /api/v1/vaktcomply/controls/:id/tasks.
-func (h *Handler) CreateControlTask(c echo.Context) error {
-	controlID := c.Param("id")
-	ctx := c.Request().Context()
-	var in CreateControlTaskInput
-	if err := c.Bind(&in); err != nil {
-		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_INVALID_INPUT")
-	}
-	if err := h.validate.Struct(in); err != nil {
-		return errResp(c, http.StatusUnprocessableEntity, "Ungültige Eingabe", "VALIDATION_ERROR")
-	}
-	task, err := h.service.CreateControlTask(ctx, orgID(c), controlID, in)
-	if err != nil {
-		return errResp(c, http.StatusInternalServerError, "failed to create task", "CK_CREATE_TASK_FAILED")
-	}
-	return c.JSON(http.StatusCreated, task)
-}
-
-// UpdateControlTask handles PATCH /api/v1/vaktcomply/controls/:id/tasks/:taskId.
-func (h *Handler) UpdateControlTask(c echo.Context) error {
-	controlID := c.Param("id")
-	taskID := c.Param("taskId")
-	ctx := c.Request().Context()
-	var in UpdateControlTaskInput
-	if err := c.Bind(&in); err != nil {
-		return errResp(c, http.StatusBadRequest, "invalid request body", "CK_INVALID_INPUT")
-	}
-	task, err := h.service.UpdateControlTask(ctx, orgID(c), controlID, taskID, in)
-	if err != nil {
-		if isNotFound(err) {
-			return errResp(c, http.StatusNotFound, "task not found", "CK_TASK_NOT_FOUND")
-		}
-		return errResp(c, http.StatusInternalServerError, "failed to update task", "CK_UPDATE_TASK_FAILED")
-	}
-	return c.JSON(http.StatusOK, task)
-}
-
-// DeleteControlTask handles DELETE /api/v1/vaktcomply/controls/:id/tasks/:taskId.
-func (h *Handler) DeleteControlTask(c echo.Context) error {
-	controlID := c.Param("id")
-	taskID := c.Param("taskId")
-	ctx := c.Request().Context()
-	if err := h.service.DeleteControlTask(ctx, orgID(c), controlID, taskID); err != nil {
-		// S121-D4 (P3): not-found → 404, not 500
-		if isNotFound(err) {
-			return errResp(c, http.StatusNotFound, "task not found", "CK_TASK_NOT_FOUND")
-		}
-		return errResp(c, http.StatusInternalServerError, "failed to delete task", "CK_DELETE_TASK_FAILED")
-	}
-	return c.NoContent(http.StatusNoContent)
-}
-
 // RecordControlReview handles POST /vaktcomply/controls/:id/review.
 func (h *Handler) RecordControlReview(c echo.Context) error {
 	controlID := c.Param("id")

@@ -19571,8 +19571,8 @@ paths:
               properties:
                 title:
                   type: string
-                  minLength: 2
-                  maxLength: 200
+                  minLength: 1
+                  maxLength: 500
                 description:
                   type: string
                   maxLength: 2000
@@ -20428,9 +20428,10 @@ paths:
         '404':
           description: Control not found
 
-  /vaktcomply/controls/{id}/tasks:
+  /vaktcomply/controls/{id}/collab-tasks:
     get:
-      summary: List the checklist tasks of a control
+      summary: List the tasks of a control (one list — the former checklist was merged in by migration 273)
+      description: Oldest first. Person (assignee_email) and due date are optional. Readers (Viewer) may list.
       tags:
       - vaktcomply
       parameters:
@@ -20442,28 +20443,58 @@ paths:
           format: uuid
       responses:
         '200':
-          description: Control tasks (serialises as null when empty — handler does not nil-guard)
+          description: Tasks of the control, oldest first
           content:
             application/json:
               schema:
                 type: array
-                nullable: true
                 items:
                   type: object
+                  required:
+                  - id
+                  - org_id
+                  - entity_type
+                  - entity_id
+                  - title
+                  - status
+                  - priority
                   properties:
                     id:
-                      type: string
-                      format: uuid
-                    control_id:
                       type: string
                       format: uuid
                     org_id:
                       type: string
                       format: uuid
-                    text:
+                    entity_type:
                       type: string
-                    completed:
-                      type: boolean
+                    entity_id:
+                      type: string
+                      format: uuid
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    assignee_email:
+                      type: string
+                    due_date:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    status:
+                      type: string
+                      enum:
+                      - open
+                      - in_progress
+                      - done
+                    priority:
+                      type: string
+                      enum:
+                      - low
+                      - medium
+                      - high
+                      - critical
+                    created_by:
+                      type: string
                     created_at:
                       type: string
                       format: date-time
@@ -20474,8 +20505,10 @@ paths:
           description: Invalid UUID in path
         '401':
           description: Unauthorized
+        '404':
+          description: Control not found in the caller's organisation
     post:
-      summary: Create a checklist task on a control
+      summary: Create a task on a control
       tags:
       - vaktcomply
       parameters:
@@ -20492,11 +20525,35 @@ paths:
             schema:
               type: object
               required:
-              - text
+              - title
               properties:
-                text:
+                title:
                   type: string
+                  minLength: 1
                   maxLength: 500
+                description:
+                  type: string
+                  maxLength: 2000
+                assignee_email:
+                  type: string
+                  format: email
+                due_date:
+                  type: string
+                  description: YYYY-MM-DD
+                  nullable: true
+                status:
+                  type: string
+                  enum:
+                  - open
+                  - in_progress
+                  - done
+                priority:
+                  type: string
+                  enum:
+                  - low
+                  - medium
+                  - high
+                  - critical
       responses:
         '201':
           description: Created task
@@ -20504,20 +20561,51 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                - id
+                - org_id
+                - entity_type
+                - entity_id
+                - title
+                - status
+                - priority
                 properties:
                   id:
-                    type: string
-                    format: uuid
-                  control_id:
                     type: string
                     format: uuid
                   org_id:
                     type: string
                     format: uuid
-                  text:
+                  entity_type:
                     type: string
-                  completed:
-                    type: boolean
+                  entity_id:
+                    type: string
+                    format: uuid
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  assignee_email:
+                    type: string
+                  due_date:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  status:
+                    type: string
+                    enum:
+                    - open
+                    - in_progress
+                    - done
+                  priority:
+                    type: string
+                    enum:
+                    - low
+                    - medium
+                    - high
+                    - critical
+                  created_by:
+                    type: string
                   created_at:
                     type: string
                     format: date-time
@@ -20530,99 +20618,10 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Admin or SecurityAnalyst
+        '404':
+          description: Control not found in the caller's organisation
         '422':
           description: Validation error
-
-  /vaktcomply/controls/{id}/tasks/{taskId}:
-    delete:
-      summary: Delete a checklist task of a control
-      tags:
-      - vaktcomply
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: taskId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '204':
-          description: Task deleted
-        '400':
-          description: Invalid UUID in path
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden — requires Admin or SecurityAnalyst
-        '404':
-          description: Task not found
-    patch:
-      summary: Toggle completion of a control checklist task
-      tags:
-      - vaktcomply
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: taskId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                completed:
-                  type: boolean
-      responses:
-        '200':
-          description: Updated task
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  control_id:
-                    type: string
-                    format: uuid
-                  org_id:
-                    type: string
-                    format: uuid
-                  text:
-                    type: string
-                  completed:
-                    type: boolean
-                  created_at:
-                    type: string
-                    format: date-time
-                  updated_at:
-                    type: string
-                    format: date-time
-        '400':
-          description: Invalid request body
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden — requires Admin or SecurityAnalyst
-        '404':
-          description: Task not found
 
   /vaktcomply/dsgvo/tom-coverage:
     get:

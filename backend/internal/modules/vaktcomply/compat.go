@@ -43,9 +43,6 @@ type (
 	DomainScore              = policy.DomainScore
 	GapAnalysis              = policy.GapAnalysis
 	ControlGap               = policy.ControlGap
-	ControlTask              = policy.ControlTask
-	CreateControlTaskInput   = policy.CreateControlTaskInput
-	UpdateControlTaskInput   = policy.UpdateControlTaskInput
 	Evidence                 = policy.Evidence
 
 	// SoA-dedicated types (defined in policy/repository_soa_dedicated.go).
@@ -148,26 +145,6 @@ func (s *Service) BulkUpdateControlStatus(ctx context.Context, orgID string, ids
 // GetControlMappings returns cross-framework mappings for a control.
 func (s *Service) GetControlMappings(ctx context.Context, orgID, controlID string) ([]ControlMapping, error) {
 	return s.Policy.GetControlMappings(ctx, orgID, controlID)
-}
-
-// ListControlTasks returns the tasks attached to a control.
-func (s *Service) ListControlTasks(ctx context.Context, orgID, controlID string) ([]ControlTask, error) {
-	return s.Policy.ListControlTasks(ctx, orgID, controlID)
-}
-
-// CreateControlTask creates a new task for a control.
-func (s *Service) CreateControlTask(ctx context.Context, orgID, controlID string, in CreateControlTaskInput) (*ControlTask, error) {
-	return s.Policy.CreateControlTask(ctx, orgID, controlID, in)
-}
-
-// UpdateControlTask updates an existing control task.
-func (s *Service) UpdateControlTask(ctx context.Context, orgID, controlID, taskID string, in UpdateControlTaskInput) (*ControlTask, error) {
-	return s.Policy.UpdateControlTask(ctx, orgID, controlID, taskID, in)
-}
-
-// DeleteControlTask removes a task from a control.
-func (s *Service) DeleteControlTask(ctx context.Context, orgID, controlID, taskID string) error {
-	return s.Policy.DeleteControlTask(ctx, orgID, controlID, taskID)
 }
 
 // ListDedicatedSoAEntries returns the dedicated SoA entries for the org.

@@ -1157,31 +1157,6 @@ func (s *Service) GetControl(ctx context.Context, orgID, controlID string) (*Con
 	return &one[0], nil
 }
 
-// --- Control Tasks ---
-
-func (s *Service) ListControlTasks(ctx context.Context, orgID, controlID string) ([]ControlTask, error) {
-	tasks, err := s.repo.ListControlTasks(ctx, orgID, controlID)
-	if err != nil {
-		return nil, err
-	}
-	if tasks == nil {
-		tasks = []ControlTask{}
-	}
-	return tasks, nil
-}
-
-func (s *Service) CreateControlTask(ctx context.Context, orgID, controlID string, in CreateControlTaskInput) (*ControlTask, error) {
-	return s.repo.CreateControlTask(ctx, orgID, controlID, in)
-}
-
-func (s *Service) UpdateControlTask(ctx context.Context, orgID, controlID, taskID string, in UpdateControlTaskInput) (*ControlTask, error) {
-	return s.repo.UpdateControlTask(ctx, orgID, controlID, taskID, in)
-}
-
-func (s *Service) DeleteControlTask(ctx context.Context, orgID, controlID, taskID string) error {
-	return s.repo.DeleteControlTask(ctx, orgID, controlID, taskID)
-}
-
 // SeedDORAMappings idempotently seeds the DORA ↔ ISO 27001 cross-framework mappings
 // into ck_framework_control_mappings. S37-2.
 func (s *Service) SeedDORAMappings(ctx context.Context, orgID string) error {

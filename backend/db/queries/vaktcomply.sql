@@ -426,30 +426,6 @@ JOIN ck_supplier_risks sr ON sr.risk_id = r.id
 WHERE sr.supplier_id = $1 AND r.org_id = $2
 ORDER BY r.created_at DESC;
 
--- ── Control Tasks ───────────────────────────────────────────────────────────
-
--- name: ListCKControlTasks :many
-SELECT id, control_id, org_id, text, completed, created_at, updated_at
-FROM ck_control_tasks
-WHERE control_id = $1 AND org_id = $2
-ORDER BY created_at ASC
-LIMIT 500;
-
--- name: CreateCKControlTask :one
-INSERT INTO ck_control_tasks (control_id, org_id, text)
-VALUES ($1, $2, $3)
-RETURNING id, control_id, org_id, text, completed, created_at, updated_at;
-
--- name: UpdateCKControlTask :one
-UPDATE ck_control_tasks
-SET completed = $1, updated_at = NOW()
-WHERE id = $2 AND control_id = $3 AND org_id = $4
-RETURNING id, control_id, org_id, text, completed, created_at, updated_at;
-
--- name: DeleteCKControlTask :execrows
-DELETE FROM ck_control_tasks
-WHERE id = $1 AND control_id = $2 AND org_id = $3;
-
 -- ── Policies ────────────────────────────────────────────────────────────────
 
 -- name: CreateCKPolicy :one
@@ -1026,7 +1002,14 @@ SELECT id, org_id, entity_type, entity_id, title, description,
        created_at, updated_at
 FROM ck_tasks
 WHERE org_id = $1 AND entity_type = $2 AND entity_id = $3
-ORDER BY created_at DESC;
+ORDER BY created_at ASC, id ASC;
+
+-- name: CKControlExistsInOrg :one
+-- Aufgaben an einer Kontrolle: Gehört die Kontrolle nicht zur Organisation,
+-- antwortet der Handler 404 (fremde Ressource), statt leer zu listen.
+SELECT EXISTS (
+    SELECT 1 FROM ck_controls WHERE id = $1 AND org_id = $2
+) AS exists;
 
 -- name: UpdateCKTask :one
 UPDATE ck_tasks SET
