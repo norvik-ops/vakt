@@ -178,7 +178,9 @@
       "methodologyScoreMedium": "{{from}}–{{to}} — Mittel: Maßnahmen planen und umsetzen",
       "methodologyScoreHigh": "{{from}}–{{to}} — Hoch: Maßnahmen zeitnah ergreifen",
       "methodologyScoreCritical": "{{from}}–{{to}} — Kritisch: sofortige Behandlung erforderlich",
-      "bulkStatusTitle": "Status setzen"
+      "bulkStatusTitle": "Status setzen",
+      "residualBadge": "Rest {{score}}",
+      "residualTitle": "Restrisiko nach Behandlung"
     },
     "incidentsPage": {
       "title": "Vorfallregister",
@@ -527,7 +529,9 @@
       "actions": {
         "classify": "Risikoklasse bestimmen",
         "documentation": "Technisches Dossier",
-        "cancel": "Abbrechen"
+        "cancel": "Abbrechen",
+        "edit": "Bearbeiten",
+        "delete": "Löschen"
       },
       "fields": {
         "name": "Name",
@@ -576,7 +580,9 @@
         "decommissioned": "Außer Betrieb"
       },
       "deleteTitle": "KI-System löschen?",
-      "deleteDescription": "Dieser Vorgang kann nicht rückgängig gemacht werden."
+      "deleteDescription": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
+      "riskClassOpen": "Risikoklasse noch nicht bestimmt",
+      "riskClassViaWizard": "Die Risikoklasse bestimmt der Assistent „Risikoklasse bestimmen“ auf der Karte des KI-Systems — mit Begründung nach EU AI Act."
     },
     "resilienceTests": {
       "status": {
@@ -766,7 +772,7 @@
       "riskScore": "Risiko-Score",
       "labelLikelihood": "Wahrscheinlichkeit (1–5)",
       "labelImpact": "Auswirkung (1–5)",
-      "statusCard": "Status",
+      "statusCard": "Risikostatus",
       "createdAt": "Erstellt:",
       "updatedAt": "Geändert:",
       "treatmentSection": "Risikobehandlung (ISO 27001 Klausel 6)",
@@ -793,7 +799,10 @@
       "treatmentAvoid": "Vermeiden",
       "treatmentMitigate": "Mindern",
       "treatmentTransfer": "Übertragen",
-      "treatmentAccept": "Akzeptieren"
+      "treatmentAccept": "Akzeptieren",
+      "residualRisk": "Restrisiko",
+      "residualNotSet": "noch nicht bewertet",
+      "ownerHint": "Verantwortlich für das Risiko und seine Behandlung."
     },
     "auditProgram": {
       "title": "Audit-Programm",
@@ -1318,12 +1327,12 @@
     "riskHeatmap": {
       "impact": "Auswirkung",
       "likelihood": "Wahrscheinlichkeit",
-      "title": "Risiko-Heatmap (5×5)",
-      "subtitle": "X = Wahrscheinlichkeit, Y = Auswirkung. Jeder Punkt steht für ein Risiko. Risiken mit Strategie \"Akzeptieren\" werden transparent dargestellt. Klicke auf eine Zelle für Details.",
+      "title": "Risikomatrix (5×5)",
+      "subtitle": "X = Wahrscheinlichkeit, Y = Auswirkung. Jeder Punkt steht für ein Risiko; Risiken mit Strategie „Akzeptieren“ sind blass. Klicke auf eine Zelle, um ihre Risiken zu sehen.",
       "cellRisksTitle": "Risiken in dieser Zelle",
       "noRisksInCell": "Keine Risiken in dieser Zelle.",
       "closePanel": "Panel schließen",
-      "legendLevel": "Score {{from}}–{{to}} ({{level}})",
+      "legendLevel": "{{level}} ({{from}}–{{to}})",
       "legendAccepted": "Akzeptiert (transparent)",
       "statusOpen": "Offen",
       "statusInReview": "In Prüfung",
@@ -1346,7 +1355,12 @@
         "Spürbar",
         "Erheblich",
         "Kritisch"
-      ]
+      ],
+      "modeLabel": "Bewertung in der Matrix",
+      "modeInherent": "Ausgangsrisiko",
+      "modeResidual": "Restrisiko",
+      "residualMissing_one": "{{count}} Risiko ohne Restrisiko-Bewertung ist hier nicht eingetragen.",
+      "residualMissing_other": "{{count}} Risiken ohne Restrisiko-Bewertung sind hier nicht eingetragen."
     },
     "riskTreatment": {
       "linkControl": "Control verknüpfen",
@@ -1473,7 +1487,8 @@
       "treatmentPlan": "Behandlungsplan",
       "owner": "Verantwortlicher",
       "dueDate": "Zieldatum",
-      "treatmentStatus": "Behandlungsstatus"
+      "treatmentStatus": "Umsetzungsstand der Maßnahmen",
+      "strategy": "Behandlungsstrategie"
     },
     "cloudProviderTabs": {
       "region": "Region",

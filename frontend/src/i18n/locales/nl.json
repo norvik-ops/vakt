@@ -178,7 +178,9 @@
       "methodologyScoreMedium": "{{from}}–{{to}} — Gemiddeld: maatregelen plannen en uitvoeren",
       "methodologyScoreHigh": "{{from}}–{{to}} — Hoog: maatregelen snel nemen",
       "methodologyScoreCritical": "{{from}}–{{to}} — Kritiek: onmiddellijke behandeling vereist",
-      "bulkStatusTitle": "Status instellen"
+      "bulkStatusTitle": "Status instellen",
+      "residualBadge": "Rest {{score}}",
+      "residualTitle": "Restrisico na behandeling"
     },
     "incidentsPage": {
       "title": "Incidentenregister",
@@ -527,7 +529,9 @@
       "actions": {
         "classify": "Risico classificeren",
         "documentation": "Technisch dossier",
-        "cancel": "Annuleren"
+        "cancel": "Annuleren",
+        "edit": "Bewerken",
+        "delete": "Verwijderen"
       },
       "fields": {
         "name": "Naam",
@@ -576,7 +580,9 @@
         "decommissioned": "Buiten gebruik"
       },
       "deleteTitle": "KI-systeem verwijderen?",
-      "deleteDescription": "Deze actie kan niet ongedaan worden gemaakt."
+      "deleteDescription": "Deze actie kan niet ongedaan worden gemaakt.",
+      "riskClassOpen": "Risicoklasse nog niet bepaald",
+      "riskClassViaWizard": "De risicoklasse bepaalt de assistent „Risico classificeren“ op de kaart van het AI-systeem — met onderbouwing volgens de AI Act."
     },
     "resilienceTests": {
       "status": {
@@ -766,7 +772,7 @@
       "riskScore": "Risicoscore",
       "labelLikelihood": "Waarschijnlijkheid (1–5)",
       "labelImpact": "Impact (1–5)",
-      "statusCard": "Status",
+      "statusCard": "Risicostatus",
       "createdAt": "Aangemaakt:",
       "updatedAt": "Gewijzigd:",
       "treatmentSection": "Risicobehandeling (ISO 27001 Clausule 6)",
@@ -793,7 +799,10 @@
       "treatmentAvoid": "Vermijden",
       "treatmentMitigate": "Verminderen",
       "treatmentTransfer": "Overdragen",
-      "treatmentAccept": "Accepteren"
+      "treatmentAccept": "Accepteren",
+      "residualRisk": "Restrisico",
+      "residualNotSet": "nog niet beoordeeld",
+      "ownerHint": "Verantwoordelijk voor het risico en de behandeling ervan."
     },
     "auditProgram": {
       "title": "Auditprogramma",
@@ -1318,12 +1327,12 @@
     "riskHeatmap": {
       "impact": "Impact",
       "likelihood": "Waarschijnlijkheid",
-      "title": "Risico-heatmap (5×5)",
-      "subtitle": "X = Waarschijnlijkheid, Y = Impact. Elk punt staat voor één risico. Risico's met strategie \"Accepteren\" worden transparant weergegeven. Klik op een cel voor details.",
+      "title": "Risicomatrix (5×5)",
+      "subtitle": "X = waarschijnlijkheid, Y = impact. Elke stip is een risico; risico’s met strategie „Accepteren“ zijn vervaagd. Klik op een cel om de risico’s te zien.",
       "cellRisksTitle": "Risico's in deze cel",
       "noRisksInCell": "Geen risico's in deze cel.",
       "closePanel": "Paneel sluiten",
-      "legendLevel": "Score {{from}}–{{to}} ({{level}})",
+      "legendLevel": "{{level}} ({{from}}–{{to}})",
       "legendAccepted": "Geaccepteerd (transparant)",
       "statusOpen": "Open",
       "statusInReview": "In beoordeling",
@@ -1346,7 +1355,12 @@
         "Matig",
         "Aanzienlijk",
         "Kritiek"
-      ]
+      ],
+      "modeLabel": "Beoordeling in de matrix",
+      "modeInherent": "Inherent risico",
+      "modeResidual": "Restrisico",
+      "residualMissing_one": "{{count}} risico zonder restrisicobeoordeling staat hier niet in.",
+      "residualMissing_other": "{{count}} risico’s zonder restrisicobeoordeling staan hier niet in."
     },
     "riskTreatment": {
       "linkControl": "Controle koppelen",
@@ -1473,7 +1487,8 @@
       "treatmentPlan": "Behandelingsplan",
       "owner": "Verantwoordelijke",
       "dueDate": "Doeldatum",
-      "treatmentStatus": "Behandelingsstatus"
+      "treatmentStatus": "Voortgang van de maatregelen",
+      "strategy": "Behandelstrategie"
     },
     "cloudProviderTabs": {
       "region": "Regio",

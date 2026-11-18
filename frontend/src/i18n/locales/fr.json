@@ -178,7 +178,9 @@
       "methodologyScoreMedium": "{{from}}–{{to}} — Moyen : planifier et mettre en œuvre des mesures",
       "methodologyScoreHigh": "{{from}}–{{to}} — Élevé : prendre des mesures rapidement",
       "methodologyScoreCritical": "{{from}}–{{to}} — Critique : traitement immédiat requis",
-      "bulkStatusTitle": "Définir le statut"
+      "bulkStatusTitle": "Définir le statut",
+      "residualBadge": "Résiduel {{score}}",
+      "residualTitle": "Risque résiduel après traitement"
     },
     "incidentsPage": {
       "title": "Registre des incidents",
@@ -527,7 +529,9 @@
       "actions": {
         "classify": "Classifier le risque",
         "documentation": "Dossier technique",
-        "cancel": "Annuler"
+        "cancel": "Annuler",
+        "edit": "Modifier",
+        "delete": "Supprimer"
       },
       "fields": {
         "name": "Nom",
@@ -576,7 +580,9 @@
         "decommissioned": "Hors service"
       },
       "deleteTitle": "Supprimer le système IA ?",
-      "deleteDescription": "Cette action est irréversible."
+      "deleteDescription": "Cette action est irréversible.",
+      "riskClassOpen": "Classe de risque pas encore déterminée",
+      "riskClassViaWizard": "La classe de risque est déterminée par l’assistant « Classifier le risque » sur la carte du système IA — avec une justification selon l’AI Act."
     },
     "resilienceTests": {
       "status": {
@@ -766,7 +772,7 @@
       "riskScore": "Score de risque",
       "labelLikelihood": "Probabilité (1–5)",
       "labelImpact": "Impact (1–5)",
-      "statusCard": "Statut",
+      "statusCard": "Statut du risque",
       "createdAt": "Créé le :",
       "updatedAt": "Modifié le :",
       "treatmentSection": "Traitement du risque (ISO 27001 Clause 6)",
@@ -793,7 +799,10 @@
       "treatmentAvoid": "Éviter",
       "treatmentMitigate": "Atténuer",
       "treatmentTransfer": "Transférer",
-      "treatmentAccept": "Accepter"
+      "treatmentAccept": "Accepter",
+      "residualRisk": "Risque résiduel",
+      "residualNotSet": "pas encore évalué",
+      "ownerHint": "Responsable du risque et de son traitement."
     },
     "auditProgram": {
       "title": "Programme d'audit",
@@ -1318,12 +1327,12 @@
     "riskHeatmap": {
       "impact": "Impact",
       "likelihood": "Probabilité",
-      "title": "Carte thermique des risques (5×5)",
-      "subtitle": "X = Probabilité, Y = Impact. Chaque point représente un risque. Les risques avec la stratégie \"Accepter\" sont affichés en transparent. Cliquez sur une cellule pour les détails.",
+      "title": "Matrice des risques (5×5)",
+      "subtitle": "X = probabilité, Y = impact. Chaque point est un risque ; les risques avec la stratégie « Accepter » sont estompés. Cliquez sur une cellule pour voir ses risques.",
       "cellRisksTitle": "Risques dans cette cellule",
       "noRisksInCell": "Aucun risque dans cette cellule.",
       "closePanel": "Fermer le panneau",
-      "legendLevel": "Score {{from}}–{{to}} ({{level}})",
+      "legendLevel": "{{level}} ({{from}}–{{to}})",
       "legendAccepted": "Accepté (transparent)",
       "statusOpen": "Ouvert",
       "statusInReview": "En examen",
@@ -1346,7 +1355,12 @@
         "Modéré",
         "Significatif",
         "Critique"
-      ]
+      ],
+      "modeLabel": "Évaluation affichée dans la matrice",
+      "modeInherent": "Risque initial",
+      "modeResidual": "Risque résiduel",
+      "residualMissing_one": "{{count}} risque sans évaluation résiduelle n’est pas affiché ici.",
+      "residualMissing_other": "{{count}} risques sans évaluation résiduelle ne sont pas affichés ici."
     },
     "riskTreatment": {
       "linkControl": "Lier un contrôle",
@@ -1473,7 +1487,8 @@
       "treatmentPlan": "Plan de traitement",
       "owner": "Responsable",
       "dueDate": "Date cible",
-      "treatmentStatus": "Statut de traitement"
+      "treatmentStatus": "Avancement des mesures",
+      "strategy": "Stratégie de traitement"
     },
     "cloudProviderTabs": {
       "region": "Région",

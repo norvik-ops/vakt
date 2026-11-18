@@ -13,17 +13,18 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { useTranslation } from 'react-i18next'
-import { useRisk, useUpdateRisk, useUpdateRiskResidual, useAcceptRisk } from '../hooks/useRisks'
+import { useRisk, useSaveRiskDetail, useAcceptRisk } from '../hooks/useRisks'
 import { useRiskNarrative } from '../hooks/useAIInsights'
 import { AIDisclaimer } from '../../../shared/components/AIDisclaimer'
-import RiskTreatmentPanel from '../components/RiskTreatmentPanel'
-import type { Risk, UpdateRiskInput } from '../types'
+import RiskTreatmentPanel, { type TreatmentFields } from '../components/RiskTreatmentPanel'
+import type { Risk } from '../types'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
 import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { riskLevel, RISK_LEVEL_BADGE } from '../../../shared/utils/riskLevel'
 import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import { WriteFieldset } from '../../../shared/components/WriteFieldset'
 import { useCanWrite } from '../../../shared/hooks/useCanWrite'
+import { riskToEditForm, residualScoreOf, type RiskEditForm } from '../utils/riskEditForm'
 
 const SCORE_COLOR = (score: number) => RISK_LEVEL_BADGE[riskLevel(score)]
 
@@ -63,12 +64,75 @@ function AIRiskNarrativePanel({ riskId, existingNarrative }: { riskId: string; e
   )
 }
 
-function residualScoreColor(score: number | undefined): string {
-  if (score === undefined) return 'bg-muted text-muted-foreground border-border'
-  // Residual risk uses the same levels as gross risk (R1-KW-17).
-  return RISK_LEVEL_BADGE[riskLevel(score)]
+/** Formal acceptance (ISO 27001 6.1.3 / 8.3), only when the register status is 'accepted'. */
+function RiskAcceptance({ risk }: { risk: Risk }) {
+  const { t } = useTranslation()
+  const { formatDate } = useFormatDate()
+  const acceptRisk = useAcceptRisk(risk.id)
+  const [showAcceptDialog, setShowAcceptDialog] = useState(false)
+  const [justification, setJustification] = useState('')
+
+  // This gate was always the right one; the backend precondition read
+  // treatment_status and could never be satisfied — R1-14c-12.
+  if (risk.status !== 'accepted') return null
+
+  return (
+    <div className="border-t pt-3 space-y-2">
+      <p className="text-xs font-medium">{t('vaktcomply.riskDetail.formalAcceptance')}</p>
+      {risk.risk_accepted_at ? (
+        <div className="text-xs text-muted-foreground space-y-1">
+          <p>{t('vaktcomply.riskDetail.acceptedAt')} {formatDate(risk.risk_accepted_at)}</p>
+          {risk.risk_acceptance_justification && (
+            <p className="text-primary whitespace-pre-wrap">{risk.risk_acceptance_justification}</p>
+          )}
+        </div>
+      ) : !showAcceptDialog ? (
+        <Button size="sm" variant="outline" onClick={() => { setShowAcceptDialog(true); }}>
+          {t('vaktcomply.riskDetail.formalAcceptBtn')}
+        </Button>
+      ) : (
+        <div className="space-y-2">
+          <Label className="text-xs" htmlFor="risk-accept-justification">{t('vaktcomply.riskDetail.justificationLabel')}</Label>
+          <Textarea
+            id="risk-accept-justification"
+            rows={3}
+            placeholder={t('vaktcomply.riskDetail.justificationPlaceholder')}
+            value={justification}
+            onChange={(e) => { setJustification(e.target.value); }}
+          />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              disabled={!justification.trim() || acceptRisk.isPending}
+              onClick={() => {
+                acceptRisk.mutate(
+                  { justification },
+                  { onSuccess: () => { setShowAcceptDialog(false); setJustification(''); } },
+                )
+              }}
+            >
+              {acceptRisk.isPending ? t('vaktcomply.riskDetail.acceptingBtn') : t('vaktcomply.riskDetail.confirmBtn')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setShowAcceptDialog(false); }}>
+              {t('common.cancel')}
+            </Button>
+          </div>
+          {acceptRisk.isError && (
+            <p className="text-xs text-red-400">{acceptRisk.error?.message ?? t('common.error')}</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
+/**
+ * Risk detail. UX-26: every value is asked once — strategy, measures, owner and
+ * residual risk used to appear in two or three blocks with their own save buttons.
+ * One form, one save (header button and the button under the treatment section do
+ * the same); see utils/riskEditForm.ts for the column pairs it keeps in step.
+ * UX-27: the residual score stands next to the gross score at the top.
+ */
 export default function RiskDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -76,27 +140,11 @@ export default function RiskDetailPage() {
   const { formatDate } = useFormatDate()
   const { t } = useTranslation()
   const { data: risk, isLoading, isError } = useRisk(id ?? '')
-  const update = useUpdateRisk(id ?? '')
-  const updateResidual = useUpdateRiskResidual(id ?? '')
-  const acceptRisk = useAcceptRisk(id ?? '')
+  const save = useSaveRiskDetail(id ?? '')
 
-  const [form, setForm] = useState<UpdateRiskInput | null>(null)
+  const [form, setForm] = useState<RiskEditForm | null>(null)
   const [dirty, setDirty] = useState(false)
 
-  // Residual form state
-  const [residualForm, setResidualForm] = useState<{
-    inherent_likelihood: string; inherent_impact: string;
-    residual_likelihood: string; residual_impact: string;
-  }>({ inherent_likelihood: '', inherent_impact: '', residual_likelihood: '', residual_impact: '' })
-  const [showAcceptDialog, setShowAcceptDialog] = useState(false)
-  const [justification, setJustification] = useState('')
-
-  const TREATMENT_LABELS: Record<Risk['treatment'], string> = {
-    avoid: t('vaktcomply.riskDetail.treatmentAvoid'),
-    mitigate: t('vaktcomply.riskDetail.treatmentMitigate'),
-    transfer: t('vaktcomply.riskDetail.treatmentTransfer'),
-    accept: t('vaktcomply.riskDetail.treatmentAccept'),
-  }
   const STATUS_LABELS: Record<Risk['status'], string> = {
     open: t('vaktcomply.risksPage.statusOpen'),
     mitigated: t('vaktcomply.risksPage.statusMitigated'),
@@ -109,35 +157,17 @@ export default function RiskDetailPage() {
   }, [risk?.id])
 
   useEffect(() => {
-    if (risk && !form) {
-      setForm({
-        title: risk.title,
-        description: risk.description ?? '',
-        category: risk.category ?? '',
-        likelihood: risk.likelihood,
-        impact: risk.impact,
-        owner: risk.owner ?? '',
-        status: risk.status,
-        treatment: risk.treatment,
-        treatment_notes: risk.treatment_notes ?? '',
-      })
-      setResidualForm({
-        inherent_likelihood: risk.inherent_likelihood !== undefined ? String(risk.inherent_likelihood) : '',
-        inherent_impact: risk.inherent_impact !== undefined ? String(risk.inherent_impact) : '',
-        residual_likelihood: risk.residual_likelihood !== null && risk.residual_likelihood !== undefined ? String(risk.residual_likelihood) : '',
-        residual_impact: risk.residual_impact !== null && risk.residual_impact !== undefined ? String(risk.residual_impact) : '',
-      })
-    }
+    if (risk && !form) setForm(riskToEditForm(risk))
   }, [risk, form])
 
-  function set<K extends keyof UpdateRiskInput>(key: K, value: UpdateRiskInput[K]) {
+  function set<K extends keyof RiskEditForm>(key: K, value: RiskEditForm[K]) {
     setForm((f) => f ? { ...f, [key]: value } : f)
     setDirty(true)
   }
 
   function handleSave() {
     if (!form) return
-    update.mutate(form, { onSuccess: () => { setDirty(false); } })
+    save.mutate(form, { onSuccess: () => { setDirty(false); } })
   }
 
   if (isLoading) return (
@@ -150,6 +180,9 @@ export default function RiskDetailPage() {
   )
 
   const previewScore = form ? form.likelihood * form.impact : risk.risk_score
+  const residualScore = form
+    ? residualScoreOf(form.residualLikelihood, form.residualImpact)
+    : (risk.residual_score ?? null)
 
   return (
     <div className="flex flex-col h-full">
@@ -168,9 +201,9 @@ export default function RiskDetailPage() {
               {t('vaktcomply.riskDetail.back')}
             </Button>
             {canWrite && (
-              <Button onClick={handleSave} disabled={!dirty || update.isPending}>
+              <Button onClick={handleSave} disabled={!dirty || save.isPending}>
                 <Save className="w-4 h-4 mr-1" />
-                {update.isPending ? t('vaktcomply.riskDetail.saving') : t('vaktcomply.riskDetail.save')}
+                {save.isPending ? t('vaktcomply.riskDetail.saving') : t('vaktcomply.riskDetail.save')}
               </Button>
             )}
           </div>
@@ -180,55 +213,38 @@ export default function RiskDetailPage() {
       {form && (
         <div className="flex-1 p-6 space-y-6">
           <ReadOnlyHint />
+          {save.isError && (
+            <p role="alert" className="text-sm text-red-400">{save.error?.message ?? t('common.error')}</p>
+          )}
           <WriteFieldset>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: edit form */}
+          {/* Left: basic data */}
           <div className="lg:col-span-2 space-y-4">
             <Card>
               <CardHeader><CardTitle className="text-sm">{t('vaktcomply.riskDetail.basicData')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.riskDetail.labelTitle')}</Label>
-                  <Input value={form.title} onChange={(e) => { set('title', e.target.value); }} />
+                  <Label htmlFor="risk-title">{t('vaktcomply.riskDetail.labelTitle')}</Label>
+                  <Input id="risk-title" value={form.title} onChange={(e) => { set('title', e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.riskDetail.labelCategory')}</Label>
-                  <Input value={form.category ?? ''} placeholder={t('vaktcomply.riskDetail.placeholderCategory')} onChange={(e) => { set('category', e.target.value); }} />
+                  <Label htmlFor="risk-category">{t('vaktcomply.riskDetail.labelCategory')}</Label>
+                  <Input id="risk-category" value={form.category} placeholder={t('vaktcomply.riskDetail.placeholderCategory')} onChange={(e) => { set('category', e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.riskDetail.labelDescription')}</Label>
-                  <Textarea rows={3} value={form.description ?? ''} onChange={(e) => { set('description', e.target.value); }} />
+                  <Label htmlFor="risk-description">{t('vaktcomply.riskDetail.labelDescription')}</Label>
+                  <Textarea id="risk-description" rows={3} value={form.description} onChange={(e) => { set('description', e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.riskDetail.labelOwner')}</Label>
-                  <Input value={form.owner ?? ''} onChange={(e) => { set('owner', e.target.value); }} />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle className="text-sm">{t('vaktcomply.riskDetail.treatment')}</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.riskDetail.labelStrategy')}</Label>
-                  <Select value={form.treatment} onValueChange={(v) => { set('treatment', v as Risk['treatment']); }}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(TREATMENT_LABELS) as Risk['treatment'][]).map((k) => (
-                        <SelectItem key={k} value={k}>{TREATMENT_LABELS[k]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.riskDetail.labelMeasures')}</Label>
-                  <Textarea rows={3} value={form.treatment_notes ?? ''} onChange={(e) => { set('treatment_notes', e.target.value); }} />
+                  <Label htmlFor="risk-owner">{t('vaktcomply.riskDetail.labelOwner')}</Label>
+                  <Input id="risk-owner" value={form.owner} placeholder="z.B. Max Mustermann" onChange={(e) => { set('owner', e.target.value); }} />
+                  <p className="text-xs text-muted-foreground">{t('vaktcomply.riskDetail.ownerHint')}</p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right: score + status */}
+          {/* Right: assessment (gross and residual) + status */}
           <div className="space-y-4">
             <Card>
               <CardHeader><CardTitle className="text-sm">{t('vaktcomply.riskDetail.riskAssessment')}</CardTitle></CardHeader>
@@ -237,14 +253,22 @@ export default function RiskDetailPage() {
                   <span className="text-sm text-muted-foreground">{t('vaktcomply.riskDetail.riskScore')}</span>
                   <Badge className={SCORE_COLOR(previewScore)}>{previewScore} / 25</Badge>
                 </div>
+                <div className="flex items-center justify-between" data-testid="risk-residual-summary">
+                  <span className="text-sm text-muted-foreground">
+                    <TermTooltip term="Restrisiko" glossaryKey="Residualrisiko">{t('vaktcomply.riskDetail.residualRisk')}</TermTooltip>
+                  </span>
+                  {residualScore != null
+                    ? <Badge className={SCORE_COLOR(residualScore)}>{residualScore} / 25</Badge>
+                    : <span className="text-xs text-muted-foreground">{t('vaktcomply.riskDetail.residualNotSet')}</span>}
+                </div>
                 <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.riskDetail.labelLikelihood')}</Label>
-                  <Input type="number" min={1} max={5} value={form.likelihood}
+                  <Label htmlFor="risk-likelihood">{t('vaktcomply.riskDetail.labelLikelihood')}</Label>
+                  <Input id="risk-likelihood" type="number" min={1} max={5} value={form.likelihood}
                     onChange={(e) => { set('likelihood', Math.min(5, Math.max(1, parseInt(e.target.value, 10) || 1))); }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t('vaktcomply.riskDetail.labelImpact')}</Label>
-                  <Input type="number" min={1} max={5} value={form.impact}
+                  <Label htmlFor="risk-impact">{t('vaktcomply.riskDetail.labelImpact')}</Label>
+                  <Input id="risk-impact" type="number" min={1} max={5} value={form.impact}
                     onChange={(e) => { set('impact', Math.min(5, Math.max(1, parseInt(e.target.value, 10) || 1))); }} />
                 </div>
               </CardContent>
@@ -252,15 +276,16 @@ export default function RiskDetailPage() {
 
             <Card>
               <CardHeader><CardTitle className="text-sm">{t('vaktcomply.riskDetail.statusCard')}</CardTitle></CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
                 <Select value={form.status} onValueChange={(v) => { set('status', v as Risk['status']); }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={t('vaktcomply.riskDetail.statusCard')}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {(Object.keys(STATUS_LABELS) as Risk['status'][]).map((k) => (
                       <SelectItem key={k} value={k}>{STATUS_LABELS[k]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <RiskAcceptance risk={risk} />
               </CardContent>
             </Card>
 
@@ -276,130 +301,19 @@ export default function RiskDetailPage() {
           {/* S52-3: AI Risk Narrative */}
           <AIRiskNarrativePanel riskId={id ?? ''} existingNarrative={risk.ai_narrative ?? null} />
 
-          {/* Treatment workflow — full width section below the main grid */}
+          {/* The one treatment block: strategy, plan, due date, progress, residual risk, controls. */}
           <div>
             <h2 className="text-sm font-semibold mb-3">{t('vaktcomply.riskDetail.treatmentSection')}</h2>
-            <RiskTreatmentPanel riskId={id ?? ''} risk={risk} />
+            <RiskTreatmentPanel
+              riskId={id ?? ''}
+              grossScore={previewScore}
+              value={form satisfies TreatmentFields}
+              onChange={(patch) => { setForm((f) => f ? { ...f, ...patch } : f); setDirty(true) }}
+              onSave={handleSave}
+              saving={save.isPending}
+              dirty={dirty}
+            />
           </div>
-
-          {/* S61-4: Residualrisiko-Berechnung */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm"><TermTooltip term="Residualrisiko" glossaryKey="Residualrisiko">Residualrisiko</TermTooltip>-{t('vaktcomply.riskDetail.residualTitle')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Score indicators */}
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{t('vaktcomply.riskDetail.grossRisk')}</span>
-                  <Badge className={residualScoreColor(risk.inherent_score)}>
-                    {risk.inherent_score !== undefined ? `${risk.inherent_score} / 25` : '–'}
-                  </Badge>
-                </div>
-                {risk.inherent_score !== undefined && risk.residual_score !== undefined && (
-                  <span className="text-muted-foreground text-xs">→</span>
-                )}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{t('vaktcomply.riskDetail.netRisk')}</span>
-                  <Badge className={residualScoreColor(risk.residual_score)}>
-                    {risk.residual_score !== undefined ? `${risk.residual_score} / 25` : '–'}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Edit form */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {(
-                  [
-                    { key: 'inherent_likelihood' as const, labelKey: 'grossLikelihood' },
-                    { key: 'inherent_impact' as const, labelKey: 'grossImpact' },
-                    { key: 'residual_likelihood' as const, labelKey: 'netLikelihood' },
-                    { key: 'residual_impact' as const, labelKey: 'netImpact' },
-                  ] as const
-                ).map(({ key, labelKey }) => (
-                  <div key={key} className="space-y-1">
-                    <Label className="text-xs">{t(`vaktcomply.riskDetail.${labelKey}`)} (1–5)</Label>
-                    <Input
-                      type="number" min={1} max={5} placeholder="–"
-                      value={residualForm[key]}
-                      onChange={(e) => { setResidualForm((f) => ({ ...f, [key]: e.target.value })); }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={updateResidual.isPending}
-                onClick={() => {
-                  const parse = (v: string) => { const n = parseInt(v, 10); return isNaN(n) ? undefined : Math.min(5, Math.max(1, n)); }
-                  updateResidual.mutate({
-                    inherent_likelihood: parse(residualForm.inherent_likelihood),
-                    inherent_impact: parse(residualForm.inherent_impact),
-                    residual_likelihood: parse(residualForm.residual_likelihood),
-                    residual_impact: parse(residualForm.residual_impact),
-                  })
-                }}
-              >
-                {updateResidual.isPending ? t('vaktcomply.riskDetail.saving') : t('vaktcomply.riskDetail.saveValues')}
-              </Button>
-
-              {/* Risk acceptance section (only when the register status is 'accepted').
-                  This gate was always the right one; the backend precondition read
-                  treatment_status and could never be satisfied — R1-14c-12. */}
-              {risk.status === 'accepted' && (
-                <div className="border-t pt-4 space-y-2">
-                  <p className="text-xs font-medium">{t('vaktcomply.riskDetail.formalAcceptance')}</p>
-                  {risk.risk_accepted_at ? (
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p>{t('vaktcomply.riskDetail.acceptedAt')} {formatDate(risk.risk_accepted_at)}</p>
-                      {risk.risk_acceptance_justification && (
-                        <p className="text-primary whitespace-pre-wrap">{risk.risk_acceptance_justification}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      {!showAcceptDialog ? (
-                        <Button size="sm" variant="outline" onClick={() => { setShowAcceptDialog(true); }}>
-                          {t('vaktcomply.riskDetail.formalAcceptBtn')}
-                        </Button>
-                      ) : (
-                        <div className="space-y-2">
-                          <Label className="text-xs">{t('vaktcomply.riskDetail.justificationLabel')}</Label>
-                          <Textarea
-                            rows={3}
-                            placeholder={t('vaktcomply.riskDetail.justificationPlaceholder')}
-                            value={justification}
-                            onChange={(e) => { setJustification(e.target.value); }}
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              disabled={!justification.trim() || acceptRisk.isPending}
-                              onClick={() => {
-                                acceptRisk.mutate(
-                                  { justification },
-                                  { onSuccess: () => { setShowAcceptDialog(false); setJustification(''); } },
-                                )
-                              }}
-                            >
-                              {acceptRisk.isPending ? t('vaktcomply.riskDetail.acceptingBtn') : t('vaktcomply.riskDetail.confirmBtn')}
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => { setShowAcceptDialog(false); }}>
-                              {t('common.cancel')}
-                            </Button>
-                          </div>
-                          {acceptRisk.isError && (
-                            <p className="text-xs text-red-400">{acceptRisk.error?.message ?? t('common.error')}</p>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
           </WriteFieldset>
         </div>
       )}

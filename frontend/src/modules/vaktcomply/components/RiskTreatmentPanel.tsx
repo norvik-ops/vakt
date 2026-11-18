@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import { useTranslation } from 'react-i18next'
 import { ShieldCheck, ShieldOff, ArrowRightLeft, CheckCircle2, Link2, Unlink, Plus, Save } from 'lucide-react'
@@ -10,13 +10,13 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import {
-  useUpdateRiskTreatment,
   useRiskControls,
   useLinkRiskControl,
   useUnlinkRiskControl,
 } from '../hooks/useRisks'
 import { useFrameworks, useFrameworkControls } from '../hooks/useFrameworks'
-import type { Risk, UpdateRiskTreatmentInput, TreatmentOption, TreatmentStatus, Control } from '../types'
+import type { TreatmentOption, TreatmentStatus, Control } from '../types'
+import { residualScoreOf, type RiskEditForm } from '../utils/riskEditForm'
 import { riskLevel, type RiskLevel } from '../../../shared/utils/riskLevel'
 import { frameworkDisplayName } from '../utils/frameworkCatalogue'
 
@@ -79,8 +79,8 @@ const RESIDUAL_COLOR: Record<RiskLevel, string> = {
   low: 'bg-green-500',
 }
 
-function residualColor(likelihood: number, impact: number): string {
-  return RESIDUAL_COLOR[riskLevel(likelihood * impact)]
+function residualColor(score: number): string {
+  return RESIDUAL_COLOR[riskLevel(score)]
 }
 
 // ---------------------------------------------------------------------------
@@ -184,69 +184,54 @@ function LinkControlDialog({ riskId, open, onClose }: { riskId: string; open: bo
 // Main RiskTreatmentPanel
 // ---------------------------------------------------------------------------
 
+/** The treatment part of the risk edit form; owner, title etc. live in the page. */
+export type TreatmentFields = Pick<
+  RiskEditForm,
+  'strategy' | 'plan' | 'dueDate' | 'treatmentStatus' | 'residualLikelihood' | 'residualImpact'
+>
+
 interface Props {
   riskId: string
-  risk: Risk
+  /** Gross risk score (likelihood × impact), shown next to the residual score. */
+  grossScore: number
+  value: TreatmentFields
+  onChange: (patch: Partial<TreatmentFields>) => void
+  onSave: () => void
+  saving: boolean
+  dirty: boolean
 }
 
-function buildInitialForm(risk: Risk): UpdateRiskTreatmentInput {
-  return {
-    treatment_option: risk.treatment_option,
-    treatment_plan: risk.treatment_plan ?? '',
-    treatment_owner: risk.treatment_owner ?? '',
-    treatment_due_date: risk.treatment_due_date ?? null,
-    treatment_status: risk.treatment_status ?? 'pending',
-    residual_likelihood: risk.residual_likelihood ?? null,
-    residual_impact: risk.residual_impact ?? null,
-  }
-}
-
-const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
+/**
+ * Treatment section of the risk detail (ISO 27001 clause 6.1.3). Controlled by the
+ * page: one form, one save (UX-26). The owner is asked once, in the page's basic data.
+ */
+const RiskTreatmentPanel: React.FC<Props> = ({ riskId, grossScore, value: form, onChange: set, onSave, saving, dirty }) => {
   const { t } = useTranslation()
-  const updateTreatment = useUpdateRiskTreatment(riskId)
   const { data: linkedControls } = useRiskControls(riskId)
   const unlink = useUnlinkRiskControl(riskId)
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
-  const [form, setForm] = useState<UpdateRiskTreatmentInput>(buildInitialForm(risk))
-  const [dirty, setDirty] = useState(false)
   const canWrite = useCanWrite()
 
-  // Re-sync if risk prop changes (e.g. after successful save upstream)
-  useEffect(() => {
-    setForm(buildInitialForm(risk))
-    setDirty(false)
-  }, [risk.id, risk.updated_at]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function set<K extends keyof UpdateRiskTreatmentInput>(key: K, value: UpdateRiskTreatmentInput[K]) {
-    setForm((f) => ({ ...f, [key]: value }))
-    setDirty(true)
-  }
-
-  function handleSave() {
-    updateTreatment.mutate(form, { onSuccess: () => { setDirty(false); } })
-  }
-
-  const residualScore =
-    form.residual_likelihood != null && form.residual_impact != null
-      ? form.residual_likelihood * form.residual_impact
-      : null
+  const residualScore = residualScoreOf(form.residualLikelihood, form.residualImpact)
 
   return (
     <div className="space-y-4">
       {/* Treatment Option selector */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Behandlungsstrategie (ISO 27001 Klausel 6)</CardTitle>
+          <CardTitle className="text-sm">{t('vaktcomply.riskTreatmentPanel.strategy')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" role="radiogroup" aria-label={t('vaktcomply.riskTreatmentPanel.strategy')}>
             {TREATMENT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => { set('treatment_option', opt.value); }}
+                role="radio"
+                aria-checked={form.strategy === opt.value}
+                onClick={() => { set({ strategy: opt.value }); }}
                 className={`flex items-start gap-2 rounded-lg border p-3 text-left transition-colors text-sm ${
-                  form.treatment_option === opt.value
+                  form.strategy === opt.value
                     ? opt.color + ' ring-1 ring-current'
                     : 'border-border hover:border-muted-foreground/40'
                 }`}
@@ -261,49 +246,42 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
           </div>
 
           <div className="space-y-1.5">
-            <Label>{t('vaktcomply.riskTreatmentPanel.treatmentPlan')}</Label>
+            <Label htmlFor="risk-treatment-plan">{t('vaktcomply.riskTreatmentPanel.treatmentPlan')}</Label>
             <Textarea
+              id="risk-treatment-plan"
               rows={4}
               placeholder="Konkrete Maßnahmen, Verantwortlichkeiten und Zeitplan …"
-              value={form.treatment_plan ?? ''}
-              onChange={(e) => { set('treatment_plan', e.target.value); }}
+              value={form.plan}
+              onChange={(e) => { set({ plan: e.target.value }); }}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>{t('vaktcomply.riskTreatmentPanel.owner')}</Label>
+              <Label htmlFor="risk-treatment-due">{t('vaktcomply.riskTreatmentPanel.dueDate')}</Label>
               <Input
-                placeholder="z.B. Max Mustermann"
-                value={form.treatment_owner ?? ''}
-                onChange={(e) => { set('treatment_owner', e.target.value); }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t('vaktcomply.riskTreatmentPanel.dueDate')}</Label>
-              <Input
+                id="risk-treatment-due"
                 type="date"
-                value={form.treatment_due_date ?? ''}
-                onChange={(e) => { set('treatment_due_date', e.target.value || null); }}
+                value={form.dueDate}
+                onChange={(e) => { set({ dueDate: e.target.value }); }}
               />
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t('vaktcomply.riskTreatmentPanel.treatmentStatus')}</Label>
-            <Select
-              value={form.treatment_status ?? 'pending'}
-              onValueChange={(v) => { set('treatment_status', v as TreatmentStatus); }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(TREATMENT_STATUS_LABELS) as TreatmentStatus[]).map((k) => (
-                  <SelectItem key={k} value={k}>{TREATMENT_STATUS_LABELS[k]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1.5">
+              <Label>{t('vaktcomply.riskTreatmentPanel.treatmentStatus')}</Label>
+              <Select
+                value={form.treatmentStatus}
+                onValueChange={(v) => { set({ treatmentStatus: v as TreatmentStatus }); }}
+              >
+                <SelectTrigger aria-label={t('vaktcomply.riskTreatmentPanel.treatmentStatus')}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(TREATMENT_STATUS_LABELS) as TreatmentStatus[]).map((k) => (
+                    <SelectItem key={k} value={k}>{TREATMENT_STATUS_LABELS[k]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -314,12 +292,12 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
           <CardTitle className="text-sm">Restrisiko nach Behandlung</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>
                 Restrisiko-Wahrscheinlichkeit
-                {form.residual_likelihood != null && (
-                  <span className="ml-1 font-mono text-muted-foreground">{form.residual_likelihood}/5</span>
+                {form.residualLikelihood != null && (
+                  <span className="ml-1 font-mono text-muted-foreground">{form.residualLikelihood}/5</span>
                 )}
               </Label>
               <input
@@ -328,8 +306,9 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
                 max={5}
                 step={1}
                 className="w-full accent-primary"
-                value={form.residual_likelihood ?? 3}
-                onChange={(e) => { set('residual_likelihood', parseInt(e.target.value, 10)); }}
+                aria-label="Restrisiko-Wahrscheinlichkeit"
+                value={form.residualLikelihood ?? 3}
+                onChange={(e) => { set({ residualLikelihood: parseInt(e.target.value, 10) }); }}
               />
               <div className="flex justify-between text-[10px] text-muted-foreground">
                 <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
@@ -338,8 +317,8 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
             <div className="space-y-2">
               <Label>
                 Restrisiko-Auswirkung
-                {form.residual_impact != null && (
-                  <span className="ml-1 font-mono text-muted-foreground">{form.residual_impact}/5</span>
+                {form.residualImpact != null && (
+                  <span className="ml-1 font-mono text-muted-foreground">{form.residualImpact}/5</span>
                 )}
               </Label>
               <input
@@ -348,8 +327,9 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
                 max={5}
                 step={1}
                 className="w-full accent-primary"
-                value={form.residual_impact ?? 3}
-                onChange={(e) => { set('residual_impact', parseInt(e.target.value, 10)); }}
+                aria-label="Restrisiko-Auswirkung"
+                value={form.residualImpact ?? 3}
+                onChange={(e) => { set({ residualImpact: parseInt(e.target.value, 10) }); }}
               />
               <div className="flex justify-between text-[10px] text-muted-foreground">
                 <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
@@ -360,11 +340,11 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
           {residualScore != null && (
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Restrisiko-Score:</span>
-              <span className={`px-2 py-0.5 rounded-md text-white text-xs font-semibold ${residualColor(form.residual_likelihood!, form.residual_impact!)}`}>
+              <span className={`px-2 py-0.5 rounded-md text-white text-xs font-semibold ${residualColor(residualScore)}`}>
                 {residualScore} / 25
               </span>
               <span className="text-muted-foreground text-xs">
-                (vorher: {risk.likelihood * risk.impact})
+                (vorher: {grossScore})
               </span>
             </div>
           )}
@@ -408,11 +388,11 @@ const RiskTreatmentPanel: React.FC<Props> = ({ riskId, risk }) => {
         </CardContent>
       </Card>
 
-      {/* Save button */}
+      {/* Same save as the page header: one form, one save (UX-26). */}
       {canWrite && <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={!dirty || updateTreatment.isPending}>
+        <Button onClick={onSave} disabled={!dirty || saving}>
           <Save className="w-4 h-4 mr-1" />
-          {updateTreatment.isPending ? 'Speichern …' : 'Behandlung speichern'}
+          {saving ? 'Speichern …' : 'Behandlung speichern'}
         </Button>
       </div>}
 

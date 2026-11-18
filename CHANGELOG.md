@@ -7,6 +7,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Geändert
+- **Risiko-Detail: jede Angabe einmal, ein Speichern:** Strategie, Verantwortlicher,
+  Maßnahmen/Behandlungsplan und Restrisiko standen bisher zwei- bis dreimal auf der Seite, mit
+  drei Speichern-Knöpfen. Jetzt gibt es einen Behandlungsblock; „Speichern“ oben und „Behandlung
+  speichern“ unten speichern dasselbe. In der Datenbank liegt jede dieser Angaben in zwei Spalten;
+  die Seite schreibt beide gleich (keine Migration). Risikostatus und „Umsetzungsstand der
+  Maßnahmen“ bleiben zwei Felder, weil sie Verschiedenes bedeuten.
+- **Restrisiko sichtbar:** Die Risikokarte zeigt neben dem Score das Restrisiko („Rest 4“), das
+  Risiko-Detail nennt es oben neben dem Ausgangswert.
+- **Eine Risikomatrix:** Statt „Risikomatrix“ in der Liste und einer eigenen Ansicht „Heatmap“
+  gibt es eine Matrix über der Liste, mit Stufennamen an den Achsen. Ein Klick auf eine Zelle
+  listet ihre Risiken. Die Matrix lässt sich zwischen Ausgangs- und Restrisiko umschalten und
+  zeigt alle Risiken des Registers.
+- **KI-Inventar:** Die Karte hat beschriftete Knöpfe „Risikoklasse bestimmen“ und „Technisches
+  Dossier“; Bearbeiten und Löschen tragen Tooltip und Bildschirmleser-Namen. Die Risikoklasse
+  bestimmt nur noch der Assistent: Der Dialog „KI-System erfassen“ bietet keine freie Auswahl mehr
+  und zeigt „noch nicht bestimmt“ mit Verweis auf den Assistenten. Fristen und Klassenlogik sind
+  unverändert.
 - **Einheitliche deutsche Begriffe:** Rollen heißen in der Oberfläche jetzt „Administrator“,
   „Bearbeiter“, „Leser“, „Externer Prüfer (nur lesen)“ und „Interner Auditor“ (in allen vier
   Sprachen); unter der Teamtabelle und in den Dialogen steht je Rolle ein Satz, was sie darf. Die

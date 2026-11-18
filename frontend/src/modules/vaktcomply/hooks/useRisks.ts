@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, type QueryKey } from '@tanstack/
 import { apiFetch } from '../../../api/client'
 import type { Risk, CreateRiskInput, UpdateRiskInput, UpdateRiskTreatmentInput, AcceptRiskInput, Control } from '../types'
 import type { PaginatedResponse } from '../../../shared/types/pagination'
+import { editFormToRequests, type RiskEditForm } from '../utils/riskEditForm'
 
 export function useDeleteRisk() {
   const queryClient = useQueryClient()
@@ -104,6 +105,28 @@ export function useUpdateRiskTreatment(id: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'risks'] })
       void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'risks', id] })
+    },
+  })
+}
+
+/**
+ * Saves the whole risk detail form in one action (UX-26). The values live in pairs
+ * of columns that three endpoints write; editFormToRequests fills each pair alike.
+ * Order: register fields, then treatment workflow, then gross/residual factors.
+ */
+export function useSaveRiskDetail(id: string) {
+  const queryClient = useQueryClient()
+  // RiskEditForm is the page's form, not a wire type — the wire types are the three
+  // request bodies editFormToRequests builds (UpdateRiskInput, UpdateRiskTreatmentInput, residual).
+  return useMutation({
+    mutationFn: async (form: RiskEditForm): Promise<void> => {
+      const req = editFormToRequests(form)
+      await apiFetch<Risk>(`/vaktcomply/risks/${id}`, { method: 'PATCH', body: JSON.stringify(req.update) })
+      await apiFetch<Risk>(`/vaktcomply/risks/${id}/treatment`, { method: 'PATCH', body: JSON.stringify(req.treatment) })
+      await apiFetch(`/vaktcomply/risks/${id}/residual`, { method: 'PATCH', body: JSON.stringify(req.residual) })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vaktcomply', 'risks'] })
     },
   })
 }

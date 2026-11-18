@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShieldAlert, Plus, List, BarChart2, ChevronsUpDown, ChevronUp, ChevronDown, RefreshCw, Trash2, Library, HelpCircle } from 'lucide-react'
+import { ShieldAlert, Plus, ChevronsUpDown, ChevronUp, ChevronDown, RefreshCw, Trash2, Library, HelpCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/ui/button'
@@ -18,7 +18,6 @@ import { Pagination } from '../../../shared/components/Pagination'
 import { BulkActionBar } from '../../../shared/components/BulkActionBar'
 import { ThreatCatalogDialog } from '../components/ThreatCatalogDialog'
 import { useSortableTable } from '../../../shared/hooks/useSortableTable'
-import { TermTooltip } from '../../../shared/components/TermTooltip'
 import { useDeferredDelete } from '../../../shared/hooks/useDeferredDelete'
 import { toast } from '../../../shared/hooks/useToast'
 import { useRisks, useCreateRisk, useDeleteRisk, useUpdateRiskStatus } from '../hooks/useRisks'
@@ -30,77 +29,7 @@ import { UserPicker } from '../../../shared/components/UserPicker'
 import { ReadOnlyHint } from '../../../shared/components/ReadOnlyHint'
 import { useCanWrite } from '../../../shared/hooks/useCanWrite'
 import type { Risk, CreateRiskInput } from '../types'
-import { riskLevel, RISK_LEVELS, RISK_LEVEL_BADGE, RISK_LEVEL_FILL, RISK_LEVEL_LABEL_KEY, type RiskLevel } from '../../../shared/utils/riskLevel'
-
-// ---- Risk Matrix Heatmap (inline, list-view summary) -------------------------
-
-function RiskMatrixHeatmap({ risks }: { risks: Risk[] }) {
-  const { t } = useTranslation()
-  const counts: Record<string, number> = {}
-  for (const r of risks) {
-    if (r.status !== 'open') continue
-    const key = `${r.likelihood}-${r.impact}`
-    counts[key] = (counts[key] ?? 0) + 1
-  }
-
-  function cellColor(l: number, i: number): string {
-    return RISK_LEVEL_FILL[riskLevel(l * i)]
-  }
-
-  return (
-    <div className="bg-white dark:bg-surface border rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Risikomatrix (offene Risiken)</h3>
-      <div className="overflow-x-auto">
-      <div className="flex flex-wrap gap-2 min-w-[280px]">
-        {/* Y-axis label */}
-        <div
-          className="flex flex-col justify-between text-xs text-gray-500 py-1"
-          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', height: `${5 * 44}px` }}
-        >
-          Auswirkung →
-        </div>
-        <div>
-          {/* Grid: impact 5 (top) to 1 (bottom), likelihood 1 (left) to 5 (right) */}
-          {[5, 4, 3, 2, 1].map(impact => (
-            <div key={impact} className="flex">
-              <span className="text-xs text-gray-500 w-4 flex items-center justify-center">{impact}</span>
-              {[1, 2, 3, 4, 5].map(likelihood => {
-                const count = counts[`${likelihood}-${impact}`] ?? 0
-                return (
-                  <div
-                    key={likelihood}
-                    className="w-10 h-10 border border-white flex items-center justify-center text-xs font-semibold rounded-sm m-0.5"
-                    style={{ backgroundColor: cellColor(likelihood, impact) }}
-                    title={`Wahrscheinlichkeit ${likelihood} × Auswirkung ${impact} = ${likelihood * impact}`}
-                  >
-                    {count > 0 ? count : ''}
-                  </div>
-                )
-              })}
-            </div>
-          ))}
-          {/* X-axis */}
-          <div className="flex mt-1 pl-4">
-            {[1, 2, 3, 4, 5].map(l => (
-              <span key={l} className="w-10 m-0.5 text-center text-xs text-gray-500">{l}</span>
-            ))}
-          </div>
-          <div className="text-xs text-gray-500 text-center mt-1 pl-4">← <TermTooltip term="Eintrittswahrscheinlichkeit" glossaryKey="Eintrittswahrscheinlichkeit">Eintrittswahrscheinlichkeit</TermTooltip></div>
-        </div>
-        {/* Legend */}
-        <div className="ml-0 mt-3 sm:ml-4 sm:mt-0 flex flex-row flex-wrap sm:flex-col gap-x-3 gap-y-1 sm:justify-center text-xs shrink-0">
-          {RISK_LEVELS.map(({ level, from, to }) => (
-            <div key={level} className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: RISK_LEVEL_FILL[level] }} />
-              <span className="text-gray-600 dark:text-gray-500 whitespace-nowrap">{t(RISK_LEVEL_LABEL_KEY[level])} ({from}–{to})</span>
-            </div>
-          ))}
-        </div>
-      </div>
-      </div>
-    </div>
-  )
-}
+import { riskLevel, RISK_LEVELS, RISK_LEVEL_BADGE, RISK_LEVEL_FILL, type RiskLevel } from '../../../shared/utils/riskLevel'
 
 const SCORE_COLOR = (score: number) => RISK_LEVEL_BADGE[riskLevel(score)]
 
@@ -232,6 +161,16 @@ function RiskCard({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Badge className={SCORE_COLOR(risk.risk_score)}>Score {risk.risk_score}</Badge>
+            {/* UX-27: residual risk on the card, not only deep in the detail. */}
+            {risk.residual_score != null && (
+              <Badge
+                className={SCORE_COLOR(risk.residual_score)}
+                title={t('vaktcomply.risksPage.residualTitle')}
+                data-testid="risk-card-residual"
+              >
+                {t('vaktcomply.risksPage.residualBadge', { score: risk.residual_score })}
+              </Badge>
+            )}
             {canWrite && (
               <button
                 className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
@@ -282,7 +221,6 @@ export default function RisksPage() {
   const [catalogOpen, setCatalogOpen] = useState(false)
   const [methodologyOpen, setMethodologyOpen] = useState(false)
   const [form, setForm] = useState<CreateRiskInput>(emptyForm())
-  const [view, setView] = useState<'list' | 'heatmap'>('list')
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
@@ -380,7 +318,7 @@ export default function RisksPage() {
     createRisk.mutate(form, { onSuccess: () => { setDialogOpen(false); } })
   }
 
-  const displayRisks = (view === 'list' ? sortedRisks : (risks ?? [])).filter((r) => !hiddenIds.has(r.id))
+  const displayRisks = sortedRisks.filter((r) => !hiddenIds.has(r.id))
   const groups = RISK_LEVELS.map((range) => ({
     ...range,
     risks: displayRisks.filter((r) => riskLevel(r.risk_score) === range.level),
@@ -393,27 +331,6 @@ export default function RisksPage() {
         description={t('vaktcomply.risksPage.description')}
         actions={
           <div className="flex items-center gap-2">
-            {/* View toggle */}
-            <div className="flex items-center rounded-md border bg-muted/30 p-0.5 gap-0.5">
-              <Button
-                size="sm"
-                variant={view === 'list' ? 'secondary' : 'ghost'}
-                className="h-7 px-2.5 text-xs"
-                onClick={() => { setView('list'); }}
-              >
-                <List className="w-3.5 h-3.5 mr-1" />
-                {t('vaktcomply.risksPage.viewList')}
-              </Button>
-              <Button
-                size="sm"
-                variant={view === 'heatmap' ? 'secondary' : 'ghost'}
-                className="h-7 px-2.5 text-xs"
-                onClick={() => { setView('heatmap'); }}
-              >
-                <BarChart2 className="w-3.5 h-3.5 mr-1" />
-                {t('vaktcomply.risksPage.viewHeatmap')}
-              </Button>
-            </div>
             <ExportButton
               endpoint="/api/v1/vaktcomply/risks/export/xlsx"
               filename={`risiken-${new Date().toISOString().slice(0, 10)}`}
@@ -488,8 +405,8 @@ export default function RisksPage() {
 
       <div className="flex-1 p-6 space-y-6">
         <ReadOnlyHint />
-        {/* Sort toolbar — list view only */}
-        {!isLoading && !isError && view === 'list' && risks && risks.length > 0 && (
+        {/* Sort toolbar */}
+        {!isLoading && !isError && risks && risks.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 text-xs text-secondary">
             <span className="font-medium">{t('common.filter')}:</span>
             {SORT_OPTIONS.map((opt) => {
@@ -536,12 +453,10 @@ export default function RisksPage() {
             action={canWrite ? <Button onClick={openDialog}><Plus className="w-4 h-4 mr-1" />{t('vaktcomply.risksPage.addRisk')}</Button> : undefined}
           />
         )}
-        {!isLoading && !isError && risks && risks.length > 0 && view === 'heatmap' && (
-          <RiskHeatmap risks={risks} />
-        )}
-        {!isLoading && !isError && risks && risks.length > 0 && view === 'list' && (
+        {!isLoading && !isError && risks && risks.length > 0 && (
           <>
-            <RiskMatrixHeatmap risks={risks} />
+            {/* UX-28: one matrix — the former list summary and the separate heatmap view merged. */}
+            <RiskHeatmap risks={displayRisks} />
             {groups.filter((g) => g.risks.length > 0).map(({ level, from, to, risks: groupRisks }) => (
               <div key={level} className="space-y-3">
                 <h2 className={`text-sm font-semibold ${GROUP_HEADING[level].className}`}>{t(GROUP_HEADING[level].key, { from, to })}</h2>

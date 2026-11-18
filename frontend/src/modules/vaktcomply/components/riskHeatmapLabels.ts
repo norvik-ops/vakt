@@ -19,3 +19,24 @@ export function scaleLabels(value: unknown): string[] {
   }
   return SCALE.map(String)
 }
+
+/** Which value places a risk in the matrix: gross risk or residual risk (UX-27). */
+export type HeatmapMode = 'inherent' | 'residual'
+
+interface CellSource {
+  likelihood: number
+  impact: number
+  residual_likelihood?: number | null
+  residual_impact?: number | null
+}
+
+/**
+ * Matrix cell of a risk in the chosen mode: likelihood/impact for the gross risk,
+ * residual likelihood/impact for the residual risk. Null while the residual risk
+ * is not assessed — such a risk has no place in the residual matrix.
+ */
+export function heatmapCell(risk: CellSource, mode: HeatmapMode): { likelihood: number; impact: number } | null {
+  if (mode === 'inherent') return { likelihood: risk.likelihood, impact: risk.impact }
+  if (risk.residual_likelihood == null || risk.residual_impact == null) return null
+  return { likelihood: risk.residual_likelihood, impact: risk.residual_impact }
+}

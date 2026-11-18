@@ -178,7 +178,9 @@
       "methodologyScoreMedium": "{{from}}–{{to}} — Medium: plan and implement measures",
       "methodologyScoreHigh": "{{from}}–{{to}} — High: take action promptly",
       "methodologyScoreCritical": "{{from}}–{{to}} — Critical: immediate treatment required",
-      "bulkStatusTitle": "Set status"
+      "bulkStatusTitle": "Set status",
+      "residualBadge": "Residual {{score}}",
+      "residualTitle": "Residual risk after treatment"
     },
     "incidentsPage": {
       "title": "Incident Register",
@@ -527,7 +529,9 @@
       "actions": {
         "classify": "Classify risk",
         "documentation": "Technical documentation",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "edit": "Edit",
+        "delete": "Delete"
       },
       "fields": {
         "name": "Name",
@@ -576,7 +580,9 @@
         "decommissioned": "Decommissioned"
       },
       "deleteTitle": "Delete AI system?",
-      "deleteDescription": "This action cannot be undone."
+      "deleteDescription": "This action cannot be undone.",
+      "riskClassOpen": "Risk class not determined yet",
+      "riskClassViaWizard": "The risk class is set by the \"Classify risk\" assistant on the AI system card — with a rationale under the EU AI Act."
     },
     "resilienceTests": {
       "status": {
@@ -766,7 +772,7 @@
       "riskScore": "Risk Score",
       "labelLikelihood": "Likelihood (1–5)",
       "labelImpact": "Impact (1–5)",
-      "statusCard": "Status",
+      "statusCard": "Risk status",
       "createdAt": "Created:",
       "updatedAt": "Modified:",
       "treatmentSection": "Risk Treatment (ISO 27001 Clause 6)",
@@ -793,7 +799,10 @@
       "treatmentAvoid": "Avoid",
       "treatmentMitigate": "Mitigate",
       "treatmentTransfer": "Transfer",
-      "treatmentAccept": "Accept"
+      "treatmentAccept": "Accept",
+      "residualRisk": "Residual risk",
+      "residualNotSet": "not assessed yet",
+      "ownerHint": "Responsible for the risk and its treatment."
     },
     "auditProgram": {
       "title": "Audit Programme",
@@ -1318,12 +1327,12 @@
     "riskHeatmap": {
       "impact": "Impact",
       "likelihood": "Likelihood",
-      "title": "Risk Heatmap (5×5)",
-      "subtitle": "X = Likelihood, Y = Impact. Each dot represents one risk. Risks with strategy \"Accept\" are shown transparently. Click a cell for details.",
+      "title": "Risk matrix (5×5)",
+      "subtitle": "X = likelihood, Y = impact. Each dot is one risk; risks with strategy \"Accept\" are faded. Click a cell to see its risks.",
       "cellRisksTitle": "Risks in this cell",
       "noRisksInCell": "No risks in this cell.",
       "closePanel": "Close panel",
-      "legendLevel": "Score {{from}}–{{to}} ({{level}})",
+      "legendLevel": "{{level}} ({{from}}–{{to}})",
       "legendAccepted": "Accepted (transparent)",
       "statusOpen": "Open",
       "statusInReview": "In review",
@@ -1346,7 +1355,12 @@
         "Moderate",
         "Significant",
         "Critical"
-      ]
+      ],
+      "modeLabel": "Assessment shown in the matrix",
+      "modeInherent": "Inherent risk",
+      "modeResidual": "Residual risk",
+      "residualMissing_one": "{{count}} risk without a residual assessment is not shown here.",
+      "residualMissing_other": "{{count}} risks without a residual assessment are not shown here."
     },
     "riskTreatment": {
       "linkControl": "Link control",
@@ -1473,7 +1487,8 @@
       "treatmentPlan": "Treatment plan",
       "owner": "Owner",
       "dueDate": "Target date",
-      "treatmentStatus": "Treatment status"
+      "treatmentStatus": "Implementation progress",
+      "strategy": "Treatment strategy"
     },
     "cloudProviderTabs": {
       "region": "Region",

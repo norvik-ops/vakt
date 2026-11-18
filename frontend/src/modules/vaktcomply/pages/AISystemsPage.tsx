@@ -5,7 +5,8 @@ import { Bot, Plus, Pencil, Trash2, FlaskConical, FileText } from 'lucide-react'
 import { Spinner } from '../../../components/Spinner'
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { EmptyState } from '../../../shared/components/EmptyState'
-import { Button } from '../../../components/ui/button'
+import { Button, buttonVariants } from '../../../components/ui/button'
+import { cn } from '../../../lib/utils'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
 import {
@@ -88,6 +89,12 @@ function systemToForm(a: AISystem): UpdateAISystemInput {
   }
 }
 
+/**
+ * Inventory card. UX-33: the actions were four bare icons (flask, sheet, pencil,
+ * bin) — the central step of Kernweg 10, „Risikoklasse bestimmen", was an unlabelled
+ * flask. The two main actions are now labelled buttons; edit and delete stay icons
+ * but carry a tooltip and an aria-label.
+ */
 function AISystemCard({
   system,
   onEdit,
@@ -100,53 +107,35 @@ function AISystemCard({
   onClassify: () => void
 }) {
   const { t } = useTranslation()
+  const editLabel = t('vaktcomply.aiSystems.actions.edit')
+  const deleteLabel = t('vaktcomply.aiSystems.actions.delete')
   return (
     <Card>
       <CardContent className="pt-5 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium text-sm">{system.name}</p>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <AISystemStatusBadge status={system.status} />
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-primary/70 hover:text-primary"
-              title={t('vaktcomply.aiSystems.actions.classify')}
-              data-testid="classify-ai-system-btn"
-              onClick={onClassify}
+              className="h-7 w-7"
+              title={editLabel}
+              aria-label={`${editLabel}: ${system.name}`}
+              onClick={onEdit}
             >
-              <FlaskConical className="w-3.5 h-3.5" />
-            </Button>
-            {/* R1-SA28-01: der Link stand als `ai-systems/${system.id}/documentation` hier.
-                Diese Seite ist SELBST unter `ai-systems` gemountet (SecVitalsRoutes.tsx:106),
-                ein relativer Link haengt also an den bereits vorhandenen Pfad an — Ergebnis
-                war `/vaktcomply/ai-systems/ai-systems/<id>/documentation`. Kein Treffer,
-                path='*' greift, und der Nutzer landet STILL auf der Comply-Uebersicht statt
-                auf einem 404. Das war der einzige Einstieg in die Art.-11-Technikdoku des
-                EU AI Act. */}
-            <Link
-              to={`${system.id}/documentation`}
-              title={t('vaktcomply.aiSystems.actions.documentation')}
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-primary/70 hover:text-primary"
-              >
-                <FileText className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
-              <Pencil className="w-3.5 h-3.5" />
+              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-red-400 hover:text-red-300"
+              title={deleteLabel}
+              aria-label={`${deleteLabel}: ${system.name}`}
               data-testid="delete-ai-system-btn"
               onClick={onDelete}
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
           </div>
         </div>
@@ -157,9 +146,13 @@ function AISystemCard({
           <p className="text-xs text-muted-foreground line-clamp-2">{system.use_case}</p>
         )}
         <div className="flex flex-wrap gap-1.5">
-          {system.risk_class && (
+          {system.risk_class ? (
             <Badge className={RISK_CLASS[system.risk_class] ?? ''}>
               {RISK_LABELS[system.risk_class] ?? system.risk_class}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs" data-testid="risk-class-open">
+              {t('vaktcomply.aiSystems.riskClassOpen')}
             </Badge>
           )}
           <Badge variant="outline" className="text-xs">
@@ -173,6 +166,31 @@ function AISystemCard({
             Betroffene Gruppen: {system.affected_groups}
           </p>
         )}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button
+            variant={system.risk_class ? 'outline' : 'default'}
+            size="sm"
+            data-testid="classify-ai-system-btn"
+            onClick={onClassify}
+          >
+            <FlaskConical className="w-3.5 h-3.5" aria-hidden="true" />
+            {t('vaktcomply.aiSystems.actions.classify')}
+          </Button>
+          {/* R1-SA28-01: der Link stand als `ai-systems/${system.id}/documentation` hier.
+              Diese Seite ist SELBST unter `ai-systems` gemountet (SecVitalsRoutes.tsx:106),
+              ein relativer Link haengt also an den bereits vorhandenen Pfad an — Ergebnis
+              war `/vaktcomply/ai-systems/ai-systems/<id>/documentation`. Kein Treffer,
+              path='*' greift, und der Nutzer landet STILL auf der Comply-Uebersicht statt
+              auf einem 404. Das war der einzige Einstieg in die Art.-11-Technikdoku des
+              EU AI Act. */}
+          <Link
+            to={`${system.id}/documentation`}
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+          >
+            <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+            {t('vaktcomply.aiSystems.actions.documentation')}
+          </Link>
+        </div>
       </CardContent>
     </Card>
   )
@@ -239,6 +257,7 @@ export default function AISystemsPage() {
 
   const isPending = createSystem.isPending || updateSystem.isPending
   const isUpdate = !!editId
+  const editSystem = editId ? systems?.find((s) => s.id === editId) : undefined
 
   const hasFilters = filterRiskClass || filterStatus
 
@@ -460,36 +479,40 @@ export default function AISystemsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>{t('vaktcomply.aiSystems.fields.riskClass')}</Label>
-                <Select
-                  value={(form as UpdateAISystemInput).risk_class ?? '_none'}
-                  onValueChange={(v) => {
-                    setForm((f) => ({ ...f, risk_class: v === '_none' ? undefined : v }))
+            </div>
+            {/* UX-34: one way to the risk class — the assistant. The dialog used to offer
+                a free choice next to it, which skipped the assistant's reasoning (Art. 5,
+                Annex III) and its history entry. Here the class is only shown; the form
+                passes the stored class, rationale and classifier through unchanged. */}
+            <div className="space-y-1.5 rounded-md border border-border p-3" data-testid="ai-risk-class-info">
+              <p className="text-sm font-medium">{t('vaktcomply.aiSystems.fields.riskClass')}</p>
+              {form.risk_class ? (
+                <Badge className={RISK_CLASS[form.risk_class] ?? ''}>
+                  {RISK_LABELS[form.risk_class] ?? form.risk_class}
+                </Badge>
+              ) : (
+                <p className="text-sm text-muted-foreground">{t('vaktcomply.aiSystems.riskClassOpen')}</p>
+              )}
+              {form.classification_rationale && (
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                  {t('vaktcomply.aiSystems.fields.classification')}: {form.classification_rationale}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">{t('vaktcomply.aiSystems.riskClassViaWizard')}</p>
+              {editSystem && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDialogOpen(false)
+                    setWizardSystem(editSystem)
                   }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('vaktcomply.aiSystems.placeholders.select')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">
-                      {t('vaktcomply.aiSystems.placeholders.select')}
-                    </SelectItem>
-                    <SelectItem value="minimal">
-                      {t('vaktcomply.aiSystems.riskClassLevel.minimal')}
-                    </SelectItem>
-                    <SelectItem value="limited">
-                      {t('vaktcomply.aiSystems.riskClassLevel.limited')}
-                    </SelectItem>
-                    <SelectItem value="high">
-                      {t('vaktcomply.aiSystems.riskClassLevel.high')}
-                    </SelectItem>
-                    <SelectItem value="unacceptable">
-                      {t('vaktcomply.aiSystems.riskClassLevel.unacceptable')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <FlaskConical className="w-3.5 h-3.5" aria-hidden="true" />
+                  {t('vaktcomply.aiSystems.actions.classify')}
+                </Button>
+              )}
             </div>
             {isUpdate && (
               <div className="space-y-1.5">
@@ -518,29 +541,6 @@ export default function AISystemsPage() {
                     </SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <Label>{t('vaktcomply.aiSystems.fields.classification')}</Label>
-              <Textarea
-                rows={2}
-                placeholder={t('vaktcomply.aiSystems.fields.classification')}
-                value={form.classification_rationale ?? ''}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, classification_rationale: e.target.value }))
-                }}
-              />
-            </div>
-            {isUpdate && (
-              <div className="space-y-1.5">
-                <Label>{t('vaktcomply.aiSystems.fields.classifiedBy')}</Label>
-                <Input
-                  placeholder={t('vaktcomply.aiSystems.fields.classifiedBy')}
-                  value={(form as UpdateAISystemInput).classified_by ?? ''}
-                  onChange={(e) => {
-                    setForm((f) => ({ ...f, classified_by: e.target.value }))
-                  }}
-                />
               </div>
             )}
             <div className="space-y-1.5">
