@@ -1434,18 +1434,16 @@
     "secVitals": {
       "customizeWidgets": "Widgets aanpassen",
       "orderSaved": "Volgorde opgeslagen",
-      "kpiFrameworks": "Frameworks",
-      "kpiFrameworksSub": "geactiveerd",
+      "kpiFrameworks": "Actieve frameworks",
       "kpiOpenRisks": "Open risico's",
-      "kpiCriticalHigh": "{{count}} kritiek/hoog",
       "kpiNoCritical": "geen kritieke",
       "kpiOpenIncidents": "Open incidenten",
       "kpiCritical": "{{count}} kritiek",
-      "kpiPolicies": "Beleidsregels",
-      "kpiOverdue": "{{count}} achterstallig",
-      "kpiAllCurrent": "alles actueel",
+      "kpiPolicies": "Actieve beleidsregels",
+      "kpiOverdue": "{{count}} beoordeling achterstallig",
       "kpiAudits": "Audits",
-      "kpiAuditsSub": "actief / gepland"
+      "kpiAuditsSub": "actief / gepland",
+      "kpiNoReviewOverdue": "geen beoordeling achterstallig"
     },
     "mappingCoverage": {
       "covered": "Gedekt:",
@@ -1455,7 +1453,10 @@
       "colArticle": "Artikel",
       "deadlineHighRisk": "Termijn hoog risico (bijlage III)",
       "inForceSince": "geldt sinds {{date}}",
-      "daysLeft": "{{days}} dagen"
+      "daysLeft": "{{days}} dagen",
+      "incompleteDossier": "Dossier onvolledig",
+      "incompleteDossierSub": "waarvan zonder dossier: {{count}}",
+      "incompleteDossierHint": "Telt AI-systemen zonder dossier, met een dossier in concept of met lege verplichte velden (bijlage IV, art. 9, 12, 14)."
     },
     "riskTreatmentPanel": {
       "linkControlTitle": "Beheersmaatregel koppelen",
@@ -1483,10 +1484,8 @@
       "colAccesses": "Toegangen",
       "statusRevoked": "Ingetrokken",
       "statusExpired": "Verlopen",
-      "statusPartial": "Gedeeltelijk",
       "total": "Totaal",
-      "validFor": "Geldig voor",
-      "coveredOf": "{{covered}} van {{total}} controls geïmplementeerd"
+      "validFor": "Geldig voor"
     },
     "assets": {
       "detail": {
@@ -1575,6 +1574,14 @@
       "filterAllStatuses": "Alle statussen",
       "filterNoFile": "Zonder bestand ({{count}})",
       "filterExpiring": "Verlopen of verloopt binnen {{days}} dagen"
+    },
+    "readiness": {
+      "title": "Implementatiegraad",
+      "breakdown": "{{covered}} / {{applicable}} geïmplementeerd · {{partial}} in uitvoering · {{percent}}%",
+      "hint": "Geïmplementeerde controls tellen volledig, controls in uitvoering voor de helft, niet-toepasselijke niet.",
+      "derived_one": "afgeleid uit {{count}} bewijsstuk",
+      "derived_other": "afgeleid uit {{count}} bewijsstukken",
+      "derivedHint": "Niemand heeft deze status ingesteld: hij volgt uit het bijgevoegde bewijs (1 stuk = in uitvoering, 2 of meer = geïmplementeerd), bijvoorbeeld uit een geaccepteerd beleid. Open de control om het bewijs te controleren."
     }
   },
   "settingsPage": {
@@ -2478,7 +2485,6 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "securityScore": "Beveiligingsscore",
     "overallRating": "Algemene beoordeling",
     "dataPannen": "Datalekken",
     "noOpenBreaches": "Geen openstaande datalekken",

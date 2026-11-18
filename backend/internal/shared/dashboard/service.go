@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -16,6 +15,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/matharnica/vakt/internal/config"
+	"github.com/matharnica/vakt/internal/shared/percent"
 	"github.com/matharnica/vakt/internal/shared/risklevel"
 )
 
@@ -82,7 +82,7 @@ type ScoreResponse struct {
 // ReadinessSource (policy.ReadinessScore, covered full, partial half).
 func ScoreFromReadiness(overall FrameworkReadiness, activeFrameworks int64) ScoreResponse {
 	return ScoreResponse{
-		Score:   int(math.Round(overall.Score)),
+		Score:   percent.Round(overall.Score),
 		HasData: overall.Applicable > 0,
 		Readiness: OverallReadiness{
 			Covered:    overall.Covered,
@@ -248,6 +248,7 @@ func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateRes
 		openCAPAs        int64
 		overdueControls  int64
 		overdueTasks     int64
+		openRisks        int64
 		criticalRisks    int64
 		topRisks         []RiskSummary
 		recentActivity   []ActivityEntry
@@ -301,6 +302,7 @@ func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateRes
 			r := readiness[fs.FrameworkID]
 			fs.TotalControls = r.Applicable
 			fs.ImplementedControls = r.Covered
+			fs.PartialControls = r.Partial
 			fs.ScorePct = r.Score
 			fwScores = append(fwScores, fs)
 		}
@@ -337,11 +339,17 @@ func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateRes
 	})
 
 	g.Go(func() error {
+		// UX-38: the dashboard counted critical risks of every status (closed
+		// ones too), the Comply overview open risks at level critical OR high,
+		// from a paged list. Both read these two numbers now: open = status
+		// 'open', critical = open AND level critical — the board report's rule.
 		if err := s.db.QueryRow(gctx,
-			`SELECT COUNT(*)::bigint FROM ck_risks
-			 WHERE org_id=$1::uuid AND (likelihood * impact) >= $2`,
-			orgID, risklevel.CriticalFrom).Scan(&criticalRisks); err != nil {
-			log.Error().Err(err).Msg("dashboard aggregate: critical risks")
+			`SELECT COUNT(*) FILTER (WHERE status = 'open')::bigint,
+			        COUNT(*) FILTER (WHERE status = 'open' AND (likelihood * impact) >= $2)::bigint
+			 FROM ck_risks
+			 WHERE org_id=$1::uuid`,
+			orgID, risklevel.CriticalFrom).Scan(&openRisks, &criticalRisks); err != nil {
+			log.Error().Err(err).Msg("dashboard aggregate: open/critical risks")
 		}
 		return nil
 	})
@@ -432,6 +440,7 @@ func (s *Service) LoadAggregate(ctx context.Context, orgID string) (AggregateRes
 		OpenCAPAs:        int(openCAPAs),
 		OverdueControls:  int(overdueControls),
 		OverdueTasks:     int(overdueTasks),
+		OpenRisks:        int(openRisks),
 		CriticalRisks:    int(criticalRisks),
 		TopRisks:         topRisks,
 		RecentActivity:   recentActivity,

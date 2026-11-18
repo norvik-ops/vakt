@@ -116,6 +116,7 @@ export interface FrameworkScore {
   framework_name: string
   total_controls: number // applicable controls (not_applicable excluded)
   implemented_controls: number // effective status implemented or covered
+  partial_controls: number // effective status in_progress or partial — weighs half in score_pct (UX-15)
   score_pct: number // canonical readiness (ADR-0086), same number as framework overview and detail
 }
 
@@ -150,6 +151,9 @@ export interface DashboardAggregate {
   open_capas: number
   overdue_controls: number
   overdue_tasks: number
+  /** Risks with status open — also the Comply overview tile (UX-38). */
+  open_risks: number
+  /** Open risks at level critical (UX-38). */
   critical_risks: number
   top_risks: RiskSummary[]
   recent_activity: ActivityEntry[]

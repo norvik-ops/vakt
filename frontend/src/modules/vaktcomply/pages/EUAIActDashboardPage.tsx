@@ -30,6 +30,8 @@ interface EUAIActDashboard {
   systems_by_risk_class: Record<string, number>
   systems_by_status: Record<string, number>
   systems_without_documentation: number
+  /** UX-35: no dossier, latest version still a draft, or a mandatory field empty. */
+  systems_incomplete_documentation: number
   high_risk_deadline: string
   high_risk_deadline_days_left: number
   iso27001_mappings: EUAIActISOMappingEntry[]
@@ -123,14 +125,19 @@ export default function EUAIActDashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card data-testid="kpi-without-docs">
+              {/* UX-35: „Ohne Dossier: 0" bei einem Entwurf mit sieben leeren
+                  Feldern. Gezählt wird jetzt, was noch nicht fertig ist. */}
+              <Card data-testid="kpi-without-docs" title={t('vaktcomply.euAiActDashboard.incompleteDossierHint')}>
                 <CardContent className="pt-5">
                   <div className="flex items-start gap-2">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Ohne Dossier</p>
-                      <p className="text-3xl font-bold">{dashboard.systems_without_documentation}</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('vaktcomply.euAiActDashboard.incompleteDossier')}</p>
+                      <p className="text-3xl font-bold">{dashboard.systems_incomplete_documentation}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {t('vaktcomply.euAiActDashboard.incompleteDossierSub', { count: dashboard.systems_without_documentation })}
+                      </p>
                     </div>
-                    {dashboard.systems_without_documentation > 0 && (
+                    {dashboard.systems_incomplete_documentation > 0 && (
                       <AlertTriangle className="w-4 h-4 text-orange-400 mt-1" />
                     )}
                   </div>

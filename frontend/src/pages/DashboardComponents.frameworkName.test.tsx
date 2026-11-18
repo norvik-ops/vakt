@@ -12,8 +12,8 @@ describe('FrameworkProgress — Anzeigename', () => {
     render(
       <FrameworkProgress
         scores={[
-          { framework_id: 'a', framework_name: 'EUAIACT', total_controls: 17, implemented_controls: 0, score_pct: 0 },
-          { framework_id: 'b', framework_name: 'ISO27001', total_controls: 93, implemented_controls: 1, score_pct: 1 },
+          { framework_id: 'a', framework_name: 'EUAIACT', total_controls: 17, implemented_controls: 0, partial_controls: 0, score_pct: 0 },
+          { framework_id: 'b', framework_name: 'ISO27001', total_controls: 93, implemented_controls: 1, partial_controls: 0, score_pct: 1 },
         ]}
       />,
     )

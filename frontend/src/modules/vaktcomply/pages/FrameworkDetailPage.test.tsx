@@ -24,6 +24,7 @@ const MOCK_REPORT: ReadinessReport = {
   covered: 9,
   partial: 0,
   missing: 9,
+  not_applicable: 0,
   by_domain: [],
 }
 

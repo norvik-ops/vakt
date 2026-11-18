@@ -25,9 +25,11 @@ async function editSoARow(page: Page, ref: string, group: string) {
   return dlg
 }
 
-/** Die Readiness-Zahl im Kopf der Framework-Detailseite („1% Readiness Score"). */
+/** Die Umsetzungsgrad-Zahl im Kopf der Framework-Detailseite („1% Umsetzungsgrad"). */
 async function detailReadiness(page: Page): Promise<number> {
-  const txt = await page.getByText(/\d+%\s*Readiness Score/).first().innerText()
+  // Seit fix/zahlen-konsistent heißt die Kopfzahl „Umsetzungsgrad" statt „Readiness
+  // Score". Gelesen wird dieselbe Prozentzahl direkt vor der Beschriftung.
+  const txt = await page.getByText(/\d+%\s*Umsetzungsgrad/).first().innerText()
   return Number(/(\d+)%/.exec(txt)![1])
 }
 
@@ -44,7 +46,9 @@ test.describe('KW6 Anwendbarkeit & Kontrollen', () => {
     await expect(row.getByRole('combobox')).toHaveText('Umgesetzt')
     // Kopf: 1 von 93 umgesetzt → 1 %.
     await expect(page.getByText(/1\s*Umgesetzt/).first()).toBeVisible()
-    await expect(page.getByText(/1%\s*Readiness Score/)).toBeVisible()
+    // Beschriftung seit fix/zahlen-konsistent „Umsetzungsgrad" statt „Readiness Score";
+    // geprüft wird weiter exakt 1 %.
+    await expect(page.getByText(/1%\s*Umsetzungsgrad/)).toBeVisible()
     await page.reload()
     await expect(page.getByRole('row', { name: /A\.5\.1 Richtlinien/ }).getByRole('combobox')).toHaveText('Umgesetzt')
   })
@@ -73,7 +77,11 @@ test.describe('KW6 Anwendbarkeit & Kontrollen', () => {
     // („ISO 27001") statt des internen Schlüssels; geprüft wird weiter „1 / 93".
     const fw = page.getByText(/ISO 27001\s*1 \/ 93/).first()
     await expect(fw, 'Dashboard „Framework-Fortschritt" zeigt 1 / 93').toBeVisible()
-    await expect(page.getByText(`1 / 93 · ${detail}%`)).toBeVisible()
+    // Die Zeile nennt seit fix/zahlen-konsistent auch die Kontrollen in Bearbeitung
+    // („X / N umgesetzt · Y in Bearbeitung · Z%"). Y ist hier exakt 0: Die Detailseite
+    // zeigt 1 % (oben geprüft), und schon eine Kontrolle in Bearbeitung ergäbe
+    // (1 + 0,5) / 93 ≈ 1,6 % → 2 %. Umgesetzt-Zahl und Prozent bleiben exakt geprüft.
+    await expect(page.getByText(`1 / 93 umgesetzt · 0 in Bearbeitung · ${detail}%`)).toBeVisible()
 
     await page.goto('/vaktcomply/frameworks')
     // Karte des aktiven Frameworks trägt jetzt den Anzeigenamen („ISO 27001").

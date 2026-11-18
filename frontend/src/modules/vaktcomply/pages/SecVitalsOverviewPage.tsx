@@ -14,7 +14,6 @@ import {
 import { PageHeader } from '../../../shared/components/PageHeader'
 import { Button } from '../../../components/ui/button'
 import { useFrameworks, useTISAXReport } from '../hooks/useFrameworks'
-import { useRisks } from '../hooks/useRisks'
 import { useIncidents } from '../hooks/useIncidents'
 import { usePolicies } from '../hooks/usePolicies'
 import { useAuditRecords } from '../hooks/useAudits'
@@ -28,7 +27,8 @@ import { ExpiringEvidenceWidget } from '../components/ExpiringEvidenceWidget'
 import { AIAdvisor } from '../components/AIAdvisor'
 import { AIInsightsFeed } from '../components/AIInsightsFeed'
 import { useFormatDate } from '../../../shared/hooks/useFormatDate'
-import { riskLevel } from '../../../shared/utils/riskLevel'
+import { useDashboardAggregate, useDashboardScore } from '../../../hooks/useDashboard'
+import { roundPercent } from '../../../shared/utils/percent'
 
 // ── Item 59: Score Trend Chart ────────────────────────────────────────────────
 function ScoreTrendChart({ data }: { data: Array<{ date: string; score: number }> }) {
@@ -43,13 +43,13 @@ function ScoreTrendChart({ data }: { data: Array<{ date: string; score: number }
 
   return (
     <div className="bg-white dark:bg-surface border border-border rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Compliance-Score Verlauf</h3>
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Verlauf Umsetzungsgrad</h3>
       <ResponsiveContainer width="100%" height={160}>
         <LineChart data={formatted}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="label" tick={{ fontSize: 11 }} />
           <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
-          <Tooltip formatter={(v) => [`${Array.isArray(v) ? v[0] ?? 0 : (v ?? 0)}%`, 'Score']} />
+          <Tooltip formatter={(v) => [`${Array.isArray(v) ? v[0] ?? 0 : (v ?? 0)}%`, 'Umsetzungsgrad']} />
           <Line
             type="monotone"
             dataKey="score"
@@ -73,11 +73,11 @@ function ScoreBenchmark({ currentScore }: { currentScore: number }) {
 
   return (
     <div className="bg-white dark:bg-surface border border-border rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Score-Orientierung</h3>
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Umsetzungsgrad einordnen</h3>
       <p className="text-xs text-gray-500 mb-3">Ungefähre Richtwerte zur Einordnung Ihres Fortschritts</p>
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500 w-44 flex-shrink-0">Ihr aktueller Score</span>
+          <span className="text-xs text-gray-500 w-44 flex-shrink-0">Ihr Umsetzungsgrad</span>
           <div className="flex-1 bg-gray-100 dark:bg-surface2 rounded-full h-3">
             <div
               className="h-3 rounded-full bg-blue-500 transition-all"
@@ -121,8 +121,8 @@ const WIDGET_LABELS: Record<string, string> = {
   evidence: 'Ablaufende Nachweise',
   insights: 'KI-Insights',
   advisor: 'KI-Berater',
-  trend: 'Score-Verlauf',
-  benchmark: 'Score-Vergleich',
+  trend: 'Verlauf Umsetzungsgrad',
+  benchmark: 'Umsetzungsgrad einordnen',
   areas: 'Bereiche',
 }
 
@@ -304,11 +304,15 @@ export default function SecVitalsOverviewPage() {
   const { data: aiStatus } = useAIStatus()
   const { generate: generateAuditReport, isGenerating: isGeneratingReport, error: reportError } = useAuditReport()
   const tisaxFramework = frameworks?.find((f) => f.name === 'TISAX')
-  const { data: risks } = useRisks()
   const { data: incidents } = useIncidents()
   const { data: policies } = usePolicies()
   const { data: audits } = useAuditRecords()
   const { data: scoreHistory } = useScoreHistory(30)
+  // UX-38: Risiken, Richtlinien und Umsetzungsgrad aus denselben Quellen wie das
+  // Dashboard — vorher eigene Zählungen mit anderen Begriffen („2 kritisch/hoch"
+  // neben „Kritische Risiken 1", „alle aktuell" neben „1 / 2 Richtlinien aktiv").
+  const { data: agg } = useDashboardAggregate()
+  const { data: scoreData } = useDashboardScore()
 
   const [isGeneratingExec, setIsGeneratingExec] = useState(false)
   const [execError, setExecError] = useState<unknown>(null)
@@ -338,9 +342,8 @@ export default function SecVitalsOverviewPage() {
     }
   }
 
-  const openRisks = risks?.filter((r) => r.status === 'open') ?? []
-  // „kritisch/hoch" = the two upper levels of the risk register (R1-KW-17).
-  const highRisks = openRisks.filter((r) => { const l = riskLevel(r.risk_score); return l === 'critical' || l === 'high' })
+  const openRiskCount = agg?.open_risks ?? 0
+  const criticalRiskCount = agg?.critical_risks ?? 0
   const openIncidents = incidents?.filter((i) => i.status === 'open' || i.status === 'investigating') ?? []
   const criticalIncidents = openIncidents.filter((i) => i.severity === 'critical' || i.severity === 'high')
 
@@ -352,10 +355,10 @@ export default function SecVitalsOverviewPage() {
 
   const plannedAudits = audits?.filter((a) => a.status === 'planned' || a.status === 'in_progress') ?? []
 
-  // Current compliance score: latest score-history entry, or 0
-  const currentScore = scoreHistory && scoreHistory.length > 0
-    ? Math.round(scoreHistory[scoreHistory.length - 1].score)
-    : 0
+  // Aktueller Umsetzungsgrad wie im Dashboard — nicht der letzte Tageswert aus
+  // dem Verlauf, der bis zu einen Tag alt ist und vom Dashboard abwich.
+  const readiness = scoreData?.has_data ? scoreData.readiness : undefined
+  const currentScore = readiness ? roundPercent(readiness.score_pct) : 0
 
   // Widget map — each entry renders a React node
   const widgetMap: Record<string, React.ReactNode> = {
@@ -365,17 +368,22 @@ export default function SecVitalsOverviewPage() {
           icon={ShieldCheck}
           label={t('vaktcomply.secVitals.kpiFrameworks')}
           value={frameworks?.length ?? 0}
-          sub={t('vaktcomply.secVitals.kpiFrameworksSub')}
+          sub={readiness ? t('vaktcomply.readiness.breakdown', {
+            covered: readiness.covered,
+            partial: readiness.partial,
+            applicable: readiness.applicable,
+            percent: currentScore,
+          }) : undefined}
           onClick={() => { navigate('/vaktcomply/frameworks'); }}
           accent={frameworks?.length ? 'green' : 'default'}
         />
         <StatCard
           icon={ShieldAlert}
           label={t('vaktcomply.secVitals.kpiOpenRisks')}
-          value={openRisks.length}
-          sub={highRisks.length > 0 ? t('vaktcomply.secVitals.kpiCriticalHigh', { count: highRisks.length }) : t('vaktcomply.secVitals.kpiNoCritical')}
+          value={openRiskCount}
+          sub={criticalRiskCount > 0 ? t('vaktcomply.secVitals.kpiCritical', { count: criticalRiskCount }) : t('vaktcomply.secVitals.kpiNoCritical')}
           onClick={() => { navigate('/vaktcomply/risks'); }}
-          accent={highRisks.length > 0 ? 'red' : openRisks.length > 0 ? 'yellow' : 'green'}
+          accent={criticalRiskCount > 0 ? 'red' : openRiskCount > 0 ? 'yellow' : 'green'}
         />
         <StatCard
           icon={Siren}
@@ -388,8 +396,8 @@ export default function SecVitalsOverviewPage() {
         <StatCard
           icon={BookOpen}
           label={t('vaktcomply.secVitals.kpiPolicies')}
-          value={policies?.length ?? 0}
-          sub={overdueReviews.length > 0 ? t('vaktcomply.secVitals.kpiOverdue', { count: overdueReviews.length }) : t('vaktcomply.secVitals.kpiAllCurrent')}
+          value={agg ? `${String(agg.policies_approved)} / ${String(agg.policies_total)}` : '—'}
+          sub={overdueReviews.length > 0 ? t('vaktcomply.secVitals.kpiOverdue', { count: overdueReviews.length }) : t('vaktcomply.secVitals.kpiNoReviewOverdue')}
           onClick={() => { navigate('/vaktcomply/policies'); }}
           accent={overdueReviews.length > 0 ? 'yellow' : 'default'}
         />
@@ -453,8 +461,8 @@ export default function SecVitalsOverviewPage() {
             },
             {
               icon: TrendingUp,
-              title: 'Bereitschafts-Score',
-              desc: 'Gesamtbild des Compliance-Reifegrads über alle Frameworks.',
+              title: 'Umsetzungsgrad',
+              desc: 'Anteil umgesetzter Kontrollen je Framework, wie im Dashboard.',
               path: '/vaktcomply/frameworks',
             },
           ].map(({ icon: Icon, title, desc, path }) => (

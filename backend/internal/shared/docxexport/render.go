@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/matharnica/vakt/internal/shared/percent"
 )
 
 // SoARow is one Statement-of-Applicability entry.
@@ -67,8 +69,8 @@ func RenderSoA(rows []SoARow, summary SoASummary) ([]byte, error) {
 	d.Heading("Statement of Applicability (SoA) — ISO/IEC 27001:2022")
 	d.Paragraph(fmt.Sprintf("Erstellt: %s", time.Now().UTC().Format("2006-01-02")))
 	d.Paragraph(fmt.Sprintf(
-		"Anwendbare Controls: %d · Ausgeschlossen: %d · Umgesetzt: %d (%.0f%%)",
-		summary.ApplicableCount, summary.ExcludedCount, summary.ImplementedCount, summary.ImplementationPct))
+		"Anwendbare Controls: %d · Ausgeschlossen: %d · Umgesetzt: %d (%s)",
+		summary.ApplicableCount, summary.ExcludedCount, summary.ImplementedCount, percent.Format(summary.ImplementationPct)))
 	d.Paragraph("")
 
 	headers := []string{"Control", "Titel", "Klausel", "Anwendbar", "Status", "Verantwortlich", "Begründung"}

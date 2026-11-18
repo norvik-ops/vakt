@@ -16,6 +16,7 @@ const { QUERY_RESULT } = vi.hoisted(() => ({
         systems_by_risk_class: { high: 2, limited: 1, minimal: 2, unacceptable: 0 },
         systems_by_status: { under_review: 3, approved: 2 },
         systems_without_documentation: 1,
+        systems_incomplete_documentation: 3,
         high_risk_deadline: '2027-12-02T00:00:00Z',
         high_risk_deadline_days_left: 381,
         iso27001_mappings: [
@@ -57,9 +58,16 @@ describe('EUAIActDashboardPage', () => {
     expect(within(card).getByText('5')).toBeTruthy()
   })
 
-  it('renders without documentation KPI card', () => {
+  // UX-35: „Ohne Dossier: 0", obwohl das Dossier ein Entwurf mit sieben leeren
+  // Feldern war. Die Kachel zählt unvollständige Dossiers, „ohne" steht darunter.
+  it('zählt unvollständige Dossiers und nennt die ohne Dossier darunter', () => {
     render(<EUAIActDashboardPage />, { wrapper })
-    expect(screen.getByTestId('kpi-without-docs')).toBeTruthy()
+    const card = screen.getByTestId('kpi-without-docs')
+    expect(within(card).getByText('Dossier unvollständig')).toBeTruthy()
+    expect(within(card).getByText('3')).toBeTruthy()
+    expect(within(card).getByText('davon ohne Dossier: 1')).toBeTruthy()
+    expect(within(card).queryByText('Ohne Dossier')).toBeNull()
+    expect(card.getAttribute('title')).toMatch(/Entwurf/)
   })
 
   it('renders high risk count KPI card', () => {

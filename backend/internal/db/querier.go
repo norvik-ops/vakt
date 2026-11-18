@@ -25,6 +25,11 @@ type Querier interface {
 	BulkUpdateCKControlStatus(ctx context.Context, arg BulkUpdateCKControlStatusParams) error
 	CKFrameworkExists(ctx context.Context, arg CKFrameworkExistsParams) (bool, error)
 	CKSupplierExists(ctx context.Context, arg CKSupplierExistsParams) (bool, error)
+	// UX-35: Systeme, deren Dossier nicht fertig ist — kein Dossier, die neueste
+	// Version ist noch Entwurf, oder eines der neun Pflichtfelder (Annex IV,
+	// Art. 9/12/14) ist leer. CountCKAISystemsWithoutDocs zaehlte einen Entwurf
+	// mit sieben leeren Feldern als vorhanden.
+	CountCKAISystemsIncompleteDocs(ctx context.Context, orgID string) (int64, error)
 	CountCKAISystemsWithoutDocs(ctx context.Context, orgID string) (int64, error)
 	CountCKCAPAs(ctx context.Context, arg CountCKCAPAsParams) (int64, error)
 	CountCKControls(ctx context.Context, arg CountCKControlsParams) (int64, error)

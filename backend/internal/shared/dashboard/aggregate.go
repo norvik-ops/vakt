@@ -17,6 +17,7 @@ type FrameworkScore struct {
 	FrameworkName       string  `json:"framework_name"`
 	TotalControls       int     `json:"total_controls"`       // applicable controls (not_applicable excluded) — the denominator of ScorePct
 	ImplementedControls int     `json:"implemented_controls"` // effective status implemented or covered (policy.ResolveStatus)
+	PartialControls     int     `json:"partial_controls"`     // effective status in_progress/partial — weighs half in ScorePct (UX-15)
 	ScorePct            float64 `json:"score_pct"`            // canonical readiness, ADR-0086 (R1-KW-6)
 }
 
@@ -57,7 +58,8 @@ type AggregateResponse struct {
 	OpenCAPAs        int              `json:"open_capas"`
 	OverdueControls  int              `json:"overdue_controls"`
 	OverdueTasks     int              `json:"overdue_tasks"`
-	CriticalRisks    int              `json:"critical_risks"`
+	OpenRisks        int              `json:"open_risks"`     // status = 'open' (UX-38: same number as the Comply overview)
+	CriticalRisks    int              `json:"critical_risks"` // open AND level critical (risklevel.CriticalFrom), like the board report
 	TopRisks         []RiskSummary    `json:"top_risks"`
 	RecentActivity   []ActivityEntry  `json:"recent_activity"`
 	PoliciesTotal    int              `json:"policies_total"`
@@ -74,11 +76,12 @@ const scoreCacheTTL = 30 * time.Second
 // Read, written and invalidated only through this function.
 //
 // The version segment changes whenever the payload shape changes: v2 added
-// overall_readiness (R1-KW-6). Without it Redis would serve an old payload
+// overall_readiness (R1-KW-6), v3 partial_controls and open_risks and counts
+// critical_risks over open risks only (UX-15/UX-38). Without it Redis would serve an old payload
 // without the field for up to aggregateCacheTTL after a deploy, and the
 // "Compliance-Fortschritt" card would show "Keine Frameworks konfiguriert".
 func aggregateCacheKey(orgID string) string {
-	return fmt.Sprintf("dashboard:aggregate:v2:%s", orgID)
+	return fmt.Sprintf("dashboard:aggregate:v3:%s", orgID)
 }
 
 // scoreCacheKey returns the Redis key for an org's dashboard score.

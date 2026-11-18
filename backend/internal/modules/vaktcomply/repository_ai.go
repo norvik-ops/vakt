@@ -309,6 +309,17 @@ func (r *Repository) GetEUAIActStats(ctx context.Context, orgID string) (total i
 	return total, byRisk, byStatus, withoutDocs, nil
 }
 
+// CountAISystemsIncompleteDocs counts the AI systems whose technical dossier is
+// not finished: none at all, the latest version still a draft, or one of the
+// nine mandatory fields empty (UX-35).
+func (r *Repository) CountAISystemsIncompleteDocs(ctx context.Context, orgID string) (int, error) {
+	n, err := r.q.CountCKAISystemsIncompleteDocs(ctx, orgID)
+	if err != nil {
+		return 0, fmt.Errorf("count ai systems with incomplete docs: %w", err)
+	}
+	return int(n), nil
+}
+
 // --- Maßnahmen-Katalog (control measures) ---
 
 // measureFromCkControlMeasures maps the sqlc Table-Row to the domain ControlMeasure.

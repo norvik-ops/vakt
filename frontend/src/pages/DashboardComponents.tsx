@@ -6,6 +6,8 @@ import { Skeleton } from '../components/ui/skeleton'
 import type { RiskSummary, ActivityEntry, FrameworkScore, OverallReadiness } from '../hooks/useDashboard'
 import { riskLevel, type RiskLevel } from '../shared/utils/riskLevel'
 import { frameworkDisplayName } from '../modules/vaktcomply/utils/frameworkCatalogue'
+import { ReadinessBreakdown } from '../modules/vaktcomply/components/ReadinessBreakdown'
+import { roundPercent } from '../shared/utils/percent'
 
 export function fmt(n: number | null | undefined): string {
   return n == null ? '—' : n.toString()
@@ -117,22 +119,14 @@ export function KPICard({
   )
 }
 
-export function FrameworkProgress({ scores }: {
-  scores: Array<{
-    framework_id: string
-    framework_name: string
-    total_controls: number
-    implemented_controls: number
-    score_pct: number
-  }>
-}) {
+export function FrameworkProgress({ scores }: { scores: FrameworkScore[] }) {
   if (scores.length === 0) {
     return <p className="text-[12px] text-secondary">Keine Frameworks konfiguriert.</p>
   }
   return (
     <div className="space-y-3">
       {scores.map((fw) => {
-        const pct = Math.round(fw.score_pct)
+        const pct = roundPercent(fw.score_pct)
         const color = barColor(pct)
         const progressId = `fw-progress-${fw.framework_id}`
         const name = frameworkDisplayName(fw.framework_name)
@@ -142,9 +136,16 @@ export function FrameworkProgress({ scores }: {
               <span className="text-[12px] font-medium text-primary truncate max-w-[60%]" id={progressId}>
                 {name}
               </span>
-              <span className="text-[12px] text-secondary shrink-0 ml-2">
-                {fw.implemented_controls} / {fw.total_controls} · {pct}%
-              </span>
+              {/* UX-15: in Bearbeitung zählt halb im Prozentwert — die Zeile nennt es. */}
+              <ReadinessBreakdown
+                className="text-[12px] text-secondary shrink-0 ml-2"
+                counts={{
+                  covered: fw.implemented_controls,
+                  partial: fw.partial_controls,
+                  applicable: fw.total_controls,
+                  scorePct: fw.score_pct,
+                }}
+              />
             </div>
             <div
               className="h-1.5 rounded-full bg-border overflow-hidden"
@@ -232,8 +233,9 @@ export function ComplianceProgressCard({ scores, overall, isLoading }: {
   const totals = {
     total: overall?.applicable ?? 0,
     implemented: overall?.covered ?? 0,
+    partial: overall?.partial ?? 0,
   }
-  const pct = Math.round(overall?.score_pct ?? 0)
+  const pct = roundPercent(overall?.score_pct ?? 0)
   // `scores` only decides whether any framework is configured at all.
   const hasFrameworks = scores.length > 0 && totals.total > 0
   const color = barColor(pct)
@@ -256,12 +258,13 @@ export function ComplianceProgressCard({ scores, overall, isLoading }: {
       ) : (
         <>
           <div className="flex items-end justify-between mb-1.5">
-            <span className="text-[12px] text-primary">
-              <span className="font-semibold">{totals.implemented}</span>
-              <span className="text-secondary"> von {totals.total} Controls umgesetzt</span>
-            </span>
+            {/* UX-15: dieselbe Zeile wie „Framework-Fortschritt", Framework-Karte und -Detail. */}
+            <ReadinessBreakdown
+              className="text-[12px] text-primary"
+              counts={{ covered: totals.implemented, partial: totals.partial, applicable: totals.total, scorePct: overall?.score_pct ?? 0 }}
+            />
             <span className={`text-[11px] font-medium ${pct >= 80 ? 'text-severity-low' : pct >= 50 ? 'text-severity-medium' : 'text-severity-critical'}`}>
-              {totals.total - totals.implemented} offen
+              {Math.max(totals.total - totals.implemented - totals.partial, 0)} offen
             </span>
           </div>
           <div

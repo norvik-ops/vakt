@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/matharnica/vakt/internal/auth"
+	"github.com/matharnica/vakt/internal/shared/dashboard"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 )
 
@@ -15,8 +16,8 @@ import (
 // The group must already have auth middleware applied.
 // Accessible by Admin, SecurityAnalyst, Viewer, and AuditorReadOnly roles.
 // Requires the FeatureAuditPDF Pro license feature.
-func RegisterReport(g *echo.Group, db *pgxpool.Pool) {
-	h := NewReportHandler(db)
+func RegisterReport(g *echo.Group, db *pgxpool.Pool, readiness dashboard.ReadinessSource) {
+	h := NewReportHandler(db, readiness)
 	ro := auth.RequireRole("Admin", "SecurityAnalyst", "Viewer", "AuditorReadOnly")
 	g.GET("/audit-report", h.GenerateAuditReport, ro, features.Require(features.FeatureAuditPDF))
 }

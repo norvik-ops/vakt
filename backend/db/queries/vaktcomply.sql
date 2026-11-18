@@ -1914,6 +1914,33 @@ WHERE s.org_id = $1
     SELECT 1 FROM ck_ai_documentation d WHERE d.ai_system_id = s.id
   );
 
+-- name: CountCKAISystemsIncompleteDocs :one
+-- UX-35: Systeme, deren Dossier nicht fertig ist — kein Dossier, die neueste
+-- Version ist noch Entwurf, oder eines der neun Pflichtfelder (Annex IV,
+-- Art. 9/12/14) ist leer. CountCKAISystemsWithoutDocs zaehlte einen Entwurf
+-- mit sieben leeren Feldern als vorhanden.
+SELECT COUNT(*) FROM ck_ai_systems s
+WHERE s.org_id = $1
+  AND NOT EXISTS (
+    SELECT 1 FROM ck_ai_documentation d
+    WHERE d.org_id = s.org_id
+      AND d.ai_system_id = s.id
+      AND d.version = (
+        SELECT MAX(d2.version) FROM ck_ai_documentation d2
+        WHERE d2.org_id = s.org_id AND d2.ai_system_id = s.id
+      )
+      AND d.status = 'final'
+      AND btrim(COALESCE(d.system_description, '')) <> ''
+      AND btrim(COALESCE(d.intended_purpose, '')) <> ''
+      AND btrim(COALESCE(d.training_data, '')) <> ''
+      AND btrim(COALESCE(d.data_quality, '')) <> ''
+      AND btrim(COALESCE(d.performance_metrics, '')) <> ''
+      AND btrim(COALESCE(d.system_limits, '')) <> ''
+      AND btrim(COALESCE(d.risk_management, '')) <> ''
+      AND btrim(COALESCE(d.human_oversight, '')) <> ''
+      AND btrim(COALESCE(d.logging_audit_trail, '')) <> ''
+  );
+
 -- ── EU AI Act: Classifications + Documentation ─────────────────────────────
 
 -- name: InsertCKAIClassification :one

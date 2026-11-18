@@ -5612,10 +5612,26 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            /** @enum {string} */
-                            risk_classification?: "minimal" | "limited" | "high" | "unacceptable";
-                            overall_score?: number;
-                            requirements?: Record<string, never>[];
+                            total_systems: number;
+                            systems_by_risk_class: {
+                                [key: string]: number;
+                            };
+                            systems_by_status: {
+                                [key: string]: number;
+                            };
+                            /** @description AI systems without any technical dossier. */
+                            systems_without_documentation: number;
+                            /** @description AI systems whose dossier is not finished — none at all, the latest version still a draft, or one of the nine mandatory fields empty. Includes systems_without_documentation (UX-35). */
+                            systems_incomplete_documentation: number;
+                            /** Format: date */
+                            high_risk_deadline: string;
+                            high_risk_deadline_days_left: number;
+                            iso27001_mappings: {
+                                eu_ai_act_article?: string;
+                                eu_ai_act_topic?: string;
+                                iso27001_control?: string;
+                                iso27001_title?: string;
+                            }[];
                         };
                     };
                 };
@@ -6210,6 +6226,8 @@ export interface paths {
                                 total_controls?: number;
                                 /** @description Effective status implemented or covered. */
                                 implemented_controls?: number;
+                                /** @description Effective status in_progress or partial — weighs half in score_pct (UX-15). */
+                                partial_controls?: number;
                                 /** @description Canonical readiness 0–100 (ADR-0086). */
                                 score_pct?: number;
                             }[];
@@ -6223,6 +6241,9 @@ export interface paths {
                             open_capas?: number;
                             overdue_controls?: number;
                             overdue_tasks?: number;
+                            /** @description Risks with status open — the same number as the Comply overview (UX-38). */
+                            open_risks?: number;
+                            /** @description Open risks at level critical (likelihood × impact ≥ risklevel.CriticalFrom) (UX-38). */
                             critical_risks?: number;
                             top_risks?: Record<string, never>[];
                             recent_activity?: Record<string, never>[];
@@ -30169,7 +30190,12 @@ export interface components {
             slug?: string;
             description?: string;
             total_controls?: number;
+            /** @description Wirksam umgesetzte Controls (implemented/covered) — Zähler hinter readiness_score (UX-15). */
             implemented_controls?: number;
+            /** @description Wirksam in Bearbeitung (in_progress/partial, auch aus genau einem Nachweis abgeleitet) — zählt in readiness_score halb (UX-15). */
+            partial_controls?: number;
+            /** @description Alle Controls außer nicht anwendbaren — Nenner von readiness_score (UX-15). */
+            applicable_controls?: number;
             score?: number;
             /** @description Bereitschaftsgrad 0–100 (evidenzgestützt, partial zählt halb, not_applicable aus dem Nenner). Immer gesetzt; 0 ist ein gültiger Wert. Vom Auditor-Portal als 'Bereitschaft %' angezeigt (R1-G-38). */
             readiness_score?: number;

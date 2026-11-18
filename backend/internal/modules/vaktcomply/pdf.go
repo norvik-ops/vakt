@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-pdf/fpdf"
 	"github.com/matharnica/vakt/internal/shared/pdfutil"
+	"github.com/matharnica/vakt/internal/shared/percent"
 )
 
 type BoardReportData struct {
@@ -764,7 +765,7 @@ func GenerateDORAPDF(dashboard *DORADashboard, orgName string) ([]byte, error) {
 	pdf.SetTextColor(255, 255, 255)
 	pdf.SetFont("Helvetica", "B", 18)
 	pdf.SetXY(15, cy+3)
-	pdf.CellFormat(42, 12, fmt.Sprintf("%.0f%%", score), "", 1, "C", false, 0, "")
+	pdf.CellFormat(42, 12, percent.Format(score), "", 1, "C", false, 0, "")
 
 	infoX := 62.0
 	pdf.SetTextColor(30, 30, 40)
@@ -989,7 +990,7 @@ func GenerateTISAXReportPDF(report *ReadinessReport, controls []Control, gaps *T
 	pdf.SetTextColor(255, 255, 255)
 	pdf.SetFont("Helvetica", "B", 20)
 	pdf.SetXY(15, cy+4)
-	pdf.CellFormat(50, 14, fmt.Sprintf("%.0f%%", readinessPct), "", 1, "C", false, 0, "")
+	pdf.CellFormat(50, 14, percent.Format(readinessPct), "", 1, "C", false, 0, "")
 
 	pdf.SetXY(72, cy+4)
 	pdf.SetTextColor(30, 30, 40)
@@ -1264,7 +1265,7 @@ func GenerateFrameworkPDF(report *ReadinessReport, gaps *GapAnalysis, orgName st
 	pdf.SetTextColor(255, 255, 255)
 	pdf.SetFont("Helvetica", "B", 18)
 	pdf.SetXY(15, cy+3)
-	pdf.CellFormat(42, 12, fmt.Sprintf("%.0f%%", score), "", 1, "C", false, 0, "")
+	pdf.CellFormat(42, 12, percent.Format(score), "", 1, "C", false, 0, "")
 
 	infoX := 62.0
 	pdf.SetTextColor(30, 30, 40)
@@ -1322,7 +1323,7 @@ func GenerateFrameworkPDF(report *ReadinessReport, gaps *GapAnalysis, orgName st
 			}
 			pdf.SetTextColor(col[0], col[1], col[2])
 			pdf.SetFont("Helvetica", "B", 8)
-			pdf.CellFormat(30, 6, fmt.Sprintf("%.0f%%", d.Score), "0", 1, "C", true, 0, "")
+			pdf.CellFormat(30, 6, percent.Format(d.Score), "0", 1, "C", true, 0, "")
 		}
 	}
 
@@ -1616,7 +1617,7 @@ func GenerateEUAIActReportPDF(dashboard *EUAIActDashboard, systems []AISystem) (
 	pdf.CellFormat(0, 8, "Zusammenfassung", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.CellFormat(0, 6, fmt.Sprintf("Gesamtanzahl KI-Systeme: %d", dashboard.TotalSystems), "", 1, "L", false, 0, "")
-	pdf.CellFormat(0, 6, fmt.Sprintf("Ohne technisches Dossier: %d", dashboard.SystemsWithoutDocs), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 6, fmt.Sprintf("Technisches Dossier unvollständig: %d (davon ohne Dossier: %d)", dashboard.SystemsIncompleteDocs, dashboard.SystemsWithoutDocs), "", 1, "L", false, 0, "")
 	pdf.CellFormat(0, 6, fmt.Sprintf("Tage bis Hochrisiko-Frist (%s): %d", dashboard.HighRiskDeadline, dashboard.HighRiskDeadlineDaysLeft), "", 1, "L", false, 0, "")
 	pdf.SetY(pdf.GetY() + 4)
 
@@ -2085,7 +2086,7 @@ func GenerateExecutiveSummaryPDF(d *ExecutiveSummaryData) ([]byte, error) {
 	pdf.SetTextColor(255, 255, 255)
 	pdf.SetFont("Helvetica", "B", 22)
 	pdf.SetXY(15, cy+4)
-	pdf.CellFormat(50, 14, fmt.Sprintf("%.0f%%", d.OverallScore), "", 1, "C", false, 0, "")
+	pdf.CellFormat(50, 14, percent.Format(d.OverallScore), "", 1, "C", false, 0, "")
 
 	pdf.SetXY(72, cy+4)
 	pdf.SetTextColor(30, 30, 40)
@@ -2146,7 +2147,7 @@ func GenerateExecutiveSummaryPDF(d *ExecutiveSummaryData) ([]byte, error) {
 			pdf.CellFormat(80, 6, name, "0", 0, "L", true, 0, "")
 			pdf.SetTextColor(col[0], col[1], col[2])
 			pdf.SetFont("Helvetica", "B", 8)
-			pdf.CellFormat(35, 6, fmt.Sprintf("%.0f%%", fw.Score), "0", 0, "C", true, 0, "")
+			pdf.CellFormat(35, 6, percent.Format(fw.Score), "0", 0, "C", true, 0, "")
 			pdf.SetTextColor(30, 30, 40)
 			pdf.SetFont("Helvetica", "", 8)
 			pdf.CellFormat(65, 6, fmt.Sprintf("%d / %d", fw.Implemented, fw.Total), "0", 1, "C", true, 0, "")

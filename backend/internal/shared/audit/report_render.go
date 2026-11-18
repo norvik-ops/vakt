@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/go-pdf/fpdf"
+
 	"github.com/matharnica/vakt/internal/shared/pdfutil"
+	"github.com/matharnica/vakt/internal/shared/percent"
 	"github.com/matharnica/vakt/internal/shared/risklevel"
 )
 
@@ -69,15 +71,15 @@ func Render(d *ReportData) ([]byte, error) {
 		"", 1, "C", false, 0, "")
 
 	// Overall score
-	overallScore := computeOverallScore(d.Frameworks)
+	overallScore := d.OverallScorePct
 	pdf.Ln(6)
 	pdf.SetFont("Helvetica", "B", 48)
 	scoreColor := scoreToRGB(overallScore)
 	pdf.SetTextColor(scoreColor[0], scoreColor[1], scoreColor[2])
-	pdf.CellFormat(contentW, 20, fmt.Sprintf("%.0f%%", overallScore), "", 1, "C", false, 0, "")
+	pdf.CellFormat(contentW, 20, percent.Format(overallScore), "", 1, "C", false, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.SetTextColor(subtleR, subtleG, subtleB)
-	pdf.CellFormat(contentW, 6, "Gesamtbewertung (Durchschnitt aller Frameworks)", "", 1, "C", false, 0, "")
+	pdf.CellFormat(contentW, 6, "Umsetzungsgrad über alle Frameworks (In Bearbeitung zählt halb)", "", 1, "C", false, 0, "")
 
 	// Cover KPI summary boxes
 	pdf.Ln(10)
@@ -143,7 +145,7 @@ func Render(d *ReportData) ([]byte, error) {
 		sc := scoreToRGB(fw.ScorePct)
 		pdf.SetTextColor(sc[0], sc[1], sc[2])
 		pdf.SetFont("Helvetica", "B", 8)
-		pdf.CellFormat(21, 6, fmt.Sprintf("%.0f%%", fw.ScorePct), "0", 1, "C", true, 0, "")
+		pdf.CellFormat(21, 6, percent.Format(fw.ScorePct), "0", 1, "C", true, 0, "")
 		pdf.SetTextColor(darkR, darkG, darkB)
 	}
 
@@ -206,7 +208,7 @@ func Render(d *ReportData) ([]byte, error) {
 		sc := scoreToRGB(fw.ScorePct)
 		pdf.SetTextColor(sc[0], sc[1], sc[2])
 		pdf.SetFont("Helvetica", "B", 9)
-		pdf.CellFormat(contentW, 6, fmt.Sprintf("%s  %.0f%%", bar, fw.ScorePct), "", 1, "L", false, 0, "")
+		pdf.CellFormat(contentW, 6, bar+"  "+percent.Format(fw.ScorePct), "", 1, "L", false, 0, "")
 
 		pdf.SetFont("Helvetica", "", 8)
 		pdf.SetTextColor(subtleR, subtleG, subtleB)
@@ -453,17 +455,6 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return string(runes[:n-3]) + "..."
-}
-
-func computeOverallScore(fws []FrameworkSection) float64 {
-	if len(fws) == 0 {
-		return 0
-	}
-	var sum float64
-	for _, fw := range fws {
-		sum += fw.ScorePct
-	}
-	return sum / float64(len(fws))
 }
 
 func countActive(policies []PolicyRow) int {

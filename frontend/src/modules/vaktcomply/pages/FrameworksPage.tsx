@@ -21,6 +21,8 @@ import { FeatureLockedError } from '../../../api/client'
 import { FeatureLock } from '../../../shared/components/ProGate'
 import { downloadBlob } from '../../../shared/utils/downloadBlob'
 import { FRAMEWORK_CATALOGUE, frameworkDisplayName } from '../utils/frameworkCatalogue'
+import { ReadinessBreakdown } from '../components/ReadinessBreakdown'
+import { roundPercent } from '../../../shared/utils/percent'
 
 function ScoreCircle({ score }: { score: number }) {
   const radius = 28
@@ -77,9 +79,21 @@ function EnabledFrameworkCard({ framework, onDelete, onSwitchVariant }: {
         </div>
         {/* R1-KW-6: stand fest auf 0. readiness_score ist der kanonische Wert
             (ADR-0086), gerundet wie im Framework-Detail und im Dashboard. */}
-        <ScoreCircle score={Math.round(framework.readiness_score ?? 0)} />
+        <ScoreCircle score={roundPercent(framework.readiness_score ?? 0)} />
       </CardHeader>
       <CardContent>
+        {/* UX-15: der Ring allein verschwieg, dass „in Bearbeitung" halb zählt. */}
+        {framework.applicable_controls !== undefined && (
+          <ReadinessBreakdown
+            className="block text-xs text-secondary mb-2"
+            counts={{
+              covered: framework.implemented_controls ?? 0,
+              partial: framework.partial_controls ?? 0,
+              applicable: framework.applicable_controls,
+              scorePct: framework.readiness_score ?? 0,
+            }}
+          />
+        )}
         <div className="flex items-center justify-between text-sm text-secondary">
           <span>{t('vaktcomply.controlDetailPage.activatedOn')} {enabledDate}</span>
           <div className="flex items-center gap-1">

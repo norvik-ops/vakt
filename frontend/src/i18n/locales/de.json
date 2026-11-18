@@ -1434,18 +1434,16 @@
     "secVitals": {
       "customizeWidgets": "Widgets anpassen",
       "orderSaved": "Reihenfolge gespeichert",
-      "kpiFrameworks": "Frameworks",
-      "kpiFrameworksSub": "aktiviert",
+      "kpiFrameworks": "Frameworks aktiv",
       "kpiOpenRisks": "Offene Risiken",
-      "kpiCriticalHigh": "{{count}} kritisch/hoch",
       "kpiNoCritical": "keine kritischen",
       "kpiOpenIncidents": "Offene Vorfälle",
       "kpiCritical": "{{count}} kritisch",
-      "kpiPolicies": "Richtlinien",
-      "kpiOverdue": "{{count}} überfällig",
-      "kpiAllCurrent": "alle aktuell",
+      "kpiPolicies": "Richtlinien aktiv",
+      "kpiOverdue": "{{count}} Überprüfung überfällig",
       "kpiAudits": "Audits",
-      "kpiAuditsSub": "aktiv / geplant"
+      "kpiAuditsSub": "aktiv / geplant",
+      "kpiNoReviewOverdue": "keine Überprüfung überfällig"
     },
     "mappingCoverage": {
       "covered": "Abgedeckt:",
@@ -1455,7 +1453,10 @@
       "colArticle": "Artikel",
       "deadlineHighRisk": "Frist Hochrisiko (Anhang III)",
       "inForceSince": "gilt seit {{date}}",
-      "daysLeft": "{{days}} Tage"
+      "daysLeft": "{{days}} Tage",
+      "incompleteDossier": "Dossier unvollständig",
+      "incompleteDossierSub": "davon ohne Dossier: {{count}}",
+      "incompleteDossierHint": "Gezählt werden KI-Systeme ohne Dossier, mit einem Dossier im Entwurf oder mit leeren Pflichtfeldern (Annex IV, Art. 9, 12, 14)."
     },
     "riskTreatmentPanel": {
       "linkControlTitle": "Control verknüpfen",
@@ -1483,10 +1484,8 @@
       "colAccesses": "Zugriffe",
       "statusRevoked": "Widerrufen",
       "statusExpired": "Abgelaufen",
-      "statusPartial": "Teilweise",
       "total": "Gesamt",
-      "validFor": "Gültig für",
-      "coveredOf": "{{covered}} von {{total}} Controls umgesetzt"
+      "validFor": "Gültig für"
     },
     "assets": {
       "detail": {
@@ -1575,6 +1574,14 @@
       "filterAllStatuses": "Alle Status",
       "filterNoFile": "Ohne Datei ({{count}})",
       "filterExpiring": "Abgelaufen oder läuft in {{days}} Tagen ab"
+    },
+    "readiness": {
+      "title": "Umsetzungsgrad",
+      "breakdown": "{{covered}} / {{applicable}} umgesetzt · {{partial}} in Bearbeitung · {{percent}}%",
+      "hint": "Umgesetzte Kontrollen zählen ganz, Kontrollen in Bearbeitung zur Hälfte, nicht anwendbare gar nicht.",
+      "derived_one": "aus {{count}} Nachweis abgeleitet",
+      "derived_other": "aus {{count}} Nachweisen abgeleitet",
+      "derivedHint": "Diesen Status hat niemand gesetzt: Er ergibt sich aus den angehängten Nachweisen (1 Nachweis = in Bearbeitung, ab 2 = umgesetzt), zum Beispiel aus einer bestätigten Richtlinie. Kontrolle öffnen, um die Nachweise zu prüfen."
     }
   },
   "settingsPage": {
@@ -2478,7 +2485,6 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "securityScore": "Security Score",
     "overallRating": "Gesamtbewertung",
     "dataPannen": "Datenpannen",
     "noOpenBreaches": "Keine offenen Datenpannen",

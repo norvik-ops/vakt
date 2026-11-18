@@ -1117,12 +1117,17 @@ func (s *Service) GetEUAIActDashboard(ctx context.Context, orgID string) (*EUAIA
 	if err != nil {
 		return nil, fmt.Errorf("get eu ai act dashboard: %w", err)
 	}
+	incompleteDocs, err := s.repo.CountAISystemsIncompleteDocs(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("get eu ai act dashboard: %w", err)
+	}
 	daysLeft := euAIActDaysUntil(euAIActHighRiskDeadline, time.Now())
 	return &EUAIActDashboard{
 		TotalSystems:             total,
 		SystemsByRiskClass:       byRisk,
 		SystemsByStatus:          byStatus,
 		SystemsWithoutDocs:       withoutDocs,
+		SystemsIncompleteDocs:    incompleteDocs,
 		HighRiskDeadline:         euAIActHighRiskDeadline,
 		HighRiskDeadlineDaysLeft: daysLeft,
 		ISO27001Mappings:         euAIActISOMappings,

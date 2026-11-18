@@ -44,6 +44,8 @@ import { cn } from '../../../lib/utils'
 import { exportToCSV } from '../../../lib/csv'
 import type { AuditorLink, Control } from '../types'
 import { frameworkDisplayName } from '../utils/frameworkCatalogue'
+import { ReadinessBreakdown } from '../components/ReadinessBreakdown'
+import { roundPercent } from '../../../shared/utils/percent'
 import {
   useFramework,
   useReadinessReport,
@@ -407,6 +409,20 @@ function effectiveStatus(ctrl: Control): StatusChoice {
   return 'missing'
 }
 
+/**
+ * UX-17: number of evidence rows the status was derived from, or 0 when a
+ * person set it. Without a manual status, ResolveStatus derives the status
+ * from the evidence count (1 → in progress, 2+ → implemented) — e.g. after a
+ * policy acceptance filed "Richtlinien-Akzeptanz" on every control whose title
+ * mentions a policy. Such rows looked like somebody's own work.
+ */
+function derivedFromEvidence(ctrl: Control): number {
+  if (ctrl.not_applicable || ctrl.manual_status) return 0
+  const status = effectiveStatus(ctrl)
+  if (status !== 'in_progress' && status !== 'implemented') return 0
+  return ctrl.evidence_count ?? 0
+}
+
 function hasParent(ctrl: Control, all: Control[]): boolean {
   return all.some((other) => other.id !== ctrl.id && ctrl.control_id.startsWith(other.control_id + '.'))
 }
@@ -438,6 +454,7 @@ const ControlRow = React.memo(function ControlRow({
   const navigate = useNavigate()
   const canWrite = useCanWrite()
   const status = effectiveStatus(ctrl)
+  const derived = derivedFromEvidence(ctrl)
 
   function handleChange(v: string) {
     if (v === 'not_applicable') { onMarkNA(ctrl); return }
@@ -497,6 +514,15 @@ const ControlRow = React.memo(function ControlRow({
             ))}
           </SelectContent>
         </Select>
+        {derived > 0 && (
+          <span
+            className="block mt-1 text-[11px] text-secondary"
+            title={t('vaktcomply.readiness.derivedHint')}
+            data-testid="status-derived"
+          >
+            {t('vaktcomply.readiness.derived', { count: derived })}
+          </span>
+        )}
       </TableCell>
       <TableCell
         className="text-secondary cursor-pointer"
@@ -620,13 +646,10 @@ function ControlsTab({
   frameworkId,
   controls,
   controlsLoading,
-  readinessScore,
 }: {
   frameworkId: string
   controls: Control[] | undefined
   controlsLoading: boolean
-  /** Kanonischer Umsetzungsgrad aus dem Backend (ADR-0086), derselbe wie im Seitenkopf. */
-  readinessScore: number | undefined
 }) {
   const { t } = useTranslation()
   const updateControl = useUpdateControl(frameworkId)
@@ -719,17 +742,9 @@ function ControlsTab({
     byDomain.set(ctrl.domain, list)
   }
 
-  const covered = controls.filter((c) => c.status === 'covered' || c.status === 'implemented').length
-  const partial = controls.filter((c) => c.status === 'partial' || c.status === 'in_progress').length
-  const notApplicable = controls.filter((c) => c.status === 'not_applicable').length
-  const open = controls.filter((c) => c.status === 'missing').length
-  // R1-KW-6: der Reiter rechnete covered/total selbst — nicht anwendbare
-  // Kontrollen im Nenner, teilweise umgesetzte gar nicht — und wich so von der
-  // Kopfzahl ab. Prozent und Balken kommen jetzt aus dem Backend (ADR-0086);
-  // die Zählung „x von y" nennt die anwendbaren Kontrollen als y.
-  const applicable = controls.length - notApplicable
-  const pct = readinessScore ?? 0
-
+  // UX-16: Der Reiter wiederholte die Kopfzahlen als zweiten Kartenblock mit
+  // anderem Begriff („In Bearbeitung" statt „Teilweise") plus eigenem Balken.
+  // Zählung, Prozent und Balken stehen jetzt nur noch im Seitenkopf.
   return (
     <>
       {/* Bulk status dialog */}
@@ -764,35 +779,6 @@ function ControlsTab({
       </Dialog>
 
       <div className="space-y-5">
-        {/* Progress summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: t('vaktcomply.control.statusImplemented'), value: covered, color: 'text-green-600' },
-            { label: t('vaktcomply.control.statusInProgress'), value: partial, color: 'text-yellow-600' },
-            { label: t('vaktcomply.control.statusOpen'), value: open, color: 'text-red-500' },
-            { label: t('vaktcomply.control.statusNotApplicable'), value: notApplicable, color: 'text-secondary' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="flex flex-col items-center py-3 px-4 bg-surface border border-border rounded-lg">
-              <span className={cn('text-2xl font-bold', color)}>{value}</span>
-              <span className="text-xs text-secondary mt-0.5">{label}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Progress bar */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-secondary">
-            <span>{t('vaktcomply.frameworkDetail.coveredOf', { covered, total: applicable })}</span>
-            <span>{readinessScore === undefined ? '–' : `${String(Math.round(pct))}%`}</span>
-          </div>
-          <div className="h-2 bg-surface2 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-green-500 rounded-full transition-all"
-              style={{ width: `${String(pct)}%` }}
-            />
-          </div>
-        </div>
-
         {/* Controls grouped by domain — collapsible */}
         {Array.from(byDomain.entries()).map(([domain, domainControls]) => (
           <DomainSection
@@ -860,7 +846,7 @@ export default function FrameworkDetailPage() {
 
   const frameworkDesc = framework
     ? `Controls, Lückenanalyse und Auditor-Zugang für ${displayName} verwalten.`
-    : 'Readiness-Score, Lückenanalyse und Auditor-Zugang verwalten.'
+    : 'Umsetzungsgrad, Lückenanalyse und Auditor-Zugang verwalten.'
 
   useEffect(() => {
     if (framework) trackPage(`/vaktcomply/frameworks/${frameworkId}`, displayName, '📋')
@@ -946,39 +932,56 @@ export default function FrameworkDetailPage() {
           />
         )}
 
-        {/* Readiness score header */}
-        <div className="flex items-center gap-6 p-6 bg-surface border border-border rounded-lg">
+        {/* Umsetzungsgrad — die einzige Stelle der Seite mit Zählung, Prozent und
+            Balken (UX-16). Begriffe wie in der Statusauswahl der Zeilen. */}
+        <div className="p-6 bg-surface border border-border rounded-lg" data-testid="readiness-head">
           {reportLoading ? (
             <Spinner size="lg" />
           ) : report ? (
-            <>
-              <div className="text-center">
-                <div className={cn('text-5xl font-bold', scoreColor(report.readiness_score))}>
-                  {Math.round(report.readiness_score)}%
-                </div>
-                <div className="text-sm text-secondary mt-1">Readiness Score</div>
-              </div>
-              <div className="flex gap-6 text-sm">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-6">
                 <div className="text-center">
-                  <div className="text-xl font-semibold text-green-600">{report.covered}</div>
-                  <div className="text-secondary">{t('vaktcomply.control.statusImplemented')}</div>
+                  <div className={cn('text-5xl font-bold', scoreColor(report.readiness_score))}>
+                    {roundPercent(report.readiness_score)}%
+                  </div>
+                  <div className="text-sm text-secondary mt-1">{t('vaktcomply.readiness.title')}</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-yellow-600">{report.partial}</div>
-                  <div className="text-secondary">{t('vaktcomply.frameworkDetail.statusPartial')}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-red-600">{report.missing}</div>
-                  <div className="text-secondary">{t('vaktcomply.control.statusOpen')}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-secondary">{report.total_controls}</div>
-                  <div className="text-secondary">{t('vaktcomply.frameworkDetail.total')}</div>
+                <div className="flex flex-wrap gap-6 text-sm">
+                  {[
+                    { label: t('vaktcomply.control.statusImplemented'), value: report.covered, color: 'text-green-600' },
+                    { label: t('vaktcomply.control.statusInProgress'), value: report.partial, color: 'text-yellow-600' },
+                    { label: t('vaktcomply.control.statusOpen'), value: report.missing, color: 'text-red-600' },
+                    { label: t('vaktcomply.control.statusNotApplicable'), value: report.not_applicable, color: 'text-secondary' },
+                    { label: t('vaktcomply.frameworkDetail.total'), value: report.total_controls, color: 'text-secondary' },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="text-center">
+                      <div className={cn('text-xl font-semibold', color)}>{value}</div>
+                      <div className="text-secondary">{label}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </>
+              <div className="space-y-1">
+                <ReadinessBreakdown
+                  className="text-xs text-secondary"
+                  counts={{
+                    covered: report.covered,
+                    partial: report.partial,
+                    applicable: report.total_controls - report.not_applicable,
+                    scorePct: report.readiness_score,
+                  }}
+                />
+                <div className="h-2 bg-surface2 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 rounded-full transition-all"
+                    style={{ width: `${String(report.readiness_score)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-secondary">{t('vaktcomply.readiness.hint')}</p>
+              </div>
+            </div>
           ) : (
-            <p className="text-sm text-secondary">Keine Readiness-Daten verfügbar.</p>
+            <p className="text-sm text-secondary">Keine Daten zum Umsetzungsgrad verfügbar.</p>
           )}
         </div>
 
@@ -1003,7 +1006,6 @@ export default function FrameworkDetailPage() {
               frameworkId={frameworkId}
               controls={controls}
               controlsLoading={controlsLoading}
-              readinessScore={report?.readiness_score}
             />
           </TabsContent>
 

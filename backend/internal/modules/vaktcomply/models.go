@@ -685,10 +685,14 @@ type EUAIActISOMappingEntry struct {
 
 // EUAIActDashboard aggregates EU AI Act compliance status across all AI systems.
 type EUAIActDashboard struct {
-	TotalSystems             int                      `json:"total_systems"`
-	SystemsByRiskClass       map[string]int           `json:"systems_by_risk_class"`
-	SystemsByStatus          map[string]int           `json:"systems_by_status"`
-	SystemsWithoutDocs       int                      `json:"systems_without_documentation"`
+	TotalSystems       int            `json:"total_systems"`
+	SystemsByRiskClass map[string]int `json:"systems_by_risk_class"`
+	SystemsByStatus    map[string]int `json:"systems_by_status"`
+	SystemsWithoutDocs int            `json:"systems_without_documentation"`
+	// UX-35: „ohne Dossier" zaehlte einen Entwurf mit sieben leeren Feldern als
+	// vorhanden. Unvollstaendig = kein Dossier, neueste Version noch Entwurf
+	// oder ein Pflichtfeld leer; schliesst SystemsWithoutDocs ein.
+	SystemsIncompleteDocs    int                      `json:"systems_incomplete_documentation"`
 	HighRiskDeadline         string                   `json:"high_risk_deadline"`
 	HighRiskDeadlineDaysLeft int                      `json:"high_risk_deadline_days_left"`
 	ISO27001Mappings         []EUAIActISOMappingEntry `json:"iso27001_mappings"`

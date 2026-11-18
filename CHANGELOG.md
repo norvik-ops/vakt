@@ -33,6 +33,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   „Angemeldet als“ statt „Administrator“ — es zeigt das eigene Konto, nicht den Administrator.
 
 ### Behoben
+- **Fortschritt: überall dieselbe Zahl, dieselbe Zählung:** Neben „0 von 88 umgesetzt“ stand
+  „5 %“, weil Kontrollen in Bearbeitung im Prozentwert halb zählen, in der Zählung aber fehlten.
+  Dashboard, Framework-Karte, Framework-Seite und Comply-Übersicht zeigen jetzt dieselbe Zeile
+  „0 / 88 umgesetzt · 9 in Bearbeitung · 5%“; der Hinweis nennt die Zählregel. Die Framework-Seite
+  zeigt die Zahlen nur noch einmal (vorher zweimal mit „Teilweise“ und „In Bearbeitung“); der Wert
+  heißt dort wie im Dashboard „Umsetzungsgrad“ statt „Readiness Score“. `GET /vaktcomply/frameworks`
+  liefert dazu `implemented_controls`, `partial_controls`, `applicable_controls`,
+  `GET /dashboard/aggregate` je Framework `partial_controls`.
+- **Abgeleiteter Status ist erkennbar:** Bestätigt jemand eine Richtlinie, legt Vakt einen Nachweis
+  an A.5.1 und an weiteren Kontrollen mit „Richtlinie“ im Titel ab (auch in NIS2). Ein Nachweis
+  ergibt „In Bearbeitung“ — das sah aus wie eigene Arbeit. Solche Zeilen tragen jetzt den Hinweis
+  „aus 1 Nachweis abgeleitet“.
+- **Comply-Übersicht und Dashboard zählen gleich:** Die Übersicht zählte Risiken aus einer Seite der
+  Risikoliste („2 kritisch/hoch“), das Dashboard auch geschlossene Risiken („Kritische Risiken 1“).
+  Beide zeigen jetzt offene Risiken und davon kritische aus derselben Abfrage (`open_risks`,
+  `critical_risks` in `GET /dashboard/aggregate`; kritisch = offen und Stufe kritisch). Richtlinien
+  stehen auf beiden Seiten als „aktiv / gesamt“ statt „alle aktuell“. Der Audit-Bericht nutzt für
+  Gesamtwert und Framework-Tabelle denselben Umsetzungsgrad wie das Dashboard statt eines
+  Mittelwerts über manuell gesetzte Status.
+- **EU AI Act: „Dossier unvollständig“ statt „Ohne Dossier“:** Ein Entwurf mit leeren Pflichtfeldern
+  zählte als vorhandenes Dossier. Die Kachel zählt jetzt Systeme ohne Dossier, mit Dossier im
+  Entwurf oder mit leerem Pflichtfeld, und nennt darunter die ohne Dossier
+  (`systems_incomplete_documentation`). Keine Migration.
+- **Eine Rundung für alle Prozentwerte:** PDFs rundeten 12,5 % auf 12 %, das Dashboard auf 13 %;
+  der Management-Bericht schnitt ab, das Auditor-Portal zeigte Nachkommastellen. Überall gilt jetzt:
+  ab ,5 wird aufgerundet.
 - **Frameworks heißen überall wie im Katalog:** Aktive Frameworks erschienen mit ihren internen
   Schlüsseln („ISO27001“, „EUAIACT“), der Katalog darunter mit „ISO 27001“ und „EU AI Act“.
   Karten, die Überschrift der Framework-Seite (jetzt ohne „Details“), der Einrichtungs-Assistent,

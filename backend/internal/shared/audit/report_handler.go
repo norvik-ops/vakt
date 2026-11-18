@@ -9,16 +9,21 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/dashboard"
 )
 
 // Handler handles the audit report endpoint.
 type ReportHandler struct {
-	db *pgxpool.Pool
+	db        *pgxpool.Pool
+	readiness dashboard.ReadinessSource
 }
 
 // NewHandler creates a new Handler.
-func NewReportHandler(db *pgxpool.Pool) *ReportHandler {
-	return &ReportHandler{db: db}
+// readiness is the canonical readiness source (ADR-0086) shared with the
+// dashboard; nil keeps the legacy counts.
+func NewReportHandler(db *pgxpool.Pool, readiness dashboard.ReadinessSource) *ReportHandler {
+	return &ReportHandler{db: db, readiness: readiness}
 }
 
 // GenerateAuditReport handles GET /api/v1/vaktcomply/audit-report.
@@ -34,7 +39,7 @@ func (h *ReportHandler) GenerateAuditReport(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	data, err := Collect(ctx, h.db, orgID)
+	data, err := Collect(ctx, h.db, orgID, h.readiness)
 	if err != nil {
 		log.Error().Err(err).Str("org_id", orgID).Msg("audit report: gather failed")
 		return c.JSON(http.StatusInternalServerError, map[string]string{

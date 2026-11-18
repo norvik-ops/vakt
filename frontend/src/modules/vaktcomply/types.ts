@@ -10,6 +10,10 @@ export interface Framework {
   version: string
   is_builtin: boolean
   readiness_score?: number
+  /** UX-15: the counts behind readiness_score (implemented, in progress at half weight, applicable). */
+  implemented_controls?: number
+  partial_controls?: number
+  applicable_controls?: number
   created_at: string
   framework_variant?: 'full' | 'simplified'
   catalog_edition?: string // S82-4: edition from the embedded catalog (e.g. "2023" for BSI Kompendium)
@@ -23,6 +27,7 @@ export interface ReadinessReport {
   covered: number
   partial: number
   missing: number
+  not_applicable: number
   by_domain: Array<{ domain: string; score: number; total: number; covered: number }>
   tisax_maturity?: TISAXMaturitySummary
 }

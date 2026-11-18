@@ -38,17 +38,24 @@ func (s *Service) ListFrameworks(ctx context.Context, orgID string) ([]Framework
 
 	// R1-18-D3: ohne diesen Schritt blieb ReadinessScore auf 0 und fiel wegen
 	// `omitempty` ganz aus der Antwort — das Auditor-Portal zeigte
-	// "Bereitschaft %" ohne Zahl. Ein Fehler beim Rechnen darf die Liste nicht
+	// "Bereitschaft %" ohne Zahl. Gerechnet wird in EINER Abfrage ueber alle
+	// Controls mit ResolveStatus und ReadinessScore, also wie in
+	// ComputeReadinessReport. UX-15: die Zaehlung (umgesetzt, in Bearbeitung,
+	// anwendbar) geht mit, damit die Karte sie neben dem Prozentwert zeigt. Ein Fehler beim Rechnen darf die Liste nicht
 	// scheitern lassen; dann fehlt eben die Kennzahl wie bisher, aber
 	// protokolliert statt stillschweigend.
-	scores, scoreErr := s.repo.ReadinessScoresByFramework(ctx, orgID)
+	byFW, scoreErr := s.repo.ReadinessByFramework(ctx, orgID)
 	if scoreErr != nil {
 		log.Warn().Err(scoreErr).Str("org_id", orgID).
 			Msg("list frameworks: Bereitschaftsgrad nicht berechenbar — Feld bleibt leer")
 		return frameworks, nil
 	}
 	for i := range frameworks {
-		frameworks[i].ReadinessScore = scores[frameworks[i].ID]
+		r := byFW[frameworks[i].ID]
+		frameworks[i].ReadinessScore = r.Score
+		frameworks[i].ImplementedControls = r.Covered
+		frameworks[i].PartialControls = r.Partial
+		frameworks[i].ApplicableControls = r.Applicable
 	}
 	return frameworks, nil
 }

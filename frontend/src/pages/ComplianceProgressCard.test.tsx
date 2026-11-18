@@ -15,7 +15,7 @@ describe('ComplianceProgressCard (R1-KW-6)', () => {
     render(
       <MemoryRouter>
         <ComplianceProgressCard
-          scores={[{ framework_id: 'fw', framework_name: 'ISO27001', total_controls: 3, implemented_controls: 1, score_pct: 50 }]}
+          scores={[{ framework_id: 'fw', framework_name: 'ISO27001', total_controls: 3, implemented_controls: 1, partial_controls: 1, score_pct: 50 }]}
           overall={{ covered: 1, partial: 1, applicable: 3, score_pct: 50 }}
         />
       </MemoryRouter>,

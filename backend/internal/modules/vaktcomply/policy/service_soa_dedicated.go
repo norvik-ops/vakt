@@ -12,8 +12,10 @@ import (
 	"time"
 
 	"github.com/go-pdf/fpdf"
-	"github.com/matharnica/vakt/internal/shared/pdfutil"
 	"github.com/rs/zerolog/log"
+
+	"github.com/matharnica/vakt/internal/shared/pdfutil"
+	"github.com/matharnica/vakt/internal/shared/percent"
 )
 
 // ErrSoANotInitialized is returned when no dedicated SoA exists for the org.
@@ -250,7 +252,7 @@ func buildSoAPDF(entries []SoADedicatedEntry, summary *SoASummary, version int) 
 	}
 	pdf.CellFormat(60, 6, fmt.Sprintf("%s: %d", statusLabel("not_started"), summary.NotStartedCount), "", 1, "L", false, 0, "")
 	// Same counting rule as the readiness score: umgesetzt = ganz, in Bearbeitung = halb.
-	pdf.CellFormat(60, 6, fmt.Sprintf("Umsetzungsgrad: %.0f%%", summary.ImplementationPct), "", 1, "L", false, 0, "")
+	pdf.CellFormat(60, 6, "Umsetzungsgrad: "+percent.Format(summary.ImplementationPct), "", 1, "L", false, 0, "")
 
 	// Controls table
 	pdf.AddPage()

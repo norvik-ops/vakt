@@ -7,15 +7,21 @@ import "time"
 
 // Framework represents a compliance framework enabled for an organisation.
 type Framework struct {
-	ID               string    `json:"id"`
-	OrgID            string    `json:"org_id"`
-	Name             string    `json:"name"`
-	Version          string    `json:"version"`
-	IsBuiltin        bool      `json:"is_builtin"`
-	ReadinessScore   float64   `json:"readiness_score"`           // R1-G-38: kein omitempty — 0 % ist eine gueltige Kennzahl, die das Auditor-Portal anzeigen muss
-	FrameworkVariant string    `json:"framework_variant"`         // "full" | "simplified" (DORA Art.16)
-	CatalogEdition   string    `json:"catalog_edition,omitempty"` // S82-4: edition from the embedded catalog
-	CreatedAt        time.Time `json:"created_at"`
+	ID             string  `json:"id"`
+	OrgID          string  `json:"org_id"`
+	Name           string  `json:"name"`
+	Version        string  `json:"version"`
+	IsBuiltin      bool    `json:"is_builtin"`
+	ReadinessScore float64 `json:"readiness_score"` // R1-G-38: kein omitempty — 0 % ist eine gueltige Kennzahl, die das Auditor-Portal anzeigen muss
+	// UX-15: die Zaehlung hinter ReadinessScore, damit die Framework-Karte
+	// „x / y umgesetzt · z in Bearbeitung" zeigen kann statt nur eines
+	// Prozentwerts, in den teilweise umgesetzte Kontrollen halb eingehen.
+	ImplementedControls int       `json:"implemented_controls"`      // wirksam umgesetzt/abgedeckt
+	PartialControls     int       `json:"partial_controls"`          // wirksam in Bearbeitung/teilweise — zaehlt halb
+	ApplicableControls  int       `json:"applicable_controls"`       // alle ausser nicht anwendbar — Nenner von ReadinessScore
+	FrameworkVariant    string    `json:"framework_variant"`         // "full" | "simplified" (DORA Art.16)
+	CatalogEdition      string    `json:"catalog_edition,omitempty"` // S82-4: edition from the embedded catalog
+	CreatedAt           time.Time `json:"created_at"`
 }
 
 // EnableFrameworkInput holds optional body params for POST /frameworks/:name/enable.

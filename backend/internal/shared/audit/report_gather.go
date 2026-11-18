@@ -7,6 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/matharnica/vakt/internal/shared/dashboard"
 )
 
 // ReportData is the full dataset gathered for an audit PDF.
@@ -20,6 +22,10 @@ type ReportData struct {
 	OpenCAPAs      []CAPARow
 	EvidenceCount  int
 	ControlStats   ControlStats
+	// OverallScorePct is the org-wide implementation level on the cover page:
+	// the canonical readiness (ADR-0086) pooled over all frameworks when a
+	// readiness source is wired, else the legacy average of the frameworks.
+	OverallScorePct float64
 }
 
 // ControlStats contains aggregate control implementation totals.
@@ -32,6 +38,7 @@ type ControlStats struct {
 
 // FrameworkSection describes one compliance framework.
 type FrameworkSection struct {
+	ID            string
 	Name          string
 	TotalControls int
 	Implemented   int
@@ -89,7 +96,16 @@ type CAPARow struct {
 }
 
 // Collect queries all data needed for the audit PDF from the DB.
-func Collect(ctx context.Context, db *pgxpool.Pool, orgID string) (*ReportData, error) {
+//
+// UX-38: the cover page ("Gesamtbewertung") and the framework table counted
+// only manual_status = implemented, kept not-applicable controls in the
+// denominator and averaged the framework percentages — the report opened from
+// the Comply overview showed a different number than the dashboard next to it.
+// With a readiness source (the same one the dashboard gets, injected by
+// cmd/api because shared must not import the compliance module) the counts and
+// percentages are the canonical readiness. readiness may be nil (tests, old
+// wiring); the legacy figures stay then and a warning is logged.
+func Collect(ctx context.Context, db *pgxpool.Pool, orgID string, readiness dashboard.ReadinessSource) (*ReportData, error) {
 	d := &ReportData{GeneratedAt: time.Now()}
 
 	// Resolve org name (soft-fail).
@@ -197,6 +213,7 @@ func Collect(ctx context.Context, db *pgxpool.Pool, orgID string) (*ReportData, 
 			}
 
 			d.Frameworks = append(d.Frameworks, FrameworkSection{
+				ID:            fm.id,
 				Name:          fm.name,
 				TotalControls: fm.total,
 				Implemented:   fm.implemented,
@@ -347,5 +364,52 @@ func Collect(ctx context.Context, db *pgxpool.Pool, orgID string) (*ReportData, 
 	})
 
 	_ = g.Wait()
+	d.OverallScorePct = averageScore(d.Frameworks)
+	if readiness == nil {
+		log.Warn().Str("org_id", orgID).Msg("auditreport: no readiness source — legacy control counts")
+		return d, nil
+	}
+	summary, err := readiness.ReadinessSummary(ctx, orgID)
+	if err != nil {
+		log.Error().Err(err).Str("org_id", orgID).Msg("auditreport: readiness — legacy control counts")
+		return d, nil
+	}
+	applyReadiness(d, summary)
 	return d, nil
+}
+
+// applyReadiness replaces the per-framework counts, the control stats and the
+// overall score with the canonical readiness tally. TotalControls becomes the
+// number of applicable controls, the denominator of ScorePct — as on the
+// dashboard ("x / y umgesetzt").
+func applyReadiness(d *ReportData, summary dashboard.ReadinessSummary) {
+	for i := range d.Frameworks {
+		r := summary.ByFramework[d.Frameworks[i].ID]
+		d.Frameworks[i].TotalControls = r.Applicable
+		d.Frameworks[i].Implemented = r.Covered
+		d.Frameworks[i].InProgress = r.Partial
+		d.Frameworks[i].NotStarted = max(r.Applicable-r.Covered-r.Partial, 0)
+		d.Frameworks[i].ScorePct = r.Score
+	}
+	o := summary.Overall
+	d.ControlStats = ControlStats{
+		Total:       o.Applicable,
+		Implemented: o.Covered,
+		InProgress:  o.Partial,
+		NotStarted:  max(o.Applicable-o.Covered-o.Partial, 0),
+	}
+	d.OverallScorePct = o.Score
+}
+
+// averageScore is the legacy cover value: the plain average of the framework
+// percentages. Used only without a readiness source.
+func averageScore(fws []FrameworkSection) float64 {
+	if len(fws) == 0 {
+		return 0
+	}
+	var sum float64
+	for _, fw := range fws {
+		sum += fw.ScorePct
+	}
+	return sum / float64(len(fws))
 }

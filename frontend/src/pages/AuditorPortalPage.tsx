@@ -16,6 +16,7 @@ import {
   type AuditorFramework,
 } from '../hooks/useAuditorPortal'
 import { frameworkDisplayName } from '../modules/vaktcomply/utils/frameworkCatalogue'
+import { roundPercent } from '../shared/utils/percent'
 
 // ---------------------------------------------------------------------------
 // Token storage key in sessionStorage
@@ -94,7 +95,9 @@ function FrameworkRow({ fw, token }: FrameworkRowProps) {
   const { data, isLoading } = useAuditorControls(expanded ? fw.id : null, token)
   const controls = data?.data ?? []
 
-  const readiness = fw.readiness_score
+  // Gerundet wie Dashboard und Framework-Seiten (halb rundet auf); vorher stand
+  // hier der Rohwert, z. B. „5.113636363636364%".
+  const readiness = roundPercent(fw.readiness_score)
 
   return (
     <div className="rounded-lg border border-border bg-surface overflow-hidden">

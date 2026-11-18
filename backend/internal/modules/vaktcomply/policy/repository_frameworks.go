@@ -58,31 +58,6 @@ func (r *Repository) ListFrameworks(ctx context.Context, orgID string) ([]Framew
 	return out, nil
 }
 
-// ReadinessScoresByFramework rechnet den Bereitschaftsgrad je Framework der
-// Organisation aus — in EINER Abfrage ueber alle Controls, nicht einer je
-// Framework.
-//
-// R1-18-D3: Framework.ReadinessScore traegt `omitempty` und wurde von
-// ListFrameworks nie gefuellt. Der Wert blieb 0 und fiel damit ganz aus der
-// JSON-Antwort; das Auditor-Portal zeigte "Bereitschaft %" ohne Zahl. Der
-// Kommentar an frameworkFromCkFrameworks behauptete, der Score werde "computed
-// per-call in service layer" — an dieser Stelle geschah das nicht.
-//
-// Gerechnet wird mit ResolveStatus und ReadinessScore, also mit denselben
-// Funktionen wie ComputeReadinessReport. Nicht-anwendbare Controls bleiben
-// aussen vor, genau wie dort.
-func (r *Repository) ReadinessScoresByFramework(ctx context.Context, orgID string) (map[string]float64, error) {
-	byFW, err := r.ReadinessByFramework(ctx, orgID)
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[string]float64, len(byFW))
-	for fwID, t := range byFW {
-		out[fwID] = t.Score
-	}
-	return out, nil
-}
-
 // FrameworkReadiness is the canonical readiness tally of one framework
 // (ADR-0086): Covered = effective status implemented/covered, Partial =
 // in_progress/partial (half weight), Applicable = all controls except

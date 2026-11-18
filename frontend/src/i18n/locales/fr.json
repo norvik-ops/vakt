@@ -1434,18 +1434,16 @@
     "secVitals": {
       "customizeWidgets": "Personnaliser les widgets",
       "orderSaved": "Ordre sauvegardé",
-      "kpiFrameworks": "Référentiels",
-      "kpiFrameworksSub": "activés",
+      "kpiFrameworks": "Référentiels actifs",
       "kpiOpenRisks": "Risques ouverts",
-      "kpiCriticalHigh": "{{count}} critiques/élevés",
       "kpiNoCritical": "aucun critique",
       "kpiOpenIncidents": "Incidents ouverts",
       "kpiCritical": "{{count}} critiques",
-      "kpiPolicies": "Politiques",
-      "kpiOverdue": "{{count}} en retard",
-      "kpiAllCurrent": "toutes à jour",
+      "kpiPolicies": "Politiques actives",
+      "kpiOverdue": "{{count}} révision en retard",
       "kpiAudits": "Audits",
-      "kpiAuditsSub": "actifs / planifiés"
+      "kpiAuditsSub": "actifs / planifiés",
+      "kpiNoReviewOverdue": "aucune révision en retard"
     },
     "mappingCoverage": {
       "covered": "Couvert :",
@@ -1455,7 +1453,10 @@
       "colArticle": "Article",
       "deadlineHighRisk": "Échéance haut risque (annexe III)",
       "inForceSince": "applicable depuis le {{date}}",
-      "daysLeft": "{{days}} jours"
+      "daysLeft": "{{days}} jours",
+      "incompleteDossier": "Dossier incomplet",
+      "incompleteDossierSub": "dont sans dossier : {{count}}",
+      "incompleteDossierHint": "Compte les systèmes d'IA sans dossier, avec un dossier à l'état de brouillon ou avec des champs obligatoires vides (annexe IV, art. 9, 12, 14)."
     },
     "riskTreatmentPanel": {
       "linkControlTitle": "Associer un contrôle",
@@ -1483,10 +1484,8 @@
       "colAccesses": "Accès",
       "statusRevoked": "Révoqué",
       "statusExpired": "Expiré",
-      "statusPartial": "Partiel",
       "total": "Total",
-      "validFor": "Valide pour",
-      "coveredOf": "{{covered}} sur {{total}} contrôles implémentés"
+      "validFor": "Valide pour"
     },
     "assets": {
       "detail": {
@@ -1575,6 +1574,14 @@
       "filterAllStatuses": "Tous les statuts",
       "filterNoFile": "Sans fichier ({{count}})",
       "filterExpiring": "Expirée ou expire sous {{days}} jours"
+    },
+    "readiness": {
+      "title": "Niveau de mise en œuvre",
+      "breakdown": "{{covered}} / {{applicable}} mis en œuvre · {{partial}} en cours · {{percent}}%",
+      "hint": "Les contrôles mis en œuvre comptent entièrement, ceux en cours pour moitié, les non applicables pas du tout.",
+      "derived_one": "déduit de {{count}} preuve",
+      "derived_other": "déduit de {{count}} preuves",
+      "derivedHint": "Personne n'a défini ce statut : il découle des preuves jointes (1 preuve = en cours, 2 ou plus = mis en œuvre), par exemple d'une politique acceptée. Ouvrez le contrôle pour vérifier les preuves."
     }
   },
   "settingsPage": {
@@ -2478,7 +2485,6 @@
   },
   "dashboard": {
     "title": "Tableau de bord",
-    "securityScore": "Score de sécurité",
     "overallRating": "Évaluation globale",
     "dataPannen": "Violations de données",
     "noOpenBreaches": "Aucune violation de données ouverte",

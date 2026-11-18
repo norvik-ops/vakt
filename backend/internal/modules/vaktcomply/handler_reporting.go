@@ -11,14 +11,16 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/matharnica/vakt/internal/shared/audit"
 	"github.com/matharnica/vakt/internal/shared/csvsafe"
 	"github.com/matharnica/vakt/internal/shared/pagination"
+	"github.com/matharnica/vakt/internal/shared/percent"
 	"github.com/matharnica/vakt/internal/shared/platform/features"
 	"github.com/matharnica/vakt/internal/shared/risklevel"
 	"github.com/matharnica/vakt/internal/shared/xlsxexport"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
 )
 
 func (h *Handler) GetBoardReport(c echo.Context) error {
@@ -82,7 +84,9 @@ func (s *Service) GetBoardReportData(ctx context.Context, orgID string) (*BoardR
 			log.Warn().Err(err).Str("org_id", orgID).Msg("board-report: compliance readiness failed — score shown as 0")
 			return nil //nolint:nilerr
 		}
-		d.Score = int(score)
+		// Gerundet wie Dashboard und Framework-Detail (halb rundet auf); int()
+		// schnitt ab — 18,75 % stand hier als 18, im Dashboard als 19.
+		d.Score = percent.Round(score)
 		return nil
 	})
 

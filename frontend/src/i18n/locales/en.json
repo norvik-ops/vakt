@@ -1434,18 +1434,16 @@
     "secVitals": {
       "customizeWidgets": "Customize widgets",
       "orderSaved": "Order saved",
-      "kpiFrameworks": "Frameworks",
-      "kpiFrameworksSub": "enabled",
+      "kpiFrameworks": "Active frameworks",
       "kpiOpenRisks": "Open risks",
-      "kpiCriticalHigh": "{{count}} critical/high",
       "kpiNoCritical": "none critical",
       "kpiOpenIncidents": "Open incidents",
       "kpiCritical": "{{count}} critical",
-      "kpiPolicies": "Policies",
-      "kpiOverdue": "{{count}} overdue",
-      "kpiAllCurrent": "all current",
+      "kpiPolicies": "Active policies",
+      "kpiOverdue": "{{count}} review overdue",
       "kpiAudits": "Audits",
-      "kpiAuditsSub": "active / planned"
+      "kpiAuditsSub": "active / planned",
+      "kpiNoReviewOverdue": "no review overdue"
     },
     "mappingCoverage": {
       "covered": "Covered:",
@@ -1455,7 +1453,10 @@
       "colArticle": "Article",
       "deadlineHighRisk": "High-risk deadline (Annex III)",
       "inForceSince": "applies since {{date}}",
-      "daysLeft": "{{days}} days"
+      "daysLeft": "{{days}} days",
+      "incompleteDossier": "Dossier incomplete",
+      "incompleteDossierSub": "of which without dossier: {{count}}",
+      "incompleteDossierHint": "Counts AI systems without a dossier, with a draft dossier or with empty mandatory fields (Annex IV, Art. 9, 12, 14)."
     },
     "riskTreatmentPanel": {
       "linkControlTitle": "Link control",
@@ -1483,10 +1484,8 @@
       "colAccesses": "Accesses",
       "statusRevoked": "Revoked",
       "statusExpired": "Expired",
-      "statusPartial": "Partial",
       "total": "Total",
-      "validFor": "Valid for",
-      "coveredOf": "{{covered}} of {{total}} controls implemented"
+      "validFor": "Valid for"
     },
     "assets": {
       "detail": {
@@ -1575,6 +1574,14 @@
       "filterAllStatuses": "All statuses",
       "filterNoFile": "Without file ({{count}})",
       "filterExpiring": "Expired or expiring within {{days}} days"
+    },
+    "readiness": {
+      "title": "Implementation level",
+      "breakdown": "{{covered}} / {{applicable}} implemented · {{partial}} in progress · {{percent}}%",
+      "hint": "Implemented controls count fully, controls in progress count half, not applicable ones not at all.",
+      "derived_one": "derived from {{count}} piece of evidence",
+      "derived_other": "derived from {{count}} pieces of evidence",
+      "derivedHint": "Nobody set this status: it follows from the attached evidence (1 piece = in progress, 2 or more = implemented), for example from an accepted policy. Open the control to review the evidence."
     }
   },
   "settingsPage": {
@@ -2478,7 +2485,6 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "securityScore": "Security Score",
     "overallRating": "Overall rating",
     "dataPannen": "Data Breaches",
     "noOpenBreaches": "No open data breaches",

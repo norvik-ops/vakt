@@ -534,6 +534,13 @@ components:
           type: integer
         implemented_controls:
           type: integer
+          description: "Wirksam umgesetzte Controls (implemented/covered) — Zähler hinter readiness_score (UX-15)."
+        partial_controls:
+          type: integer
+          description: "Wirksam in Bearbeitung (in_progress/partial, auch aus genau einem Nachweis abgeleitet) — zählt in readiness_score halb (UX-15)."
+        applicable_controls:
+          type: integer
+          description: "Alle Controls außer nicht anwendbaren — Nenner von readiness_score (UX-15)."
         score:
           type: number
         readiness_score:
@@ -5762,10 +5769,35 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [total_systems, systems_by_risk_class, systems_by_status, systems_without_documentation, systems_incomplete_documentation, high_risk_deadline, high_risk_deadline_days_left, iso27001_mappings]
                 properties:
-                  risk_classification: { type: string, enum: [minimal, limited, high, unacceptable] }
-                  overall_score: { type: number }
-                  requirements: { type: array, items: { type: object } }
+                  total_systems: { type: integer }
+                  systems_by_risk_class:
+                    type: object
+                    additionalProperties: { type: integer }
+                  systems_by_status:
+                    type: object
+                    additionalProperties: { type: integer }
+                  systems_without_documentation:
+                    type: integer
+                    description: AI systems without any technical dossier.
+                  systems_incomplete_documentation:
+                    type: integer
+                    description: >-
+                      AI systems whose dossier is not finished — none at all, the
+                      latest version still a draft, or one of the nine mandatory
+                      fields empty. Includes systems_without_documentation (UX-35).
+                  high_risk_deadline: { type: string, format: date }
+                  high_risk_deadline_days_left: { type: integer }
+                  iso27001_mappings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        eu_ai_act_article: { type: string }
+                        eu_ai_act_topic: { type: string }
+                        iso27001_control: { type: string }
+                        iso27001_title: { type: string }
 
   /vaktcomply/eu-ai-act/report-pdf:
     get:
@@ -6079,6 +6111,9 @@ paths:
                         implemented_controls:
                           type: integer
                           description: Effective status implemented or covered.
+                        partial_controls:
+                          type: integer
+                          description: Effective status in_progress or partial — weighs half in score_pct (UX-15).
                         score_pct:
                           type: number
                           description: Canonical readiness 0–100 (ADR-0086).
@@ -6096,7 +6131,12 @@ paths:
                   open_capas: { type: integer }
                   overdue_controls: { type: integer }
                   overdue_tasks: { type: integer }
-                  critical_risks: { type: integer }
+                  open_risks:
+                    type: integer
+                    description: Risks with status open — the same number as the Comply overview (UX-38).
+                  critical_risks:
+                    type: integer
+                    description: Open risks at level critical (likelihood × impact ≥ risklevel.CriticalFrom) (UX-38).
                   top_risks:
                     type: array
                     items: { type: object }

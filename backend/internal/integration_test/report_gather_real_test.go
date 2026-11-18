@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
+	"github.com/matharnica/vakt/internal/modules/vaktcomply"
 	"github.com/matharnica/vakt/internal/shared/audit"
 	shareddb "github.com/matharnica/vakt/internal/shared/db"
 )
@@ -72,7 +73,7 @@ func TestReportGather_FrameworkDomainGrouping(t *testing.T) {
 	seedEvidence(ctx, t, pool, orgID, cA1)
 	seedEvidence(ctx, t, pool, orgID, cA1)
 
-	data, err := audit.Collect(ctx, pool, orgID)
+	data, err := audit.Collect(ctx, pool, orgID, vaktcomply.NewDashboardReadiness(pool))
 	require.NoError(t, err)
 	require.Len(t, data.Frameworks, 2, "two frameworks expected")
 
