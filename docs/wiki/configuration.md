@@ -442,7 +442,7 @@ Cookies werden bewusst **nicht** erlaubt (`Access-Control-Allow-Credentials` ble
 | Variable | Default | Bedeutung |
 |---|---|---|
 | `VAKT_BILLING_SMALL_BUSINESS` | `true` | `true` = § 19 UStG: jede Rechnung geht als `vatfree` raus, ohne Fallunterscheidung nach Land. `false` = Regelbesteuerung: das Land des Kunden entscheidet (Inland 19 %, EU-Ausland Reverse Charge, Drittland nicht steuerbar). |
-| `VAKT_BILLING_VAT_ID` | leer | Die **eigene** USt-IdNr. Pflichtangabe auf jeder Reverse-Charge-Rechnung und Voraussetzung für die **qualifizierte** VIES-Abfrage (mit Name/Anschrift). Leer = nur einfache Gültigkeitsprüfung. |
+| `VAKT_BILLING_VAT_ID` | leer | Die **eigene** USt-IdNr. Pflichtangabe auf jeder Reverse-Charge-Rechnung an EU-Ausland. Leer = EU-Auslandsverkauf wird abgelehnt (Inlandsverkauf läuft weiter). Auf der Norvik-Produktion seit 2026-11-18 gesetzt (`DE315037332`, VIES-bestätigt). |
 
 Zwei Dinge, die man dazu wissen muss:
 

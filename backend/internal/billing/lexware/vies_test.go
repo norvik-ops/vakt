@@ -116,10 +116,16 @@ func TestVIESCheckIsFailClosed(t *testing.T) {
 // Wer diese Fixtures anfasst, muss sie gegen die echte API prüfen, nicht gegen die Doku:
 //
 //	curl -H 'Accept: application/json' \
-//	  https://ec.europa.eu/taxation_customs/vies/rest-api/ms/DE/vat/315037332
+//	  https://ec.europa.eu/taxation_customs/vies/rest-api/ms/DE/vat/<nummer>
+//
+// Hinweis (2026-11-18): Das ursprüngliche INVALID-Beispiel war DE315037332 — eine Nummer
+// in W-IdNr.-Form, die im Juli nicht in VIES stand. Dieselbe Ziffernfolge ist seit der
+// Erteilung der USt-IdNr. nun `isValid: true` (siehe ADR-0073). Das Fixture nutzt deshalb
+// eine neutrale, nicht vergebene Nummer — die Struktur einer INVALID-Antwort bleibt echt,
+// nur die Zahl ist neutralisiert, damit kein Test eine reale, gültige USt-IdNr. als
+// ungültig führt.
 func TestVIESCheckValidAndInvalid(t *testing.T) {
-	// Ungültig — wörtlich die Antwort auf eine Wirtschafts-Identifikationsnummer, die
-	// eben KEINE USt-IdNr. ist (§ 139c AO vs. § 27a UStG, gleiche Form, andere Sache).
+	// Ungültig — Struktur einer echten INVALID-Antwort der EU-Kommission, Nummer neutralisiert.
 	const invalidBody = `{
 	  "isValid" : false,
 	  "requestDate" : "2026-07-19T11:20:23.737Z",
@@ -127,8 +133,8 @@ func TestVIESCheckValidAndInvalid(t *testing.T) {
 	  "name" : "",
 	  "address" : "",
 	  "requestIdentifier" : "",
-	  "originalVatNumber" : "315037332",
-	  "vatNumber" : "315037332",
+	  "originalVatNumber" : "000000000",
+	  "vatNumber" : "000000000",
 	  "viesApproximate" : { "name" : "---", "street" : "---", "postalCode" : "---",
 	    "city" : "---", "companyType" : "---", "matchName" : 3, "matchStreet" : 3,
 	    "matchPostalCode" : 3, "matchCity" : 3, "matchCompanyType" : 3 }
@@ -194,20 +200,29 @@ func TestVIESCheckValidAndInvalid(t *testing.T) {
 	}
 }
 
-// TestVIESRejectsTheWIdNr haelt den konkreten Fall fest, der diesen Fehler gefunden hat.
+// TestWIdNrFormPassesParserOnlyVIESDecides haelt den konkreten Fall fest, der diesen
+// Fehler gefunden hat.
 //
 // Die Wirtschafts-Identifikationsnummer (§ 139c AO) hat exakt dieselbe Form wie eine
-// USt-IdNr. — DE + 9 Ziffern — und wird deshalb dauernd verwechselt. Sie steht aber
-// nicht in VIES und trägt kein Reverse Charge. Ein Format-Check kann das nicht
-// unterscheiden, nur die Abfrage.
-func TestVIESRejectsTheWIdNr(t *testing.T) {
-	// Form ist gueltig — der Parser darf sie also NICHT vorab ablehnen.
-	cc, num, err := splitVATID("DE315037332")
+// USt-IdNr. — DE + 9 Ziffern — und wird deshalb dauernd verwechselt. Ein Format-Check
+// kann das NICHT unterscheiden; nur die VIES-Abfrage entscheidet, ob eine Nummer in
+// dieser Form tatsächlich eine gültige USt-IdNr. ist. Der Parser muss sie also
+// durchlassen und das Urteil VIES überlassen.
+//
+// Lehrstück 2026-11-18: Das Paradebeispiel war DE315037332 — im Juli eine blosse
+// W-IdNr.-Basis, in VIES `isValid: false`; nach Erteilung der USt-IdNr. dieselbe
+// Ziffernfolge, jetzt `isValid: true`. Genau DARUM darf der Parser nicht selbst urteilen:
+// Ob eine Nummer in gültiger Form eine echte USt-IdNr. ist, kann sich über die Zeit
+// ändern und steht nur in VIES, nie im Format.
+func TestWIdNrFormPassesParserOnlyVIESDecides(t *testing.T) {
+	// Neutrale, nicht vergebene Nummer in gültiger Form — der Parser darf sie NICHT
+	// vorab ablehnen, egal ob VIES sie später kennt oder nicht.
+	cc, num, err := splitVATID("DE000000000")
 	if err != nil {
-		t.Fatalf("die W-IdNr. ist formal eine gueltige USt-IdNr. und muss den Parser "+
-			"passieren — nur VIES kann sie widerlegen: %v", err)
+		t.Fatalf("eine Nummer in gültiger USt-IdNr.-Form muss den Parser passieren — "+
+			"nur VIES kann sie widerlegen: %v", err)
 	}
-	if cc != "DE" || num != "315037332" {
+	if cc != "DE" || num != "000000000" {
 		t.Fatalf("splitVATID = %s/%s", cc, num)
 	}
 }
