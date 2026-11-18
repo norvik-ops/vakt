@@ -6,6 +6,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+---
+## [0.46.6] — 2026-11-18
+
 ### Sicherheit
 - **Richtlinien-Freigabe fälschungssicher:** Wer eine Richtlinie freigibt (Status wechselt auf
   „Aktiv“), hält jetzt der Server fest — aus dem angemeldeten Konto, nicht aus Eingaben des
