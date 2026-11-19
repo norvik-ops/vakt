@@ -201,7 +201,7 @@ export default function Layout() {
           </div>
           {!collapsed && (
             <div className="flex items-center gap-2 px-2">
-              <p className="text-[11px] text-secondary">Security Platform</p>
+              <p className="text-[11px] text-secondary">{t('nav.productTagline')}</p>
             </div>
           )}
         </div>

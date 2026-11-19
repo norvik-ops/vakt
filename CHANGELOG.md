@@ -6,6 +6,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+### Behoben
+- **Nach einem Update sofort der neue Stand:** Bisher zeigte der erste Aufruf nach einem Update
+  noch die alte Oberfläche, weil der Service Worker die Startseite aus seinem Zwischenspeicher
+  auslieferte. Der erste Wechsel in einen anderen Bereich endete dann mit „Importing a module
+  script failed.“ (u. a. Safari auf dem iPhone). Seitenaufrufe kommen jetzt zuerst vom Server; nur
+  ohne Verbindung greift die zuletzt geladene Fassung. Einmalig nach diesem Update kann der erste
+  Aufruf noch den alten Stand zeigen; ein Neuladen behebt das.
+- **„Neu laden“ im Dunkelmodus lesbar:** Der Knopf im Hinweis „Seite konnte nicht geladen werden“
+  war im Dunkelmodus eine leere weiße Fläche.
+
+### Geändert
+- **Untertitel unter dem Logo:** „Compliance & ISMS“ statt „Security Platform“.
+
 ---
 ## [0.46.6] — 2026-11-18
 

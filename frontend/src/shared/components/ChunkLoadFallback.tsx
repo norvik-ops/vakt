@@ -25,7 +25,7 @@ export function ChunkLoadFallback() {
   const reloadButton = (
     <button
       onClick={() => { window.location.reload() }}
-      className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
+      className="px-4 py-2 rounded bg-brand text-white text-sm hover:bg-brand-hover transition-colors"
     >
       {t('errors.chunk.reload')}
     </button>
@@ -33,7 +33,7 @@ export function ChunkLoadFallback() {
 
   if (result !== 'gave-up') {
     return (
-      <div role="status" className="flex flex-col items-center justify-center gap-4 min-h-[16rem] p-8 text-sm text-muted-foreground">
+      <div role="status" className="flex flex-col items-center justify-center gap-4 min-h-[16rem] p-8 text-sm text-secondary">
         <p>{t('errors.chunk.reloading')}</p>
         {showButton && reloadButton}
       </div>
@@ -41,10 +41,10 @@ export function ChunkLoadFallback() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-8">
-      <div role="alert" className="max-w-md w-full rounded-lg border border-border bg-card p-8 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-bg p-8">
+      <div role="alert" className="max-w-md w-full rounded-lg border border-border bg-surface p-8 text-center">
         <h1 className="text-xl font-semibold mb-2">{t('errors.chunk.title')}</h1>
-        <p className="text-sm text-muted-foreground mb-4">{t('errors.chunk.text')}</p>
+        <p className="text-sm text-secondary mb-4">{t('errors.chunk.text')}</p>
         {reloadButton}
       </div>
     </div>

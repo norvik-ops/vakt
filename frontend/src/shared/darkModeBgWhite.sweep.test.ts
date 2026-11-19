@@ -5,7 +5,8 @@
  * Muster aus der SoA-Seite (#210): Ein weißer Container erbt `text-primary`, im
  * Dunkelmodus fast weiß — Schrift weiß auf weiß. Danach fanden sich dieselbe Klasse
  * in NIS2-Neubewertung, Auditprogramm, interessierten Parteien und im Dialog der
- * Prüfungsansicht, dazu der Knopf „Seite neu laden“ der Fehlerseite.
+ * Prüfungsansicht, dazu der Knopf „Seite neu laden“ der Fehlerseite und „Neu laden“
+ * im Chunk-Hinweis (beide `bg-primary` = Textfarbe, siehe zweiter Test).
  *
  * jsdom wendet kein CSS an, deshalb prüft der Test den Quelltext.
  * Was er NICHT prüft: `bg-gray-50`/`bg-gray-100` ohne dark-Variante, Inline-Styles,
@@ -61,9 +62,23 @@ describe('Dunkelmodus: bg-white nur mit dark:-Gegenstück', () => {
     expect(offenders()).toEqual([])
   })
 
-  it('Fehlerseite: „Seite neu laden“ nutzt kein Text-Token als Hintergrund', () => {
-    const src = readFileSync(join(SRC, 'shared/components/ErrorBoundary.tsx'), 'utf-8')
-    expect(src).not.toMatch(/bg-primary\b/)
-    expect(src).not.toMatch(/text-primary-foreground/)
+  // `primary` ist in tailwind.config.js die TEXTfarbe (--color-text, im Dunkelmodus fast
+  // weiß), `primary-foreground` gibt es gar nicht (shadcn-Name ohne Token). Ein Knopf
+  // „bg-primary text-primary-foreground“ wird so im Dunkelmodus weiß auf weiß — erst in
+  // der Fehlerseite (nur dort prüfte der Test), danach im Chunk-Hinweis „Neu laden“.
+  it('kein Text-Token als Vollfläche und kein nicht existierendes primary-foreground', () => {
+    const allowedBgPrimary: Record<string, string> = {
+      'modules/vaktcomply/components/AIClassificationWizard.tsx': 'Fortschrittsbalken ohne Text',
+    }
+    const out: string[] = []
+    for (const f of files(SRC)) {
+      const rel = relative(SRC, f)
+      readFileSync(f, 'utf-8').split('\n').forEach((line, i) => {
+        if (/primary-foreground/.test(line)) out.push(`${rel}:${String(i + 1)} primary-foreground`)
+        // `bg-primary/10` (Tönung) ist erlaubt, nur die Vollfläche nicht.
+        if (/(^|[\s'"`:])bg-primary(?![\w/-])/.test(line) && !(rel in allowedBgPrimary)) out.push(`${rel}:${String(i + 1)} bg-primary`)
+      })
+    }
+    expect(out).toEqual([])
   })
 })
