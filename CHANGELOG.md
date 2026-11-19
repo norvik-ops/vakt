@@ -20,6 +20,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Untertitel unter dem Logo:** „Compliance & ISMS“ statt „Security Platform“.
 
 ---
+## [0.46.7] — 2026-11-19
+
+### Intern (Billing-Verwaltung, nicht kundenseitig)
+- **Keine doppelten Lexware-Kontakte beim Kauf:** Beim Freigeben einer Bestellung wird ein
+  bestehender Lexware-Kontakt per E-Mail gesucht und wiederverwendet, statt blind einen zweiten
+  anzulegen. Lexwares E-Mail-Filter ist nur eine Substring-Suche, deshalb wird der Treffer
+  client-seitig exakt gegengeprüft; bei Mehrdeutigkeit oder Suchfehler wird neu angelegt — nie an
+  den falschen Kontakt gebucht, nie ein Verkauf blockiert. So landen Notizen/Aufgaben eines vorab
+  gepflegten Leads und die Rechnung auf demselben Kontakt.
+- **Kontaktauswahl im Billing-Panel:** Beim Freigeben lässt sich zusätzlich ein bestehender
+  Lexware-Kontakt von Hand suchen (Firma/E-Mail) und auswählen; die Rechnung wird dann an genau
+  diesen gebucht. Ohne Auswahl bleibt das automatische Suchen-oder-Anlegen der Default.
+
+---
 ## [0.46.6] — 2026-11-18
 
 ### Sicherheit
