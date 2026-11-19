@@ -58,14 +58,115 @@
     verschicken. <strong>Eine finalisierte Rechnung lässt sich über die API nicht zurücknehmen</strong> —
     nur in Lexware von Hand stornieren.
   </p>
+
+  {{/* Optional: einen bestehenden Lexware-Kontakt von Hand waehlen. Ohne Auswahl bleibt
+       contact_id leer und es gilt das Auto-Verhalten (suchen-oder-anlegen per E-Mail).
+       Die Suche sitzt bewusst AUSSERHALB des Freigabe-Formulars: ein Enter im Suchfeld
+       darf nie die finalisierte Rechnung ausloesen. */}}
+  <details style="margin:0 0 16px">
+    <summary style="cursor:pointer;font-size:14px;color:var(--text-2)">
+      Bestehenden Lexware-Kontakt wählen (optional)
+    </summary>
+    <p class="dim" style="margin:10px 0 10px;font-size:13px;line-height:1.6">
+      Für einen vorab in Lexware gepflegten Lead: Dann wird die Rechnung an <strong>genau
+      diesen</strong> Kontakt gebucht, statt einen zweiten anzulegen. Ohne Auswahl bleibt es
+      beim automatischen Suchen-oder-Anlegen über die E-Mail.
+    </p>
+    <div style="display:flex;gap:10px">
+      <input type="search" id="contactQuery" autocomplete="off"
+             placeholder="Firmenname oder E-Mail (min. 3 Zeichen)">
+      <button type="button" class="ghost" id="contactSearchBtn" style="flex:0 0 auto">Suchen</button>
+    </div>
+    <div id="contactResults" style="margin-top:10px"></div>
+  </details>
+
   <form method="post" action="/subscriptions/{{.Sub.ID}}/approve"
         onsubmit="return confirm('Rechnung für {{.Sub.Company}} über {{.NextGross}} erstellen?\n\nFinalisiert, nicht rückgängig zu machen.')">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="contact_id" id="contactId" value="">
+    <div id="contactChosen" style="display:none;margin-bottom:12px;font-size:14px"></div>
     <button type="submit">Rechnung über {{.NextGross}} erstellen und verschicken</button>
     {{if .NextTaxNote}}
     <p class="dim" style="margin:8px 0 0;font-size:13px">{{.NextTaxNote}}</p>
     {{end}}
   </form>
+
+  {{/* Vanilla, inline, keine Abhaengigkeit: fragt /contacts/search ab und rendert die
+       Treffer. Kontaktnamen kommen aus Lexware — deshalb per textContent/createElement
+       gesetzt, nie per innerHTML, damit kein Firmenname als Markup interpretiert wird. */}}
+  <script>
+  (function () {
+    var q = document.getElementById('contactQuery');
+    var btn = document.getElementById('contactSearchBtn');
+    var results = document.getElementById('contactResults');
+    var chosen = document.getElementById('contactChosen');
+    var hidden = document.getElementById('contactId');
+    if (!q || !btn || !results || !chosen || !hidden) return;
+
+    function clear(el) { while (el.firstChild) { el.removeChild(el.firstChild); } }
+
+    function labelOf(ct) {
+      var place = [ct.zip, ct.city].filter(Boolean).join(' ');
+      return [ct.companyName, ct.email, place].filter(Boolean).join(' — ') || ct.id;
+    }
+
+    function choose(ct) {
+      hidden.value = ct.id;
+      clear(results);
+      clear(chosen);
+      var span = document.createElement('span');
+      span.textContent = 'Gewählt: ' + labelOf(ct);
+      var rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'ghost sm';
+      rm.textContent = 'Auswahl entfernen';
+      rm.style.marginLeft = '10px';
+      rm.addEventListener('click', function () {
+        hidden.value = '';
+        clear(chosen);
+        chosen.style.display = 'none';
+      });
+      chosen.appendChild(span);
+      chosen.appendChild(rm);
+      chosen.style.display = 'block';
+    }
+
+    function render(list) {
+      clear(results);
+      if (!list.length) {
+        var none = document.createElement('div');
+        none.className = 'muted';
+        none.style.cssText = 'font-size:13px;padding:6px 0';
+        none.textContent = 'Keine Treffer.';
+        results.appendChild(none);
+        return;
+      }
+      list.forEach(function (ct) {
+        var row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'ghost sm';
+        row.style.cssText = 'display:block;width:100%;text-align:left;margin-bottom:6px';
+        row.textContent = labelOf(ct);
+        row.addEventListener('click', function () { choose(ct); });
+        results.appendChild(row);
+      });
+    }
+
+    function search() {
+      var term = q.value.trim();
+      if (term.length < 3) { render([]); return; }
+      fetch('/contacts/search?q=' + encodeURIComponent(term), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (list) { render(Array.isArray(list) ? list : []); })
+        .catch(function () { render([]); });
+    }
+
+    btn.addEventListener('click', search);
+    q.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); search(); }
+    });
+  })();
+  </script>
   {{end}}
 </div>
 {{end}}

@@ -274,7 +274,10 @@ func (h *Handler) ConvertToPaid(ctx context.Context, subID string, in ConvertInp
 	}
 
 	// ── 1. Lexware-Kontakt. Bis hierhin ist bei uns nichts passiert.
-	contactID, err := h.client.CreateContact(ctx, ContactInput{
+	//
+	// Suchen-oder-anlegen statt bedingungslos anlegen: Wurde der Kunde vorab als Lead
+	// in Lexware gepflegt, wird dieser Kontakt wiederverwendet statt dupliziert.
+	contactID, reused, err := h.client.LookupOrCreateContact(ctx, ContactInput{
 		CompanyName: company, VATID: in.VATID, ContactName: in.ContactName, Email: email,
 		Street: in.Street, Zip: in.Zip, City: in.City, CountryCode: in.CountryCode,
 	})
@@ -282,6 +285,8 @@ func (h *Handler) ConvertToPaid(ctx context.Context, subID string, in ConvertInp
 		return "", fmt.Errorf("Lexware-Kontakt konnte nicht angelegt werden: %w. "+
 			"Es wurde nichts geändert", err)
 	}
+	log.Info().Str("subscription_id", subID).Bool("contact_reused", reused).
+		Msg("billing: lexware contact resolved")
 
 	// ── 2. Der sichere Zwischenzustand.
 	//

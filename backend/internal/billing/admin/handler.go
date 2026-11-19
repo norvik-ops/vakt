@@ -46,6 +46,7 @@ func Register(e *echo.Echo, h *Handler, cfg Config) {
 	g.GET("/subscriptions/:id", h.Subscription)
 	g.GET("/new", h.NewSubscriptionForm)
 	g.GET("/invoices/:id/pdf", h.InvoicePDF)
+	g.GET("/contacts/search", h.SearchContacts)
 
 	g.POST("/new", h.CreateSubscription)
 	g.POST("/subscriptions/:id/approve", h.ApproveSubscription)
@@ -684,10 +685,37 @@ func (h *Handler) ApproveSubscription(c echo.Context) error {
 	if h.billing == nil {
 		return redirect(c, id, "Billing ist auf dieser Instanz nicht konfiguriert.")
 	}
-	res := h.billing.ApproveRequest(c.Request().Context(), id, requestEmail(c))
+	// Optional: ein im Panel von Hand gewaehlter Lexware-Kontakt. Leer = Auto
+	// (suchen-oder-anlegen per E-Mail) — das heutige Verhalten bleibt der Default.
+	contactID := strings.TrimSpace(c.FormValue("contact_id"))
+	res := h.billing.ApproveRequest(c.Request().Context(), id, requestEmail(c), contactID)
 	log.Warn().Str("subscription_id", id).Str("by", requestEmail(c)).Bool("ok", res.OK).
+		Bool("contact_picked", contactID != "").
 		Msg("billing admin: invoice approved from the panel")
 	return redirect(c, id, res.Message)
+}
+
+// SearchContacts liefert dem Freigabe-Formular eine JSON-Trefferliste bestehender
+// Lexware-Kontakte, damit der Mensch die Rechnung an einen VORHER gepflegten Lead
+// buchen kann, statt einen zweiten anzulegen. GET hinter Cloudflare Access — kein
+// CSRF noetig, weil nichts veraendert wird.
+//
+// Unter drei Zeichen (oder ohne Lexware) kommt eine leere Liste zurueck, kein Fehler:
+// die Suche ist ein Hilfsmittel, das nie den Freigabe-Weg blockieren darf.
+func (h *Handler) SearchContacts(c echo.Context) error {
+	if h.billing == nil {
+		return c.JSON(http.StatusOK, []lexware.ContactSummary{})
+	}
+	results, err := h.billing.SearchContacts(c.Request().Context(), c.QueryParam("q"))
+	if err != nil {
+		// Nie der rohe Fehler: er kann den API-Key in einer URL oder interne Pfade tragen.
+		log.Error().Err(err).Msg("billing admin: Lexware-Kontaktsuche fehlgeschlagen")
+		return c.JSON(http.StatusBadGateway, map[string]string{"error": "Lexware antwortet nicht."})
+	}
+	if results == nil {
+		results = []lexware.ContactSummary{}
+	}
+	return c.JSON(http.StatusOK, results)
 }
 
 // ── Abo von Hand anlegen ─────────────────────────────────────────────────────

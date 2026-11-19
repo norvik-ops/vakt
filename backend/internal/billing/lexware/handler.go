@@ -58,6 +58,13 @@ func (h *Handler) InvoiceAmountsFor(netCents int64, countryCode string, vatIDVer
 	return h.client.InvoiceAmountsFor(netCents, countryCode, vatIDVerified)
 }
 
+// SearchContacts reicht die Kontaktsuche an das Billing-Panel durch — derselbe Weg,
+// den auch InvoiceAmountsFor/Reconcile nehmen (der Client ist unexportiert, das Panel
+// spricht nur mit dem Handler).
+func (h *Handler) SearchContacts(ctx context.Context, query string) ([]ContactSummary, error) {
+	return h.client.SearchContacts(ctx, query)
+}
+
 // WithVIES hängt die USt-IdNr.-Prüfung ein.
 //
 // Getrennt vom Konstruktor, weil sie nur für den Auslandsverkauf gebraucht wird: Eine
@@ -380,7 +387,8 @@ func (h *Handler) Approve(c echo.Context) error {
 		return c.String(http.StatusForbidden, "Token ungültig")
 	}
 
-	res := h.ApproveRequest(ctx, id, "mail-link")
+	// Leer: der Mail-Link kennt keinen gewaehlten Kontakt — heutiges Auto-Verhalten.
+	res := h.ApproveRequest(ctx, id, "mail-link", "")
 	// 200, nicht 5xx: Diese Seite liest ein MENSCH. Cloudflare ersetzt 5xx durch seine
 	// eigene "Bad gateway"-Seite, und die Fehlerursache — die hier steht — ginge verloren.
 	return c.String(http.StatusOK, res.Message)
@@ -407,7 +415,10 @@ type ApproveResult struct {
 // Everything it does is IRREVERSIBLE from the API: a finalised Lexware invoice cannot
 // be un-finalised, and a mailed key cannot be recalled. So it fails loudly and it says
 // exactly what did and did not happen.
-func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResult {
+// contactID != "" bedeutet: Der Mensch hat im Panel einen bestehenden Lexware-Kontakt
+// ausgewaehlt. Dann wird die Rechnung AN DIESEN gebucht — kein LookupOrCreateContact,
+// kein Neuanlegen. Leer = heutiges Verhalten (suchen-oder-anlegen per E-Mail).
+func (h *Handler) ApproveRequest(ctx context.Context, id, by, contactID string) ApproveResult {
 	var (
 		status, company, contact, email, vatID        string
 		street, zip, city, country, interval, product string
@@ -481,14 +492,23 @@ func (h *Handler) ApproveRequest(ctx context.Context, id, by string) ApproveResu
 		return ApproveResult{Message: "FEHLER: " + err.Error() + "\n\nEs wurde NICHTS erstellt."}
 	}
 
-	contactID, err := h.client.CreateContact(ctx, ContactInput{
-		CompanyName: company, VATID: vatID, ContactName: contact, Email: email,
-		Street: street, Zip: zip, City: city, CountryCode: country,
-	})
-	if err != nil {
-		log.Error().Err(err).Str("request_id", id).Msg("billing: create lexware contact")
-		return ApproveResult{Message: "FEHLER: Lexware-Kontakt konnte nicht angelegt werden.\n\n" +
-			err.Error() + "\n\nEs wurde NICHTS erstellt. Nach dem Fix erneut versuchen."}
+	if contactID != "" {
+		// Vom Menschen im Panel gewaehlt: nicht suchen, nicht anlegen, direkt daran buchen.
+		log.Info().Str("request_id", id).Str("by", by).Bool("contact_picked", true).
+			Msg("billing: lexware contact picked manually")
+	} else {
+		cid, reused, cErr := h.client.LookupOrCreateContact(ctx, ContactInput{
+			CompanyName: company, VATID: vatID, ContactName: contact, Email: email,
+			Street: street, Zip: zip, City: city, CountryCode: country,
+		})
+		if cErr != nil {
+			log.Error().Err(cErr).Str("request_id", id).Msg("billing: create lexware contact")
+			return ApproveResult{Message: "FEHLER: Lexware-Kontakt konnte nicht angelegt werden.\n\n" +
+				cErr.Error() + "\n\nEs wurde NICHTS erstellt. Nach dem Fix erneut versuchen."}
+		}
+		contactID = cid
+		log.Info().Str("request_id", id).Bool("contact_reused", reused).
+			Msg("billing: lexware contact resolved")
 	}
 
 	invoiceID, err := h.client.CreateInvoice(ctx, InvoiceInput{

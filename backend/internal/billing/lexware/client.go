@@ -23,8 +23,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
 )
 
@@ -214,9 +217,12 @@ type ContactInput struct {
 
 // CreateContact creates a customer contact and returns its ID.
 //
-// allowTaxFreeInvoices is set unconditionally: as a §19 small business every
-// invoice we issue is tax-free, and Lexware rejects vat-free invoices for a
-// referenced contact that does not permit them.
+// allowTaxFreeInvoices is set unconditionally, and that stays correct even under
+// Regelbesteuerung: steuerfreie Rechnungen kommen weiter vor (EU-Reverse-Charge
+// nach § 13b UStG, Drittland-Ausfuhr). Lexware lehnt eine vat-freie Rechnung ab,
+// wenn der referenzierte Kontakt sie nicht erlaubt. Das Flag ERLAUBT solche
+// Rechnungen, es erzwingt keine — welche Steuerart tatsaechlich greift, entscheidet
+// der taxType der Rechnung (taxTreatmentFor, siehe tax.go), nicht dieses Flag.
 func (c *Client) CreateContact(ctx context.Context, in ContactInput) (string, error) {
 	req := contactRequest{
 		Version: 0,
@@ -249,6 +255,237 @@ func (c *Client) CreateContact(ctx context.Context, in ContactInput) (string, er
 		return "", fmt.Errorf("lexware: decode contact: %w", err)
 	}
 	return out.ID, nil
+}
+
+// contactEmailAddresses spiegelt die vier E-Mail-Buckets wider, die Lexware an
+// einem Kontakt fuehrt. Lexware legt jede Adresse in genau einen Bucket; eine
+// exakte Suche muss deshalb alle vier durchsehen.
+type contactEmailAddresses struct {
+	Business []string `json:"business"`
+	Office   []string `json:"office"`
+	Private  []string `json:"private"`
+	Other    []string `json:"other"`
+}
+
+// contactListCompany traegt den Firmennamen eines Kontakts aus der Trefferliste.
+type contactListCompany struct {
+	Name string `json:"name"`
+}
+
+// contactListAddress traegt die beiden Felder einer Adresse, die das Panel zur
+// Unterscheidung zweier gleichnamiger Kontakte anzeigt: PLZ und Ort.
+type contactListAddress struct {
+	Zip  string `json:"zip"`
+	City string `json:"city"`
+}
+
+// contactListAddresses spiegelt die Adressbuckets eines Kontakts. Der Ort wird aus
+// der ersten Billing-Adresse gelesen; Shipping ist nur mitgefuehrt, falls Lexware
+// einen Kontakt ohne Billing-, aber mit Shipping-Adresse liefert.
+type contactListAddresses struct {
+	Billing  []contactListAddress `json:"billing"`
+	Shipping []contactListAddress `json:"shipping"`
+}
+
+// contactListEntry ist ein einzelner Kontakt aus der paginierten Trefferliste.
+type contactListEntry struct {
+	ID             string                `json:"id"`
+	EmailAddresses contactEmailAddresses `json:"emailAddresses"`
+	Company        contactListCompany    `json:"company"`
+	Addresses      contactListAddresses  `json:"addresses"`
+}
+
+// contactList ist die paginierte Antwort von GET /v1/contacts.
+type contactList struct {
+	Content []contactListEntry `json:"content"`
+}
+
+// ContactSummary ist die abgespeckte Sicht auf einen Lexware-Kontakt, wie sie das
+// Billing-Panel bei der manuellen Kontaktsuche anzeigt und als JSON ausliefert.
+type ContactSummary struct {
+	ID          string `json:"id"`
+	CompanyName string `json:"companyName"`
+	Email       string `json:"email"`
+	Zip         string `json:"zip"`
+	City        string `json:"city"`
+}
+
+// maxContactSummaries begrenzt die Trefferliste, die an das Panel geht. Die erste
+// Lexware-Seite ist ohnehin groesser als das, was ein Mensch sinnvoll durchsieht;
+// mehr als 20 Zeilen helfen bei der Auswahl nicht, sie verstecken die Treffer nur.
+const maxContactSummaries = 20
+
+// firstBusinessEmail waehlt die anzuzeigende Adresse: business, dann office, dann
+// other — die erste nicht-leere. private bleibt aussen vor, weil eine geschaeftliche
+// Rechnung an die geschaeftliche Adresse geht.
+func firstBusinessEmail(e contactEmailAddresses) string {
+	for _, bucket := range [][]string{e.Business, e.Office, e.Other} {
+		for _, addr := range bucket {
+			if strings.TrimSpace(addr) != "" {
+				return addr
+			}
+		}
+	}
+	return ""
+}
+
+// summaryOf zieht die Anzeigefelder aus einem Trefferlisten-Eintrag: Firmenname aus
+// company.name, Ort aus der ersten Billing-Adresse, E-Mail aus dem ersten gefuellten
+// Geschaefts-Bucket.
+func summaryOf(e contactListEntry) ContactSummary {
+	s := ContactSummary{
+		ID:          e.ID,
+		CompanyName: e.Company.Name,
+		Email:       firstBusinessEmail(e.EmailAddresses),
+	}
+	if len(e.Addresses.Billing) > 0 {
+		s.Zip = e.Addresses.Billing[0].Zip
+		s.City = e.Addresses.Billing[0].City
+	}
+	return s
+}
+
+// summariesFrom mappt die Trefferliste auf die Panel-Sicht und begrenzt sie auf
+// maxContactSummaries. Reine Funktion, damit das Mapping ohne HTTP testbar bleibt.
+func summariesFrom(list contactList) []ContactSummary {
+	out := make([]ContactSummary, 0, len(list.Content))
+	for _, e := range list.Content {
+		if len(out) >= maxContactSummaries {
+			break
+		}
+		out = append(out, summaryOf(e))
+	}
+	return out
+}
+
+// SearchContacts sucht bestehende Lexware-Kontakte fuer die manuelle Auswahl im
+// Billing-Panel, damit eine Rechnung an einen VORHER von Hand gepflegten Lead
+// gebucht werden kann, statt einen zweiten Kontakt anzulegen.
+//
+// Die Query wird NICHT geloggt: ein Firmenname oder eine E-Mail ist personenbezogen.
+//
+// Lexwares Filter sind UND-verknuepft, deshalb genau einer: Enthaelt die Query ein
+// "@", wird nach email gefiltert, sonst nach name. Bewusst OHNE customer=true — ein
+// vorab angelegter Lead traegt evtl. noch keine Kundenrolle und soll trotzdem
+// auffindbar sein. Unter drei Zeichen fragt Lexware gar nicht erst (Server-Minimum),
+// also wird dann ohne Request eine leere Liste zurueckgegeben.
+func (c *Client) SearchContacts(ctx context.Context, query string) ([]ContactSummary, error) {
+	q := strings.TrimSpace(query)
+	if len(q) < 3 {
+		return nil, nil
+	}
+	filter := "name="
+	if strings.Contains(q, "@") {
+		filter = "email="
+	}
+	path := "/v1/contacts?" + filter + url.QueryEscape(q)
+	raw, err := c.do(ctx, http.MethodGet, path, nil, "")
+	if err != nil {
+		return nil, err
+	}
+	var list contactList
+	if err := json.Unmarshal(raw, &list); err != nil {
+		return nil, fmt.Errorf("lexware: decode contact search: %w", err)
+	}
+	return summariesFrom(list), nil
+}
+
+// pickUniqueExactEmailContact waehlt aus einer Trefferliste den einen Kontakt,
+// dessen E-Mail GENAU der gesuchten entspricht.
+//
+// Warum exakt und nicht einfach der erste Treffer: Der email-Filter von Lexware
+// ist eine Substring-/Pattern-Suche. Nach "ben@acme.de" liefert er auch
+// "benjamin@acme.de" und "ben@acme.december.example". Wer hier den ersten Eintrag
+// naehme, schriebe eine Rechnung an den falschen Kontakt. Deshalb wird jede der
+// vier E-Mail-Listen (business/office/private/other) gegen die gesuchte Adresse
+// per EqualFold geprueft.
+//
+// Rueckgabe (id, true) nur bei GENAU EINER eindeutigen passenden id. Null Treffer
+// oder mehrere verschiedene passende ids (mehrdeutig) ergeben ("", false) — in
+// beiden Faellen wird neu angelegt, nie geraten.
+func pickUniqueExactEmailContact(content []contactListEntry, email string) (string, bool) {
+	found := ""
+	for _, e := range content {
+		if !entryHasExactEmail(e, email) {
+			continue
+		}
+		switch {
+		case found == "":
+			found = e.ID
+		case found != e.ID:
+			// Zwei verschiedene Kontakte tragen dieselbe exakte Adresse — mehrdeutig.
+			return "", false
+		}
+	}
+	if found == "" {
+		return "", false
+	}
+	return found, true
+}
+
+func entryHasExactEmail(e contactListEntry, email string) bool {
+	for _, bucket := range [][]string{
+		e.EmailAddresses.Business,
+		e.EmailAddresses.Office,
+		e.EmailAddresses.Private,
+		e.EmailAddresses.Other,
+	} {
+		for _, addr := range bucket {
+			if strings.EqualFold(addr, email) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// findCustomerContactByEmail sucht einen bestehenden Kunden-Kontakt zur E-Mail und
+// gibt dessen id zurueck — "" wenn nichts Eindeutiges gefunden wurde.
+//
+// Der Server-Filter ist nur eine Substring-Suche und braucht mindestens drei
+// Zeichen; bei kuerzeren E-Mails wird gar nicht gesucht. Die eigentliche
+// Entscheidung faellt client-seitig in pickUniqueExactEmailContact.
+func (c *Client) findCustomerContactByEmail(ctx context.Context, email string) (string, error) {
+	if len(email) < 3 {
+		return "", nil
+	}
+	path := "/v1/contacts?email=" + url.QueryEscape(email) + "&customer=true"
+	raw, err := c.do(ctx, http.MethodGet, path, nil, "")
+	if err != nil {
+		return "", err
+	}
+	var list contactList
+	if err := json.Unmarshal(raw, &list); err != nil {
+		return "", fmt.Errorf("lexware: decode contact list: %w", err)
+	}
+	id, ok := pickUniqueExactEmailContact(list.Content, email)
+	if !ok {
+		return "", nil
+	}
+	return id, nil
+}
+
+// LookupOrCreateContact gibt die id eines passenden bestehenden Kontakts zurueck
+// oder legt einen neuen an. reused meldet, welcher der beiden Wege gegangen wurde.
+//
+// Warum das wichtig ist: Wird ein Interessent vorab von Hand als Lead in Lexware
+// gepflegt (Notizen, Aufgaben), erzeugte ein bedingungsloses CreateContact beim
+// Kauf eine Dublette — Notizen auf dem einen, Rechnung auf dem anderen Kontakt.
+//
+// Die Suche darf einen Verkauf NIE blockieren: Schlaegt sie mit einem Fehler fehl
+// (Lexware nicht erreichbar o.ae.), wird das geloggt und trotzdem neu angelegt —
+// dann steht im schlimmsten Fall eine Dublette da, aber der Kauf geht durch.
+func (c *Client) LookupOrCreateContact(ctx context.Context, in ContactInput) (string, bool, error) {
+	existing, err := c.findCustomerContactByEmail(ctx, in.Email)
+	if err != nil {
+		// Bewusst ohne die E-Mail: personenbezogene Daten gehören nicht ins Log.
+		log.Error().Err(err).
+			Msg("billing: Lexware-Kontaktsuche fehlgeschlagen — lege neu an")
+	} else if existing != "" {
+		return existing, true, nil
+	}
+	id, err := c.CreateContact(ctx, in)
+	return id, false, err
 }
 
 // ── Invoices ─────────────────────────────────────────────────────────────────
