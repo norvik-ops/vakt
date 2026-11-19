@@ -6,6 +6,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 ## [Unreleased]
 
+---
+## [0.46.7] — 2026-11-19
+
 ### Behoben
 - **Nach einem Update sofort der neue Stand:** Bisher zeigte der erste Aufruf nach einem Update
   noch die alte Oberfläche, weil der Service Worker die Startseite aus seinem Zwischenspeicher
@@ -18,9 +21,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Geändert
 - **Untertitel unter dem Logo:** „Compliance & ISMS“ statt „Security Platform“.
-
----
-## [0.46.7] — 2026-11-19
 
 ### Intern (Billing-Verwaltung, nicht kundenseitig)
 - **Keine doppelten Lexware-Kontakte beim Kauf:** Beim Freigeben einer Bestellung wird ein
