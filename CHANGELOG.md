@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ---
+## [0.46.9] — 2026-11-20
+
+### Intern (Billing-Verwaltung, nicht kundenseitig)
+- **Abmelden auch auf dem Handy:** Der „Abmelden"-Link war auf schmalen Bildschirmen ausgeblendet;
+  er sitzt jetzt in der Navigation und ist auf Desktop und Mobil sichtbar.
+
+---
 ## [0.46.8] — 2026-11-20
 
 ### Intern (Billing-Verwaltung, nicht kundenseitig)
