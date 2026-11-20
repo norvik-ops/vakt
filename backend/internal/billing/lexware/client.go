@@ -272,6 +272,14 @@ type contactListCompany struct {
 	Name string `json:"name"`
 }
 
+// contactListPerson traegt Vor- und Nachnamen eines PERSONEN-Kontakts. Ein
+// Lexware-Kontakt ist entweder company ODER person; eine Person hat keinen
+// Firmennamen und waere ohne diese Felder im Panel mit leerem Namen unsichtbar.
+type contactListPerson struct {
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+}
+
 // contactListAddress traegt die beiden Felder einer Adresse, die das Panel zur
 // Unterscheidung zweier gleichnamiger Kontakte anzeigt: PLZ und Ort.
 type contactListAddress struct {
@@ -292,6 +300,7 @@ type contactListEntry struct {
 	ID             string                `json:"id"`
 	EmailAddresses contactEmailAddresses `json:"emailAddresses"`
 	Company        contactListCompany    `json:"company"`
+	Person         contactListPerson     `json:"person"`
 	Addresses      contactListAddresses  `json:"addresses"`
 }
 
@@ -303,7 +312,10 @@ type contactList struct {
 // ContactSummary ist die abgespeckte Sicht auf einen Lexware-Kontakt, wie sie das
 // Billing-Panel bei der manuellen Kontaktsuche anzeigt und als JSON ausliefert.
 type ContactSummary struct {
-	ID          string `json:"id"`
+	ID string `json:"id"`
+	// CompanyName ist der ANZEIGENAME des Kontakts — Firma ODER Person. Bei einem
+	// Firmen-Kontakt der Firmenname, bei einem Personen-Kontakt „Nachname, Vorname".
+	// Der JSON-Tag bleibt companyName, weil das Frontend ihn so liest.
 	CompanyName string `json:"companyName"`
 	Email       string `json:"email"`
 	Zip         string `json:"zip"`
@@ -329,13 +341,32 @@ func firstBusinessEmail(e contactEmailAddresses) string {
 	return ""
 }
 
-// summaryOf zieht die Anzeigefelder aus einem Trefferlisten-Eintrag: Firmenname aus
-// company.name, Ort aus der ersten Billing-Adresse, E-Mail aus dem ersten gefuellten
-// Geschaefts-Bucket.
+// displayName bestimmt den Anzeigenamen eines Kontakts: der Firmenname, wenn
+// vorhanden; sonst — bei einem Personen-Kontakt — „Nachname, Vorname". Ist nur
+// eines von beiden gesetzt, wird das vorhandene genommen; ist alles leer, bleibt
+// der Name leer.
+func displayName(e contactListEntry) string {
+	if e.Company.Name != "" {
+		return e.Company.Name
+	}
+	first, last := e.Person.FirstName, e.Person.LastName
+	switch {
+	case first != "" && last != "":
+		return last + ", " + first
+	case last != "":
+		return last
+	default:
+		return first
+	}
+}
+
+// summaryOf zieht die Anzeigefelder aus einem Trefferlisten-Eintrag: Anzeigename aus
+// Firma oder Person (siehe displayName), Ort aus der ersten Billing-Adresse, E-Mail
+// aus dem ersten gefuellten Geschaefts-Bucket.
 func summaryOf(e contactListEntry) ContactSummary {
 	s := ContactSummary{
 		ID:          e.ID,
-		CompanyName: e.Company.Name,
+		CompanyName: displayName(e),
 		Email:       firstBusinessEmail(e.EmailAddresses),
 	}
 	if len(e.Addresses.Billing) > 0 {

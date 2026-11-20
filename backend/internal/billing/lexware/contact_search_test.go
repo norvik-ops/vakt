@@ -52,6 +52,32 @@ func TestSummariesFrom(t *testing.T) {
 		}
 	})
 
+	t.Run("Anzeigename aus Firma oder Person", func(t *testing.T) {
+		cases := []struct {
+			name  string
+			entry contactListEntry
+			want  string
+		}{
+			{"Firmen-Kontakt", contactListEntry{Company: contactListCompany{Name: "Acme GmbH"}}, "Acme GmbH"},
+			{"Personen-Kontakt", contactListEntry{Person: contactListPerson{FirstName: "Stefan", LastName: "Moseler"}}, "Moseler, Stefan"},
+			{"nur Nachname", contactListEntry{Person: contactListPerson{LastName: "Moseler"}}, "Moseler"},
+			{"nur Vorname", contactListEntry{Person: contactListPerson{FirstName: "Stefan"}}, "Stefan"},
+			{"beides leer", contactListEntry{}, ""},
+			{"Firma gewinnt gegen Person", contactListEntry{
+				Company: contactListCompany{Name: "Acme GmbH"},
+				Person:  contactListPerson{FirstName: "Stefan", LastName: "Moseler"},
+			}, "Acme GmbH"},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				got := summaryOf(tc.entry)
+				if got.CompanyName != tc.want {
+					t.Fatalf("CompanyName = %q, want %q", got.CompanyName, tc.want)
+				}
+			})
+		}
+	})
+
 	t.Run("kein Ort ohne Billing-Adresse", func(t *testing.T) {
 		got := summaryOf(contactListEntry{ID: "x", Company: contactListCompany{Name: "Ohne Adresse"}})
 		if got.Zip != "" || got.City != "" {

@@ -194,7 +194,8 @@
         <span class="count" title="Was Lexware melden wird — zum Gegenlesen vor der Übermittlung">§</span></a>
     </nav>
 
-    <div class="who"><b>Angemeldet</b>{{.Who}}</div>
+    <div class="who"><b>Angemeldet</b>{{.Who}}
+      {{if .ShowLogout}}<div style="margin-top:8px"><a href="/cdn-cgi/access/logout">Abmelden</a></div>{{end}}</div>
   </aside>
 
   <main>{{template "content" .}}</main>

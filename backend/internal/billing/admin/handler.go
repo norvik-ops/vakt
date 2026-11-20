@@ -26,6 +26,11 @@ type Handler struct {
 	seats   *lexware.Seats
 	billing *lexware.Handler // for the Lexware reconciliation
 	baseURL string
+
+	// showLogout steuert den „Abmelden"-Link im Header. Nur im Cloudflare-Access-Modus
+	// gibt es eine Edge-Session, die man beenden kann; im local-Modus (SSH-Tunnel) gaebe
+	// es nichts abzumelden. Gesetzt in Register aus cfg.Mode.
+	showLogout bool
 }
 
 func NewHandler(db *pgxpool.Pool, seats *lexware.Seats, billing *lexware.Handler, baseURL string) *Handler {
@@ -33,6 +38,9 @@ func NewHandler(db *pgxpool.Pool, seats *lexware.Seats, billing *lexware.Handler
 }
 
 func Register(e *echo.Echo, h *Handler, cfg Config) {
+	// Abmelden nur dort anzeigen, wo es eine Cloudflare-Access-Session zum Beenden gibt.
+	h.showLogout = cfg.Mode == ModeCloudflareAccess
+
 	e.GET("/apple-touch-icon.png", AppleTouchIcon)
 
 	g := e.Group("", RequireCloudflareAccess(cfg), setCSRF, requireCSRF)

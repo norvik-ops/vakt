@@ -17,12 +17,13 @@ import (
 // is active, the sidebar counts, who is looking — so no handler has to remember to
 // fill it in and no page can silently render without navigation.
 type page struct {
-	Title string
-	Nav   string // overview | subs | invoices | licences | lexware | tax
-	Who   string
-	CSRF  string
-	Flash string
-	N     counts
+	Title      string
+	Nav        string // overview | subs | invoices | licences | lexware | tax
+	Who        string
+	CSRF       string
+	Flash      string
+	ShowLogout bool // Abmelden-Link anzeigen — nur im Cloudflare-Access-Modus
+	N          counts
 }
 
 // counts feed the little badges in the sidebar. They are the one thing on every
@@ -37,11 +38,12 @@ type counts struct {
 
 func (h *Handler) chrome(c echo.Context, title, nav string) page {
 	p := page{
-		Title: title,
-		Nav:   nav,
-		Who:   requestEmail(c),
-		CSRF:  csrfOf(c),
-		Flash: c.QueryParam("flash"),
+		Title:      title,
+		Nav:        nav,
+		Who:        requestEmail(c),
+		CSRF:       csrfOf(c),
+		Flash:      c.QueryParam("flash"),
+		ShowLogout: h.showLogout,
 	}
 	if n, err := h.counts(c.Request().Context()); err == nil {
 		p.N = n
