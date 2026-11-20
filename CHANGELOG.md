@@ -7,6 +7,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ---
+## [0.46.8] — 2026-11-20
+
+### Intern (Billing-Verwaltung, nicht kundenseitig)
+- **Lexware-Kontaktsuche findet Personen-Kontakte:** Die Suche beim Freigeben las den Namen nur
+  aus dem Firmennamen; ein Personen-Kontakt (ohne Firma) kam leer zurück und war im Panel
+  unsichtbar. Jetzt wird bei Personen „Nachname, Vorname" angezeigt.
+- **Abmelden im Panel:** Der Header hat einen „Abmelden"-Link (beendet die Cloudflare-Access-Sitzung).
+
+---
 ## [0.46.7] — 2026-11-19
 
 ### Behoben
